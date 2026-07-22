@@ -455,6 +455,8 @@ jobs:
       POSTGRES_APP_PASSWORD: placeholder-ci-runtime
       POSTGRES_DISPATCHER_USER: opsmind_dispatcher
       POSTGRES_DISPATCHER_PASSWORD: placeholder-ci-dispatcher
+      POSTGRES_AI_RUNTIME_USER: opsmind_ai_runtime
+      POSTGRES_AI_RUNTIME_PASSWORD: placeholder-ci-ai-runtime
       PGHOST: 127.0.0.1
       PGPORT: "5432"
       PGDATABASE: opsmind
@@ -507,6 +509,9 @@ jobs:
               IF NOT EXISTS (SELECT 1 FROM pg_roles WHERE rolname = 'opsmind_dispatch_resolver') THEN
                   CREATE ROLE opsmind_dispatch_resolver NOLOGIN NOSUPERUSER NOCREATEDB NOCREATEROLE NOINHERIT NOREPLICATION NOBYPASSRLS;
               END IF;
+              IF NOT EXISTS (SELECT 1 FROM pg_roles WHERE rolname = 'opsmind_ai_runtime') THEN
+                  CREATE ROLE opsmind_ai_runtime LOGIN NOSUPERUSER NOCREATEDB NOCREATEROLE NOINHERIT NOREPLICATION NOBYPASSRLS;
+              END IF;
           END
           $$;
           SQL
@@ -518,6 +523,9 @@ jobs:
           \password opsmind_dispatcher
           $POSTGRES_DISPATCHER_PASSWORD
           $POSTGRES_DISPATCHER_PASSWORD
+          \password opsmind_ai_runtime
+          $POSTGRES_AI_RUNTIME_PASSWORD
+          $POSTGRES_AI_RUNTIME_PASSWORD
           EOF
       - name: Build and apply migration as owner
         shell: bash
