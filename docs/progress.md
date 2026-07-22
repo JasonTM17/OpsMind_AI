@@ -389,7 +389,7 @@ real Phase 7 clients:
 - Gateway request/audit/provenance, redaction, truncation, and duplicate replay
   metadata retained without exposing credentials or raw provider payloads.
 
-Local verification: Platform API `146` tests, `0` failures/errors and `18`
+Local verification: Platform API `148` tests, `0` failures/errors and `20`
 environment-gated integration skips; Phase 4B static checkpoint PASS; repository
 layout, actionlint, diff, and working-tree/history secret scans PASS.
 
@@ -398,15 +398,22 @@ GitHub Actions run `29936897223` at revision
 successful executable jobs and one expected push-only dependency-policy skip.
 The run applied fresh V001–V007, passed 11 PostgreSQL integration cases with no
 failure/error/skip, including evidence persistence and rollback, and passed the
-full Compose health smoke. An isolated fail-closed V006→V007 upgrade runner and
-workflow gate are implemented locally; checkpoint 4B remains **in progress**
-until that gate and the remaining replay/failure-matrix acceptance claims pass
-on a revision-bound run. The large/raw artifact lifecycle remains blocked by
+full Compose health smoke. Run `29938632667` at revision
+`3da19efcb23db60e4c42c7a849f5a34c790f1a32` subsequently passed every executable
+job and proved a guarded disposable V006→V007 upgrade from table absence to
+presence with cleanup PASS.
+
+Exact transition replay is now accepted only when the successor snapshot,
+deterministic event, tool execution/request digest, and complete evidence
+provenance match; drift fails closed. A real final-step audit conflict now also
+proves rollback after snapshot/event/evidence writes. Checkpoint 4B remains
+**in progress** until these new replay and audit-failure PostgreSQL cases pass on
+their pushed revision. The large/raw artifact lifecycle remains blocked by
 B-006/B-008/B-012.
 
 ## Next Allowed Work
 
-1. After the V006→V007 upgrade and remaining Phase 4B acceptance gates pass,
+1. After the remaining Phase 4B replay/rollback acceptance gates pass,
    build the real Phase 7 integration through an allowlisted intent catalog,
    short-lived capability issuance, independent workload authentication, and
    bounded Platform-to-AI Runtime/Tool Gateway HTTP clients; model output must

@@ -39,16 +39,7 @@ public final class EvidenceRecordWriter {
         if (!TransactionSynchronizationManager.isActualTransactionActive()) {
             throw new IllegalStateException("Evidence append requires the investigation transaction.");
         }
-        CollectedEvidence evidence = event.collectedEvidence();
-        if (evidence == null
-            || !event.evidenceId().equals(EvidenceIdentity.evidenceId(
-                state.organizationId(), state.runId(), event.intentId()
-            ))
-            || !evidence.executionId().equals(EvidenceIdentity.executionId(
-                state.organizationId(), state.runId(), event.intentId()
-            ))) {
-            throw new IllegalArgumentException("Evidence identity does not match its run and intent.");
-        }
+        CollectedEvidence evidence = requireEvidence(state, event);
         canonicalizer.verify(evidence.canonicalContent(), evidence.contentDigest());
         jdbcTemplate.update(
             "INSERT INTO evidence_records (evidence_id, organization_id, project_id, incident_id, "
@@ -71,6 +62,62 @@ public final class EvidenceRecordWriter {
             evidence.redactedFields(), evidence.truncated(), evidence.gatewayDuplicate(),
             Timestamp.from(event.occurredAt())
         );
+    }
+
+    public boolean matchesExact(
+        InvestigationStateMachine.State state,
+        UUID investigationEventId,
+        InvestigationEvent.EvidenceAppended event
+    ) {
+        CollectedEvidence evidence;
+        try {
+            evidence = requireEvidence(state, event);
+            canonicalizer.verify(evidence.canonicalContent(), evidence.contentDigest());
+        }
+        catch (IllegalArgumentException exception) {
+            return false;
+        }
+        Boolean matches = jdbcTemplate.queryForObject(
+            "SELECT EXISTS (SELECT 1 FROM evidence_records WHERE evidence_id = ? "
+                + "AND organization_id = ? AND project_id = ? AND incident_id = ? AND run_id = ? "
+                + "AND actor_id = ? AND intent_id = ? AND execution_id = ? "
+                + "AND investigation_event_id = ? AND gateway_audit_event_id = ? "
+                + "AND gateway_request_digest = ? AND source_type = ? AND source_identity = ? "
+                + "AND target_identity = ? AND observed_at = ? AND window_start = ? AND window_end = ? "
+                + "AND connector_version = ? AND manifest_version = ? AND policy_version = ? "
+                + "AND source_provenance = ? AND trust_class = ? AND content_digest = ? "
+                + "AND canonical_content = ? AND redacted_fields = ? AND truncated = ? "
+                + "AND gateway_duplicate = ? AND retention_class = 'evidence-90d' "
+                + "AND lifecycle_state = 'AVAILABLE' AND created_at = ?)",
+            Boolean.class, event.evidenceId(), state.organizationId(), state.projectId(),
+            state.incidentId(), state.runId(), state.actorId(), event.intentId(), evidence.executionId(),
+            investigationEventId, evidence.gatewayAuditEventId(), hex(evidence.gatewayRequestDigest()),
+            evidence.sourceType(), evidence.source(), evidence.targetIdentity(),
+            Timestamp.from(evidence.observedAt()), Timestamp.from(evidence.windowStart()),
+            Timestamp.from(evidence.windowEnd()), evidence.connectorVersion(), evidence.manifestVersion(),
+            evidence.policyVersion(), evidence.sourceProvenance(), evidence.trustClass(),
+            hex(evidence.contentDigest().substring("sha256:".length())), evidence.canonicalContent(),
+            evidence.redactedFields(), evidence.truncated(), evidence.gatewayDuplicate(),
+            Timestamp.from(event.occurredAt())
+        );
+        return Boolean.TRUE.equals(matches);
+    }
+
+    private CollectedEvidence requireEvidence(
+        InvestigationStateMachine.State state,
+        InvestigationEvent.EvidenceAppended event
+    ) {
+        CollectedEvidence evidence = event.collectedEvidence();
+        if (evidence == null
+            || !event.evidenceId().equals(EvidenceIdentity.evidenceId(
+                state.organizationId(), state.runId(), event.intentId()
+            ))
+            || !evidence.executionId().equals(EvidenceIdentity.executionId(
+                state.organizationId(), state.runId(), event.intentId()
+            ))) {
+            throw new IllegalArgumentException("Evidence identity does not match its run and intent.");
+        }
+        return evidence;
     }
 
     private byte[] hex(String value) {

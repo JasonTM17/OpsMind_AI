@@ -46,7 +46,10 @@ const canonicalizer = requireMarkers(
 );
 const writer = requireMarkers(
   "services/platform-api/src/main/java/ai/opsmind/platform/evidence/EvidenceRecordWriter.java",
-  ["EvidenceIdentity.evidenceId", "EvidenceIdentity.executionId", "INSERT INTO evidence_records"],
+  [
+    "EvidenceIdentity.evidenceId", "EvidenceIdentity.executionId",
+    "INSERT INTO evidence_records", "matchesExact",
+  ],
 );
 const reader = requireMarkers(
   "services/platform-api/src/main/java/ai/opsmind/platform/evidence/EvidenceRecordReader.java",
@@ -85,13 +88,29 @@ const workflow = requireMarkers(
     "evidence-migration-upgrade.txt",
   ],
 );
+requireMarkers(
+  "services/platform-api/src/main/java/ai/opsmind/platform/investigation/application/InvestigationReplayVerifier.java",
+  [
+    "sameState", "matchesExact", "tool_request_digest IS NOT DISTINCT FROM",
+    "InvestigationEventLedger.eventId",
+  ],
+);
 
 for (const testFile of [
   "services/platform-api/src/test/java/ai/opsmind/platform/evidence/EvidenceContentCanonicalizerTest.java",
   "services/platform-api/src/test/java/ai/opsmind/platform/investigation/application/InvestigationEvidenceEventSerializationTest.java",
   "services/platform-api/src/test/java/ai/opsmind/platform/investigation/application/InvestigationEvidencePersistenceIntegrationTest.java",
   "services/platform-api/src/test/java/ai/opsmind/platform/investigation/application/InvestigationEvidenceRollbackIntegrationTest.java",
+  "services/platform-api/src/test/java/ai/opsmind/platform/investigation/application/InvestigationEvidenceReplayIntegrationTest.java",
 ]) read(testFile);
+requireMarkers(
+  "services/platform-api/src/test/java/ai/opsmind/platform/investigation/application/InvestigationEvidenceReplayIntegrationTest.java",
+  ["exactReplayIsANoOp", "gatewayRequestDigest", "sourceProvenance() + \"/drift\""],
+);
+requireMarkers(
+  "services/platform-api/src/test/java/ai/opsmind/platform/investigation/application/InvestigationEvidenceRollbackIntegrationTest.java",
+  ["invalidCanonicalDigestRollsBack", "auditConflictRollsBackSnapshotEventAndEvidence"],
+);
 
 const evidenceRoot = path.join(
   repositoryRoot, "services", "platform-api", "src", "main", "java",

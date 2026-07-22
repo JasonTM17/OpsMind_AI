@@ -12,6 +12,7 @@ import java.util.Set;
 import java.util.UUID;
 
 import ai.opsmind.platform.analysis.AnalysisRuntimeResponse;
+import ai.opsmind.platform.common.api.PlatformProblemException;
 import ai.opsmind.platform.evidence.CollectedEvidence;
 import ai.opsmind.platform.evidence.EvidenceIdentity;
 import ai.opsmind.platform.investigation.domain.InvestigationCommand;
@@ -78,6 +79,45 @@ class InvestigationEvidenceRollbackIntegrationTest {
     @Test
     void invalidCanonicalDigestRollsBackSnapshotEventEvidenceAndAudit() {
         UUID runId = UUID.randomUUID();
+        InvestigationStateMachine.Step waiting = waiting(runId);
+        AnalysisRuntimeResponse.ToolIntent intent = waiting.state().pendingIntents().get(0);
+        InvestigationStateMachine.Step next = evidenceStep(
+            waiting, invalidEvidence(runId, intent.intentId())
+        );
+
+        assertThatThrownBy(() -> store.save(waiting.state(), next))
+            .isInstanceOf(IllegalArgumentException.class).hasMessageContaining("digest");
+        assertPriorBoundary(waiting.state());
+    }
+
+    @Test
+    void auditConflictRollsBackSnapshotEventAndEvidence() {
+        UUID runId = UUID.randomUUID();
+        InvestigationStateMachine.Step waiting = waiting(runId);
+        AnalysisRuntimeResponse.ToolIntent intent = waiting.state().pendingIntents().get(0);
+        UUID eventId = InvestigationEventLedger.eventId(
+            TENANT_A, runId, waiting.state().eventCount() + 1
+        );
+        admin.update(
+            "INSERT INTO audit_events (event_id, organization_id, actor_id, action, resource_type, "
+                + "resource_id, correlation_id, occurred_at, payload, schema_version) "
+                + "VALUES (?, ?, ?, 'TEST_SENTINEL', 'sentinel', 'sentinel', ?, ?, '{}'::jsonb, "
+                + "'legacy-v1')",
+            eventId, TENANT_A, USER_A, runId, Timestamp.from(NOW.plusSeconds(2))
+        );
+
+        InvestigationStateMachine.Step next = evidenceStep(
+            waiting, validEvidence(runId, intent.intentId())
+        );
+        assertThatThrownBy(() -> store.save(waiting.state(), next))
+            .isInstanceOf(PlatformProblemException.class)
+            .satisfies(error -> assertThat(
+                ((PlatformProblemException) error).code()
+            ).isEqualTo("audit.persistence-rejected"));
+        assertPriorBoundary(waiting.state());
+    }
+
+    private InvestigationStateMachine.Step waiting(UUID runId) {
         InvestigationStateMachine.Step initial = InvestigationStateMachine.start(start(runId));
         store.create(initial);
         AnalysisRuntimeResponse response = new FixtureInvestigationAiRuntimeClient()
@@ -86,18 +126,26 @@ class InvestigationEvidenceRollbackIntegrationTest {
             initial.state(), new InvestigationCommand.AnalysisReceived(response), NOW.plusSeconds(1)
         );
         store.save(initial.state(), waiting);
+        return waiting;
+    }
+
+    private InvestigationStateMachine.Step evidenceStep(
+        InvestigationStateMachine.Step waiting,
+        CollectedEvidence evidence
+    ) {
         AnalysisRuntimeResponse.ToolIntent intent = waiting.state().pendingIntents().get(0);
-        CollectedEvidence invalid = invalidEvidence(runId, intent.intentId());
-        InvestigationStateMachine.Step next = InvestigationStateMachine.apply(
+        return InvestigationStateMachine.apply(
             waiting.state(), new InvestigationCommand.ToolEvidenceReceived(
-                intent.intentId(), EvidenceIdentity.evidenceId(TENANT_A, runId, intent.intentId()),
-                invalid.contentDigest(), invalid.sourceType(), invalid
+                intent.intentId(), EvidenceIdentity.evidenceId(
+                    TENANT_A, waiting.state().runId(), intent.intentId()
+                ), evidence.contentDigest(), evidence.sourceType(), evidence
             ), NOW.plusSeconds(2)
         );
+    }
 
-        assertThatThrownBy(() -> store.save(waiting.state(), next))
-            .isInstanceOf(IllegalArgumentException.class).hasMessageContaining("digest");
-        assertThat(store.require(TENANT_A, USER_A, runId)).isEqualTo(waiting.state());
+    private void assertPriorBoundary(InvestigationStateMachine.State waiting) {
+        UUID runId = waiting.runId();
+        assertThat(store.require(TENANT_A, USER_A, runId)).isEqualTo(waiting);
         assertThat(count("investigation_run_events", runId)).isEqualTo(3);
         assertThat(count("audit_events", runId)).isEqualTo(3);
         assertThat(count("evidence_records", runId)).isZero();
@@ -111,12 +159,21 @@ class InvestigationEvidenceRollbackIntegrationTest {
     }
 
     private CollectedEvidence invalidEvidence(UUID runId, UUID intentId) {
+        return evidence(runId, intentId, "{}");
+    }
+
+    private CollectedEvidence validEvidence(UUID runId, UUID intentId) {
+        return evidence(runId, intentId, FixtureInvestigationAiRuntimeClient.evidenceContent());
+    }
+
+    private CollectedEvidence evidence(UUID runId, UUID intentId, String canonicalContent) {
         return new CollectedEvidence(
             EvidenceIdentity.executionId(TENANT_A, runId, intentId), UUID.randomUUID(), "0".repeat(64),
             "metric", "fixture-prometheus", "prometheus:synthetic/opsmind-api", NOW,
             NOW.minusSeconds(180), NOW, "fixture-observability@1", "observability.metrics.query@1",
             "policy-fixture-v1", "fixture-prometheus/fixture-observability@1", "synthetic",
-            FixtureInvestigationAiRuntimeClient.evidenceDigest(), "{}", 0, false, null, false
+            FixtureInvestigationAiRuntimeClient.evidenceDigest(), canonicalContent,
+            0, false, null, false
         );
     }
 
