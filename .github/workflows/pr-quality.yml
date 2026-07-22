@@ -79,6 +79,11 @@ jobs:
         run: sh scripts/dev/test-command-surface.sh
       - name: Validate canonical repository layout
         run: node scripts/validation/validate-repository-layout.mjs
+      - name: Test Java security tooling
+        run: |
+          node --test \
+            scripts/dev/install-pinned-osv-scanner.test.mjs \
+            scripts/security/evaluate-osv-results.test.mjs
       - name: Validate migration secret gate
         shell: bash
         run: |
@@ -374,7 +379,7 @@ jobs:
     name: Java ${{ matrix.service }}
     needs: [foundation, clean-bootstrap]
     runs-on: ubuntu-latest
-    timeout-minutes: 60
+    timeout-minutes: 20
     strategy:
       fail-fast: false
       matrix:
@@ -405,13 +410,6 @@ jobs:
             echo "Maven=$(mvn --version | head -n 1)"
             mvn --batch-mode --no-transfer-progress \
               -f "services/${{ matrix.service }}/pom.xml" verify
-            mvn --batch-mode --no-transfer-progress \
-              -DdataDirectory="$OPS_CACHE_ROOT/owasp-dependency-check" \
-              -DfailBuildOnCVSS=7 \
-              -DfailOnError=true \
-              -Dformat=JSON \
-              -f "services/${{ matrix.service }}/pom.xml" \
-              org.owasp:dependency-check-maven:12.2.2:check
           )
           java_quality > "$evidence" 2>&1
           status=$?
@@ -423,9 +421,87 @@ jobs:
         if: always()
         with:
           name: java-${{ matrix.service }}-quality
+          path: artifacts/verification/phase-02/java-${{ matrix.service }}-quality.txt
+          if-no-files-found: error
+
+  java-security:
+    name: Java dependency security
+    needs: [foundation, clean-bootstrap]
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0 # v7.0.0
+      - name: Initial storage preflight
+        run: |
+          sh scripts/storage/check-capacity.sh
+          sh scripts/storage/assert-storage-roots.sh --create-missing
+      - uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7.0.0
+        with:
+          node-version-file: .node-version
+          package-manager-cache: false
+      - uses: actions/setup-java@03ad4de0992f5dab5e18fcb136590ce7c4a0ac95 # v5.6.0
+        with:
+          distribution: temurin
+          java-version-file: .java-version
+          cache: maven
+      - uses: ./.github/actions/install-pinned-maven
+      - name: Generate SBOMs and enforce dependency policy
+        shell: bash
+        run: |
+          set +e
+          mkdir -p artifacts/verification/phase-02
+          evidence="artifacts/verification/phase-02/java-dependency-security.txt"
+          raw="artifacts/verification/phase-02/osv-java-results.json"
+          java_security() (
+            set -euo pipefail
+            echo "Java=$(java -version 2>&1 | head -n 1)"
+            echo "Maven=$(mvn --version | head -n 1)"
+            for service in platform-api tool-gateway; do
+              mvn --batch-mode --no-transfer-progress \
+                -DoutputFormat=json \
+                -DoutputName=bom \
+                -DincludeTestScope=true \
+                -f "services/$service/pom.xml" \
+                org.cyclonedx:cyclonedx-maven-plugin:2.9.2:makeBom
+              test -s "services/$service/target/bom.json"
+            done
+            node scripts/dev/install-pinned-osv-scanner.mjs --cache-root "$OPS_CACHE_ROOT"
+            scanner="$OPS_CACHE_ROOT/tools/osv-scanner/2.4.0/osv-scanner"
+            set +e
+            "$scanner" scan source \
+              --all-packages \
+              --format=json \
+              --verbosity=error \
+              --output-file="$raw" \
+              -L services/platform-api/target/bom.json \
+              -L services/tool-gateway/target/bom.json
+            scanner_status=$?
+            set -e
+            echo "ScannerExit=$scanner_status"
+            if [ "$scanner_status" -ne 0 ] && [ "$scanner_status" -ne 1 ]; then
+              echo "OSVScanner=BLOCK Reason=unexpected-exit"
+              exit 2
+            fi
+            node scripts/security/evaluate-osv-results.mjs \
+              --input "$raw" \
+              --threshold 7 \
+              --expected-source-count 2
+          )
+          java_security > "$evidence" 2>&1
+          status=$?
+          cat "$evidence"
+          if [ "$status" -eq 0 ]; then result=PASS; else result=BLOCK; fi
+          echo "Result=$result" | tee -a "$evidence"
+          exit "$status"
+      - uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
+        if: always()
+        with:
+          name: java-dependency-security
           path: |
-            artifacts/verification/phase-02/java-${{ matrix.service }}-quality.txt
-            services/${{ matrix.service }}/target/dependency-check-report.json
+            artifacts/verification/phase-02/java-dependency-security.txt
+            artifacts/verification/phase-02/osv-java-results.json
+            services/platform-api/target/bom.json
+            services/tool-gateway/target/bom.json
           if-no-files-found: error
 
   postgres-contract:
