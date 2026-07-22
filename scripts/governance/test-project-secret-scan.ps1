@@ -80,6 +80,7 @@ $historyCanaryPath = Join-Path $isolatedRepository "history-canary-$suffix.txt"
 $binaryCanaryPath = Join-Path $isolatedRepository "binary-canary-$suffix.bin"
 $stagedCanaryPath = Join-Path $isolatedRepository "staged-canary-$suffix.txt"
 $historicalSensitivePath = Join-Path $isolatedRepository '.env'
+$excludedToolingPath = Join-Path $isolatedRepository '.agents\fixture'
 $nestedDependencyTarget = Join-Path $evidenceRoot 'nested-dependency-target'
 $nestedDependencyParent = Join-Path $isolatedRepository 'apps\operator-web\node_modules'
 $nestedDependencyLink = Join-Path $nestedDependencyParent 'fixture-package'
@@ -127,6 +128,24 @@ try {
     Remove-Item -LiteralPath $benignTokenSourcePath -Force
 
     $providerCanary = 'sk-proj-' + ('A' * 32)
+    [void](New-Item -ItemType Directory -Path $excludedToolingPath -Force)
+    [IO.File]::WriteAllText(
+        (Join-Path $excludedToolingPath 'provider-example.txt'),
+        "DEEPSEEK_API_KEY=$providerCanary",
+        $encoding
+    )
+    [IO.File]::WriteAllBytes(
+        (Join-Path $excludedToolingPath 'asset.bin'),
+        [byte[]](0x4F, 0x50, 0x53, 0x00, 0x4D, 0x49, 0x4E, 0x44)
+    )
+    & git -C $isolatedRepository add -- '.agents'
+    if ($LASTEXITCODE -ne 0) { throw 'Unable to stage excluded-tooling fixtures.' }
+    & git -C $isolatedRepository commit --quiet -m 'test excluded tooling paths'
+    if ($LASTEXITCODE -ne 0) { throw 'Unable to commit excluded-tooling fixtures.' }
+    Invoke-SecretScan -ScannerPath $scannerPath -RepositoryRoot $isolatedRepository `
+        -EvidencePath (Join-Path $isolatedEvidenceRoot 'excluded-tooling-paths.txt') `
+        -ExpectedExitCode 0
+
     [IO.File]::WriteAllText($ignoredEnvironmentPath, "DEEPSEEK_API_KEY=$providerCanary", $encoding)
     Invoke-SecretScan -ScannerPath $scannerPath -RepositoryRoot $isolatedRepository `
         -EvidencePath (Join-Path $isolatedEvidenceRoot 'provider-key.txt') `
@@ -264,7 +283,7 @@ try {
         -EvidencePath (Join-Path $isolatedEvidenceRoot 'binary-history.txt') `
         -ExpectedExitCode 7 -ExpectedRule 'binary-history-unscanned'
 
-    Write-Output 'Project secret-scan tests: PASS (13/13)'
+    Write-Output 'Project secret-scan tests: PASS (14/14)'
 }
 finally {
     $env:OPS_ARTIFACT_ROOT = $previousArtifactRoot

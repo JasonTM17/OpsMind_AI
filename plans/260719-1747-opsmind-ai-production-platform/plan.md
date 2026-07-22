@@ -56,7 +56,7 @@ Accepted scope remains full A-to-Z, but delivery is gate-driven: the approved G0
 | 4 | [Incident Control Plane and Audit Ledger](./phase-04-incident-control-plane-and-audit-ledger.md) | In Progress |
 | 5 | [DeepSeek AI Runtime and Model Gateway](./phase-05-deepseek-ai-runtime-and-model-gateway.md) | In Progress — static checkpoint PASS; PhaseExitGate BLOCK |
 | 6 | [Safe Tool Gateway and Read-only Connectors](./phase-06-safe-tool-gateway-and-read-only-connectors.md) | In progress — checkpoint PASS; PhaseExitGate BLOCK |
-| 7 | [Thin Evidence-backed Incident Vertical Slice](./phase-07-thin-evidence-backed-incident-vertical-slice.md) | Pending |
+| 7 | [Thin Evidence-backed Incident Vertical Slice](./phase-07-thin-evidence-backed-incident-vertical-slice.md) | In progress — deterministic checkpoint PASS; PhaseExitGate BLOCK |
 | 8 | [Simulator and Evaluation Baseline](./phase-08-simulator-and-evaluation-baseline.md) | Pending |
 | 9 | [Durable Investigation Workflow](./phase-09-durable-investigation-workflow.md) | Pending |
 | 10 | [Permission-aware RAG and Knowledge Lifecycle](./phase-10-permission-aware-rag-and-knowledge-lifecycle.md) | Pending |

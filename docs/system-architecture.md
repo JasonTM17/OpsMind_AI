@@ -308,6 +308,25 @@ atomic receipt/audit/artifact wiring, Platform API issuer conformance, three
 connector families, one live non-production target, and provider-specific
 cancellation/tenant-bulkhead proof.
 
+## Investigation Orchestration (Phase 7 checkpoint)
+
+The Platform API now contains a pure `InvestigationStateMachine` with explicit
+commands, immutable events, bounded state and visible terminal outcomes. It has
+no network, persistence, time, or UUID side effects. `InvestigationOrchestrator`
+is the replaceable in-process runner: it calls AI and Tool Gateway ports, applies
+validated commands to the reducer, and saves each state through a run-store port.
+Phase 9 can replace the runner with Temporal without replacing the domain model.
+
+The current local fixture permits only `metrics.query`. A final `complete`
+response becomes `COMPLETED` only when every citation references evidence already
+present in the state; otherwise it terminates as visible `ABSTAINED`. Duplicate
+tool fingerprints, duplicate evidence, token/round/tool/evidence exhaustion,
+provider failure and no-progress are explicit terminal states. Feature flags are
+off by default. The local run store and fixture clients are not production
+adapters, so G3 remains blocked pending durable tenant-scoped persistence,
+timeline/audit writes, real capability issuance, a live non-production connector,
+and the CK/Stitch operator experience.
+
 ## Evidence Artifact Port
 
 The port accepts an authorized stream plus tenant, incident, source classification, retention class, and expected digest. It returns an opaque artifact ID, content digest, byte count, encryption metadata reference, and lifecycle version. MinIO is approved locally; production uses an S3-compatible backend behind `production-kms` with Singapore residency. The implementation must support:

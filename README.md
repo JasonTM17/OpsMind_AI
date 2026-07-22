@@ -12,7 +12,11 @@ remediation behavior remain owned by later checkpoints/phases. Phase 5 now has
 an offline provider-neutral analysis contract, DeepSeek adapter, delegated
 capability/replay guard, redaction policy, budget guard, and stream assembler;
 durable PostgreSQL nonce/replay/invocation accounting now has an additive
-schema and adapter, while live provider egress remains disabled.
+schema and adapter, while live provider egress remains disabled. Phase 6 has a
+fail-closed Tool Gateway contract checkpoint, and Phase 7 now has a pure bounded
+investigation reducer plus a feature-flagged fixture runner. Neither checkpoint
+is a live-production proof; durable adapters, a live non-production connector,
+and the CK/Stitch operator slice remain open.
 Local PostgreSQL evidence now covers pooled RLS, per-request platform-user
 deprovisioning, and outbox/inbox crash windows. Access-token policy requires
 the configured audience, MFA AMR, and a maximum `PT5M` lifetime. A live local

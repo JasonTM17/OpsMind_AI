@@ -23,6 +23,7 @@
     "security-scan": "node scripts/dev/opsmind.mjs security-scan",
     "doctor": "node scripts/dev/opsmind.mjs doctor",
     "validate:layout": "node scripts/validation/validate-repository-layout.mjs",
-    "validate:phase6": "node scripts/validation/validate-phase-06-tool-gateway.mjs"
+    "validate:phase6": "node scripts/validation/validate-phase-06-tool-gateway.mjs",
+    "validate:phase7": "node scripts/validation/validate-phase-07-investigation-slice.mjs"
   }
 }

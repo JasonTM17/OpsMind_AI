@@ -1,0 +1,16 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://contracts.opsmind.ai/investigation/v1/investigation-run.schema.json",
+  "title": "StartInvestigationRequestV1",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["run_id", "max_rounds", "max_tool_calls", "max_evidence_items", "max_tokens", "deadline_at"],
+  "properties": {
+    "run_id": {"type": "string", "format": "uuid"},
+    "max_rounds": {"type": "integer", "minimum": 1, "maximum": 20},
+    "max_tool_calls": {"type": "integer", "minimum": 0, "maximum": 20},
+    "max_evidence_items": {"type": "integer", "minimum": 1, "maximum": 200},
+    "max_tokens": {"type": "integer", "minimum": 1, "maximum": 100000},
+    "deadline_at": {"type": "string", "format": "date-time"}
+  }
+}

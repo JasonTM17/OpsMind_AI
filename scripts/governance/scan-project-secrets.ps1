@@ -383,8 +383,10 @@ $pathspecs = @(
     ':(glob,exclude)**/.mypy_cache/**',
     ':(glob,exclude)**/.ruff_cache/**',
     ':(glob,exclude)**/.next/**',
-    ':(glob,exclude)**/target/**'
+    ':(glob,exclude)**/target/**',
+    ':(exclude)repomix-output.xml'
 )
+$historyPathspecArguments = ' -- ' + ($pathspecs -join ' ')
 $findings = @()
 
 $previousErrorActionPreference = $ErrorActionPreference
@@ -480,7 +482,8 @@ try {
     $gitPrefix = ($indexSnapshotRoot -replace '\\', '/') + '/'
     & git -C $repositoryRoot checkout-index --all --force "--prefix=$gitPrefix" 2>$null
     if ($LASTEXITCODE -ne 0) { throw 'git checkout-index failed' }
-    $indexTree = Get-TreeCandidateFiles -Root $indexSnapshotRoot -DisplayPrefix 'git-index' -Tracked $true
+    $indexTree = Get-TreeCandidateFiles -Root $indexSnapshotRoot -DisplayPrefix 'git-index' -Tracked $true `
+        -ExcludedDirectoryNames $excludedWorkingTreeDirectories -ExcludedFileNames $excludedWorkingTreeFiles
     $findings += @($indexTree.Findings)
     foreach ($file in @($indexTree.Files)) {
         if ($candidateFullPaths.Add($file.FullPath)) { [void]$candidateFiles.Add($file) }
@@ -588,7 +591,8 @@ else {
     if ($historyCommitCount -gt 0) {
         try {
             $historyRead = Read-GitOutputBounded -WorkingDirectory $repositoryRoot `
-                -Arguments 'log --all --format=fuller -p --no-ext-diff --no-renames' -MaximumBytes 20MB
+                -Arguments ('log --all --format=fuller -p --no-ext-diff --no-renames' + $historyPathspecArguments) `
+                -MaximumBytes 20MB
         }
         catch {
             $historyRead = $null
@@ -615,7 +619,8 @@ else {
         }
         try {
             $binaryHistoryRead = Read-GitOutputBounded -WorkingDirectory $repositoryRoot `
-                -Arguments 'log --all --numstat --format= --no-renames' -MaximumBytes 20MB
+                -Arguments ('log --all --numstat --format= --no-renames' + $historyPathspecArguments) `
+                -MaximumBytes 20MB
         }
         catch {
             $binaryHistoryRead = $null
@@ -636,7 +641,8 @@ else {
 
         try {
             $historicalPathsRead = Read-GitOutputBounded -WorkingDirectory $repositoryRoot `
-                -Arguments '-c core.quotepath=false log --all --name-only --format= --no-renames' -MaximumBytes 20MB
+                -Arguments ('-c core.quotepath=false log --all --name-only --format= --no-renames' + $historyPathspecArguments) `
+                -MaximumBytes 20MB
         }
         catch {
             $historicalPathsRead = $null

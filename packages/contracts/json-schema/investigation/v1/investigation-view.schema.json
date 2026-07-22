@@ -1,0 +1,26 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://contracts.opsmind.ai/investigation/v1/investigation-view.schema.json",
+  "title": "InvestigationRunReadModelV1",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["runId", "organizationId", "projectId", "incidentId", "status", "budget", "rounds", "toolCalls", "totalTokens", "evidenceIds", "pendingToolCalls", "startedAt", "deadlineAt"],
+  "properties": {
+    "runId": {"type": "string", "format": "uuid"},
+    "organizationId": {"type": "string", "format": "uuid"},
+    "projectId": {"type": "string", "format": "uuid"},
+    "incidentId": {"type": "string", "format": "uuid"},
+    "status": {"enum": ["CREATED", "ANALYZING", "WAITING_FOR_EVIDENCE", "COMPLETED", "ABSTAINED", "BUDGET_EXCEEDED", "NO_PROGRESS", "FAILED"]},
+    "budget": {"type": "object", "additionalProperties": false, "required": ["maxRounds", "maxToolCalls", "maxEvidenceItems", "maxTokens"], "properties": {"maxRounds": {"type": "integer"}, "maxToolCalls": {"type": "integer"}, "maxEvidenceItems": {"type": "integer"}, "maxTokens": {"type": "integer"}}},
+    "rounds": {"type": "integer", "minimum": 0},
+    "toolCalls": {"type": "integer", "minimum": 0},
+    "totalTokens": {"type": "integer", "minimum": 0},
+    "evidenceIds": {"type": "array", "maxItems": 200, "items": {"type": "string", "format": "uuid"}},
+    "pendingToolCalls": {"type": "array", "maxItems": 20},
+    "analysis": {"$ref": "../../ai-runtime/v1/analysis-response.schema.json"},
+    "terminalReason": {"type": ["string", "null"], "maxLength": 1024},
+    "startedAt": {"type": "string", "format": "date-time"},
+    "deadlineAt": {"type": "string", "format": "date-time"},
+    "endedAt": {"type": ["string", "null"], "format": "date-time"}
+  }
+}

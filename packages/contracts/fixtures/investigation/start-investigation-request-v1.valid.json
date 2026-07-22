@@ -1,0 +1,8 @@
+{
+  "run_id": "10000000-0000-4000-8000-000000000701",
+  "max_rounds": 4,
+  "max_tool_calls": 4,
+  "max_evidence_items": 20,
+  "max_tokens": 8000,
+  "deadline_at": "2030-01-01T00:02:00Z"
+}

@@ -31,7 +31,9 @@ documentation. Source code and canonical contracts take precedence.
 | Phase 3 | In progress; local identity, tenant/RLS, persistence, and messaging substrate exists. Production IdP and remote CI/Compose gates remain open. |
 | Phase 4 | In progress; checkpoint 4A incident write ledger is locally complete. Full Phase 4 and G2/G3 are not complete. |
 | Phase 5 | In progress; provider-neutral analysis, DeepSeek adapter, egress guards, durable PostgreSQL state, V005 append-only probe audit, Platform API integration, and stream assembly exist. Static checkpoint passes; exit remains blocked by B-004 and missing rotated-key synthetic smoke. |
-| Later phases | Connector, workflow, RAG, remediation, complete operator UX, evaluation, and production-hardening outcomes remain pending. |
+| Phase 6 | In progress; fail-closed Tool Gateway checkpoint passes. Durable/live exit remains blocked. |
+| Phase 7 | In progress; deterministic investigation reducer, bounded fixture runner, projection, contracts, and feature-flagged API exist. Durable/live/UI exit remains blocked. |
+| Later phases | Durable workflow, RAG, remediation, complete operator UX, evaluation, and production-hardening outcomes remain pending. |
 
 All current Phase 4 transcripts are local/reference evidence. They record an
 unborn, dirty worktree and explicitly deny release status. No remote immutable
@@ -42,7 +44,7 @@ CI, production IdP, or production deployment result is claimed.
 | Path | Current responsibility |
 |---|---|
 | `apps/operator-web/` | Next.js foundation page and `/api/health`; incident workflows are not implemented in the web app. |
-| `services/platform-api/` | Spring Boot control plane for OIDC identity, tenant/project access, persistence, messaging primitives, and checkpoint 4A incidents. |
+| `services/platform-api/` | Spring Boot control plane for OIDC identity, tenant/project access, persistence, messaging primitives, checkpoint 4A incidents, and the Phase 7 deterministic investigation checkpoint. |
 | `services/ai-runtime/` | FastAPI bounded analysis runtime with provider-neutral contracts, DeepSeek adapter, shared PostgreSQL replay/accounting, startup/periodic capability probe, `/health` liveness, and `/ready` readiness; live egress remains disabled. |
 | `services/tool-gateway/` | Spring Boot fail-closed Tool Gateway checkpoint: RS256/JWKS delegated capabilities, dedicated workload-token boundary, typed fixture observability action, validated manifest loader, bounded connector execution, recursive DLP, deterministic receipts/audit adapters, `/internal/v1/tools/execute`, and `/ready`. Durable/live exit remains blocked. |
 | `packages/contracts/` | Canonical OpenAPI, JSON Schema, and synthetic fixtures. |
@@ -84,6 +86,8 @@ The current controllers expose:
 | `GET /api/v1/organizations/{organizationId}/projects/{projectId}/incidents/{incidentId}` | `IncidentController.detail` |
 | `POST /api/v1/organizations/{organizationId}/projects/{projectId}/incidents/{incidentId}/transitions` | `IncidentController.transition` |
 | `GET /api/v1/organizations/{organizationId}/projects/{projectId}/incidents/{incidentId}/timeline` | `IncidentController.timeline` |
+| `POST /api/v1/organizations/{organizationId}/projects/{projectId}/incidents/{incidentId}/investigations` | `InvestigationRunController.start` (feature flagged) |
+| `GET /api/v1/organizations/{organizationId}/projects/{projectId}/incidents/{incidentId}/investigations/{runId}` | `InvestigationRunController.get` (feature flagged) |
 
 The incident controller is enabled only when persistence is enabled. Create
 requires `Idempotency-Key`; transition also requires a strong numeric
@@ -96,7 +100,8 @@ The canonical public contract is
 0.4.0). Incident and audit schemas live under
 `packages/contracts/json-schema/incidents/` and
 `packages/contracts/json-schema/audit/`, and Tool Gateway schemas live under
-`packages/contracts/json-schema/tool-gateway/v1/`.
+`packages/contracts/json-schema/tool-gateway/v1/`. Phase 7 contracts live under
+`packages/contracts/json-schema/investigation/v1/`.
 
 ## Checkpoint 4A Incident Ledger
 

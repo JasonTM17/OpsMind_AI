@@ -1,0 +1,50 @@
+{
+  "runId": "10000000-0000-4000-8000-000000000701",
+  "organizationId": "10000000-0000-4000-8000-000000000702",
+  "projectId": "10000000-0000-4000-8000-000000000703",
+  "incidentId": "10000000-0000-4000-8000-000000000704",
+  "status": "COMPLETED",
+  "budget": {
+    "maxRounds": 4,
+    "maxToolCalls": 4,
+    "maxEvidenceItems": 20,
+    "maxTokens": 8000
+  },
+  "rounds": 2,
+  "toolCalls": 1,
+  "totalTokens": 62,
+  "evidenceIds": ["10000000-0000-4000-8000-000000000705"],
+  "pendingToolCalls": [],
+  "analysis": {
+    "status": "complete",
+    "run_id": "10000000-0000-4000-8000-000000000701",
+    "model_id": "fixture-analysis",
+    "prompt_version": "prompt-incident-investigation-v1",
+    "schema_version": "analysis-v1",
+    "hypotheses": [{
+      "title": "Deployment-caused latency regression",
+      "explanation": "Synthetic latency increased immediately after deployment.",
+      "confidence": 0.92,
+      "citations": [{
+        "evidence_id": "10000000-0000-4000-8000-000000000705",
+        "digest": "sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+        "claim": "Latency increased after deployment."
+      }]
+    }],
+    "counter_evidence": [],
+    "missing_evidence": [],
+    "citations": [{
+      "evidence_id": "10000000-0000-4000-8000-000000000705",
+      "digest": "sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+      "claim": "Latency increased after deployment."
+    }],
+    "confidence": 0.92,
+    "usage": {"prompt_tokens": 20, "completion_tokens": 22, "total_tokens": 42},
+    "cost_estimate": {"currency": "USD", "amount": 0},
+    "requested_tool_calls": []
+  },
+  "terminalReason": null,
+  "startedAt": "2030-01-01T00:00:00Z",
+  "deadlineAt": "2030-01-01T00:02:00Z",
+  "endedAt": "2030-01-01T00:00:05Z"
+}
