@@ -30,7 +30,7 @@ The detailed executable plan is [plans/260719-1747-opsmind-ai-production-platfor
 | 4 | Incident control plane, evidence lifecycle, and audit | G2/G3 | In progress; checkpoint 4A local proof complete |
 | 5 | DeepSeek AI runtime and provider gateway | G3 | In progress; static checkpoint passed, exit gate blocked |
 | 6 | Safe Tool Gateway and read-only connectors | G3 | In progress; checkpoint PASS, PhaseExitGate BLOCK |
-| 7 | Evidence-backed incident vertical slice | G3 | Pending |
+| 7 | Evidence-backed incident vertical slice | G3 | In progress; deterministic checkpoint PASS, PhaseExitGate BLOCK |
 | 8 | Simulator and evaluation baseline | G3/G7 | Pending |
 | 9 | Durable Temporal investigation workflow | G4 | Pending |
 | 10 | Permission-aware RAG and knowledge lifecycle | G5 | Pending |
@@ -88,6 +88,17 @@ fail-closed readiness. This is not a Phase 6 exit: durable atomic nonce/receipt/
 audit/artifact adapters, Platform API capability issuer conformance, three
 fixture connector families, one live non-production read-only target, and
 provider-specific cancellation/tenant-bulkhead proof remain open.
+
+Phase 7 has started with a pure command/event investigation reducer, bounded
+in-process runner, fixture-only `metrics.query` path, cited-completion guard,
+duplicate/no-progress detection, budget terminal states, tenant/run projection,
+two canonical contracts and two OpenAPI operations. The Platform API full Maven
+suite passes 131 tests with 12 PostgreSQL-environment skips; the Phase 7 gate
+reports `CheckpointResult=PASS`, and Phase 4/OpenAPI validation also passes.
+This is not G3: the store is
+still an in-memory local adapter, the real Platform-to-Tool-Gateway capability
+path and selected live non-production connector are absent, and the CK/Stitch
+operator UI plus durable timeline/audit persistence remain open.
 
 ## Staffing Scenarios
 

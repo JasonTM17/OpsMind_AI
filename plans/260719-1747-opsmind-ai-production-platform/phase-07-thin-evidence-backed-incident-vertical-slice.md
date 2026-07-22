@@ -1,7 +1,7 @@
 ---
 phase: 7
 title: "Thin Evidence-backed Incident Vertical Slice"
-status: pending
+status: in_progress
 priority: P1
 dependencies: [4, 5, 6]
 effort: "2-3 weeks"

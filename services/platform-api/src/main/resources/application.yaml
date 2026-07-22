@@ -57,6 +57,10 @@ opsmind:
     max-json-body-bytes: ${OPSMIND_MAX_JSON_BODY_BYTES:65536}
   dispatcher:
     enabled: ${OPSMIND_DISPATCHER_ENABLED:false}
+  investigation:
+    enabled: ${OPSMIND_INVESTIGATION_V1_ENABLED:false}
+    fixture: ${OPSMIND_INVESTIGATION_FIXTURE:false}
+    store: ${OPSMIND_INVESTIGATION_STORE:in-memory}
   security:
     mode: ${OPSMIND_SECURITY_MODE:fail-closed}
     audience: ${OIDC_AUDIENCE:opsmind-platform-api}

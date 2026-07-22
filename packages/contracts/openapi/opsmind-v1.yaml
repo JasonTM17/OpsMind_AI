@@ -18,6 +18,8 @@ tags:
     description: Authorized incident control-plane operations
   - name: analysis
     description: Authorized, bounded incident analysis delegation
+  - name: investigation
+    description: Bounded, evidence-backed incident investigation runs
   - name: tool-gateway
     description: Internal policy-controlled evidence acquisition boundary
 paths:
@@ -347,6 +349,70 @@ paths:
           $ref: '#/components/responses/ServiceUnavailable'
         '504':
           $ref: '#/components/responses/GatewayTimeout'
+  /organizations/{organizationId}/projects/{projectId}/incidents/{incidentId}/investigations:
+    post:
+      operationId: startInvestigation
+      tags: [investigation]
+      security:
+        - oidcBearer: [incident:analyze]
+      parameters:
+        - $ref: '#/components/parameters/OrganizationId'
+        - $ref: '#/components/parameters/ProjectId'
+        - $ref: '#/components/parameters/IncidentId'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/StartInvestigationRequest'
+      responses:
+        '200':
+          description: Bounded investigation projection with cited structured analysis
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/InvestigationView'
+        '400':
+          $ref: '#/components/responses/InvalidRequest'
+        '401':
+          $ref: '#/components/responses/Unauthenticated'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '408':
+          $ref: '#/components/responses/RequestTimeout'
+        '503':
+          $ref: '#/components/responses/ServiceUnavailable'
+  /organizations/{organizationId}/projects/{projectId}/incidents/{incidentId}/investigations/{runId}:
+    get:
+      operationId: getInvestigation
+      tags: [investigation]
+      security:
+        - oidcBearer: [incident:read]
+      parameters:
+        - $ref: '#/components/parameters/OrganizationId'
+        - $ref: '#/components/parameters/ProjectId'
+        - $ref: '#/components/parameters/IncidentId'
+        - name: runId
+          in: path
+          required: true
+          schema: {type: string, format: uuid}
+      responses:
+        '200':
+          description: Authorized investigation projection
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/InvestigationView'
+        '401':
+          $ref: '#/components/responses/Unauthenticated'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '503':
+          $ref: '#/components/responses/ServiceUnavailable'
 components:
   securitySchemes:
     oidcBearer:
@@ -498,6 +564,10 @@ components:
         deadline_at:
           type: string
           format: date-time
+    StartInvestigationRequest:
+      $ref: '../json-schema/investigation/v1/investigation-run.schema.json'
+    InvestigationView:
+      $ref: '../json-schema/investigation/v1/investigation-view.schema.json'
     CurrentPrincipal:
       type: object
       additionalProperties: false
