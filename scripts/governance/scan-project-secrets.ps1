@@ -509,7 +509,7 @@ foreach ($candidateFile in @($candidateFiles)) {
         $findings += [pscustomobject]@{ Path = $relativePath; Rule = 'tracked-sensitive-file' }
     }
 
-    $file = Get-Item -LiteralPath $fullPath
+    $file = Get-Item -LiteralPath $fullPath -Force
     if (Test-PathContainsReparsePoint -Path $fullPath -RepositoryRoot $candidateFile.BoundaryRoot) {
         $findings += [pscustomobject]@{ Path = $relativePath; Rule = 'reparse-path-unscanned' }
         continue
