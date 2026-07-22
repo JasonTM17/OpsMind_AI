@@ -6,9 +6,9 @@ import ai.opsmind.platform.investigation.domain.InvestigationStateMachine;
 
 public interface InvestigationRunStore {
 
-    void create(InvestigationStateMachine.State state);
+    void create(InvestigationStateMachine.Step initial);
 
-    void save(InvestigationStateMachine.State state);
+    void save(InvestigationStateMachine.State previous, InvestigationStateMachine.Step next);
 
-    InvestigationStateMachine.State require(UUID organizationId, UUID runId);
+    InvestigationStateMachine.State require(UUID organizationId, UUID actorId, UUID runId);
 }

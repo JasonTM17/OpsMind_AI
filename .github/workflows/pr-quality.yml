@@ -546,13 +546,14 @@ jobs:
         shell: bash
         env:
           OPSMIND_PHASE3_DB_INTEGRATION: "true"
+          OPSMIND_PHASE7_DB_INTEGRATION: "true"
           SPRING_DATASOURCE_URL: jdbc:postgresql://127.0.0.1:5432/opsmind
         run: |
           set -euo pipefail
           mkdir -p artifacts/verification/phase-03
           mvn --batch-mode --no-transfer-progress \
             -Dmaven.repo.local="$OPS_CACHE_ROOT/maven" \
-            -Dtest=TenantRlsPoolIntegrationTest,TransactionalOutboxIntegrationTest,TransactionalInboxIntegrationTest,PlatformUserStatusVerifierIntegrationTest,OutboxDispatcherWorkloadIntegrationTest \
+            -Dtest=TenantRlsPoolIntegrationTest,TransactionalOutboxIntegrationTest,TransactionalInboxIntegrationTest,PlatformUserStatusVerifierIntegrationTest,OutboxDispatcherWorkloadIntegrationTest,InvestigationPersistenceIntegrationTest,InvestigationPersistenceIntegrityIntegrationTest \
             -f services/platform-api/pom.xml test \
             2>&1 | tee artifacts/verification/phase-03/authz-rls-pool-matrix.txt
       - name: Run alternating-tenant and append-only contract

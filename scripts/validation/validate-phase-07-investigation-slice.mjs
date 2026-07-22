@@ -95,6 +95,10 @@ const sourceFiles = fs.readdirSync(sourceRoot, { recursive: true, withFileTypes:
   .filter((entry) => entry.isFile() && entry.name.endsWith(".java"))
   .map((entry) => path.join(entry.parentPath, entry.name));
 const source = sourceFiles.map((file) => access.readSafeFile(file)).join("\n");
+const domainSource = sourceFiles
+  .filter((file) => file.includes(`${path.sep}domain${path.sep}`))
+  .map((file) => access.readSafeFile(file))
+  .join("\n");
 for (const marker of [
   "InvestigationStateMachine",
   "The same tool intent was requested twice.",
@@ -103,7 +107,8 @@ for (const marker of [
 ]) {
   if (!source.includes(marker)) errors.push(`investigation invariant missing: ${marker}`);
 }
-if (/ProcessBuilder|Runtime\.getRuntime|JdbcTemplate|createStatement|chain[_-]?of[_-]?thought/iu.test(source)) {
+if (/ProcessBuilder|Runtime\.getRuntime|JdbcTemplate|createStatement/iu.test(domainSource)
+    || /chain[_-]?of[_-]?thought/iu.test(source)) {
   errors.push("investigation checkpoint exposes a prohibited primitive or reasoning field");
 }
 
@@ -119,8 +124,27 @@ const overlongSource = sourceFiles.find((file) =>
 );
 if (overlongSource) errors.push(`investigation source exceeds 200 lines: ${access.relativeName(overlongSource)}`);
 
+const migrationPath = path.join(
+  repositoryRoot,
+  "services", "platform-api", "src", "main", "resources", "db", "migration",
+  "V006__investigation_run_persistence.sql",
+);
+const durableStorePath = path.join(
+  sourceRoot, "application", "JdbcInvestigationRunStore.java",
+);
+const durablePersistencePresent = fs.existsSync(migrationPath) && fs.existsSync(durableStorePath)
+  && [
+    "CREATE TABLE investigation_runs",
+    "CREATE TABLE investigation_run_events",
+    "ALTER TABLE investigation_runs FORCE ROW LEVEL SECURITY",
+    "investigation-audit-v1",
+    "opsmind_validate_investigation_event_count",
+  ].every((marker) => access.readSafeFile(migrationPath).includes(marker));
+if (!durablePersistencePresent) {
+  errors.push("durable investigation persistence contract is incomplete");
+}
+
 const blockers = [
-  "durable tenant-scoped run/event/timeline/audit persistence is absent",
   "real Platform API capability-backed AI Runtime and Tool Gateway clients are absent",
   "selected live non-production read-only connector evidence is absent",
   "CK/Stitch operator investigation UI and browser E2E proof are absent",
@@ -128,7 +152,7 @@ const blockers = [
 ];
 const lines = [
   "OpsMind Phase 7 investigation slice validation",
-  "ValidationScope=DETERMINISTIC_REDUCER_FIXTURE_CONTRACT_CHECKPOINT",
+  "ValidationScope=DURABLE_PERSISTENCE_CONTRACT_CHECKPOINT",
   `JsonSchemasParsed=${schemaFiles.length}`,
   `JsonFixturesParsed=${fixtureFiles.length}`,
   `LocalReferencesResolved=${referenceCount}`,

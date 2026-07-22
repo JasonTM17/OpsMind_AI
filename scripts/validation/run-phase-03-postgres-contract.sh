@@ -112,8 +112,23 @@ BEGIN
         RAISE EXCEPTION 'runtime role can dump global identity data';
     END IF;
     IF NOT has_table_privilege('opsmind_app', 'outbox_events', 'INSERT')
-       OR NOT has_table_privilege('opsmind_app', 'audit_events', 'INSERT') THEN
+       OR NOT has_column_privilege('opsmind_app', 'audit_events', 'event_id', 'INSERT')
+       OR NOT has_column_privilege('opsmind_app', 'audit_events', 'organization_id', 'INSERT')
+       OR NOT has_column_privilege('opsmind_app', 'audit_events', 'actor_id', 'INSERT')
+       OR NOT has_column_privilege('opsmind_app', 'audit_events', 'action', 'INSERT')
+       OR NOT has_column_privilege('opsmind_app', 'audit_events', 'schema_version', 'INSERT')
+       OR NOT has_column_privilege('opsmind_app', 'audit_events', 'resource_type', 'INSERT')
+       OR NOT has_column_privilege('opsmind_app', 'audit_events', 'resource_id', 'INSERT')
+       OR NOT has_column_privilege('opsmind_app', 'audit_events', 'correlation_id', 'INSERT')
+       OR NOT has_column_privilege('opsmind_app', 'audit_events', 'occurred_at', 'INSERT')
+       OR NOT has_column_privilege('opsmind_app', 'audit_events', 'payload', 'INSERT') THEN
         RAISE EXCEPTION 'runtime role lacks required append privileges';
+    END IF;
+    IF has_column_privilege('opsmind_app', 'audit_events', 'sequence_no', 'INSERT')
+       OR has_column_privilege('opsmind_app', 'audit_events', 'tenant_sequence_no', 'INSERT')
+       OR has_column_privilege('opsmind_app', 'audit_events', 'previous_digest', 'INSERT')
+       OR has_column_privilege('opsmind_app', 'audit_events', 'event_digest', 'INSERT') THEN
+        RAISE EXCEPTION 'runtime role can choose database-owned audit chain fields';
     END IF;
     IF has_column_privilege('opsmind_app', 'outbox_events', 'published_at', 'UPDATE')
        OR has_column_privilege('opsmind_app', 'outbox_events', 'lease_token', 'UPDATE') THEN
@@ -181,16 +196,15 @@ VALUES
 ON CONFLICT (id) DO NOTHING;
 
 INSERT INTO audit_events (
-    event_id, organization_id, actor_id, action, resource_type, resource_id,
-    correlation_id, occurred_at, payload, event_digest
+    event_id, organization_id, actor_id, action, schema_version,
+    resource_type, resource_id, correlation_id, occurred_at, payload
 ) VALUES (
     '12345678-1234-4234-8234-123456789abc'::uuid,
     'aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa'::uuid,
     '11111111-1111-4111-8111-111111111111'::uuid,
-    'project.observed', 'project', 'aaaaaaa1-aaaa-4aaa-8aaa-aaaaaaaaaaaa',
+    'project.observed', 'legacy-v1', 'project', 'aaaaaaa1-aaaa-4aaa-8aaa-aaaaaaaaaaaa',
     '87654321-4321-4321-8321-cba987654321'::uuid,
-    clock_timestamp(), '{}'::jsonb,
-    digest(convert_to('{}', 'UTF8'), 'sha256')
+    clock_timestamp(), '{}'::jsonb
 );
 
 DO $$

@@ -108,6 +108,27 @@ class MigrationContractTest {
     }
 
     @Test
+    void investigationMigrationBindsSnapshotEventsRlsAndAuditAtomically() throws IOException {
+        String migration = readMigration("V006__investigation_run_persistence.sql");
+
+        assertThat(migration)
+            .contains("CREATE TABLE investigation_runs")
+            .contains("PRIMARY KEY (organization_id, run_id)")
+            .contains("CREATE TABLE investigation_run_events")
+            .contains("investigation revision must increase by exactly one")
+            .contains("investigation event sequence must be contiguous")
+            .contains("DEFERRABLE INITIALLY DEFERRED")
+            .contains("snapshot event count must match the event ledger")
+            .contains("ALTER TABLE investigation_runs FORCE ROW LEVEL SECURITY")
+            .contains("ALTER TABLE investigation_run_events FORCE ROW LEVEL SECURITY")
+            .contains("investigation-audit-v1")
+            .contains("investigation audit payload must match its authoritative run event")
+            .contains("REVOKE ALL ON investigation_runs, investigation_run_events")
+            .contains("FROM opsmind_app, opsmind_dispatcher, PUBLIC")
+            .doesNotContain("raw_prompt", "chain_of_thought", "api_key", "credential_ref");
+    }
+
+    @Test
     void predecessorMigrationsRemainByteForByteStable()
         throws IOException, NoSuchAlgorithmException {
         assertThat(sha256("V001__identity_tenant_foundation.sql")).isEqualTo(V001_SHA256);

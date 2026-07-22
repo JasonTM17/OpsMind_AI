@@ -15,6 +15,7 @@ public sealed interface InvestigationCommand
         UUID organizationId,
         UUID projectId,
         UUID incidentId,
+        UUID actorId,
         Budget budget,
         Instant startedAt,
         Instant deadlineAt

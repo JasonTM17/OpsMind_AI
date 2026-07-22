@@ -16,4 +16,5 @@ public record AuditEvent(
     String payloadJson
 ) {
     public static final String INCIDENT_SCHEMA_VERSION = "incident-audit-v1";
+    public static final String INVESTIGATION_SCHEMA_VERSION = "investigation-audit-v1";
 }
