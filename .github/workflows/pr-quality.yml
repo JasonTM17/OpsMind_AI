@@ -620,6 +620,16 @@ jobs:
           java -jar services/platform-api/target/platform-api.jar \
             --spring.main.web-application-type=none \
             --opsmind.persistence.enabled=false
+      - name: Prove V006 to V007 evidence migration upgrade
+        shell: bash
+        env:
+          OPSMIND_EPHEMERAL_DB: "true"
+          OPSMIND_PHASE4B_UPGRADE_DATABASE: opsmind_phase4b_upgrade_${{ github.run_id }}
+        run: |
+          set -euo pipefail
+          mkdir -p artifacts/verification/phase-04
+          bash scripts/validation/run-phase-04b-migration-upgrade.sh \
+            2>&1 | tee artifacts/verification/phase-04/evidence-migration-upgrade.txt
       - name: Prove pooled tenant isolation and messaging recovery
         shell: bash
         env:
@@ -647,7 +657,9 @@ jobs:
         if: always()
         with:
           name: phase-03-postgres-contract
-          path: artifacts/verification/phase-03/
+          path: |
+            artifacts/verification/phase-03/
+            artifacts/verification/phase-04/evidence-migration-upgrade.txt
           if-no-files-found: error
 
   identity-conformance:

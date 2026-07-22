@@ -202,9 +202,14 @@ V007, the evidence value/canonicalizer/identity/writer/reader boundary, reducer
 transport, metadata-only event codec, static gate, and integration tests are
 implemented. Local Platform verification reports `146` tests, zero failures or
 errors, with `18` environment-gated database tests skipped. Phase 4B static
-validation, layout, actionlint, diff, and secret scans pass. Status remains
-`in_progress` until GitHub Actions applies V007 to fresh and upgraded PostgreSQL
-and executes the RLS, atomicity, authorization, and immutability tests.
+validation, layout, actionlint, diff, and secret scans pass. GitHub Actions run
+`29936897223` at revision `77f7ab80edb64f7ac8a0a46b68c37a3ad2f043eb`
+completed successfully across 11 executable jobs. It applied fresh V001–V007,
+ran 11 PostgreSQL integration cases including evidence persistence and rollback,
+and passed Compose health smoke. The workflow now also contains an isolated,
+fail-closed V006→V007 upgrade proof; status remains `in_progress` until that new
+gate passes on the pushed revision and the remaining replay/failure-matrix
+acceptance claims are proven rather than inferred.
 
 ## Unresolved Questions
 
