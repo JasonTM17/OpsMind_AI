@@ -322,10 +322,20 @@ response becomes `COMPLETED` only when every citation references evidence alread
 present in the state; otherwise it terminates as visible `ABSTAINED`. Duplicate
 tool fingerprints, duplicate evidence, token/round/tool/evidence exhaustion,
 provider failure and no-progress are explicit terminal states. Feature flags are
-off by default. The local run store and fixture clients are not production
-adapters, so G3 remains blocked pending durable tenant-scoped persistence,
-timeline/audit writes, real capability issuance, a live non-production connector,
-and the CK/Stitch operator experience.
+off by default.
+
+Flyway V006 adds feature-gated PostgreSQL persistence for tenant-scoped run
+snapshots plus a contiguous, immutable `investigation_run_events` ledger. Each
+accepted transition updates the optimistic run revision/event count and appends
+the matching `investigation-audit-v1` payload to `audit_events` in the same
+transaction. Forced RLS, exact JSON-shape checks, event/snapshot parity triggers,
+append-only grants, and database-owned audit chaining protect every write path.
+This checkpoint does **not** append to `incident_timeline_events` and does not
+provide workflow restart/resume semantics; the orchestrator is still synchronous
+and in-process. Fixture AI/Tool clients remain non-production. G3 therefore stays
+blocked on capability-backed clients, an allowlisted live read-only connector,
+incident-timeline linkage, the CK/Stitch operator experience with browser E2E,
+and cross-service trace plus p95 evidence.
 
 ## Evidence Artifact Port
 
@@ -381,8 +391,9 @@ egress is claimed.
 The identity transcript is deliberately marked
 `REFERENCE_CONFORMANCE_NOT_PRODUCTION`. It records a PASS plus runtime/config
 identity and timing, but also `CodeRevision=UNBORN` and `WorkspaceDirty=YES` in
-an ignored local artifact. The configured Linux CI job has not run remotely.
-No delegated-capability, production session, federation, break-glass,
+an ignored local artifact. A later revision-bound Linux CI job passes the same
+reference profile without promoting it to production IdP evidence. No
+delegated-capability, production session, federation, break-glass,
 state/nonce, or general bearer-replay proof is inferred from that result.
 
 The current evidence contract is schema v2: a source/profile manifest digest

@@ -30,7 +30,7 @@ The detailed executable plan is [plans/260719-1747-opsmind-ai-production-platfor
 | 4 | Incident control plane, evidence lifecycle, and audit | G2/G3 | In progress; checkpoint 4A local proof complete |
 | 5 | DeepSeek AI runtime and provider gateway | G3 | In progress; static checkpoint passed, exit gate blocked |
 | 6 | Safe Tool Gateway and read-only connectors | G3 | In progress; checkpoint PASS, PhaseExitGate BLOCK |
-| 7 | Evidence-backed incident vertical slice | G3 | In progress; deterministic checkpoint PASS, PhaseExitGate BLOCK |
+| 7 | Evidence-backed incident vertical slice | G3 | In progress; durable persistence checkpoint PASS, PhaseExitGate BLOCK |
 | 8 | Simulator and evaluation baseline | G3/G7 | Pending |
 | 9 | Durable Temporal investigation workflow | G4 | Pending |
 | 10 | Permission-aware RAG and knowledge lifecycle | G5 | Pending |
@@ -41,20 +41,19 @@ The detailed executable plan is [plans/260719-1747-opsmind-ai-production-platfor
 | 15 | Security, reliability, and observability hardening | G8 | Pending |
 | 16 | Delivery, disaster recovery, and final verification | G8 | Pending |
 
-Phase 3 and G2 remain in progress. The 2026-07-21 local Windows Keycloak 26.7
-reference run satisfies only the real non-production IdP integration criterion.
-It is marked `REFERENCE_CONFORMANCE_NOT_PRODUCTION`, comes from an unborn/dirty
-worktree, and is ignored local evidence. The configured Linux CI identity job
-has not run remotely; production IdP selection/conformance and the broader G2
-exit conditions remain open.
+Phase 3 and G2 remain in progress. Local Windows and revision-bound Linux CI
+Keycloak 26.7 runs satisfy the reference non-production IdP integration
+criterion; the local artifact remains marked
+`REFERENCE_CONFORMANCE_NOT_PRODUCTION`. Production IdP selection/conformance
+and the broader G2 exit conditions remain open.
 
 Phase 4 is in progress. Checkpoint 4A now has local, source/JAR-bound proof for
 the nested incident create/detail/transition/timeline contract, forced RLS,
 authorization revocation serialization, idempotency, concurrency, atomic
 rollback, immutable timeline, database-computed audit chaining, and fresh plus
-upgrade migrations. The evidence-object lifecycle, remaining incident breadth,
-remote immutable CI, and production gates remain open, so Phase 4 and G2 are not
-complete.
+upgrade migrations. Remote PostgreSQL/Java gates exercise the revision-bound
+contracts, but the evidence-object lifecycle, remaining incident breadth, and
+production gates remain open, so Phase 4 and G2 are not complete.
 
 Phase 5 is in progress. The provider-neutral runtime, delegated capability and
 egress controls, durable PostgreSQL state, V005 append-only synthetic-probe
@@ -89,16 +88,18 @@ audit/artifact adapters, Platform API capability issuer conformance, three
 fixture connector families, one live non-production read-only target, and
 provider-specific cancellation/tenant-bulkhead proof remain open.
 
-Phase 7 has started with a pure command/event investigation reducer, bounded
-in-process runner, fixture-only `metrics.query` path, cited-completion guard,
-duplicate/no-progress detection, budget terminal states, tenant/run projection,
-two canonical contracts and two OpenAPI operations. The Platform API full Maven
-suite passes 131 tests with 12 PostgreSQL-environment skips; the Phase 7 gate
-reports `CheckpointResult=PASS`, and Phase 4/OpenAPI validation also passes.
-This is not G3: the store is
-still an in-memory local adapter, the real Platform-to-Tool-Gateway capability
-path and selected live non-production connector are absent, and the CK/Stitch
-operator UI plus durable timeline/audit persistence remain open.
+Phase 7 now includes a pure command/event reducer, bounded in-process runner,
+fixture-only `metrics.query` path, cited-completion guard, duplicate/no-progress
+detection, budget terminal states, tenant/run projections, two canonical
+contracts, and two OpenAPI operations. Additive Flyway V006 persists run
+snapshots, contiguous immutable investigation events, and matching
+`investigation-audit-v1` rows with forced RLS and optimistic revision checks.
+The static validator reports `CheckpointResult=PASS` and `PhaseExit=BLOCK`; the
+PostgreSQL CI gate exercises migration, persistence, and direct SQL integrity
+tests. This is not G3: orchestration has no restart/resume semantics, events are
+not yet linked to `incident_timeline_events`, capability-backed Platform-to-AI
+Runtime/Tool Gateway clients and the selected live connector are absent, and the
+CK/Stitch UI/browser E2E plus cross-service trace/p95 evidence remain open.
 
 ## Staffing Scenarios
 
@@ -133,5 +134,5 @@ evidence.
 No G0.5 decision remains unresolved and Phases 2 and 3 are in progress. Later release
 questions are the supported local S3 adapter after MinIO's upstream archive,
 reconciliation of the 120-minute service RTO with a four-hour artifact restore
-target, production-authorized enterprise-IdP conformance, remote CI/Compose
-evidence, and provider processing terms.
+target, production-authorized enterprise-IdP conformance, and provider
+processing terms.

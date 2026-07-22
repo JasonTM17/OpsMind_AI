@@ -187,10 +187,11 @@ Verified locally on Windows:
   It also records `EvidenceScope=REFERENCE_CONFORMANCE_NOT_PRODUCTION`,
   `CodeRevision=UNBORN`, and `WorkspaceDirty=YES`; the ignored local artifact is
   reproducible reference evidence, not immutable release evidence.
-- `.github/workflows/pr-quality.yml` configures a Linux
-  `identity-conformance` job with the schema-v2 verifier and evidence upload,
-  but that job has not run remotely. Local schema-v2 PASS is claimed; remote CI
-  and Compose identity PASS are not.
+- `.github/workflows/pr-quality.yml` runs the Linux schema-v2 verifier and
+  uploads its evidence. The later revision-bound run `29923961768` passed this
+  Keycloak job and the Compose build/health smoke; the workstation transcript
+  above remains local reference evidence rather than being retroactively
+  promoted.
 
 This resolves B-003 only for the local/reference non-production IdP scope. It
 does not authorize a production IdP or prove federation, break-glass,
@@ -199,8 +200,7 @@ prevention, delegated capabilities, or immediate access-token revocation.
 
 Still open:
 
-- Production-authorized enterprise IdP selection/conformance and remote Phase 2
-  CI/Compose evidence remain open.
+- Production-authorized enterprise IdP selection/conformance remains open.
 - No dispatcher polling process or external publish target is enabled. Phase 3
   now proves its database identity and scheduler boundary; Phase 9 must add and
   verify the externally authenticated runtime and deterministic target handoff.
@@ -264,7 +264,8 @@ Checkpoint state: **4A locally complete**. Phase 4 remains **in progress**.
 List/patch/assignment, resolution/closure UX, postmortems, and the governed
 evidence-object upload/read/tombstone/restore/purge/reconciliation lifecycle are
 not implemented. Local evidence records `CodeRevision=UNBORN` and
-`WorkspaceDirty=YES`; remote immutable CI and production claims remain open.
+`WorkspaceDirty=YES`; later revision-bound CI verifies the repository contracts
+without converting that historical local transcript into production evidence.
 
 ## 2026-07-22 — Phase 5 provider-neutral runtime checkpoint
 
@@ -317,24 +318,81 @@ quota-race fixes. See
 provider conformance/live synthetic smoke and production egress remain open.
 Phase 5 is **in progress**.
 
+## 2026-07-22 — Phase 6 Tool Gateway checkpoint
+
+Implemented the fail-closed execution boundary: independent workload and
+delegated-capability JWT domains, exact body/scope binding, one-use nonce,
+idempotent receipts, policy/manifest enforcement, bounded connector execution,
+recursive redaction, normalized evidence, deterministic audit, and explicit
+liveness/readiness separation. Four schemas, five fixtures, canonical digest
+checks, and 24 Maven tests pass. Durable atomic stores, three connector families,
+the Platform capability issuer/client path, a selected live target, and
+provider-specific cancellation/bulkhead proof remain open. Phase 6 is **in
+progress**; its checkpoint passes but its exit gate is blocked.
+
+## 2026-07-22 — Phase 7 durable investigation persistence checkpoint
+
+Implemented in the Platform API:
+
+- pure investigation reducer and bounded synchronous runner with visible
+  completion, abstain, budget, duplicate, no-progress, and dependency failures;
+- feature-gated fixture AI/Tool clients and investigation start/read endpoints;
+- V006 `investigation_runs` snapshots plus contiguous immutable
+  `investigation_run_events`, forced RLS, least-privilege grants, and optimistic
+  revision/event-count concurrency;
+- same-transaction `investigation-audit-v1` audit-chain writes and exact event,
+  terminal-response, snapshot-parity, and append-only database triggers;
+- direct-SQL integrity tests proving a runtime role cannot forge malformed
+  completion state/events or mutate either ledger.
+
+Verification:
+
+- `validate-phase-07-investigation-slice.mjs`: `CheckpointResult=PASS`,
+  `PhaseExit=BLOCK`;
+- full local Platform API suite passed with zero failures/errors and database
+  tests gated to their dedicated harness;
+- GitHub Actions run `29923961768` at revision
+  `0ec3cff944102b716dc098871384ba0534df06fd` passed governance, Ubuntu/Windows
+  bootstrap, PostgreSQL migration/persistence/integrity, Keycloak, Operator Web,
+  Compose, and AI Runtime jobs. Both Java suites also completed successfully,
+  but their jobs were cancelled at the 60-minute limit while two independent
+  unauthenticated OWASP Dependency-Check processes each imported the full NVD
+  corpus. The local fix separates bounded Maven verification from one shared
+  CycloneDX/OSV policy job; revision-bound verification remains pending.
+- local replacement security proof generated SBOMs with 111 and 97 components,
+  scanned 208 packages using checksum-pinned OSV 2.4.0, found zero vulnerability
+  groups after the Jackson Databind 3.1.5 upgrade, and passed all seven evaluator
+  regression cases.
+
+This checkpoint is durable data, not durable workflow. It does not resume an
+in-flight orchestrator and does not append to `incident_timeline_events`.
+Capability-backed clients, the allowlisted live connector, CK/Stitch UI/browser
+E2E, and cross-service trace/p95 evidence remain required. Phase 7 is **in
+progress**.
+
 ## Next Allowed Work
 
-1. Continue Phase 4 with remaining incident breadth and the supported
-   evidence-object lifecycle; do not substitute a filesystem fake while active
-   storage/KMS blockers remain. A Phase 6 contract/fixture checkpoint may run
-   in parallel, but cannot claim its live connector or large-artifact exit.
-2. Select and authorize the production IdP profile, then prove federation,
+1. Build the real Phase 7 integration through an allowlisted intent catalog,
+   short-lived capability issuance, independent workload authentication, and
+   bounded Platform-to-AI Runtime/Tool Gateway HTTP clients; model output must
+   never become an executable request directly.
+2. Add the Prometheus live non-production connector path and persist/link
+   accepted evidence into the incident timeline without weakening Tool Gateway
+   policy, replay, or audit controls.
+3. Build the operator slice through CK frontend workflow plus Stitch, then add
+   Playwright failure-path and accessibility coverage.
+4. Continue Phase 4 evidence-object lifecycle and select/authorize the
+   production IdP profile, then prove federation,
    session, claim, break-glass, and revocation behavior in non-production.
-3. Collect remote CI and Compose evidence without weakening storage preflight.
-4. Keep the external dispatcher loop disabled until Phase 9 binds its runtime
+5. Keep the external dispatcher loop disabled until Phase 9 binds its runtime
    identity, deterministic workflow ID, and reconciliation contract.
-5. Keep dependency downloads, container builds, and service startup behind a fresh capacity/root preflight.
-6. Do not rerun Docker/PostgreSQL gates until C is back above the configured
-   10 GB floor; the current low-space block is functioning as designed.
+6. Keep dependency downloads, container builds, and service startup behind a
+   fresh capacity/root preflight. At this checkpoint C has about 11 GB free and
+   D about 25 GB free; prefer CI for heavy Docker work to preserve both floors.
 
 ## Unresolved Questions
 
-No current implementation decision is being silently deferred. The local
-Keycloak reference criterion is proven; production IdP conformance, remote
-CI/Compose, external publisher/runtime, and later provider/connector
-conformance remain explicit gates; see [Blockers](./blockers.md).
+No current implementation decision is being silently deferred. Production IdP,
+external publisher/runtime, provider/legal, live connector, UI, performance,
+DR, and release conformance remain explicit gates; see
+[Blockers](./blockers.md).

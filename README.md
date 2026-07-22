@@ -2,29 +2,24 @@
 
 OpsMind AI is an evidence-first AI SRE/DevSecOps platform. It is designed to help operators investigate incidents, explain hypotheses with traceable evidence, and execute narrowly approved remediation without granting an AI model direct infrastructure authority.
 
-Phase 1 operating-envelope and architecture governance is complete. Phase 2
-provides the pinned polyglot toolchain, cross-platform command surface, Compose
-configuration, and PR quality gates. Phases 3, 4, and 5 are in progress: the
-Platform API has a local fail-closed identity/tenant/data substrate and Phase 4
-checkpoint 4A now implements the nested incident create/detail/transition/
-timeline ledger. Provider, connector, evidence-object lifecycle, UI, and
-remediation behavior remain owned by later checkpoints/phases. Phase 5 now has
-an offline provider-neutral analysis contract, DeepSeek adapter, delegated
-capability/replay guard, redaction policy, budget guard, and stream assembler;
-durable PostgreSQL nonce/replay/invocation accounting now has an additive
-schema and adapter, while live provider egress remains disabled. Phase 6 has a
-fail-closed Tool Gateway contract checkpoint, and Phase 7 now has a pure bounded
-investigation reducer plus a feature-flagged fixture runner. Neither checkpoint
-is a live-production proof; durable adapters, a live non-production connector,
-and the CK/Stitch operator slice remain open.
-Local PostgreSQL evidence now covers pooled RLS, per-request platform-user
-deprovisioning, and outbox/inbox crash windows. Access-token policy requires
-the configured audience, MFA AMR, and a maximum `PT5M` lifetime. A live local
-Windows Keycloak 26.7 reference run passes the non-production OIDC conformance
-profile, but it is not a production-vendor decision or release proof. Remote
-CI/Compose and production identity conformance remain open. A dedicated
-non-bypass database identity and tenant scheduler now own outbox lease/ack;
-the external dispatcher loop remains disabled until its owning phase.
+Phase 1 governance is complete; Phases 2-7 are advancing through evidence gates.
+The repository now contains a pinned polyglot workspace, cross-platform CI,
+fail-closed OIDC and tenant/RLS foundations, an incident timeline/audit ledger,
+a provider-neutral AI Runtime with DeepSeek adapter, and an isolated Tool
+Gateway contract.
+
+Phase 7 adds a pure bounded investigation reducer and feature-flagged runner.
+Flyway V006 provides tenant-scoped PostgreSQL run snapshots, a contiguous
+immutable investigation-event ledger, same-transaction audit-chain writes,
+forced RLS, and optimistic concurrency. This is durable data, not a durable
+workflow: restart/resume remains Phase 9, and current investigation events are
+not yet appended to the incident timeline. Real capability-backed service
+clients, a live non-production connector, CK/Stitch operator UI/browser E2E,
+cross-service tracing, and p95 evidence remain open, so G3 is not claimed.
+
+DeepSeek egress and all production credentials remain disabled by default.
+Production identity/provider/legal conformance, evidence-object lifecycle,
+RAG, remediation, DR, and release gates remain later work.
 
 ## Product Goal
 
@@ -181,15 +176,17 @@ requirements, cache locations, and failure behavior.
 The roadmap contains sixteen phases. G0.5 records the approved deployment
 archetype, target environment, tenant model, IdP profile, DeepSeek egress policy,
 first live connector, evidence store, load/SLO/DR envelope, lifecycle rules, and
-accountable owners. Its strict validator passes. Phase 2 local gates and the
-Phase 3 trust-foundation slice are being advanced independently. The local
-Keycloak 26.7 reference target passed again on 2026-07-22 against the current
-Platform API JAR; remote CI, Compose smoke,
-and an authorized production IdP profile are still required before the broader
-gates can close. The disposable local PostgreSQL 18
-matrix now proves migration-role separation, pooled tenant-context cleanup, and
-messaging crash-window recovery. It also proves that an active platform user is
-accepted and an unknown or deprovisioned issuer/subject mapping is denied. The
+accountable owners. Its strict validator passes. Revision-bound GitHub Actions
+run `29923961768` proves Ubuntu/Windows bootstrap, PostgreSQL V001-V006 trust
+contracts, Keycloak 26.7 conformance, Operator Web, AI Runtime, and Compose
+build/health for commit `0ec3cff`. The overall run was cancelled after both
+successful Java suites entered duplicate full-NVD downloads and hit their
+60-minute limits; the replacement CycloneDX/OSV job is locally verified and
+awaits revision-bound CI. An authorized production IdP profile and the broader
+phase exits are still required. The PostgreSQL matrix proves migration-
+role separation, pooled tenant-context cleanup, messaging crash-window recovery,
+and Phase 7 persistence/integrity. It also proves that an active platform user
+is accepted and an unknown or deprovisioned issuer/subject mapping is denied. The
 web role can append outbox records but cannot lease or acknowledge them; the
 dispatcher role cannot see a tenant before an authorized workload binding.
 Phase 4 checkpoint 4A adds source/JAR-bound local proof for incident CRUD
@@ -202,116 +199,34 @@ The approved starting profile is internal, single organization, Singapore
 region, with logical tenant/project isolation and a managed-Kubernetes
 production target.
 
-## Evidence Layout
+## Verification
 
-Generated evidence is local and ignored by Git:
-
-```text
-artifacts/
-  verification/phase-XX/
-  evaluation/
-  security/
-  dr/
-```
-
-The local Keycloak transcript records schema/scenario versions, runtime and
-configuration digest, command, timestamps, `CodeRevision=UNBORN`, and
-`WorkspaceDirty=YES`. It is ignored local evidence with scope
-`REFERENCE_CONFORMANCE_NOT_PRODUCTION`, not immutable release evidence. The
-Linux `identity-conformance` job is configured in
-`.github/workflows/pr-quality.yml`, but no remote run is claimed. A green local
-command without an immutable revision-bound artifact is not release proof.
-
-## Current Verification
-
-Run the complete Phase 2 local checks with:
+Generated workstation evidence is ignored under `artifacts/`; revision-bound CI
+artifacts are authoritative for the checked commit. The main gates are:
 
 ```powershell
 .\scripts\dev\opsmind.ps1 test
 .\scripts\dev\opsmind.ps1 lint
 .\scripts\dev\opsmind.ps1 build
 .\scripts\dev\opsmind.ps1 security
-.\scripts\validation\validate-phase-02-foundation.ps1
+node .\scripts\validation\validate-phase-07-investigation-slice.mjs
 ```
 
-After storage preflight, reproduce the local Phase 3 identity reference with:
+| Checkpoint | Current evidence | Scope limit |
+|---|---|---|
+| Governance/foundation | Secret scan, layout, portable surface, actionlint, Ubuntu/Windows bootstrap pass | G1 remains broader than one run |
+| PostgreSQL trust | V001-V006, pooled tenant/RLS, messaging recovery, Phase 7 persistence/integrity pass | Production database/DR not proven |
+| Identity | Keycloak 26.7 conformance passes locally and in Linux CI | Not production-authorized enterprise IdP proof |
+| Incident control | CRUD subset, rollback/concurrency, timeline and audit-chain gates pass | Full Phase 4 remains open |
+| AI Runtime | 149 offline tests plus PostgreSQL state gate pass; DeepSeek adapter defaults to `deepseek-v4-flash` | No live provider call or legal/residency approval |
+| Tool Gateway | Static contract and 24 Maven tests pass | Durable stores, real issuer/client, and live connector pending |
+| Investigation | Static durable-persistence checkpoint passes; PostgreSQL forgery/optimistic-conflict tests pass | `PhaseExit=BLOCK`; no real clients/UI/live trace/p95 |
+| Compose | All application images build, start, and pass health smoke in CI | Not staging/production deployment evidence |
 
-```powershell
-pwsh -NoProfile -File .\scripts\validation\run-phase-03-keycloak-conformance.ps1
-pwsh -NoProfile -File .\scripts\validation\verify-phase-03-keycloak-evidence.ps1
-```
-
-The passing reference covers PKCE S256, MFA/TOTP negative paths, RP-initiated
-logout, refresh-token revocation, JWKS rotation refresh, disabled-user new-login
-denial, rotated refresh-token reuse denial, an independent refresh family for
-the revocation positive control, and Platform API token denials. It does not prove production rollout,
-federation, browser/BFF session ownership, or live expiry after upstream
-disable. The run proves a pre-issued JWT remains accepted immediately after
-disable and asserts a 300-second lifetime plus 30-second skew: a 330-second
-policy upper bound, not a measured disable-to-denial horizon. Checked-in
-defaults use 60-second skew, for a 360-second upper bound.
-
-The current runner/verifier contract uses evidence schema v2, binds a manifest
-digest of profile/source inputs plus the packaged Platform API JAR digest, and
-publishes the transcript atomically only after cleanup verifies. That corrected
-schema passed a 124.694-second live local run and independent digest
-verification. A failed run emits only bounded, sanitized diagnostics in
-`identity-delegation-failure.txt`; it cannot satisfy the success verifier.
-
-Reproduce Phase 4 checkpoint 4A after the capacity/root preflight:
-
-```powershell
-node .\scripts\validation\validate-phase-04-incident-contracts.mjs
-powershell.exe -NoProfile -File .\scripts\validation\run-phase-04-domain-tests.ps1
-powershell.exe -NoProfile -File .\scripts\validation\run-phase-04-local-postgres-contract.ps1
-```
-
-The four local artifacts under `artifacts/verification/phase-04/` cover static
-contracts, 25 focused domain/controller tests, live PostgreSQL migrations/RLS/
-rollback/concurrency, and audit-chain integrity. They remain reference evidence
-because this checkout is unborn/dirty and no remote immutable CI run exists.
-
-Validate the Phase 5 provider-neutral runtime checkpoint offline (no API key is
-needed and no external provider call is made):
-
-```powershell
-node .\scripts\validation\validate-phase-05-ai-runtime.mjs
-$env:PYTHONPATH = 'services/ai-runtime/src'
-python -m pytest services/ai-runtime/tests -q
-```
-
-The checkpoint currently covers 149 passing offline tests for contract/fixture validation,
-bounded HTTP ingress, disabled/degraded configuration, exact outbound host and
-positive-pricing gates, signed request/TTL/replay enforcement, evidence-bound
-classification/citations, cumulative pre/post-call token and cost ceilings,
-DeepSeek no-retry error mapping, strict structured response validation,
-complete stream assembly, and in-process replay compatibility. Five additional
-PostgreSQL tests cover shared nonce replay, concurrent run reservation, tenant
-RLS, successful response replay, expired-lease full charging, fail-closed
-provider-overage accounting, and append-only capability-probe audit:
-
-```powershell
-$env:OPS_DOCKER_STORAGE_VERIFIED = 'true'
-powershell.exe -NoProfile -File .\scripts\validation\run-phase-05-local-postgres-state.ps1
-```
-
-The dedicated database gate now passes locally on PostgreSQL 18.4 with V004/V005,
-all five state/audit tests, and cleanup succeeding. Its transcript remains local
-reference evidence because this checkout is unborn/dirty. Live egress,
-provider terms/residency approval, and provider smoke evidence remain later
-gates; cross-service RS256 capability conformance is already proven locally.
-
-The Phase 1 governance suite and strict G0.5 contract remain prerequisites.
-Phase 2 validation covers repository ownership, Windows/portable command
-semantics, lockfiles, Compose, workflow syntax, secret scanning, and manifest
-parsing. Phase 3 now adds the fail-closed OIDC boundary, tenant/RLS migration,
-mandatory MFA AMR and bounded access-token lifetime policy, per-request
-deprovision checks, delegation contracts, idempotency/optimistic-concurrency
-scaffolding, and outbox/inbox lease, replay, poison, exact-byte, and sequence
-substrate. The incident write ledger exists only at checkpoint 4A; no live
-connector, model call, evidence-object lifecycle, full incident workflow,
-external dispatcher, or remediation action exists until its owning phase
-implements and verifies it.
+Historical local evidence marked `REFERENCE_CONFORMANCE_NOT_PRODUCTION` stays
+useful for diagnosis but cannot close a release gate. No live connector, model
+egress, external dispatcher, write remediation, RAG, or production release is
+claimed until its owning phase supplies explicit evidence.
 
 ## Security Note
 
