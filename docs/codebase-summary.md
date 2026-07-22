@@ -27,24 +27,25 @@ documentation. Source code and canonical contracts take precedence.
 | Area | Verified state |
 |---|---|
 | Phase 1 | Complete; operating-envelope and governance gates passed. |
-| Phase 2 | In progress; pinned polyglot workspace, launchers, Compose, and quality-gate foundation exist. |
-| Phase 3 | In progress; local identity, tenant/RLS, persistence, and messaging substrate exists. Production IdP and remote CI/Compose gates remain open. |
+| Phase 2 | In progress; pinned polyglot workspace, launchers, Compose, and cross-platform quality-gate foundation exist. |
+| Phase 3 | In progress; identity, tenant/RLS, persistence, and messaging substrate exists. Production-authorized IdP conformance remains open. |
 | Phase 4 | In progress; checkpoint 4A incident write ledger is locally complete. Full Phase 4 and G2/G3 are not complete. |
 | Phase 5 | In progress; provider-neutral analysis, DeepSeek adapter, egress guards, durable PostgreSQL state, V005 append-only probe audit, Platform API integration, and stream assembly exist. Static checkpoint passes; exit remains blocked by B-004 and missing rotated-key synthetic smoke. |
 | Phase 6 | In progress; fail-closed Tool Gateway checkpoint passes. Durable/live exit remains blocked. |
-| Phase 7 | In progress; deterministic investigation reducer, bounded fixture runner, projection, contracts, and feature-flagged API exist. Durable/live/UI exit remains blocked. |
+| Phase 7 | In progress; deterministic reducer, bounded fixture runner, contracts, feature-flagged API, and V006 PostgreSQL run snapshot/event/audit persistence exist. Durable workflow/live/UI exit remains blocked. |
 | Later phases | Durable workflow, RAG, remediation, complete operator UX, evaluation, and production-hardening outcomes remain pending. |
 
-All current Phase 4 transcripts are local/reference evidence. They record an
-unborn, dirty worktree and explicitly deny release status. No remote immutable
-CI, production IdP, or production deployment result is claimed.
+Historical Phase 3/4 workstation transcripts remain local/reference evidence
+and explicitly deny release status. Revision-bound GitHub Actions evidence is
+tracked separately; no production IdP or production deployment result is
+claimed.
 
 ## Repository Map
 
 | Path | Current responsibility |
 |---|---|
 | `apps/operator-web/` | Next.js foundation page and `/api/health`; incident workflows are not implemented in the web app. |
-| `services/platform-api/` | Spring Boot control plane for OIDC identity, tenant/project access, persistence, messaging primitives, checkpoint 4A incidents, and the Phase 7 deterministic investigation checkpoint. |
+| `services/platform-api/` | Spring Boot control plane for OIDC identity, tenant/project access, persistence, messaging primitives, checkpoint 4A incidents, and the Phase 7 deterministic plus PostgreSQL persistence checkpoint. |
 | `services/ai-runtime/` | FastAPI bounded analysis runtime with provider-neutral contracts, DeepSeek adapter, shared PostgreSQL replay/accounting, startup/periodic capability probe, `/health` liveness, and `/ready` readiness; live egress remains disabled. |
 | `services/tool-gateway/` | Spring Boot fail-closed Tool Gateway checkpoint: RS256/JWKS delegated capabilities, dedicated workload-token boundary, typed fixture observability action, validated manifest loader, bounded connector execution, recursive DLP, deterministic receipts/audit adapters, `/internal/v1/tools/execute`, and `/ready`. Durable/live exit remains blocked. |
 | `packages/contracts/` | Canonical OpenAPI, JSON Schema, and synthetic fixtures. |
@@ -71,7 +72,11 @@ CI, production IdP, or production deployment result is claimed.
 CI installs Maven 3.9.12 from the official Apache repository with a pinned
 SHA-512 digest before every job that invokes Maven. The local PowerShell
 installer is `scripts/dev/install-pinned-maven.ps1`; actionlint remains pinned
-through its verified release installer.
+through its verified release installer. Java dependency policy uses two
+CycloneDX 2.9.2 SBOMs plus a single checksum-pinned OSV 2.4.0 scan; its
+fail-closed evaluator requires exact source and package coverage and blocks
+known CVSS severity at 7 or greater. Jackson Databind is pinned to patched
+3.1.5 in both Java services.
 
 `compose.yaml` defines PostgreSQL, optional Redis, a disabled object-storage
 review profile, migration and least-privilege Platform/AI runtime roles, AI Runtime, Tool
@@ -150,6 +155,23 @@ inbox, and initial audit tables. V002 adds bounded dispatcher tenant scheduling
 and workload binding. Applied migrations are additive; V001/V002 are not
 rewritten by checkpoint 4A.
 
+## Phase 7 Investigation Persistence Checkpoint
+
+`InvestigationStateMachine` remains the pure command/event reducer and
+`InvestigationOrchestrator` remains a bounded synchronous adapter. When
+`opsmind.persistence.enabled=true` and `opsmind.investigation.store=postgres`,
+`JdbcInvestigationRunStore` persists a tenant-scoped snapshot under optimistic
+revision control. V006 adds forced-RLS `investigation_runs` and append-only
+`investigation_run_events`; `InvestigationEventLedger` mirrors the authoritative
+event payload into the database-owned `audit_events` chain in the same
+transaction. Database triggers enforce contiguous sequence, exact event JSON,
+terminal-response semantics, and event/snapshot parity even for direct SQL.
+
+This is persistence, not durable orchestration. The code does not resume an
+in-flight runner after process loss and does not append investigation events to
+`incident_timeline_events`. Only fixture implementations of the Phase 7 AI and
+Tool ports exist, so the live capability-backed path and G3 remain open.
+
 ## Security and Failure Posture
 
 - OIDC mode validates signature/issuer, audience, subject, time claims, maximum
@@ -177,7 +199,8 @@ See [Security Model](./security-model.md) for the complete threat model and
 | Phase 5 quality checks | Ruff and mypy clean | Local verification |
 | Platform API Maven suite | Pass | Local verification, including pgJDBC `42.7.13` and V005 migration contracts |
 | `scripts/validation/validate-phase-05-ai-runtime.mjs` | Static checkpoint PASS | Exit gate remains BLOCK: active B-004 plus absent passing rotated-key synthetic smoke |
-| `scripts/validation/validate-phase-06-tool-gateway.mjs` | Checkpoint PASS; 4 schemas, 5 fixtures, digest recomputation, manifest/OpenAPI/source abuse checks; 23 Maven tests pass | Phase exit BLOCK: no durable adapters, Platform issuer conformance, three families, live target, or provider-specific cancellation proof |
+| `scripts/validation/validate-phase-06-tool-gateway.mjs` | Checkpoint PASS; 4 schemas, 5 fixtures, digest recomputation, manifest/OpenAPI/source abuse checks; 24 Maven tests pass | Phase exit BLOCK: no durable adapters, Platform issuer conformance, three families, live target, or provider-specific cancellation proof |
+| `scripts/validation/validate-phase-07-investigation-slice.mjs` | Durable persistence checkpoint PASS; 2 schemas, 2 fixtures, 1 reference, and 21 Java source files checked | Phase exit BLOCK: no real clients/live connector/UI/trace-p95 proof; the current workflow does not invoke this static validator |
 
 | Evidence | Verified result | Scope limitation |
 |---|---|---|
@@ -189,10 +212,11 @@ See [Security Model](./security-model.md) for the complete threat model and
 
 Current hash recomputation matches all recorded Phase 4 source manifests, the
 V003 digest, and packaged Platform API JAR digest. The Phase 3 identity and
-Phase 4 PostgreSQL transcripts bind the same JAR digest. The current full
-Platform API Surefire report set contains 86 tests, zero failures/errors, and
-11 environment-guarded skips; guarded database tests are proven separately by
-the disposable PostgreSQL gate.
+Phase 4 PostgreSQL transcripts bind the same JAR digest. The Phase 7 checkpoint
+has a clean full Platform API suite plus dedicated PostgreSQL migration,
+persistence, and direct-SQL integrity coverage. Environment-guarded tests are
+proven by the disposable PostgreSQL job; revision-bound counts come from the
+current CI artifact rather than a stale local report directory.
 
 ## Standard Commands
 
@@ -216,11 +240,11 @@ semantics.
 
 - Full Phase 4: incident list/patch/assignment, postmortems, and governed
   evidence upload/read/tombstone/restore/purge/reconciliation.
-- Operator incident UI, provider calls, live connectors, Tool Gateway execution,
-  Temporal workflows, RAG, remediation, and production object storage.
+- Operator incident UI, live provider egress, live connectors, the real
+  Platform-to-Tool-Gateway execution path, Temporal workflows, RAG,
+  remediation, and production object storage.
 - Production IdP/federation/session/break-glass conformance.
-- Remote immutable CI/Compose evidence, measured load/SLO proof, DR proof, or a
-  production release.
+- Measured load/SLO proof, DR proof, or a production release.
 
 These gaps are tracked in [Roadmap](./project-roadmap.md),
 [Progress](./progress.md), and [Blockers](./blockers.md).

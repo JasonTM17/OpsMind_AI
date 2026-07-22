@@ -44,7 +44,7 @@ The slice must use one pure deterministic investigation state machine. Phase 7 s
 - Downstream:
   - Phase 8 uses this slice as the baseline system-under-test for deterministic benchmark scoring.
 - File ownership:
-  - This phase owns orchestration and operator surfaces only: `services/platform-api/**`, `apps/web/**`, slice-specific fixtures, and cross-service E2E tests.
+  - This phase owns orchestration and operator surfaces only: `services/platform-api/**`, `apps/operator-web/**`, slice-specific fixtures, and cross-service E2E tests.
   - It should not modify `services/ai-runtime/**` or `services/tool-gateway/**` if Phases 5 and 6 expose adequate contracts.
 
 ## Data Flow
@@ -58,7 +58,26 @@ The slice must use one pure deterministic investigation state machine. Phase 7 s
 5. Platform API executes each allowed tool intent through Tool Gateway and appends normalized evidence to the incident timeline.
 6. Platform API re-calls AI runtime with evidence references and receives a final `complete`, `abstain`, or `need_more_evidence` outcome.
 7. Platform API persists the result, evidence links, missing-evidence list, counter-evidence, confidence, token/cost summary, and audit chain.
-8. `apps/web` renders the incident investigation timeline, evidence list, tool calls, and final RCA via SSE or polling without showing raw chain-of-thought.
+8. `apps/operator-web` renders the incident investigation timeline, evidence list, tool calls, and final RCA via SSE or polling without showing raw chain-of-thought.
+
+The sequence above is the Phase 7 target, not the current-state claim. At the
+2026-07-22 checkpoint, steps 2 and 7 persist bounded run snapshots, run events,
+and audit rows; step 5 does not yet append to `incident_timeline_events`; steps
+3-6 still use fixture clients; and step 8 is not implemented.
+
+## Current Checkpoint (2026-07-22)
+
+| Capability | Evidence-backed state |
+|---|---|
+| Reducer and runner | Pure deterministic reducer plus bounded synchronous in-process runner implemented |
+| Persistence | V006 PostgreSQL snapshot + contiguous immutable run-event ledger + same-transaction audit chain; forced RLS and optimistic revision checks implemented |
+| Integrity | Direct SQL cannot forge terminal snapshots/events, break event parity, or mutate append-only ledgers |
+| Workflow durability | Not implemented; persisted snapshots do not provide restart/resume semantics |
+| Incident timeline | Not implemented; events live in `investigation_run_events` and `audit_events`, not `incident_timeline_events` |
+| External clients | Fixture AI/Tool clients only; real capability-backed HTTP clients pending |
+| Live path and UI | Selected live connector, CK/Stitch UI, browser E2E, cross-service trace, and p95 evidence pending |
+
+Static evidence: `CheckpointResult=PASS`; phase evidence: `PhaseExit=BLOCK`.
 
 ## Architecture and Design Decisions
 
@@ -78,49 +97,42 @@ The slice must use one pure deterministic investigation state machine. Phase 7 s
 
 ## File Inventory
 
-### CREATE
+### Implemented checkpoint
 
-- `services/platform-api/src/main/java/ai/opsmind/platform/investigation/api/InvestigationRunController.java`
-- `services/platform-api/src/main/java/ai/opsmind/platform/investigation/application/InvestigationRunService.java`
-- `services/platform-api/src/main/java/ai/opsmind/platform/investigation/application/InvestigationOrchestrator.java`
-- `services/platform-api/src/main/java/ai/opsmind/platform/investigation/domain/InvestigationStateMachine.java`
-- `services/platform-api/src/main/java/ai/opsmind/platform/investigation/domain/InvestigationCommand.java`
-- `services/platform-api/src/main/java/ai/opsmind/platform/investigation/domain/InvestigationEvent.java`
-- `services/platform-api/src/main/java/ai/opsmind/platform/investigation/integration/AiRuntimeClient.java`
-- `services/platform-api/src/main/java/ai/opsmind/platform/investigation/integration/ToolGatewayClient.java`
-- `services/platform-api/src/main/java/ai/opsmind/platform/investigation/projection/InvestigationProjectionAssembler.java`
-- `services/platform-api/src/main/java/ai/opsmind/platform/investigation/projection/InvestigationRunReadModel.java`
-- `services/platform-api/src/main/resources/db/migration/V004__investigation_slice.sql`
+- `services/platform-api/src/main/java/ai/opsmind/platform/investigation/{api,application,domain,integration,projection}/`
+- `services/platform-api/src/main/java/ai/opsmind/platform/investigation/application/JdbcInvestigationRunStore.java`
+- `services/platform-api/src/main/java/ai/opsmind/platform/investigation/application/InvestigationEventLedger.java`
+- `services/platform-api/src/main/java/ai/opsmind/platform/investigation/application/InvestigationPersistenceJsonCodec.java`
+- `services/platform-api/src/main/java/ai/opsmind/platform/investigation/application/InvestigationRunSqlMapper.java`
+- `services/platform-api/src/main/java/ai/opsmind/platform/investigation/integration/InvestigationAiRuntimeClient.java`
+- `services/platform-api/src/main/java/ai/opsmind/platform/investigation/integration/InvestigationToolGatewayClient.java`
+- `services/platform-api/src/main/resources/db/migration/V006__investigation_run_persistence.sql`
 - `services/platform-api/src/test/java/ai/opsmind/platform/investigation/`
-- `packages/contracts/json-schema/investigation/v1/investigation-run.schema.json`
-- `packages/contracts/json-schema/investigation/v1/investigation-view.schema.json`
+- `packages/contracts/json-schema/investigation/v1/`
 - `packages/contracts/fixtures/investigation/`
-- `apps/web/src/app/(ops)/incidents/[incidentId]/investigation/page.tsx`
-- `apps/web/src/components/investigation-run/*`
-- `apps/web/src/lib/api/investigation-client.ts`
-- `apps/web/tests/e2e/thin-evidence-backed-incident.spec.ts`
-- `tests/fixtures/vertical-slice/deployment-latency-regression/*`
-- `infra/compose/profiles/phase-07-vertical-slice.compose.yaml`
 
-### MODIFY
+### Pending Phase 7 surfaces
 
-- Existing incident detail route and API router files only if Phase 4 created them and only to add links/navigation to the investigation view.
+- Real capability-backed Platform API clients and their contract tests.
+- Allowlisted read-only intent catalog and selected live connector wiring.
+- Incident timeline linkage for accepted investigation events.
+- `apps/operator-web/` investigation route, components, API client, and Playwright coverage, built through CK frontend workflow and Stitch.
+- Root Compose integration profile/fixture for the full slice.
+- Cross-service E2E, trace-correlation, and p95 benchmark evidence.
 
-### DELETE
-
-- None.
+No deletion is planned.
 
 ## Implementation Tasks
 
-1. Lock the slice scenario and acceptance boundaries.
+1. Lock the slice scenario and acceptance boundaries. **Checkpoint complete.**
    - Choose one incident class.
    - Define exactly which connectors are allowed.
    - Define the maximum rounds, budgets, and abstain rules.
    - Define the minimum evidence required before the model is allowed to output a final RCA.
-2. Add investigation run records and projection contract.
+2. Add investigation run records and projection contract. **Persistence complete; rich tool/evidence projection pending.**
    - Persist run status, started/ended timestamps, prompt/schema/model version, budgets, token/cost totals, and final outcome.
    - Projection contract must support list of tool calls, evidence references, missing evidence, counter-evidence, and confidence.
-3. Implement the pure investigation state machine and bounded in-process runner inside platform API.
+3. Implement the pure investigation state machine and bounded in-process runner inside platform API. **Reducer/runner complete; real clients and incident-timeline linkage pending.**
    - Commands/events and stop reasons contain no network/database/time/random calls.
    - Runner performs I/O through ports and applies only validated events to the same reducer Phase 9 will reuse.
    - Start run.
@@ -129,18 +141,18 @@ The slice must use one pure deterministic investigation state machine. Phase 7 s
    - Rehydrate evidence references.
    - Re-call AI runtime until `complete`, `abstain`, or budget exhaustion.
    - Write timeline and audit entries at each step.
-4. Add explicit no-progress and duplicate controls.
+4. Add explicit no-progress and duplicate controls. **Checkpoint complete.**
    - If the model requests the same tool with the same arguments repeatedly, stop and surface `no_progress`.
    - If evidence arrives but does not increase state, stop after configured repeat threshold.
    - If the run exceeds time/token/tool budgets, end with a visible budget outcome.
-5. Build the thin operator UI.
+5. Build the thin operator UI. **Pending CK frontend workflow and Stitch.**
    - Incident page exposes an "Investigate" action only for allowed roles.
    - Investigation view shows run status, evidence cards, tool call history, missing evidence, final RCA, confidence, and usage/cost summary.
    - UI must display explicit failure/abstain states and correlation IDs for support.
-6. Add the local integration profile and seed fixture.
+6. Add the local integration profile and seed fixture. **Deterministic Java fixture complete; full service profile and live path pending.**
    - Compose profile wires platform API, AI runtime, Tool Gateway, and seeded incident fixture together.
    - Seed scenario must be deterministic enough to reproduce later in Phase 8; a separate G3 path points the same slice at the selected live non-production connector with synthetic data.
-7. Add end-to-end and failure-path coverage.
+7. Add end-to-end and failure-path coverage. **Unit/persistence/integrity paths complete; cross-service and browser E2E pending.**
    - Happy path for the chosen slice.
    - Tool denial path.
    - AI runtime abstain path.
@@ -166,9 +178,11 @@ The slice must use one pure deterministic investigation state machine. Phase 7 s
 
 | Scope | Coverage | Evidence artifact |
 |---|---|---|
-| Unit | orchestrator state transitions, duplicate-tool detection, budget enforcement, projection assembly | unit CI report |
-| Contract | platform API to AI runtime and Tool Gateway payload compatibility | client contract report |
-| Integration | seeded incident happy path, denial path, abstain path, no-progress path | integration report with timeline snapshots |
+| Static checkpoint | reducer/contracts/fixtures/persistence source inventory | `validate-phase-07-investigation-slice.mjs`: PASS; PhaseExit BLOCK |
+| Unit | reducer/orchestrator transitions, duplicate-tool detection, budget enforcement, projection assembly | Platform API Maven report: passing |
+| Persistence | V006 migration, forced RLS, optimistic conflict, event/audit parity, direct-SQL forgery denial | PostgreSQL CI job: passing |
+| Contract | real Platform API to AI runtime and Tool Gateway payload compatibility | pending client contract report |
+| Integration | seeded cross-service happy, denial, abstain, and no-progress paths | pending integration report with timeline snapshots |
 | Live non-production | same synthetic scenario through selected real connector and scoped identity | redacted connector/product trace |
 | E2E UI | operator starts run, sees evidence, sees cited RCA, sees failure states | Playwright report |
 | Security | role-based entrypoint, hidden chain-of-thought, no write-capable tool path | security regression report |

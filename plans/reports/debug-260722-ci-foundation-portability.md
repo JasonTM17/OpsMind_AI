@@ -8,7 +8,7 @@ status: resolved-locally-pending-ci
 
 ## Executive summary
 
-The first Phase 7 push exposed four independent CI defects in the repository
+The first Phase 7 pushes exposed six independent CI defects in the repository
 governance surface. None came from the investigation reducer. Each was
 reproduced from GitHub Actions logs, fixed at its source, and re-run locally
 with the pinned tools.
@@ -36,6 +36,17 @@ with the pinned tools.
    Maven job. The first cross-runner attempt exposed a PowerShell naming
    collision with automatic read-only `$IsWindows`; the installer now uses the
    distinct `$hostIsWindows` name.
+6. Two consecutive runs reached the 60-minute Java-job timeout after Maven
+   verification had already passed. Run `29923961768` artifacts prove
+   Platform API verification completed in 30.818 seconds (135 tests, zero
+   failures/errors) and Tool Gateway verification completed in 24.231 seconds
+   (24 tests, zero failures/errors). Each ephemeral runner then independently
+   started an unauthenticated OWASP Dependency-Check import of 369,410 NVD
+   records and reached only 11 percent before cancellation. The workflow now
+   keeps Maven verification in bounded 20-minute matrix jobs and performs one
+   shared, checksum-pinned OSV 2.4.0 scan over two CycloneDX 2.9.2 SBOMs. A
+   tested fail-closed evaluator requires exactly two SBOM sources, non-empty
+   package coverage, known numeric severity, and blocks CVSS 7 or greater.
 
 ## Verification
 
@@ -46,14 +57,28 @@ with the pinned tools.
 - Repository layout validator: PASS.
 - Portable command surface: 24/24 PASS under Git Bash.
 - Maven installer: verified release download and cache-hit paths on Windows
-  PowerShell 5.1, Maven 3.9.12 reported by the installed binary. The latest
-  GitHub run reached the installer on both OSes and failed only on the
-  now-fixed `$IsWindows` collision; a fresh run is required for release proof.
+  PowerShell 5.1, Maven 3.9.12 reported by the installed binary. Run
+  `29923961768` passed both Ubuntu and Windows clean-bootstrap jobs with that
+  installer.
+- OSV policy regression suite: 7/7; no-finding, below-threshold, blocking,
+  malformed/unknown severity, missing severity groups, missing sources, and
+  malformed-output cases covered.
+- OSV installer: release SHA-256 and version 2.4.0 verified, including the
+  cache-hit path; 2/2 negative tests reject relative roots and tampered cache
+  binaries before execution.
+- Current Java verification: Platform API 138 tests, zero failures/errors (16
+  environment-gated skips); Tool Gateway 24 tests, zero failures/errors/skips.
+- Fresh CycloneDX SBOMs: 111 Platform API components and 97 Tool Gateway
+  components; both resolve patched Jackson Databind 3.1.5.
+- End-to-end OSV scan: two sources, 208 packages, zero vulnerability groups,
+  `ScannerExit=0`, `Result=PASS` at CVSS 7.
+- Pinned actionlint 1.7.12 and repository layout validation: PASS after the
+  workflow/security changes.
 
 ## Unresolved questions
 
-- The post-installer GitHub Actions run must still complete the full matrix;
-  the latest run is the release evidence for the Maven provisioning change.
+- The replacement SBOM/OSV workflow must still pass a fresh revision-bound
+  GitHub Actions run before this report can move to `resolved-remote-verified`.
 - Thirteen Dependabot alerts (9 high, 4 moderate) remain in copied CK tooling
   manifests under `.agents`, `.claude`, and `.codex`; they are outside the
   runtime dependency graph but should be patched or retired in a dedicated
