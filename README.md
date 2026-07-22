@@ -149,9 +149,11 @@ project-local dependency layout.
 
 Pinned inputs are `.node-version` (Node 24.12.0), `pnpm@11.15.0`,
 `.python-version` (Python 3.13), `uv==0.11.29`, and `.java-version`
-(Java 21), with `.maven-version` pinning Maven 3.9.12 and the bootstrap script
-pinning actionlint 1.7.12 to official release SHA-256 digests and re-verifying
-cache hits against the retained release archive. See [Local Development](./docs/local-development.md) for host
+(Java 21), with `.maven-version` pinning Maven 3.9.12. The CI composite action
+installs that Maven distribution from the official repository with SHA-512
+verification; the bootstrap script pins actionlint 1.7.12 to official release
+SHA-256 digests and re-verifies cache hits against the retained release archive.
+See [Local Development](./docs/local-development.md) for host
 requirements, cache locations, and failure behavior.
 
 ## Repository Navigation

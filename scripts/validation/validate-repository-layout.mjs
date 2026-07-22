@@ -25,6 +25,7 @@ const expectedFiles = [
   ".editorconfig",
   ".env.example",
   ".github/workflows/pr-quality.yml",
+  ".github/actions/install-pinned-maven/action.yml",
   ".gitignore",
   ".java-version",
   ".maven-version",
@@ -36,6 +37,7 @@ const expectedFiles = [
   "pnpm-lock.yaml",
   "pnpm-workspace.yaml",
   "scripts/dev/install-pinned-actionlint.mjs",
+  "scripts/dev/install-pinned-maven.ps1",
   "scripts/dev/recover-stale-command-lock.mjs",
   "scripts/dev/opsmind.ps1",
   "scripts/dev/opsmind.sh",
@@ -236,6 +238,7 @@ if (fs.existsSync(workflowPath)) {
   for (const contract of [
     "--frozen-lockfile",
     "install-pinned-actionlint.mjs",
+    "install-pinned-maven",
     "services/ai-runtime/uv.lock",
     "uv==0.11.29",
     "--locked",

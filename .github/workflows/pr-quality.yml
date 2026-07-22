@@ -158,6 +158,7 @@ jobs:
         with:
           distribution: temurin
           java-version-file: .java-version
+      - uses: ./.github/actions/install-pinned-maven
       - name: Bootstrap Linux workspace
         if: runner.os == 'Linux'
         shell: bash
@@ -364,6 +365,7 @@ jobs:
           distribution: temurin
           java-version-file: .java-version
           cache: maven
+      - uses: ./.github/actions/install-pinned-maven
       - name: Verify service
         shell: bash
         run: |
@@ -442,6 +444,7 @@ jobs:
           distribution: temurin
           java-version-file: .java-version
           cache: maven
+      - uses: ./.github/actions/install-pinned-maven
       - name: Install PostgreSQL client
         run: |
           sudo apt-get update -qq
@@ -554,6 +557,7 @@ jobs:
           distribution: temurin
           java-version-file: .java-version
           cache: maven
+      - uses: ./.github/actions/install-pinned-maven
       - name: Run Keycloak OIDC conformance
         shell: pwsh
         run: |

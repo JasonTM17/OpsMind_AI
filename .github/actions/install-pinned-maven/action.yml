@@ -1,0 +1,8 @@
+name: Install pinned Maven
+description: Install the repository-pinned Maven distribution with checksum verification.
+runs:
+  using: composite
+  steps:
+    - name: Install Maven distribution
+      shell: pwsh
+      run: ./scripts/dev/install-pinned-maven.ps1

@@ -29,12 +29,17 @@ Install Node 24.12.0 with Corepack, Python 3.13, JDK 21, Maven 3.9.12, and Docke
 Compose. Exact project pins are `.node-version`, `.python-version`,
 `.java-version`, `.maven-version`, `pnpm@11.15.0`, and `uv==0.11.29`. The setup command installs
 the pinned uv and actionlint 1.7.12 into `OPS_CACHE_ROOT`; it does not depend on
-mutable global installations. Actionlint archives are selected by OS/CPU,
+mutable global installations. CI installs the pinned Maven distribution before
+each Maven job, and `scripts/dev/install-pinned-maven.ps1` can install the same
+verified distribution into a local cache. Maven archives are selected by host
+platform and checked against the official SHA-512 digest. Actionlint archives are
+selected by OS/CPU,
 limited in size, checked against official release SHA-256 digests, verified by
 executing `-version`, and then published atomically. Cache hits re-hash the
-retained verified source archive and compare executable bytes before trust. A
-`tar` executable is
-therefore required on every supported host; current Windows includes one.
+retained verified source archive and compare executable bytes before trust. The
+Maven installer uses the platform archive (`.zip` on Windows and `.tar.gz` on
+Unix); a `tar` executable is therefore required on Unix and current Windows
+includes one for the actionlint path.
 Active Compose and Dockerfile base images also carry immutable registry
 digests; update a digest only through a reviewed image-refresh change. The
 disabled object-store sentinel is intentionally not a pullable image.
