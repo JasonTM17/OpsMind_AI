@@ -37,10 +37,14 @@ const expectedFiles = [
   "pnpm-lock.yaml",
   "pnpm-workspace.yaml",
   "scripts/dev/install-pinned-actionlint.mjs",
+  "scripts/dev/install-pinned-osv-scanner.mjs",
+  "scripts/dev/install-pinned-osv-scanner.test.mjs",
   "scripts/dev/install-pinned-maven.ps1",
   "scripts/dev/recover-stale-command-lock.mjs",
   "scripts/dev/opsmind.ps1",
   "scripts/dev/opsmind.sh",
+  "scripts/security/evaluate-osv-results.mjs",
+  "scripts/security/evaluate-osv-results.test.mjs",
   "scripts/validation/validate-phase-03-trust-foundation.mjs",
   "scripts/validation/run-phase-03-postgres-contract.sh",
   "apps/operator-web/Dockerfile",
@@ -182,6 +186,7 @@ for (const javaManifest of ["services/platform-api/pom.xml", "services/tool-gate
   if (!fs.existsSync(javaManifestPath)) continue;
   const manifest = fs.readFileSync(javaManifestPath, "utf8");
   for (const dependencyFloor of [
+    "<jackson-bom.version>3.1.5</jackson-bom.version>",
     "<log4j2.version>2.25.5</log4j2.version>",
     "<tomcat.version>11.0.24</tomcat.version>",
   ]) {
