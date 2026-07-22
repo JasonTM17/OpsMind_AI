@@ -1,0 +1,38 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://contracts.opsmind.invalid/tool-gateway/v1/evidence-envelope.schema.json",
+  "title": "ToolEvidenceEnvelopeV1",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "source", "target_identity", "observed_at", "window_start", "window_end",
+    "connector_version", "manifest_version", "trust_class", "content_digest",
+    "content", "redacted_fields", "truncated"
+  ],
+  "properties": {
+    "source": { "type": "string", "minLength": 1, "maxLength": 128 },
+    "target_identity": { "type": "string", "minLength": 1, "maxLength": 256 },
+    "observed_at": { "type": "string", "format": "date-time" },
+    "window_start": { "type": "string", "format": "date-time" },
+    "window_end": { "type": "string", "format": "date-time" },
+    "connector_version": { "type": "string", "minLength": 1, "maxLength": 128 },
+    "manifest_version": { "type": "string", "minLength": 1, "maxLength": 128 },
+    "trust_class": { "enum": ["synthetic", "source-attested", "derived"] },
+    "content_digest": { "type": "string", "pattern": "^[a-f0-9]{64}$" },
+    "content": { "type": "object" },
+    "redacted_fields": { "type": "integer", "minimum": 0 },
+    "truncated": { "type": "boolean" },
+    "artifact_reference": { "type": ["string", "null"], "maxLength": 512 }
+  },
+  "allOf": [
+    {
+      "if": { "properties": { "truncated": { "const": true } }, "required": ["truncated"] },
+      "then": {
+        "required": ["artifact_reference"],
+        "properties": {
+          "artifact_reference": { "type": "string", "minLength": 1, "maxLength": 512 }
+        }
+      }
+    }
+  ]
+}

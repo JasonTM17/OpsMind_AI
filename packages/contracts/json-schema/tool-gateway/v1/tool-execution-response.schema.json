@@ -1,0 +1,61 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://contracts.opsmind.invalid/tool-gateway/v1/tool-execution-response.schema.json",
+  "title": "ToolExecutionResponseV1",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "execution_id", "status", "evidence", "request_digest",
+    "redaction_count", "truncated", "duplicate"
+  ],
+  "properties": {
+    "execution_id": { "type": "string", "format": "uuid" },
+    "status": { "enum": ["SUCCEEDED", "DENIED", "DUPLICATE", "FAILED"] },
+    "evidence": {
+      "type": "array",
+      "maxItems": 100,
+      "items": { "$ref": "./evidence-envelope.schema.json" }
+    },
+    "denial_code": {
+      "enum": [
+        "caller.unauthorized", "capability.invalid", "capability.verifier-unavailable",
+        "capability.expired", "capability.scope-mismatch", "capability.replayed",
+        "request.invalid", "request.oversize", "action.unknown", "action.disabled",
+        "arguments.invalid", "deadline.expired", "deadline.outside-capability",
+        "result.oversize", "execution.conflict", "execution.in-progress",
+        "execution.backpressure", "execution.store-unavailable", "audit.unavailable",
+        "connector.timeout", "connector.cancelled", "connector.failed"
+      ]
+    },
+    "audit_event_id": { "type": ["string", "null"], "format": "uuid" },
+    "request_digest": { "type": "string", "pattern": "^[a-f0-9]{64}$" },
+    "manifest_version": { "type": "string", "maxLength": 128 },
+    "source_provenance": { "type": "string", "maxLength": 256 },
+    "redaction_count": { "type": "integer", "minimum": 0 },
+    "truncated": { "type": "boolean" },
+    "duplicate": { "type": "boolean" }
+  },
+  "allOf": [
+    {
+      "if": { "properties": { "status": { "const": "SUCCEEDED" } }, "required": ["status"] },
+      "then": {
+        "required": ["audit_event_id", "manifest_version", "source_provenance"],
+        "properties": {
+          "audit_event_id": { "type": "string", "format": "uuid" },
+          "evidence": { "minItems": 1 }
+        }
+      }
+    },
+    {
+      "if": { "properties": { "status": { "enum": ["DENIED", "FAILED"] } }, "required": ["status"] },
+      "then": { "required": ["denial_code"] }
+    },
+    {
+      "if": { "properties": { "status": { "const": "DUPLICATE" } }, "required": ["status"] },
+      "then": {
+        "required": ["audit_event_id"],
+        "properties": { "audit_event_id": { "type": "string", "format": "uuid" } }
+      }
+    }
+  ]
+}

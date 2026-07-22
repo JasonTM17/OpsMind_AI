@@ -1,0 +1,68 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://contracts.opsmind.invalid/audit/audit-event.schema.json",
+  "title": "Incident Audit Event",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "schemaVersion",
+    "tenantSequenceNo",
+    "eventId",
+    "organizationId",
+    "actorId",
+    "action",
+    "resourceType",
+    "resourceId",
+    "operationId",
+    "occurredAt",
+    "payload",
+    "previousDigest",
+    "eventDigest"
+  ],
+  "properties": {
+    "schemaVersion": {
+      "type": "string",
+      "const": "incident-audit-v1",
+      "maxLength": 64,
+      "description": "Selects the canonical digest material and payload contract."
+    },
+    "tenantSequenceNo": {
+      "type": "integer",
+      "minimum": 1,
+      "maximum": 9223372036854775807,
+      "description": "Database-assigned contiguous position in this organization's audit chain."
+    },
+    "eventId": { "$ref": "../incidents/incident-types.schema.json#/$defs/uuid" },
+    "organizationId": { "$ref": "../incidents/incident-types.schema.json#/$defs/uuid" },
+    "actorId": { "$ref": "../incidents/incident-types.schema.json#/$defs/uuid" },
+    "action": {
+      "type": "string",
+      "enum": ["INCIDENT_CREATED", "INCIDENT_STATUS_TRANSITIONED"],
+      "minLength": 16,
+      "maxLength": 28
+    },
+    "resourceType": {
+      "type": "string",
+      "const": "incident",
+      "minLength": 8,
+      "maxLength": 8
+    },
+    "resourceId": { "$ref": "../incidents/incident-types.schema.json#/$defs/uuid" },
+    "operationId": {
+      "$ref": "../incidents/incident-types.schema.json#/$defs/uuid",
+      "description": "Operation correlation UUID used as correlationId in incident-audit-v1 digest material."
+    },
+    "occurredAt": { "$ref": "../incidents/incident-types.schema.json#/$defs/timestamp" },
+    "payload": { "$ref": "../incidents/incident-timeline-event.schema.json" },
+    "previousDigest": {
+      "oneOf": [
+        { "$ref": "../incidents/incident-types.schema.json#/$defs/digest" },
+        { "type": "null" }
+      ]
+    },
+    "eventDigest": {
+      "$ref": "../incidents/incident-types.schema.json#/$defs/digest",
+      "description": "SHA-256 from the incident-audit-v1 schema fields and previous tenant digest."
+    }
+  }
+}

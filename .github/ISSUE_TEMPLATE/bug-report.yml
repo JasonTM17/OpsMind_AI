@@ -1,0 +1,54 @@
+name: Bug report
+description: Report a reproducible defect in OpsMind AI.
+title: "bug: "
+labels:
+  - bug
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Please remove credentials, tokens, customer data, raw prompts, and production identifiers before submitting.
+  - type: textarea
+    id: summary
+    attributes:
+      label: Summary
+      description: What failed and what did you expect instead?
+    validations:
+      required: true
+  - type: textarea
+    id: reproduction
+    attributes:
+      label: Reproduction
+      description: Include the smallest safe reproduction and exact commands.
+    validations:
+      required: true
+  - type: input
+    id: revision
+    attributes:
+      label: Revision or image digest
+      description: Provide a commit, release tag, or immutable image digest.
+  - type: textarea
+    id: evidence
+    attributes:
+      label: Evidence
+      description: Attach sanitized logs, correlation IDs, test output, or verification artifact paths.
+  - type: dropdown
+    id: impact
+    attributes:
+      label: Impact
+      options:
+        - Low
+        - Medium
+        - High
+        - Critical / security-sensitive
+    validations:
+      required: true
+  - type: checkboxes
+    id: safety
+    attributes:
+      label: Safety checks
+      options:
+        - label: I removed secrets and sensitive tenant/customer data.
+          required: true
+        - label: This is not a security vulnerability report.
+          required: true

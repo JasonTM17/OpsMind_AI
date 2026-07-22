@@ -1,0 +1,14 @@
+# Canonical source and configuration inputs bound into identity conformance evidence.
+.env.example
+compose.yaml
+packages/contracts/openapi/opsmind-v1.yaml
+scripts/validation/run-phase-03-keycloak-conformance.ps1
+scripts/validation/verify-phase-03-keycloak-evidence.ps1
+scripts/validation/validate-phase-03-trust-foundation.mjs
+scripts/validation/keycloak/keycloak-conformance-support.ps1
+scripts/validation/keycloak/opsmind-conformance-realm.json
+scripts/validation/keycloak/oidc_browser_flow.py
+scripts/validation/keycloak/run_oidc_conformance.py
+services/platform-api/pom.xml
+services/platform-api/src/main/
+services/platform-api/src/test/

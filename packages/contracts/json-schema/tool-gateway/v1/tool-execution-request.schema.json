@@ -1,0 +1,47 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://contracts.opsmind.invalid/tool-gateway/v1/tool-execution-request.schema.json",
+  "title": "ToolExecutionRequestV1",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "execution_id", "tenant_id", "project_id", "incident_id", "run_id",
+    "actor_subject", "tool", "action", "schema_version", "resource",
+    "arguments", "deadline_at", "result_budget"
+  ],
+  "properties": {
+    "execution_id": { "type": "string", "format": "uuid" },
+    "tenant_id": { "type": "string", "format": "uuid" },
+    "project_id": { "type": "string", "format": "uuid" },
+    "incident_id": { "type": "string", "format": "uuid" },
+    "run_id": { "type": "string", "format": "uuid" },
+    "actor_subject": { "type": "string", "minLength": 1, "maxLength": 255 },
+    "tool": { "const": "observability" },
+    "action": { "const": "metrics.query" },
+    "schema_version": { "const": "1.0" },
+    "resource": {
+      "type": "string",
+      "pattern": "^prometheus:synthetic/[A-Za-z0-9][A-Za-z0-9_.:-]{0,127}$"
+    },
+    "arguments": {
+      "type": "object",
+      "additionalProperties": false,
+      "maxProperties": 3,
+      "properties": {
+        "service": { "type": "string", "pattern": "^[A-Za-z0-9][A-Za-z0-9_.:-]{0,127}$" },
+        "metric": { "type": "string", "pattern": "^[A-Za-z0-9][A-Za-z0-9_.:-]{0,127}$" },
+        "max_points": { "type": "integer", "minimum": 1, "maximum": 100 }
+      }
+    },
+    "deadline_at": { "type": "string", "format": "date-time" },
+    "result_budget": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["max_bytes", "max_items"],
+      "properties": {
+        "max_bytes": { "type": "integer", "minimum": 1, "maximum": 65536 },
+        "max_items": { "type": "integer", "minimum": 1, "maximum": 100 }
+      }
+    }
+  }
+}

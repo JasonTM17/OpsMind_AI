@@ -1,0 +1,30 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://contracts.opsmind.invalid/common/problem-details.schema.json",
+  "title": "Problem Details",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["type", "title", "status", "code", "instance"],
+  "properties": {
+    "type": { "type": "string", "format": "uri-reference" },
+    "title": { "type": "string", "minLength": 1, "maxLength": 160 },
+    "status": { "type": "integer", "minimum": 400, "maximum": 599 },
+    "code": { "type": "string", "pattern": "^[a-z0-9]+(?:[-.][a-z0-9]+)*$" },
+    "detail": { "type": "string", "maxLength": 1000 },
+    "instance": { "type": "string", "format": "uri-reference" },
+    "traceId": { "type": "string", "pattern": "^[A-Za-z0-9_-]{8,128}$" },
+    "errors": {
+      "type": "array",
+      "maxItems": 50,
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["field", "message"],
+        "properties": {
+          "field": { "type": "string", "maxLength": 255 },
+          "message": { "type": "string", "maxLength": 500 }
+        }
+      }
+    }
+  }
+}

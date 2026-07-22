@@ -1,0 +1,6 @@
+{
+  "title": "Synthetic checkout error-rate spike",
+  "summary": "Synthetic 5xx rate exceeded the deterministic test threshold.",
+  "severity": "CRITICAL",
+  "reason": "Operator opened an incident after validating the synthetic alert."
+}

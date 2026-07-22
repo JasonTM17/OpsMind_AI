@@ -1,0 +1,41 @@
+{
+  "status": "complete",
+  "run_id": "33333333-3333-4333-8333-333333333333",
+  "model_id": "deepseek-v4-flash",
+  "prompt_version": "prompt-incident-investigation-v1",
+  "schema_version": "analysis-v1",
+  "hypotheses": [
+    {
+      "title": "Synthetic latency regression",
+      "explanation": "The redacted metric changed after the synthetic deployment marker.",
+      "confidence": 0.82,
+      "citations": [
+        {
+          "evidence_id": "44444444-4444-4444-8444-444444444444",
+          "digest": "sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+          "claim": "Latency increased after the deployment marker."
+        }
+      ]
+    }
+  ],
+  "counter_evidence": [],
+  "missing_evidence": ["A synthetic trace sample would increase confidence."],
+  "citations": [
+    {
+      "evidence_id": "44444444-4444-4444-8444-444444444444",
+      "digest": "sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+      "claim": "Latency increased after the deployment marker."
+    }
+  ],
+  "confidence": 0.82,
+  "usage": {
+    "prompt_tokens": 100,
+    "completion_tokens": 40,
+    "total_tokens": 140
+  },
+  "cost_estimate": {
+    "currency": "USD",
+    "amount": 0.00018
+  },
+  "requested_tool_calls": []
+}

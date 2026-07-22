@@ -1,0 +1,49 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://contracts.opsmind.invalid/incidents/incident-types.schema.json",
+  "title": "Incident Contract Types",
+  "$defs": {
+    "uuid": {
+      "type": "string",
+      "format": "uuid",
+      "minLength": 36,
+      "maxLength": 36
+    },
+    "timestamp": {
+      "type": "string",
+      "format": "date-time",
+      "minLength": 20,
+      "maxLength": 40
+    },
+    "severity": {
+      "type": "string",
+      "enum": ["SEV1", "SEV2", "SEV3", "SEV4"],
+      "minLength": 4,
+      "maxLength": 4
+    },
+    "status": {
+      "type": "string",
+      "enum": ["OPEN", "INVESTIGATING", "AWAITING_APPROVAL", "MITIGATING", "RESOLVED", "CLOSED"],
+      "minLength": 4,
+      "maxLength": 17
+    },
+    "nonEmptyText": {
+      "type": "string",
+      "minLength": 1,
+      "maxLength": 8000,
+      "pattern": "\\S"
+    },
+    "reason": {
+      "type": "string",
+      "minLength": 1,
+      "maxLength": 1000,
+      "pattern": "\\S"
+    },
+    "digest": {
+      "type": "string",
+      "minLength": 64,
+      "maxLength": 64,
+      "pattern": "^[a-f0-9]{64}$"
+    }
+  }
+}

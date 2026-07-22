@@ -1,0 +1,21 @@
+{
+  "tool": "observability",
+  "action": "metrics.query",
+  "schema_version": "1.0",
+  "manifest_version": "observability.metrics.query@1",
+  "connector_id": "fixture-observability",
+  "enabled_profiles": ["fixture"],
+  "read_only": true,
+  "request_schema_id": "https://contracts.opsmind.invalid/tool-gateway/v1/tool-execution-request.schema.json",
+  "risk_class": "read-only",
+  "required_role": "operator:read",
+  "resource_prefix": "prometheus:synthetic/",
+  "credential_profile": "fixture-read-only",
+  "timeout_ms": 5000,
+  "maximum_bytes": 65536,
+  "maximum_items": 100,
+  "allowed_arguments": ["service", "metric", "max_points"],
+  "egress_targets": ["fixture://observability"],
+  "redaction_class": "secrets-and-pii",
+  "audit_class": "evidence.read"
+}

@@ -1,0 +1,12 @@
+{
+  "iss": "https://idp.example.test/opsmind",
+  "sub": "operator-001",
+  "aud": ["opsmind-platform-api"],
+  "exp": 1893456600,
+  "iat": 1893456000,
+  "auth_time": 1893455990,
+  "amr": ["pwd", "mfa"],
+  "email": "operator@example.test",
+  "name": "Synthetic Operator",
+  "scope": "incident:read project:read"
+}

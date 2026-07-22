@@ -1,0 +1,18 @@
+{
+  "issuer": "https://platform.example.test",
+  "subject": "operator-001",
+  "audience": "opsmind-tool-gateway",
+  "tenant": {
+    "organizationId": "11111111-1111-4111-8111-111111111111",
+    "projectId": "22222222-2222-4222-8222-222222222222",
+    "roles": ["operator:read"]
+  },
+  "incidentId": "33333333-3333-4333-8333-333333333333",
+  "resources": ["prometheus:synthetic/opsmind-api"],
+  "actions": ["metrics.query"],
+  "budget": { "maxCalls": 5, "maxBytes": 200000 },
+  "nonce": "syntheticNonce_001234567890",
+  "issuedAt": "2030-01-01T00:00:00Z",
+  "expiresAt": "2030-01-01T00:05:00Z",
+  "policyVersion": "policy-2026.07"
+}

@@ -1,0 +1,18 @@
+{
+  "source": "fixture-prometheus",
+  "target_identity": "prometheus:synthetic/opsmind-api",
+  "observed_at": "2030-01-01T00:03:00Z",
+  "window_start": "2030-01-01T00:00:00Z",
+  "window_end": "2030-01-01T00:03:00Z",
+  "connector_version": "fixture-observability@1",
+  "manifest_version": "observability.metrics.query@1",
+  "trust_class": "synthetic",
+  "content_digest": "f1c78bf4c750e01ebf7387529739e69de60c6af1525bca87fa0ea1991516e2db",
+  "content": {
+    "service": "opsmind-api",
+    "metric": "http_errors_total",
+    "authorization": "[REDACTED]"
+  },
+  "redacted_fields": 1,
+  "truncated": false
+}

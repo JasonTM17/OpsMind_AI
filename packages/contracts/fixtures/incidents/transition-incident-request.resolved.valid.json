@@ -1,0 +1,6 @@
+{
+  "targetStatus": "RESOLVED",
+  "reason": "Operator confirmed service recovery and the evidence-backed cause.",
+  "rootCause": "A synthetic configuration change exhausted the checkout connection pool.",
+  "resolutionSummary": "The synthetic configuration was reverted and saturation returned to baseline."
+}

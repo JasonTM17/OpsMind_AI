@@ -1,0 +1,18 @@
+# syntax=docker/dockerfile:1.7
+FROM maven:3.9.12-eclipse-temurin-21@sha256:c3c9d3ac4ce8431a3995c0318b8d390f448e693dd4fabc16e9b68d2e1f3d7b46 AS build
+WORKDIR /workspace
+COPY services/platform-api/pom.xml pom.xml
+RUN --mount=type=cache,target=/root/.m2 mvn -q dependency:go-offline
+COPY services/platform-api/src src
+RUN --mount=type=cache,target=/root/.m2 mvn -q -DskipTests package
+
+FROM eclipse-temurin:21-jre-noble@sha256:373787d1d45a87f084fda43e7de0e9acf5eedee049446efac738f13587ec4c64 AS runtime
+WORKDIR /app
+RUN apt-get update && \
+    apt-get install --yes --no-install-recommends curl && \
+    rm -rf /var/lib/apt/lists/* && \
+    groupadd --system --gid 10001 opsmind && \
+    useradd --system --uid 10001 --gid opsmind --no-create-home opsmind
+USER opsmind
+COPY --from=build --chown=opsmind:opsmind /workspace/target/platform-api.jar app.jar
+ENTRYPOINT ["java", "-XX:MaxRAMPercentage=75", "-jar", "/app/app.jar"]

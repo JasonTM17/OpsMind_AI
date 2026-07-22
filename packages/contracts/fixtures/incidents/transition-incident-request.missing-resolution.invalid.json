@@ -1,0 +1,5 @@
+{
+  "targetStatus": "RESOLVED",
+  "reason": "Operator attempted to resolve without recording the required outcome.",
+  "rootCause": "A synthetic configuration change exhausted the checkout connection pool."
+}

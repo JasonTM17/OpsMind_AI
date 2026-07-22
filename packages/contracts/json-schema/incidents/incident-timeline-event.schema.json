@@ -1,0 +1,95 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://contracts.opsmind.invalid/incidents/incident-timeline-event.schema.json",
+  "title": "Incident Timeline Event",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "eventId",
+    "organizationId",
+    "projectId",
+    "incidentId",
+    "incidentVersion",
+    "eventType",
+    "actorId",
+    "operationId",
+    "occurredAt",
+    "reason",
+    "fromStatus",
+    "toStatus",
+    "rootCause",
+    "resolutionSummary"
+  ],
+  "properties": {
+    "eventId": { "$ref": "./incident-types.schema.json#/$defs/uuid" },
+    "organizationId": { "$ref": "./incident-types.schema.json#/$defs/uuid" },
+    "projectId": { "$ref": "./incident-types.schema.json#/$defs/uuid" },
+    "incidentId": { "$ref": "./incident-types.schema.json#/$defs/uuid" },
+    "incidentVersion": {
+      "type": "integer",
+      "minimum": 0,
+      "maximum": 2147483647
+    },
+    "eventType": {
+      "type": "string",
+      "enum": ["INCIDENT_CREATED", "INCIDENT_STATUS_TRANSITIONED"],
+      "minLength": 16,
+      "maxLength": 28
+    },
+    "actorId": { "$ref": "./incident-types.schema.json#/$defs/uuid" },
+    "operationId": { "$ref": "./incident-types.schema.json#/$defs/uuid" },
+    "occurredAt": { "$ref": "./incident-types.schema.json#/$defs/timestamp" },
+    "reason": { "$ref": "./incident-types.schema.json#/$defs/reason" },
+    "fromStatus": {
+      "oneOf": [
+        { "$ref": "./incident-types.schema.json#/$defs/status" },
+        { "type": "null" }
+      ]
+    },
+    "toStatus": { "$ref": "./incident-types.schema.json#/$defs/status" },
+    "rootCause": {
+      "type": ["string", "null"],
+      "minLength": 1,
+      "maxLength": 8000,
+      "pattern": "\\S"
+    },
+    "resolutionSummary": {
+      "type": ["string", "null"],
+      "minLength": 1,
+      "maxLength": 8000,
+      "pattern": "\\S"
+    }
+  },
+  "allOf": [
+    {
+      "if": {
+        "properties": { "eventType": { "const": "INCIDENT_CREATED" } },
+        "required": ["eventType"]
+      },
+      "then": {
+        "properties": {
+          "incidentVersion": { "const": 0 },
+          "fromStatus": { "type": "null" },
+          "toStatus": { "const": "OPEN" }
+        }
+      },
+      "else": {
+        "properties": {
+          "fromStatus": { "$ref": "./incident-types.schema.json#/$defs/status" }
+        }
+      }
+    },
+    {
+      "if": {
+        "properties": { "toStatus": { "const": "RESOLVED" } },
+        "required": ["toStatus"]
+      },
+      "then": {
+        "properties": {
+          "rootCause": { "$ref": "./incident-types.schema.json#/$defs/nonEmptyText" },
+          "resolutionSummary": { "$ref": "./incident-types.schema.json#/$defs/nonEmptyText" }
+        }
+      }
+    }
+  ]
+}

@@ -1,0 +1,6 @@
+{
+  "targetStatus": "INVESTIGATING",
+  "reason": "Operator started the synthetic investigation.",
+  "rootCause": "This field is not accepted before resolution.",
+  "resolutionSummary": "This field is not accepted before resolution."
+}

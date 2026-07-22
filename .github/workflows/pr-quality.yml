@@ -1,0 +1,692 @@
+name: PR quality
+
+on:
+  pull_request:
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: pr-quality-${{ github.ref }}
+  cancel-in-progress: true
+
+env:
+  OPS_ARTIFACT_ROOT: ${{ github.workspace }}/artifacts
+  OPS_CACHE_ROOT: ${{ github.workspace }}/.opsmind/cache
+  OPS_DATA_ROOT: ${{ github.workspace }}/.opsmind/data
+  OPS_MODEL_ROOT: ${{ github.workspace }}/.opsmind/models
+  OPS_MIN_C_FREE_GB: "5"
+  OPS_MIN_D_FREE_GB: "5"
+  OPS_MIN_WORKSPACE_FREE_GB: "5"
+
+jobs:
+  foundation:
+    name: Governance and workspace contracts
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0 # v7.0.0
+      - name: Initial storage preflight
+        run: |
+          sh scripts/storage/check-capacity.sh
+          sh scripts/storage/assert-storage-roots.sh --create-missing
+      - uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7.0.0
+        with:
+          node-version-file: .node-version
+          package-manager-cache: false
+      - name: Storage preflight
+        run: |
+          sh scripts/storage/check-capacity.sh
+          sh scripts/storage/assert-storage-roots.sh --create-missing
+      - name: Scan repository for secrets
+        shell: bash
+        run: |
+          set +e
+          staging="$OPS_CACHE_ROOT/secret-scan-foundation.txt"
+          evidence="artifacts/verification/phase-02/secret-scan.txt"
+          mkdir -p "$(dirname "$staging")" artifacts/verification/phase-02
+          pwsh -NoProfile -File scripts/governance/scan-project-secrets.ps1 > "$staging" 2>&1
+          status=$?
+          cat "$staging"
+          if [ "$status" -eq 0 ]; then result=PASS; else result=BLOCK; fi
+          printf 'ScannerExit=%s\nResult=%s\n' "$status" "$result" >> "$staging"
+          mv -f "$staging" "$evidence"
+          exit "$status"
+      - name: Verify case-sensitive secret coverage
+        shell: bash
+        run: |
+          set -euo pipefail
+          case_root="$OPS_CACHE_ROOT/secret-case-sensitive-${GITHUB_RUN_ID:-local}"
+          trap 'rm -rf "$case_root"' EXIT
+          mkdir -p "$case_root"
+          git -C "$case_root" init --quiet
+          printf '%s\n' 'SAFE=placeholder' > "$case_root/Foo.txt"
+          canary="sk-proj-$(printf 'A%.0s' $(seq 1 32))"
+          printf 'TOKEN=%s\n' "$canary" > "$case_root/foo.txt"
+          set +e
+          pwsh -NoProfile -File scripts/governance/scan-project-secrets.ps1 \
+            -RepositoryRoot "$case_root" -EvidencePath "$case_root/evidence.txt" > "$case_root/output.txt" 2>&1
+          status=$?
+          set -e
+          cat "$case_root/output.txt"
+          test "$status" -eq 7
+          grep -F 'FindingPath=foo.txt;Rule=generic-provider-key' "$case_root/evidence.txt"
+          printf '%s\n' 'CaseSensitiveSecretCoverage=PASS'
+      - name: Validate portable command surface
+        run: sh scripts/dev/test-command-surface.sh
+      - name: Validate canonical repository layout
+        run: node scripts/validation/validate-repository-layout.mjs
+      - name: Validate migration secret gate
+        shell: bash
+        run: |
+          set +e
+          mkdir -p artifacts/verification/phase-02
+          evidence="artifacts/verification/phase-02/migration-secret-gate.txt"
+          unset SPRING_DATASOURCE_PASSWORD
+          sh scripts/dev/opsmind.sh migrate > "$evidence" 2>&1
+          status=$?
+          cat "$evidence"
+          if [ "$status" -eq 2 ] && grep -Fq 'SPRING_DATASOURCE_PASSWORD must be supplied' "$evidence"; then
+            echo 'Result=PASS ExpectedMissingSecret=SPRING_DATASOURCE_PASSWORD' | tee -a "$evidence"
+            exit 0
+          fi
+          echo "Result=BLOCK ExpectedMissingSecret=SPRING_DATASOURCE_PASSWORD ActualExit=$status" | tee -a "$evidence"
+          exit 1
+      - name: Install and run actionlint
+        run: |
+          set +e
+          mkdir -p artifacts/verification/phase-02
+          evidence="artifacts/verification/phase-02/ci-and-lint.txt"
+          run_actionlint() (
+            set -e
+            echo "Gate=actionlint"
+            node scripts/dev/install-pinned-actionlint.mjs --cache-root "$OPS_CACHE_ROOT"
+            "$OPS_CACHE_ROOT/tools/actionlint/1.7.12/actionlint" -version
+            "$OPS_CACHE_ROOT/tools/actionlint/1.7.12/actionlint" .github/workflows/pr-quality.yml
+          )
+          run_actionlint > "$evidence" 2>&1
+          status=$?
+          cat "$evidence"
+          if [ "$status" -eq 0 ]; then result=PASS; else result=BLOCK; fi
+          echo "Result=$result" | tee -a "$evidence"
+          exit "$status"
+      - uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
+        if: always()
+        with:
+          name: foundation-verification
+          path: artifacts/verification/
+          if-no-files-found: error
+
+  clean-bootstrap:
+    name: Clean bootstrap (${{ matrix.os }})
+    needs: foundation
+    runs-on: ${{ matrix.os }}
+    timeout-minutes: 45
+    env:
+      OPS_MIN_C_FREE_GB: "5"
+      OPS_MIN_D_FREE_GB: "5"
+      OPS_MIN_WORKSPACE_FREE_GB: "5"
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-latest, windows-latest]
+    steps:
+      - uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0 # v7.0.0
+      - name: Initial storage preflight (Linux)
+        if: runner.os == 'Linux'
+        shell: bash
+        run: |
+          sh scripts/storage/check-capacity.sh
+          sh scripts/storage/assert-storage-roots.sh --create-missing
+      - name: Initial storage preflight (Windows)
+        if: runner.os == 'Windows'
+        shell: powershell
+        run: |
+          powershell.exe -NoProfile -ExecutionPolicy Bypass -File .\scripts\storage\check-capacity.ps1
+          powershell.exe -NoProfile -ExecutionPolicy Bypass -File .\scripts\storage\assert-storage-roots.ps1 -CreateMissing
+      - uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7.0.0
+        with:
+          node-version-file: .node-version
+          package-manager-cache: false
+      - uses: actions/setup-python@ece7cb06caefa5fff74198d8649806c4678c61a1 # v6.3.0
+        with:
+          python-version-file: .python-version
+      - uses: actions/setup-java@03ad4de0992f5dab5e18fcb136590ce7c4a0ac95 # v5.6.0
+        with:
+          distribution: temurin
+          java-version-file: .java-version
+      - name: Bootstrap Linux workspace
+        if: runner.os == 'Linux'
+        shell: bash
+        run: |
+          set +e
+          mkdir -p artifacts/verification/phase-02
+          evidence="artifacts/verification/phase-02/setup-matrix.txt"
+          bootstrap() (
+            set -e
+            echo "RunnerOS=${{ runner.os }}"
+            echo "Node=$(node --version)"
+            echo "Python=$(python --version 2>&1)"
+            echo "Java=$(java -version 2>&1 | head -n 1)"
+            echo "Maven=$(mvn --version | head -n 1)"
+            sh scripts/dev/opsmind.sh setup
+          )
+          bootstrap > "$evidence" 2>&1
+          status=$?
+          cat "$evidence"
+          if [ "$status" -eq 0 ]; then result=PASS; else result=BLOCK; fi
+          echo "Result=$result" | tee -a "$evidence"
+          exit "$status"
+      - name: Bootstrap Windows workspace
+        if: runner.os == 'Windows'
+        shell: powershell
+        run: |
+          $evidenceRoot = 'artifacts\verification\phase-02'
+          [void](New-Item -ItemType Directory -Path $evidenceRoot -Force)
+          $evidence = Join-Path $evidenceRoot 'setup-matrix.txt'
+          @(
+            'RunnerOS=${{ runner.os }}'
+            "Node=$(& node --version)"
+            "Python=$(& python --version 2>&1)"
+            "Java=$(& java --version | Select-Object -First 1)"
+            "Maven=$(& mvn --version | Select-Object -First 1)"
+          ) | Set-Content -LiteralPath $evidence -Encoding utf8
+          $previousPreference = $ErrorActionPreference
+          $ErrorActionPreference = 'Continue'
+          $bootstrapOutput = & powershell.exe -NoProfile -ExecutionPolicy Bypass -File .\scripts\dev\opsmind.ps1 setup 2>&1
+          $status = $LASTEXITCODE
+          $ErrorActionPreference = $previousPreference
+          $bootstrapOutput | Out-File -LiteralPath $evidence -Encoding utf8 -Append
+          Get-Content -LiteralPath $evidence
+          $result = if ($status -eq 0) { 'PASS' } else { 'BLOCK' }
+          "Result=$result" | Tee-Object -FilePath $evidence -Append
+          exit $status
+      - name: Validate Windows governance and command surface
+        if: runner.os == 'Windows'
+        shell: powershell
+        run: |
+          $evidence = 'artifacts\verification\phase-02\windows-governance.txt'
+          $previousPreference = $ErrorActionPreference
+          $ErrorActionPreference = 'Continue'
+          $output = @()
+          $governanceOutput = & powershell.exe -NoProfile -ExecutionPolicy Bypass -File .\scripts\governance\test-phase-01-governance.ps1 2>&1
+          $output += $governanceOutput
+          $governanceStatus = $LASTEXITCODE
+          if ($governanceStatus -eq 0) {
+            $surfaceOutput = & powershell.exe -NoProfile -ExecutionPolicy Bypass -File .\scripts\dev\test-command-surface.ps1 2>&1
+            $output += $surfaceOutput
+            $surfaceStatus = $LASTEXITCODE
+          } else {
+            $surfaceStatus = 1
+            $output += 'WindowsCommandSurface=SKIPPED_GOVERNANCE_BLOCK'
+          }
+          $ErrorActionPreference = $previousPreference
+          $output | Out-File -LiteralPath $evidence -Encoding utf8
+          Get-Content -LiteralPath $evidence
+          $status = if ($governanceStatus -eq 0 -and $surfaceStatus -eq 0) { 0 } else { 1 }
+          $result = if ($status -eq 0) { 'PASS' } else { 'BLOCK' }
+          "GovernanceExit=$governanceStatus" | Tee-Object -FilePath $evidence -Append
+          "CommandSurfaceExit=$surfaceStatus" | Tee-Object -FilePath $evidence -Append
+          "Result=$result" | Tee-Object -FilePath $evidence -Append
+          exit $status
+      - uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
+        if: always()
+        with:
+          name: clean-bootstrap-${{ runner.os }}
+          path: artifacts/verification/phase-02/
+          if-no-files-found: error
+
+  frontend:
+    name: Operator Web
+    needs: [foundation, clean-bootstrap]
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0 # v7.0.0
+      - name: Initial storage preflight
+        run: |
+          sh scripts/storage/check-capacity.sh
+          sh scripts/storage/assert-storage-roots.sh --create-missing
+      - uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7.0.0
+        with:
+          node-version-file: .node-version
+          package-manager-cache: false
+      - name: Install pinned pnpm
+        run: corepack enable && corepack prepare pnpm@11.15.0 --activate
+      - name: Storage recheck before dependency install
+        run: |
+          sh scripts/storage/check-capacity.sh
+          sh scripts/storage/assert-storage-roots.sh --create-missing
+      - name: Install dependencies
+        run: pnpm --store-dir "$OPS_CACHE_ROOT/pnpm-store" install --frozen-lockfile
+      - name: Test, lint, typecheck, and build
+        shell: bash
+        run: |
+          set +e
+          mkdir -p artifacts/verification/phase-02
+          evidence="artifacts/verification/phase-02/frontend-quality.txt"
+          frontend_quality() (
+            set -e
+            echo "Node=$(node --version)"
+            echo "Pnpm=$(pnpm --version)"
+            pnpm audit --audit-level moderate
+            pnpm --filter @opsmind/operator-web test
+            pnpm --filter @opsmind/operator-web lint
+            pnpm --filter @opsmind/operator-web typecheck
+            pnpm --filter @opsmind/operator-web build
+          )
+          frontend_quality > "$evidence" 2>&1
+          status=$?
+          cat "$evidence"
+          if [ "$status" -eq 0 ]; then result=PASS; else result=BLOCK; fi
+          echo "Result=$result" | tee -a "$evidence"
+          exit "$status"
+      - uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
+        if: always()
+        with:
+          name: frontend-quality
+          path: artifacts/verification/phase-02/frontend-quality.txt
+          if-no-files-found: error
+
+  python:
+    name: AI Runtime
+    needs: [foundation, clean-bootstrap]
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0 # v7.0.0
+      - name: Initial storage preflight
+        run: |
+          sh scripts/storage/check-capacity.sh
+          sh scripts/storage/assert-storage-roots.sh --create-missing
+      - uses: actions/setup-python@ece7cb06caefa5fff74198d8649806c4678c61a1 # v6.3.0
+        with:
+          python-version-file: .python-version
+          cache: pip
+          cache-dependency-path: |
+            services/ai-runtime/pyproject.toml
+            services/ai-runtime/uv.lock
+      - name: Install pinned uv and sync AI Runtime
+        run: |
+          sh scripts/storage/check-capacity.sh
+          sh scripts/storage/assert-storage-roots.sh --create-missing
+          python -m pip install uv==0.11.29
+          uv sync --project services/ai-runtime --locked
+      - name: Test, lint, typecheck, and audit
+        shell: bash
+        run: |
+          set +e
+          mkdir -p artifacts/verification/phase-02
+          evidence="artifacts/verification/phase-02/python-quality.txt"
+          python_quality() (
+            set -e
+            echo "Python=$(python --version 2>&1)"
+            echo "Uv=$(uv --version)"
+            uv lock --project services/ai-runtime --check
+            uv run --project services/ai-runtime --locked pytest services/ai-runtime/tests
+            uv run --project services/ai-runtime --locked ruff check services/ai-runtime
+            uv run --project services/ai-runtime --locked mypy services/ai-runtime/src
+            uv run --project services/ai-runtime --locked pip-audit
+          )
+          python_quality > "$evidence" 2>&1
+          status=$?
+          cat "$evidence"
+          if [ "$status" -eq 0 ]; then result=PASS; else result=BLOCK; fi
+          echo "Result=$result" | tee -a "$evidence"
+          exit "$status"
+      - uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
+        if: always()
+        with:
+          name: python-quality
+          path: artifacts/verification/phase-02/python-quality.txt
+          if-no-files-found: error
+
+  java:
+    name: Java ${{ matrix.service }}
+    needs: [foundation, clean-bootstrap]
+    runs-on: ubuntu-latest
+    timeout-minutes: 60
+    strategy:
+      fail-fast: false
+      matrix:
+        service: [platform-api, tool-gateway]
+    steps:
+      - uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0 # v7.0.0
+      - name: Initial storage preflight
+        run: |
+          sh scripts/storage/check-capacity.sh
+          sh scripts/storage/assert-storage-roots.sh --create-missing
+      - uses: actions/setup-java@03ad4de0992f5dab5e18fcb136590ce7c4a0ac95 # v5.6.0
+        with:
+          distribution: temurin
+          java-version-file: .java-version
+          cache: maven
+      - name: Verify service
+        shell: bash
+        run: |
+          set +e
+          sh scripts/storage/check-capacity.sh
+          sh scripts/storage/assert-storage-roots.sh --create-missing
+          mkdir -p artifacts/verification/phase-02
+          evidence="artifacts/verification/phase-02/java-${{ matrix.service }}-quality.txt"
+          java_quality() (
+            set -e
+            echo "Java=$(java -version 2>&1 | head -n 1)"
+            echo "Maven=$(mvn --version | head -n 1)"
+            mvn --batch-mode --no-transfer-progress \
+              -f "services/${{ matrix.service }}/pom.xml" verify
+            mvn --batch-mode --no-transfer-progress \
+              -DdataDirectory="$OPS_CACHE_ROOT/owasp-dependency-check" \
+              -DfailBuildOnCVSS=7 \
+              -DfailOnError=true \
+              -Dformat=JSON \
+              -f "services/${{ matrix.service }}/pom.xml" \
+              org.owasp:dependency-check-maven:12.2.2:check
+          )
+          java_quality > "$evidence" 2>&1
+          status=$?
+          cat "$evidence"
+          if [ "$status" -eq 0 ]; then result=PASS; else result=BLOCK; fi
+          echo "Result=$result" | tee -a "$evidence"
+          exit "$status"
+      - uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
+        if: always()
+        with:
+          name: java-${{ matrix.service }}-quality
+          path: |
+            artifacts/verification/phase-02/java-${{ matrix.service }}-quality.txt
+            services/${{ matrix.service }}/target/dependency-check-report.json
+          if-no-files-found: error
+
+  postgres-contract:
+    name: Phase 3 PostgreSQL trust contract
+    needs: [foundation, clean-bootstrap]
+    runs-on: ubuntu-latest
+    timeout-minutes: 35
+    services:
+      postgres:
+        image: pgvector/pgvector:0.8.2-pg17-trixie@sha256:5c97c57367a485a8e99389548db67d441ab1a878f5492c3df04989f34ecf3c75
+        env:
+          POSTGRES_DB: opsmind
+          POSTGRES_USER: opsmind_migrator
+          POSTGRES_PASSWORD: placeholder-ci-migration
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U opsmind_migrator -d opsmind"
+          --health-interval 5s
+          --health-timeout 3s
+          --health-retries 20
+    env:
+      POSTGRES_DB: opsmind
+      POSTGRES_USER: opsmind_migrator
+      POSTGRES_PASSWORD: placeholder-ci-migration
+      POSTGRES_APP_USER: opsmind_app
+      POSTGRES_APP_PASSWORD: placeholder-ci-runtime
+      POSTGRES_DISPATCHER_USER: opsmind_dispatcher
+      POSTGRES_DISPATCHER_PASSWORD: placeholder-ci-dispatcher
+      PGHOST: 127.0.0.1
+      PGPORT: "5432"
+      PGDATABASE: opsmind
+    steps:
+      - uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0 # v7.0.0
+      - name: Initial storage preflight
+        run: |
+          sh scripts/storage/check-capacity.sh
+          sh scripts/storage/assert-storage-roots.sh --create-missing
+      - uses: actions/setup-java@03ad4de0992f5dab5e18fcb136590ce7c4a0ac95 # v5.6.0
+        with:
+          distribution: temurin
+          java-version-file: .java-version
+          cache: maven
+      - name: Install PostgreSQL client
+        run: |
+          sudo apt-get update -qq
+          sudo apt-get install --yes --no-install-recommends postgresql-client
+      - name: Wait for PostgreSQL
+        shell: bash
+        run: |
+          set -euo pipefail
+          for attempt in $(seq 1 30); do
+            if pg_isready --host "$PGHOST" --port "$PGPORT" --dbname "$PGDATABASE"; then
+              exit 0
+            fi
+            sleep 1
+          done
+          exit 1
+      - name: Provision non-owner runtime role
+        shell: bash
+        run: |
+          set -euo pipefail
+          PGPASSWORD="$POSTGRES_PASSWORD" psql --no-password \
+            --host "$PGHOST" --port "$PGPORT" --username "$POSTGRES_USER" --dbname "$POSTGRES_DB" <<'SQL'
+          \set ON_ERROR_STOP on
+          DO $$
+          BEGIN
+              IF NOT EXISTS (SELECT 1 FROM pg_roles WHERE rolname = 'opsmind_app') THEN
+                  CREATE ROLE opsmind_app LOGIN NOSUPERUSER NOCREATEDB NOCREATEROLE NOINHERIT NOREPLICATION NOBYPASSRLS;
+              END IF;
+              IF NOT EXISTS (SELECT 1 FROM pg_roles WHERE rolname = 'opsmind_context_resolver') THEN
+                  CREATE ROLE opsmind_context_resolver NOLOGIN NOSUPERUSER NOCREATEDB NOCREATEROLE NOINHERIT NOREPLICATION NOBYPASSRLS;
+              END IF;
+              IF NOT EXISTS (SELECT 1 FROM pg_roles WHERE rolname = 'opsmind_dispatcher') THEN
+                  CREATE ROLE opsmind_dispatcher LOGIN NOSUPERUSER NOCREATEDB NOCREATEROLE NOINHERIT NOREPLICATION NOBYPASSRLS;
+              END IF;
+              IF NOT EXISTS (SELECT 1 FROM pg_roles WHERE rolname = 'opsmind_dispatch_resolver') THEN
+                  CREATE ROLE opsmind_dispatch_resolver NOLOGIN NOSUPERUSER NOCREATEDB NOCREATEROLE NOINHERIT NOREPLICATION NOBYPASSRLS;
+              END IF;
+          END
+          $$;
+          SQL
+          PGPASSWORD="$POSTGRES_PASSWORD" psql --no-password \
+            --host "$PGHOST" --port "$PGPORT" --username "$POSTGRES_USER" --dbname "$POSTGRES_DB" <<EOF
+          \password opsmind_app
+          $POSTGRES_APP_PASSWORD
+          $POSTGRES_APP_PASSWORD
+          \password opsmind_dispatcher
+          $POSTGRES_DISPATCHER_PASSWORD
+          $POSTGRES_DISPATCHER_PASSWORD
+          EOF
+      - name: Build and apply migration as owner
+        shell: bash
+        run: |
+          set -euo pipefail
+          mvn --batch-mode --no-transfer-progress \
+            -Dmaven.repo.local="$OPS_CACHE_ROOT/maven" \
+            -f services/platform-api/pom.xml -DskipTests package
+          export SPRING_PROFILES_ACTIVE=persistence
+          export SPRING_DATASOURCE_URL="jdbc:postgresql://${PGHOST}:${PGPORT}/${PGDATABASE}"
+          export SPRING_DATASOURCE_USERNAME="$POSTGRES_USER"
+          export SPRING_DATASOURCE_PASSWORD="$POSTGRES_PASSWORD"
+          export OPSMIND_FLYWAY_ENABLED=true
+          java -jar services/platform-api/target/platform-api.jar \
+            --spring.main.web-application-type=none \
+            --opsmind.persistence.enabled=false
+      - name: Prove pooled tenant isolation and messaging recovery
+        shell: bash
+        env:
+          OPSMIND_PHASE3_DB_INTEGRATION: "true"
+          SPRING_DATASOURCE_URL: jdbc:postgresql://127.0.0.1:5432/opsmind
+        run: |
+          set -euo pipefail
+          mkdir -p artifacts/verification/phase-03
+          mvn --batch-mode --no-transfer-progress \
+            -Dmaven.repo.local="$OPS_CACHE_ROOT/maven" \
+            -Dtest=TenantRlsPoolIntegrationTest,TransactionalOutboxIntegrationTest,TransactionalInboxIntegrationTest,PlatformUserStatusVerifierIntegrationTest,OutboxDispatcherWorkloadIntegrationTest \
+            -f services/platform-api/pom.xml test \
+            2>&1 | tee artifacts/verification/phase-03/authz-rls-pool-matrix.txt
+      - name: Run alternating-tenant and append-only contract
+        shell: bash
+        run: |
+          set -euo pipefail
+          mkdir -p artifacts/verification/phase-03
+          evidence=artifacts/verification/phase-03/migration-and-rls.txt
+          OPSMIND_EPHEMERAL_DB=true \
+            sh scripts/validation/run-phase-03-postgres-contract.sh > "$evidence" 2>&1
+          cat "$evidence"
+      - uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
+        if: always()
+        with:
+          name: phase-03-postgres-contract
+          path: artifacts/verification/phase-03/
+          if-no-files-found: error
+
+  identity-conformance:
+    name: Phase 3 Keycloak OIDC conformance
+    needs: [foundation, clean-bootstrap]
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0 # v7.0.0
+      - name: Initial storage preflight
+        run: |
+          sh scripts/storage/check-capacity.sh
+          sh scripts/storage/assert-storage-roots.sh --create-missing
+      - uses: actions/setup-python@ece7cb06caefa5fff74198d8649806c4678c61a1 # v6.3.0
+        with:
+          python-version-file: .python-version
+      - uses: actions/setup-java@03ad4de0992f5dab5e18fcb136590ce7c4a0ac95 # v5.6.0
+        with:
+          distribution: temurin
+          java-version-file: .java-version
+          cache: maven
+      - name: Run Keycloak OIDC conformance
+        shell: pwsh
+        run: |
+          $ErrorActionPreference = 'Stop'
+          & ./scripts/validation/run-phase-03-keycloak-conformance.ps1
+      - name: Verify identity evidence and cleanup
+        if: always()
+        shell: pwsh
+        run: |
+          $ErrorActionPreference = 'Stop'
+          & ./scripts/validation/verify-phase-03-keycloak-evidence.ps1
+          $residual = @(& docker ps -aq --filter 'label=ai.opsmind.scope=phase3-keycloak-conformance')
+          if ($LASTEXITCODE -ne 0) {
+            throw 'Unable to verify Keycloak conformance container cleanup.'
+          }
+          if (@($residual | Where-Object { -not [string]::IsNullOrWhiteSpace([string]$_) }).Count -ne 0) {
+            throw 'A Keycloak conformance container remained after the harness.'
+          }
+      - uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
+        if: always()
+        with:
+          name: phase-03-identity-conformance
+          path: |
+            artifacts/verification/phase-03/identity-delegation.txt
+            artifacts/verification/phase-03/identity-delegation-failure.txt
+          if-no-files-found: warn
+
+  compose:
+    name: Compose build and health smoke
+    needs: [foundation, clean-bootstrap]
+    runs-on: ubuntu-latest
+    timeout-minutes: 45
+    env:
+      POSTGRES_PASSWORD: placeholder-ci-only
+      POSTGRES_APP_PASSWORD: placeholder-ci-runtime
+      POSTGRES_DISPATCHER_PASSWORD: placeholder-ci-dispatcher
+      OPS_MIN_DOCKER_FREE_GB: "5"
+    steps:
+      - uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0 # v7.0.0
+      - name: Provision guarded workspace roots
+        run: |
+          sh scripts/storage/check-capacity.sh
+          sh scripts/storage/assert-storage-roots.sh --create-missing
+      - name: Verify Docker storage attestation
+        shell: bash
+        run: |
+          set -euo pipefail
+          evidence="artifacts/verification/phase-02/docker-storage.txt"
+          mkdir -p "$(dirname "$evidence")"
+          docker_root="$(docker info --format '{{.DockerRootDir}}')"
+          test -n "$docker_root"
+          test -d "$docker_root"
+          available_kb="$(df -Pk "$docker_root" | awk 'NR == 2 { print $4 }')"
+          test -n "$available_kb"
+          minimum_kb=$((OPS_MIN_DOCKER_FREE_GB * 1024 * 1024))
+          if [ "$available_kb" -lt "$minimum_kb" ]; then
+            echo "Docker storage below threshold: available_kb=$available_kb minimum_kb=$minimum_kb" >&2
+            exit 1
+          fi
+          filesystem="$(df -Pk "$docker_root" | awk 'NR == 2 { print $1 }')"
+          printf 'DockerRootDir=%s\nFilesystem=%s\nAvailableGb=%.2f\nMinimumGb=%s\nResult=PASS\n' \
+            "$docker_root" "$filesystem" "$(awk -v kb="$available_kb" 'BEGIN { printf kb / 1024 / 1024 }')" "$OPS_MIN_DOCKER_FREE_GB" | tee "$evidence"
+          printf 'OPS_DOCKER_STORAGE_VERIFIED=true\n' >> "$GITHUB_ENV"
+      - name: Validate without pulling images
+        shell: bash
+        run: |
+          set +e
+          mkdir -p artifacts/verification/phase-02
+          evidence="artifacts/verification/phase-02/compose-config.txt"
+          validate_compose() (
+            set -e
+            docker compose version
+            docker compose --profile application config --quiet
+          )
+          validate_compose > "$evidence" 2>&1
+          status=$?
+          cat "$evidence"
+          if [ "$status" -eq 0 ]; then result=PASS; else result=BLOCK; fi
+          echo "Result=$result" | tee -a "$evidence"
+          exit "$status"
+      - name: Build, start, and probe all application services
+        shell: bash
+        run: |
+          set +e
+          evidence="artifacts/verification/phase-02/compose-smoke.txt"
+          compose_smoke() (
+            set -e
+            echo "Docker=$(docker version --format '{{.Server.Version}}')"
+            echo "Compose=$(docker compose version --short)"
+            sh scripts/dev/opsmind.sh up
+            curl --fail --show-error --silent http://127.0.0.1:8080/actuator/health
+            echo
+            curl --fail --show-error --silent http://127.0.0.1:8081/actuator/health
+            echo
+            curl --fail --show-error --silent http://127.0.0.1:8000/ready
+            echo
+            curl --fail --show-error --silent http://127.0.0.1:3000/api/health
+            echo
+            docker compose --profile application ps
+            sh scripts/storage/check-capacity.sh
+          )
+          compose_smoke > "$evidence" 2>&1
+          status=$?
+          cat "$evidence"
+          if [ "$status" -eq 0 ]; then result=PASS; else result=BLOCK; fi
+          echo "Result=$result" | tee -a "$evidence"
+          exit "$status"
+      - name: Stop application services
+        if: always()
+        shell: bash
+        run: |
+          set +e
+          evidence="artifacts/verification/phase-02/compose-smoke.txt"
+          docker compose --profile application ps --all 2>&1 | tee -a "$evidence"
+          sh scripts/dev/opsmind.sh down 2>&1 | tee -a "$evidence"
+          status=${PIPESTATUS[0]}
+          if [ "$status" -eq 0 ]; then result=PASS; else result=BLOCK; fi
+          echo "CleanupResult=$result" | tee -a "$evidence"
+          exit "$status"
+      - uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
+        if: always()
+        with:
+          name: compose-verification
+          path: artifacts/verification/phase-02/
+          if-no-files-found: error
+
+  dependency-review:
+    name: Dependency policy
+    if: github.event_name == 'pull_request'
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0 # v7.0.0
+      - uses: actions/dependency-review-action@a1d282b36b6f3519aa1f3fc636f609c47dddb294 # v5.0.0
+        with:
+          fail-on-severity: moderate
+          deny-licenses: GPL-3.0, AGPL-3.0

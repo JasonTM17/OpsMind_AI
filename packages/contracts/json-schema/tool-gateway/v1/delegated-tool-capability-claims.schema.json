@@ -1,0 +1,54 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://contracts.opsmind.invalid/tool-gateway/v1/delegated-tool-capability-claims.schema.json",
+  "title": "DelegatedToolCapabilityClaimsV1",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "iss", "sub", "aud", "iat", "exp", "jti", "azp", "token_use",
+    "org_id", "project_id", "incident_id", "run_id", "actions", "resources",
+    "roles", "max_calls", "max_bytes", "nonce", "policy_version"
+  ],
+  "properties": {
+    "iss": { "type": "string", "format": "uri", "maxLength": 2048 },
+    "sub": { "type": "string", "minLength": 1, "maxLength": 255 },
+    "aud": {
+      "type": "array",
+      "minItems": 1,
+      "maxItems": 1,
+      "items": { "const": "opsmind-tool-gateway" }
+    },
+    "iat": { "type": "integer", "minimum": 0 },
+    "exp": { "type": "integer", "minimum": 1 },
+    "jti": { "type": "string", "minLength": 1, "maxLength": 128 },
+    "azp": { "const": "opsmind-platform-api" },
+    "token_use": { "const": "delegated_capability" },
+    "org_id": { "type": "string", "format": "uuid" },
+    "project_id": { "type": "string", "format": "uuid" },
+    "incident_id": { "type": "string", "format": "uuid" },
+    "run_id": { "type": "string", "format": "uuid" },
+    "actions": {
+      "type": "array",
+      "minItems": 1,
+      "maxItems": 1,
+      "items": { "type": "string", "pattern": "^[a-z][a-z0-9.-]*:[a-z][a-z0-9._-]*:[0-9]+\\.[0-9]+$" }
+    },
+    "resources": {
+      "type": "array",
+      "minItems": 1,
+      "maxItems": 1,
+      "items": { "type": "string", "minLength": 1, "maxLength": 256 }
+    },
+    "roles": {
+      "type": "array",
+      "minItems": 1,
+      "maxItems": 32,
+      "uniqueItems": true,
+      "items": { "type": "string", "minLength": 1, "maxLength": 256 }
+    },
+    "max_calls": { "const": 1 },
+    "max_bytes": { "type": "integer", "minimum": 1, "maximum": 10485760 },
+    "nonce": { "type": "string", "minLength": 16, "maxLength": 128 },
+    "policy_version": { "type": "string", "minLength": 1, "maxLength": 64 }
+  }
+}

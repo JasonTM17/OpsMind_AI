@@ -1,0 +1,40 @@
+spring:
+  application:
+    name: opsmind-tool-gateway
+  jackson:
+    deserialization:
+      fail-on-trailing-tokens: true
+      fail-on-unknown-properties: true
+    parser:
+      strict-duplicate-detection: true
+  lifecycle:
+    timeout-per-shutdown-phase: 20s
+
+server:
+  port: ${TOOL_GATEWAY_PORT:8081}
+  shutdown: graceful
+  tomcat:
+    connection-timeout: 5s
+    max-swallow-size: 0B
+
+management:
+  endpoints:
+    web:
+      exposure:
+        include: health
+  endpoint:
+    health:
+      show-details: never
+
+opsmind:
+  tool-gateway:
+    capability-issuer: ${TOOL_GATEWAY_CAPABILITY_ISSUER:https://platform.invalid.example}
+    capability-audience: opsmind-tool-gateway
+    jwk-set-uri: ${TOOL_GATEWAY_CAPABILITY_JWK_SET_URI:}
+    platform-caller-id: opsmind-platform-api
+    workload-issuer: ${TOOL_GATEWAY_WORKLOAD_ISSUER:https://platform.invalid.example}
+    workload-audience: opsmind-tool-gateway-workload
+    workload-jwk-set-uri: ${TOOL_GATEWAY_WORKLOAD_JWK_SET_URI:}
+    maximum-capability-lifetime: 5m
+    maximum-request-bytes: 65536
+    maximum-result-bytes: 262144

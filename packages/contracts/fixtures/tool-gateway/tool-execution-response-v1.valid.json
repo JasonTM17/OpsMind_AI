@@ -1,0 +1,27 @@
+{
+  "execution_id": "55555555-5555-4555-8555-555555555555",
+  "status": "SUCCEEDED",
+  "evidence": [
+    {
+      "source": "fixture-prometheus",
+      "target_identity": "prometheus:synthetic/opsmind-api",
+      "observed_at": "2030-01-01T00:03:00Z",
+      "window_start": "2030-01-01T00:00:00Z",
+      "window_end": "2030-01-01T00:03:00Z",
+      "connector_version": "fixture-observability@1",
+      "manifest_version": "observability.metrics.query@1",
+      "trust_class": "synthetic",
+      "content_digest": "f1c78bf4c750e01ebf7387529739e69de60c6af1525bca87fa0ea1991516e2db",
+      "content": { "authorization": "[REDACTED]" },
+      "redacted_fields": 1,
+      "truncated": false
+    }
+  ],
+  "audit_event_id": "66666666-6666-4666-8666-666666666666",
+  "request_digest": "45e795204343e4e5dc30decd9aa73b80966abe6ba900062df09f9cd81b84a1d0",
+  "manifest_version": "observability.metrics.query@1",
+  "source_provenance": "fixture-prometheus/fixture-observability@1",
+  "redaction_count": 1,
+  "truncated": false,
+  "duplicate": false
+}
