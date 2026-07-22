@@ -188,19 +188,29 @@ jobs:
           $evidenceRoot = 'artifacts\verification\phase-02'
           [void](New-Item -ItemType Directory -Path $evidenceRoot -Force)
           $evidence = Join-Path $evidenceRoot 'setup-matrix.txt'
-          @(
+          $utf8 = New-Object Text.UTF8Encoding($false)
+          $initialEvidence = @(
             'RunnerOS=${{ runner.os }}'
             "Node=$(& node --version)"
             "Python=$(& python --version 2>&1)"
             "Java=$(& java --version | Select-Object -First 1)"
             "Maven=$(& mvn --version | Select-Object -First 1)"
-          ) | Set-Content -LiteralPath $evidence -Encoding utf8
+          ) -join [Environment]::NewLine
+          [IO.File]::WriteAllText(
+            $evidence,
+            $initialEvidence + [Environment]::NewLine,
+            $utf8
+          )
           $previousPreference = $ErrorActionPreference
           $ErrorActionPreference = 'Continue'
           $bootstrapOutput = & powershell.exe -NoProfile -ExecutionPolicy Bypass -File .\scripts\dev\opsmind.ps1 setup 2>&1
           $status = $LASTEXITCODE
           $ErrorActionPreference = $previousPreference
-          $bootstrapOutput | Out-File -LiteralPath $evidence -Encoding utf8 -Append
+          [IO.File]::AppendAllText(
+            $evidence,
+            (($bootstrapOutput -join [Environment]::NewLine) + [Environment]::NewLine),
+            $utf8
+          )
           Get-Content -LiteralPath $evidence
           $result = if ($status -eq 0) { 'PASS' } else { 'BLOCK' }
           "Result=$result" | Tee-Object -FilePath $evidence -Append
@@ -225,7 +235,12 @@ jobs:
             $output += 'WindowsCommandSurface=SKIPPED_GOVERNANCE_BLOCK'
           }
           $ErrorActionPreference = $previousPreference
-          $output | Out-File -LiteralPath $evidence -Encoding utf8
+          $utf8 = New-Object Text.UTF8Encoding($false)
+          [IO.File]::WriteAllText(
+            $evidence,
+            (($output -join [Environment]::NewLine) + [Environment]::NewLine),
+            $utf8
+          )
           Get-Content -LiteralPath $evidence
           $status = if ($governanceStatus -eq 0 -and $surfaceStatus -eq 0) { 0 } else { 1 }
           $result = if ($status -eq 0) { 'PASS' } else { 'BLOCK' }
