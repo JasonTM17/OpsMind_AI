@@ -2,7 +2,7 @@
 phase: 4
 checkpoint: 4B
 title: "Bounded Evidence Record Ingress and Citation Foundation"
-status: in_progress
+status: completed
 priority: P1
 dependencies: [4A, 6-checkpoint, 7-persistence-checkpoint]
 ---
@@ -149,27 +149,27 @@ evidence body is introduced here.
 
 ## Acceptance Criteria
 
-- [ ] A valid Tool Gateway fixture canonicalizes to the exact published digest;
+- [x] A valid Tool Gateway fixture canonicalizes to the exact published digest;
   reordered object keys do not change it and changed values do.
-- [ ] Oversize, non-object, malformed, unsupported trust/source, non-null
+- [x] Oversize, non-object, malformed, unsupported trust/source, non-null
   artifact reference, digest mismatch, unsafe metadata, and unredacted
   sensitive keys/values are rejected before persistence.
-- [ ] One accepted result creates exactly one evidence record, one
+- [x] One accepted result creates exactly one evidence record, one
   `EVIDENCE_APPENDED` run event, one audit row, and one run-state successor in a
   single transaction.
-- [ ] Exact replay returns the same evidence identity without another logical
+- [x] Exact replay returns the same evidence identity without another logical
   effect; changed digest, request digest, execution identity, or provenance for
   the same run/intent fails closed.
-- [ ] Direct SQL cannot forge linkage, change canonical bytes/digest, cross a
+- [x] Direct SQL cannot forge linkage, change canonical bytes/digest, cross a
   tenant, or update/delete/truncate an evidence record.
-- [ ] A forced failure at each persistence step leaves no partial evidence,
+- [x] A forced failure at each persistence step leaves no partial evidence,
   run-event, audit, or run-snapshot effect.
-- [ ] Evidence read rechecks current tenant/incident authority, validates
+- [x] Evidence read rechecks current tenant/incident authority, validates
   run ownership and digest, preserves caller order, and rejects missing,
   duplicate, foreign-run, foreign-incident, and foreign-tenant IDs.
-- [ ] In-memory fixture mode remains deterministic and existing reducer/API
+- [x] In-memory fixture mode remains deterministic and existing reducer/API
   contracts remain backward-compatible until the real clients are enabled.
-- [ ] Static validation, focused tests, full Platform `mvn verify`, disposable
+- [x] Static validation, focused tests, full Platform `mvn verify`, disposable
   PostgreSQL contract, docs/layout checks, secret scan, and fresh C:/D: capacity
   guards pass.
 
@@ -194,7 +194,7 @@ evidence body is introduced here.
   restore, purge receipt, and orphan reconciliation.
 - Unified operator timeline projection and public evidence detail endpoint.
 - Real capability/workload-authenticated HTTP clients and Prometheus connector;
-  these start only after this checkpoint passes.
+  these belong to the next Phase 7 integration checkpoint.
 
 ## Implementation Checkpoint (2026-07-22)
 
@@ -216,9 +216,13 @@ successor snapshot, deterministic run events, tool execution/request digest,
 and full immutable evidence provenance. Any drift returns
 `investigation.run-conflict`. The failure matrix also injects a real final-step
 audit primary-key conflict after snapshot/event/evidence writes and requires the
-whole transaction to remain at its prior boundary. Checkpoint status remains
-`in_progress` until these two new PostgreSQL cases pass on their own pushed
-revision; no live-CI completion claim is inferred from local guarded skips.
+whole transaction to remain at its prior boundary. GitHub Actions run
+`29940796700` at revision `14eb8837b94f16933722954e7a03e55a73295d16`
+completed successfully across all 11 executable jobs, with the push-only
+dependency-policy job skipped as designed. Its PostgreSQL artifact reports 13
+tests, zero failures/errors/skips: exact replay `1/1`, rollback `2/2`, fresh
+V001–V007, V006→V007 upgrade, and cleanup all PASS. Checkpoint 4B is complete;
+Phase 4 and G2 remain open for the large/raw artifact lifecycle.
 
 ## Unresolved Questions
 

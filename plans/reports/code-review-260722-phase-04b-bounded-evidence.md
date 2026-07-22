@@ -15,7 +15,7 @@ Date: 2026-07-22
 
 No unresolved Critical or High finding remains in the reviewed checkpoint.
 This is a bounded redacted-record control plane, not the large/raw artifact
-lifecycle. Phase 4 and G2 remain open.
+lifecycle. Checkpoint 4B is complete; Phase 4 and G2 remain open.
 
 ## Findings Resolved During Review
 
@@ -45,16 +45,17 @@ lifecycle. Phase 4 and G2 remain open.
    prefix-guarded upgrade runner now migrates to V006, proves the evidence table
    absent, advances to V007, proves it present, and requires cleanup. Run
    `29938632667` passed that proof and the complete workflow.
-8. **Blanket stale-write conflict rejected exact retries — fixed locally.** A
+8. **Blanket stale-write conflict rejected exact retries — fixed in CI.** A
    stale update is now a no-op only when the stored successor snapshot,
    deterministic event rows, tool identities/digests, and full evidence record
    provenance all match. Content, request, execution, or source-provenance drift
-   still returns `investigation.run-conflict`. Revision-bound CI remains pending.
-9. **Final audit-step rollback was inferred — fixed locally.** A PostgreSQL test
+   still returns `investigation.run-conflict`. Run `29940796700` passed the live
+   replay case with no additional event, audit, or evidence row.
+9. **Final audit-step rollback was inferred — fixed in CI.** A PostgreSQL test
    reserves the deterministic audit event ID, lets snapshot, run-event, and
    evidence writes execute, then forces the real audit repository to reject the
-   append. The test requires the prior boundary to remain intact. Revision-bound
-   CI remains pending.
+   append. The test requires the prior boundary to remain intact. Run
+   `29940796700` passed both rollback cases.
 
 ## Risk Checks
 
@@ -81,13 +82,14 @@ lifecycle. Phase 4 and G2 remain open.
 - Platform API: 148 tests, zero failures/errors, 20 environment-gated skips.
 - Phase 4B static gate: PASS.
 - Repository layout, actionlint, and diff checks: PASS.
-- Secret scan: 1,144 files and 23 history commits, zero findings.
+- Secret scan: 1,146 files and 24 history commits, zero findings.
 - GitHub Actions run `29936897223` at revision `77f7ab8`: PASS; fresh V001–V007,
   11 live PostgreSQL cases with zero failure/error/skip, and Compose health smoke.
 - GitHub Actions run `29938632667` at revision `3da19ef`: PASS; guarded
   V006→V007 upgrade, cleanup, and all executable jobs including Compose passed.
-- Exact replay and final audit-step rollback PostgreSQL cases: locally compiled
-  and guarded; revision-bound live CI pending.
+- GitHub Actions run `29940796700` at revision `14eb883`: PASS; all 11 executable
+  jobs passed. PostgreSQL reported 13 tests, zero failures/errors/skips, including
+  exact replay `1/1`, rollback `2/2`, and V006→V007 cleanup PASS.
 
 ## Unresolved Questions
 
