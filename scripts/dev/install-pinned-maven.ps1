@@ -105,7 +105,21 @@ if (-not (Test-MavenInstallation -Executable $mavenExecutable)) {
         if (Test-Path -LiteralPath $mavenHome) {
             throw "Refusing to overwrite an existing Maven installation: $mavenHome"
         }
-        Move-Item -LiteralPath $extractedHome -Destination $mavenHome
+        $copySucceeded = $false
+        for ($attempt = 1; $attempt -le 5; $attempt++) {
+            try {
+                [void](Copy-Item -LiteralPath $extractedHome -Destination $mavenHome -Recurse -Force)
+                $copySucceeded = $true
+                break
+            }
+            catch {
+                if ($attempt -eq 5) { throw }
+                Start-Sleep -Milliseconds (250 * $attempt)
+            }
+        }
+        if (-not $copySucceeded -or -not (Test-MavenInstallation -Executable $mavenExecutable)) {
+            throw 'Unable to publish the verified Maven installation.'
+        }
     }
     finally {
         if (Test-Path -LiteralPath $temporaryRoot) {
