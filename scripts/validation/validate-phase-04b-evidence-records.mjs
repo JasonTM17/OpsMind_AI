@@ -66,6 +66,25 @@ const codec = requireMarkers(
   "services/platform-api/src/main/java/ai/opsmind/platform/investigation/application/InvestigationPersistenceJsonCodec.java",
   ["EvidenceAppendedDetails", "eventDetails(event)"],
 );
+const upgradeRunner = requireMarkers(
+  "scripts/validation/run-phase-04b-migration-upgrade.sh",
+  [
+    "OPSMIND_EPHEMERAL_DB=true",
+    'migrate_to 6',
+    'migrate_to 7',
+    "to_regclass('public.evidence_records')",
+    "UpgradeResult=PASS",
+    "CleanupResult=PASS",
+  ],
+);
+const workflow = requireMarkers(
+  ".github/workflows/pr-quality.yml",
+  [
+    "Prove V006 to V007 evidence migration upgrade",
+    "scripts/validation/run-phase-04b-migration-upgrade.sh",
+    "evidence-migration-upgrade.txt",
+  ],
+);
 
 for (const testFile of [
   "services/platform-api/src/test/java/ai/opsmind/platform/evidence/EvidenceContentCanonicalizerTest.java",
@@ -87,7 +106,9 @@ for (const file of evidenceFiles) {
   }
 }
 
-const combined = [migration, canonicalizer, writer, reader, ledger, codec].join("\n");
+const combined = [
+  migration, canonicalizer, writer, reader, ledger, codec, upgradeRunner, workflow,
+].join("\n");
 if (/raw_prompt|chain[_-]?of[_-]?thought|provider_api_key/iu.test(combined)) {
   errors.push("evidence checkpoint contains a prohibited sensitive field");
 }

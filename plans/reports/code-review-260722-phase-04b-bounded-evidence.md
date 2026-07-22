@@ -39,6 +39,12 @@ lifecycle. Phase 4 and G2 remain open.
    Spring exception translation requires a class proxy because the reader has
    no interface. The repository is now non-final, and the Phase 4B static gate
    locks that proxyable declaration.
+7. **Migration evidence covered only a fresh database — gate added.** The first
+   successful revision-bound run applied V001–V007 but did not independently
+   prove an existing V006 database could advance to V007. A disposable,
+   prefix-guarded upgrade runner now migrates to V006, proves the evidence table
+   absent, advances to V007, proves it present, and requires cleanup. Its CI
+   result remains pending; no upgrade claim is made yet.
 
 ## Risk Checks
 
@@ -65,8 +71,11 @@ lifecycle. Phase 4 and G2 remain open.
 - Platform API: 146 tests, zero failures/errors, 18 environment-gated skips.
 - Phase 4B static gate: PASS.
 - Repository layout, actionlint, and diff checks: PASS.
-- Secret scan: 1,121 files and 19 history commits, zero findings.
-- Live PostgreSQL V007 migration/RLS/rollback tests: pending GitHub Actions.
+- Secret scan: 1,138 files and 21 history commits, zero findings.
+- GitHub Actions run `29936897223` at revision `77f7ab8`: PASS; fresh V001–V007,
+  11 live PostgreSQL cases with zero failure/error/skip, and Compose health smoke.
+- Isolated V006→V007 upgrade proof: implemented and locally syntax/static checked;
+  revision-bound CI pending.
 
 ## Unresolved Questions
 

@@ -372,7 +372,7 @@ Capability-backed clients, the allowlisted live connector, CK/Stitch UI/browser
 E2E, and cross-service trace/p95 evidence remain required. Phase 7 is **in
 progress**.
 
-## 2026-07-22 — Checkpoint 4B bounded evidence records (local verification)
+## 2026-07-22 — Checkpoint 4B bounded evidence records
 
 Implemented an immutable small-record evidence control plane before enabling
 real Phase 7 clients:
@@ -391,14 +391,23 @@ real Phase 7 clients:
 
 Local verification: Platform API `146` tests, `0` failures/errors and `18`
 environment-gated integration skips; Phase 4B static checkpoint PASS; repository
-layout, actionlint, diff, and working-tree/history secret scans PASS. Live fresh/upgrade
-PostgreSQL migration, RLS, rollback, and immutability tests remain pending on
-GitHub Actions, so checkpoint 4B is **not yet marked complete**. The large/raw
-artifact lifecycle remains blocked by B-006/B-008/B-012.
+layout, actionlint, diff, and working-tree/history secret scans PASS.
+
+GitHub Actions run `29936897223` at revision
+`77f7ab80edb64f7ac8a0a46b68c37a3ad2f043eb` completed successfully with 11
+successful executable jobs and one expected push-only dependency-policy skip.
+The run applied fresh V001–V007, passed 11 PostgreSQL integration cases with no
+failure/error/skip, including evidence persistence and rollback, and passed the
+full Compose health smoke. An isolated fail-closed V006→V007 upgrade runner and
+workflow gate are implemented locally; checkpoint 4B remains **in progress**
+until that gate and the remaining replay/failure-matrix acceptance claims pass
+on a revision-bound run. The large/raw artifact lifecycle remains blocked by
+B-006/B-008/B-012.
 
 ## Next Allowed Work
 
-1. After the V007 PostgreSQL CI gate passes, build the real Phase 7 integration through an allowlisted intent catalog,
+1. After the V006→V007 upgrade and remaining Phase 4B acceptance gates pass,
+   build the real Phase 7 integration through an allowlisted intent catalog,
    short-lived capability issuance, independent workload authentication, and
    bounded Platform-to-AI Runtime/Tool Gateway HTTP clients; model output must
    never become an executable request directly.
