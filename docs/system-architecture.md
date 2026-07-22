@@ -106,8 +106,8 @@ revocation behavior remain unproven.
 2. Incident state machine validates the requested transition.
 3. Platform issues a short-lived read capability scoped to incident, connector, query class, time range, and budget.
 4. Tool Gateway validates capability signature, audience, expiry, nonce, policy version, and connector scope.
-5. Evidence is normalized; original content is stored through the evidence-artifact port using content addressing and encryption.
-6. Platform records metadata and an outbox event in the same database transaction.
+5. Evidence is normalized. Bounded redacted canonical records are stored in PostgreSQL; large or raw content must use the evidence-artifact port once that lifecycle is implemented.
+6. Platform links accepted evidence, the investigation event, and audit metadata in one database transaction.
 7. AI Runtime receives an authorized, bounded evidence bundle and provider-egress decision.
 8. Provider response is schema-validated. Unsupported claims remain hypotheses and cannot mutate incident facts.
 9. UI displays evidence, hypotheses, contradictions, confidence, provider status, cost, and audit sequence.
@@ -143,6 +143,7 @@ An approval binds tenant, actor, incident, connector, action schema/version, nor
 | Incidents, hypotheses, approvals, intents | Platform PostgreSQL schema | Optimistic version and append-only audit linkage |
 | Provider exchanges and budgets | AI Runtime schema or explicitly owned tables | Redacted and retention-bounded |
 | Connector execution receipts | Tool Gateway schema or explicitly owned tables | Idempotency and reconciliation authority |
+| Bounded redacted evidence records | Platform PostgreSQL schema | Immutable canonical JSON, 64 KiB maximum, run/event linkage, forced RLS |
 | Large evidence bodies | Evidence object port | Encrypted, content-addressed, lifecycle-controlled |
 | Embeddings and retrieval metadata | PostgreSQL/pgvector | ACL checked before ranking; generation epochs |
 | Workflow histories | Temporal | Introduced after deterministic state machine proof |
@@ -330,6 +331,19 @@ accepted transition updates the optimistic run revision/event count and appends
 the matching `investigation-audit-v1` payload to `audit_events` in the same
 transaction. Forced RLS, exact JSON-shape checks, event/snapshot parity triggers,
 append-only grants, and database-owned audit chaining protect every write path.
+
+Checkpoint 4B adds V007 and the first authoritative `evidence_records` write
+model. One accepted inline result is capped at 65,536 canonical UTF-8 bytes,
+re-hashed by Platform code and PostgreSQL, assigned deterministic Platform-owned
+evidence/execution UUIDv8 identities, and linked one-to-one with an
+`EVIDENCE_APPENDED` run event. The run successor, event, record, and audit append
+share the existing tenant-bound transaction. Canonical content is excluded from
+event and audit JSON; authorized reads re-check organization, project, incident,
+run, lifecycle, RLS visibility, and digest while preserving requested order.
+The row records Gateway audit/request identities, provenance, redaction,
+truncation, and duplicate-replay state. This bounded control plane does not
+provide object upload, hold, restore, purge, malware scanning, or residency.
+
 This checkpoint does **not** append to `incident_timeline_events` and does not
 provide workflow restart/resume semantics; the orchestrator is still synchronous
 and in-process. Fixture AI/Tool clients remain non-production. G3 therefore stays
@@ -339,7 +353,7 @@ and cross-service trace plus p95 evidence.
 
 ## Evidence Artifact Port
 
-The port accepts an authorized stream plus tenant, incident, source classification, retention class, and expected digest. It returns an opaque artifact ID, content digest, byte count, encryption metadata reference, and lifecycle version. MinIO is approved locally; production uses an S3-compatible backend behind `production-kms` with Singapore residency. The implementation must support:
+The port accepts an authorized stream plus tenant, incident, source classification, retention class, and expected digest. It returns an opaque artifact ID, content digest, byte count, encryption metadata reference, and lifecycle version. ADR-0003 originally selected MinIO locally, but that upstream is now archived; no replacement is silently treated as approved. B-006/B-008/B-012 keep the large-object path blocked until a supported backend passes the required conformance matrix. Production still requires an S3-compatible backend behind `production-kms` with Singapore residency. The implementation must support:
 
 - tenant-scoped authorization independent of object URL;
 - server-side encryption with controlled key boundary;

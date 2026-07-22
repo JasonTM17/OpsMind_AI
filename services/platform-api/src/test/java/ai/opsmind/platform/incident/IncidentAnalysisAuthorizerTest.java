@@ -12,11 +12,14 @@ import static org.mockito.Mockito.when;
 
 import java.net.URI;
 import java.time.Instant;
+import java.util.List;
 import java.util.Optional;
 import java.util.Set;
 import java.util.UUID;
 
 import ai.opsmind.platform.common.api.PlatformProblemException;
+import ai.opsmind.platform.evidence.EvidenceRecordReader;
+import ai.opsmind.platform.evidence.ResolvedEvidenceRecord;
 import ai.opsmind.platform.identity.OpsMindPrincipal;
 
 import org.junit.jupiter.api.BeforeEach;
@@ -36,10 +39,12 @@ class IncidentAnalysisAuthorizerTest {
     private final TransactionStatus transaction = mock(TransactionStatus.class);
     private final IncidentAccessRepository access = mock(IncidentAccessRepository.class);
     private final IncidentRepository incidents = mock(IncidentRepository.class);
+    private final EvidenceRecordReader evidence = mock(EvidenceRecordReader.class);
     private final IncidentAnalysisAuthorizer authorizer = new IncidentAnalysisAuthorizer(
         transactions,
         access,
-        incidents
+        incidents,
+        evidence
     );
 
     @BeforeEach
@@ -60,6 +65,34 @@ class IncidentAnalysisAuthorizerTest {
         );
 
         assertThat(result).isEqualTo(ACTOR_ID);
+        verify(transactions).commit(transaction);
+    }
+
+    @Test
+    void resolvesEvidenceInsideTheSameAnalyzeAuthorizationTransaction() {
+        UUID runId = UUID.randomUUID();
+        UUID evidenceId = UUID.randomUUID();
+        ResolvedEvidenceRecord record = new ResolvedEvidenceRecord(
+            evidenceId, runId, "sha256:" + "0".repeat(64), "metric",
+            "fixture-prometheus", "prometheus:synthetic/opsmind-api", Instant.now(),
+            "synthetic", "{}", false
+        );
+        when(access.requireAccess(
+            any(), eq(ORGANIZATION_ID), eq(PROJECT_ID), eq(IncidentAccessMode.ANALYZE)
+        )).thenReturn(new IncidentActor(ACTOR_ID, "SRE", "SRE"));
+        when(incidents.find(ORGANIZATION_ID, PROJECT_ID, INCIDENT_ID))
+            .thenReturn(Optional.of(snapshot()));
+        when(evidence.resolve(
+            ORGANIZATION_ID, PROJECT_ID, INCIDENT_ID, runId, List.of(evidenceId)
+        )).thenReturn(List.of(record));
+
+        AuthorizedIncidentAnalysisContext result = authorizer.requireEvidenceRecords(
+            principal(Set.of("incident:analyze")), ORGANIZATION_ID, PROJECT_ID, INCIDENT_ID,
+            runId, List.of(evidenceId)
+        );
+
+        assertThat(result.incident().actorId()).isEqualTo(ACTOR_ID);
+        assertThat(result.evidence()).containsExactly(record);
         verify(transactions).commit(transaction);
     }
 

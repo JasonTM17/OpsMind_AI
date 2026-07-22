@@ -16,11 +16,11 @@ public final class FixtureInvestigationAiRuntimeClient implements InvestigationA
     private static final UUID INTENT_ID = UUID.nameUUIDFromBytes(
         "opsmind-fixture-metrics-intent".getBytes(StandardCharsets.UTF_8)
     );
-    private static final UUID EVIDENCE_ID = UUID.nameUUIDFromBytes(
-        "opsmind-fixture-metrics-evidence".getBytes(StandardCharsets.UTF_8)
-    );
     private static final String ARGUMENTS_DIGEST = digest("fixture-metrics-arguments");
-    private static final String EVIDENCE_DIGEST = digest("fixture-metrics-evidence");
+    private static final String EVIDENCE_CONTENT =
+        "{\"metric\":\"http_request_duration_seconds\",\"service\":\"opsmind-api\",\"value\":1.25}";
+    private static final String EVIDENCE_DIGEST =
+        "sha256:8ef591caf657c9a4010f686512b8c9bfe4ce08df6b96e7ea09ce942750bbcb47";
 
     @Override
     public AnalysisRuntimeResponse analyze(UUID runId, Set<UUID> evidenceIds, int round) {
@@ -36,8 +36,10 @@ public final class FixtureInvestigationAiRuntimeClient implements InvestigationA
                 new AnalysisRuntimeResponse.CostEstimate("USD", BigDecimal.ZERO), List.of(intent)
             );
         }
+        UUID evidenceId = evidenceIds.stream().sorted().findFirst()
+            .orElseThrow(() -> new IllegalStateException("Fixture evidence is missing."));
         AnalysisRuntimeResponse.Citation citation = new AnalysisRuntimeResponse.Citation(
-            EVIDENCE_ID, EVIDENCE_DIGEST, "Synthetic latency increased immediately after deployment."
+            evidenceId, EVIDENCE_DIGEST, "Synthetic latency increased immediately after deployment."
         );
         return new AnalysisRuntimeResponse(
             "complete", runId, "fixture-analysis", "prompt-incident-investigation-v1", "analysis-v1",
@@ -51,12 +53,12 @@ public final class FixtureInvestigationAiRuntimeClient implements InvestigationA
         );
     }
 
-    public static UUID evidenceId() {
-        return EVIDENCE_ID;
-    }
-
     public static String evidenceDigest() {
         return EVIDENCE_DIGEST;
+    }
+
+    public static String evidenceContent() {
+        return EVIDENCE_CONTENT;
     }
 
     private static String digest(String value) {

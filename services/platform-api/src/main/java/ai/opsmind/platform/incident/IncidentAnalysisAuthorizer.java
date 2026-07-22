@@ -1,8 +1,10 @@
 package ai.opsmind.platform.incident;
 
+import java.util.List;
 import java.util.UUID;
 
 import ai.opsmind.platform.common.api.PlatformProblemException;
+import ai.opsmind.platform.evidence.EvidenceRecordReader;
 import ai.opsmind.platform.identity.OpsMindPrincipal;
 
 import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
@@ -20,15 +22,18 @@ public final class IncidentAnalysisAuthorizer {
     private final TransactionTemplate transactions;
     private final IncidentAccessRepository accessRepository;
     private final IncidentRepository incidentRepository;
+    private final EvidenceRecordReader evidenceReader;
 
     IncidentAnalysisAuthorizer(
         PlatformTransactionManager transactionManager,
         IncidentAccessRepository accessRepository,
-        IncidentRepository incidentRepository
+        IncidentRepository incidentRepository,
+        EvidenceRecordReader evidenceReader
     ) {
         this.transactions = new TransactionTemplate(transactionManager);
         this.accessRepository = accessRepository;
         this.incidentRepository = incidentRepository;
+        this.evidenceReader = evidenceReader;
     }
 
     public UUID requireAccess(
@@ -46,36 +51,63 @@ public final class IncidentAnalysisAuthorizer {
         UUID projectId,
         UUID incidentId
     ) {
+        return authorize(principal, organizationId, projectId, incidentId,
+            (incident, actor) -> AuthorizedIncidentAnalysisEvidence.from(incident, actor.id()));
+    }
+
+    public AuthorizedIncidentAnalysisContext requireEvidenceRecords(
+        OpsMindPrincipal principal,
+        UUID organizationId,
+        UUID projectId,
+        UUID incidentId,
+        UUID runId,
+        List<UUID> evidenceIds
+    ) {
+        if (runId == null) throw new IllegalArgumentException("Investigation run is required.");
+        return authorize(principal, organizationId, projectId, incidentId, (incident, actor) ->
+            new AuthorizedIncidentAnalysisContext(
+                AuthorizedIncidentAnalysisEvidence.from(incident, actor.id()),
+                evidenceReader.resolve(
+                    organizationId, projectId, incidentId, runId, evidenceIds
+                )
+            )
+        );
+    }
+
+    private <T> T authorize(
+        OpsMindPrincipal principal,
+        UUID organizationId,
+        UUID projectId,
+        UUID incidentId,
+        AuthorizedWork<T> work
+    ) {
         IncidentScopePolicy.require(principal, IncidentScopePolicy.ANALYZE_SCOPE);
         IncidentCommandValidator.requireResourceIds(organizationId, projectId, incidentId);
         try {
-            AuthorizedIncidentAnalysisEvidence evidence = transactions.execute(status -> {
+            T result = transactions.execute(status -> {
                 IncidentActor actor = accessRepository.requireAccess(
-                    principal,
-                    organizationId,
-                    projectId,
-                    IncidentAccessMode.ANALYZE
+                    principal, organizationId, projectId, IncidentAccessMode.ANALYZE
                 );
                 IncidentSnapshot incident = incidentRepository.find(
-                    organizationId,
-                    projectId,
-                    incidentId
-                )
-                    .orElseThrow(IncidentRolePolicy::hiddenDenial);
-                return AuthorizedIncidentAnalysisEvidence.from(incident, actor.id());
+                    organizationId, projectId, incidentId
+                ).orElseThrow(IncidentRolePolicy::hiddenDenial);
+                return work.run(incident, actor);
             });
-            if (evidence == null) {
-                throw new IllegalStateException("Incident analysis authorization returned no evidence.");
+            if (result == null) {
+                throw new IllegalStateException("Incident analysis authorization returned no result.");
             }
-            return evidence;
+            return result;
         }
         catch (TransactionException exception) {
             throw new PlatformProblemException(
-                HttpStatus.SERVICE_UNAVAILABLE,
-                "incident.transaction-unavailable",
-                "The incident authorization transaction could not be completed.",
-                exception
+                HttpStatus.SERVICE_UNAVAILABLE, "incident.transaction-unavailable",
+                "The incident authorization transaction could not be completed.", exception
             );
         }
+    }
+
+    @FunctionalInterface
+    private interface AuthorizedWork<T> {
+        T run(IncidentSnapshot incident, IncidentActor actor);
     }
 }

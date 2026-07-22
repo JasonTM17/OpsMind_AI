@@ -56,7 +56,7 @@ final class InvestigationPersistenceJsonCodec {
     ) {
         return write(new EventEnvelope(
             eventId, organizationId, projectId, incidentId, runId, sequenceNo,
-            eventType(event), actorId, occurredAt(event), event
+            eventType(event), actorId, occurredAt(event), eventDetails(event)
         ));
     }
 
@@ -110,6 +110,16 @@ final class InvestigationPersistenceJsonCodec {
         };
     }
 
+    private Object eventDetails(InvestigationEvent event) {
+        if (event instanceof InvestigationEvent.EvidenceAppended evidence) {
+            return new EvidenceAppendedDetails(
+                evidence.runId(), evidence.intentId(), evidence.evidenceId(),
+                evidence.digest(), evidence.sourceType(), evidence.occurredAt()
+            );
+        }
+        return event;
+    }
+
     private <T> T read(String json, TypeReference<T> type, String field) {
         try {
             T value = objectMapper.readValue(json, type);
@@ -140,6 +150,15 @@ final class InvestigationPersistenceJsonCodec {
         String eventType,
         UUID actorId,
         Instant occurredAt,
-        InvestigationEvent details
+        Object details
+    ) { }
+
+    private record EvidenceAppendedDetails(
+        UUID runId,
+        UUID intentId,
+        UUID evidenceId,
+        String digest,
+        String sourceType,
+        Instant occurredAt
     ) { }
 }

@@ -51,7 +51,10 @@ public final class InvestigationOrchestrator {
                 AnalysisRuntimeResponse.ToolIntent intent = state.pendingIntents().get(0);
                 InvestigationToolGatewayClient.ToolEvidence evidence;
                 try {
-                    evidence = toolGateway.execute(intent, state.runId());
+                    evidence = toolGateway.execute(intent, new InvestigationToolGatewayClient.ToolExecutionContext(
+                        state.organizationId(), state.projectId(), state.incidentId(), state.runId(),
+                        state.actorId(), state.deadlineAt()
+                    ));
                 }
                 catch (RuntimeException exception) {
                     return apply(state, new InvestigationCommand.Failed("Tool Gateway dependency failed."));
@@ -62,7 +65,8 @@ public final class InvestigationOrchestrator {
                     ));
                 }
                 state = apply(state, new InvestigationCommand.ToolEvidenceReceived(
-                    evidence.intentId(), evidence.evidenceId(), evidence.digest(), evidence.sourceType()
+                    evidence.intentId(), evidence.evidenceId(), evidence.digest(), evidence.sourceType(),
+                    evidence.collectedEvidence()
                 ));
             }
             if (state.status() == InvestigationStateMachine.Status.WAITING_FOR_EVIDENCE

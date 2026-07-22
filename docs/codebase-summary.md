@@ -167,6 +167,18 @@ event payload into the database-owned `audit_events` chain in the same
 transaction. Database triggers enforce contiguous sequence, exact event JSON,
 terminal-response semantics, and event/snapshot parity even for direct SQL.
 
+Checkpoint 4B extends this boundary with V007 `evidence_records` and the
+`ai.opsmind.platform.evidence` package. Tool results carry a bounded collected
+envelope through one reducer event; `EvidenceRecordWriter` stores canonical,
+already-redacted JSON in the same transaction as the run event and audit append.
+Platform-owned UUIDv8 identities scope evidence and execution to organization,
+run, and intent. PostgreSQL independently verifies the SHA-256 digest, exact
+event linkage, append-only behavior, forced RLS, and least-privilege grants.
+`EvidenceRecordReader` resolves only an authorized organization/project/
+incident/run set, preserves caller order, hides missing or foreign records, and
+re-verifies content before returning the redacted AI-input projection. Event and
+audit JSON intentionally retain metadata only.
+
 This is persistence, not durable orchestration. The code does not resume an
 in-flight runner after process loss and does not append investigation events to
 `incident_timeline_events`. Only fixture implementations of the Phase 7 AI and

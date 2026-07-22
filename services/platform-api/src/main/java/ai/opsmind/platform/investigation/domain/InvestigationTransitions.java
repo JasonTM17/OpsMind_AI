@@ -127,7 +127,7 @@ final class InvestigationTransitions {
         );
         return new Step(next, List.of(new InvestigationEvent.EvidenceAppended(
             state.runId(), command.intentId(), command.evidenceId(), command.digest(),
-            command.sourceType(), occurredAt)));
+            command.sourceType(), command.collectedEvidence(), occurredAt)));
     }
 
     static Step fail(State state, String reason, Instant occurredAt) {
