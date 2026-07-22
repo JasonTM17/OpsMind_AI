@@ -1,0 +1,67 @@
+spring:
+  application:
+    name: opsmind-platform-api
+  aop:
+    proxy-target-class: false
+  jackson:
+    deserialization:
+      fail-on-unknown-properties: true
+  lifecycle:
+    timeout-per-shutdown-phase: 20s
+  # Persistence is opt-in for the health-only bootstrap. The persistence
+  # profile removes this exclusion after DATABASE_URL and least-privilege
+  # credentials are provisioned by the deployment layer.
+  autoconfigure:
+    exclude:
+      - org.springframework.boot.jdbc.autoconfigure.DataSourceAutoConfiguration
+      - org.springframework.boot.jdbc.autoconfigure.health.DataSourceHealthContributorAutoConfiguration
+
+server:
+  port: ${PLATFORM_API_PORT:8080}
+  shutdown: graceful
+  error:
+    include-message: never
+    include-binding-errors: never
+    include-stacktrace: never
+    include-exception: false
+
+management:
+  endpoints:
+    web:
+      exposure:
+        include: health
+  health:
+    db:
+      enabled: false
+  endpoint:
+    health:
+      show-details: never
+
+opsmind:
+  ai-runtime:
+    client:
+      enabled: ${OPSMIND_AI_RUNTIME_CLIENT_ENABLED:false}
+      endpoint: ${OPSMIND_AI_RUNTIME_ENDPOINT:https://ai-runtime.invalid.example/api/v1/analysis}
+      allow-local-cleartext: ${OPSMIND_AI_RUNTIME_ALLOW_LOCAL_CLEARTEXT:false}
+      connect-timeout: ${OPSMIND_AI_RUNTIME_CONNECT_TIMEOUT:PT2S}
+      request-timeout: ${OPSMIND_AI_RUNTIME_REQUEST_TIMEOUT:PT30S}
+      max-response-body-bytes: ${OPSMIND_AI_RUNTIME_MAX_RESPONSE_BODY_BYTES:1048576}
+    capability:
+      enabled: ${OPSMIND_AI_CAPABILITY_ISSUANCE_ENABLED:false}
+      issuer: ${OPSMIND_AI_CAPABILITY_ISSUER:https://platform.invalid.example}
+      audience: ${OPSMIND_AI_CAPABILITY_AUDIENCE:opsmind-ai-runtime}
+      key-id: ${OPSMIND_AI_CAPABILITY_KEY_ID:}
+      private-key-path: ${OPSMIND_AI_CAPABILITY_PRIVATE_KEY_FILE:}
+      maximum-lifetime: ${OPSMIND_AI_CAPABILITY_MAX_LIFETIME:PT4M}
+  http:
+    max-json-body-bytes: ${OPSMIND_MAX_JSON_BODY_BYTES:65536}
+  dispatcher:
+    enabled: ${OPSMIND_DISPATCHER_ENABLED:false}
+  security:
+    mode: ${OPSMIND_SECURITY_MODE:fail-closed}
+    audience: ${OIDC_AUDIENCE:opsmind-platform-api}
+    issuer-uri: ${OIDC_ISSUER_URL:https://idp.invalid.example/opsmind}
+    required-amr: ${OIDC_REQUIRED_AMR:mfa}
+    maximum-token-lifetime: ${OIDC_MAX_TOKEN_LIFETIME:PT5M}
+    clock-skew: ${OIDC_CLOCK_SKEW:PT60S}
+    jwks-refresh-minimum-interval: ${OIDC_JWKS_REFRESH_MINIMUM_INTERVAL:PT1S}

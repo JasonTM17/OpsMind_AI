@@ -1,0 +1,121 @@
+{"ts":"2026-06-22T12:49:39.671Z","hook":"privacy-block","event":"PreToolUse","tool":"Read","target":"","note":"","dur":5,"status":"ok","exit":0,"error":""}
+{"ts":"2026-06-22T12:49:39.681Z","hook":"scout-block","event":"PreToolUse","tool":"","target":"","note":"","dur":0,"status":"crash","exit":0,"error":"path should be a `path.relative()`d string, but got \"D:/Claude_Kit-main/Claude_Kit-main/README.md\""}
+{"ts":"2026-06-22T12:52:43.170Z","hook":"task-completed-handler","event":"TaskCompleted","tool":"","target":"","note":"missing-team-name","dur":0,"status":"skip","exit":0,"error":""}
+{"ts":"2026-06-22T12:55:43.519Z","hook":"task-completed-handler","event":"TaskCompleted","tool":"","target":"","note":"missing-team-name","dur":0,"status":"skip","exit":0,"error":""}
+{"ts":"2026-06-22T13:15:05.090Z","hook":"scout-block","event":"PreToolUse","tool":"Bash","target":"","note":"","dur":10,"status":"ok","exit":0,"error":""}
+{"ts":"2026-06-22T13:15:05.113Z","hook":"privacy-block","event":"PreToolUse","tool":"Bash","target":"","note":"","dur":10,"status":"ok","exit":0,"error":""}
+{"ts":"2026-06-22T13:15:05.122Z","hook":"privacy-block","event":"PreToolUse","tool":"Bash","target":"","note":"","dur":7,"status":"ok","exit":0,"error":""}
+{"ts":"2026-06-22T13:15:05.132Z","hook":"scout-block","event":"PreToolUse","tool":"Bash","target":"","note":"","dur":7,"status":"ok","exit":0,"error":""}
+{"ts":"2026-06-22T13:15:05.141Z","hook":"scout-block","event":"PreToolUse","tool":"Bash","target":"","note":"","dur":7,"status":"ok","exit":0,"error":""}
+{"ts":"2026-06-22T13:15:05.165Z","hook":"privacy-block","event":"PreToolUse","tool":"Bash","target":"","note":"","dur":7,"status":"ok","exit":0,"error":""}
+{"ts":"2026-06-22T13:15:38.427Z","hook":"privacy-block","event":"PreToolUse","tool":"Bash","target":"","note":"","dur":5,"status":"ok","exit":0,"error":""}
+{"ts":"2026-06-22T13:15:38.432Z","hook":"scout-block","event":"PreToolUse","tool":"Bash","target":"","note":"","dur":8,"status":"ok","exit":0,"error":""}
+{"ts":"2026-06-22T13:16:21.888Z","hook":"privacy-block","event":"PreToolUse","tool":"Bash","target":"","note":"","dur":6,"status":"ok","exit":0,"error":""}
+{"ts":"2026-06-22T13:16:21.894Z","hook":"scout-block","event":"PreToolUse","tool":"Bash","target":"","note":"","dur":6,"status":"ok","exit":0,"error":""}
+{"ts":"2026-06-22T13:16:24.178Z","hook":"privacy-block","event":"PreToolUse","tool":"Bash","target":"","note":"","dur":4,"status":"ok","exit":0,"error":""}
+{"ts":"2026-06-22T13:16:24.187Z","hook":"scout-block","event":"PreToolUse","tool":"Bash","target":"","note":"","dur":4,"status":"ok","exit":0,"error":""}
+{"ts":"2026-06-22T13:16:25.172Z","hook":"scout-block","event":"PreToolUse","tool":"Bash","target":"","note":"","dur":8,"status":"ok","exit":0,"error":""}
+{"ts":"2026-06-22T13:16:25.173Z","hook":"privacy-block","event":"PreToolUse","tool":"Bash","target":"","note":"","dur":5,"status":"ok","exit":0,"error":""}
+{"ts":"2026-06-22T13:17:05.820Z","hook":"privacy-block","event":"PreToolUse","tool":"Bash","target":"","note":"","dur":5,"status":"ok","exit":0,"error":""}
+{"ts":"2026-06-22T13:17:05.822Z","hook":"scout-block","event":"PreToolUse","tool":"Bash","target":"","note":"","dur":5,"status":"ok","exit":0,"error":""}
+{"ts":"2026-06-22T13:17:06.954Z","hook":"privacy-block","event":"PreToolUse","tool":"Bash","target":"","note":"","dur":5,"status":"ok","exit":0,"error":""}
+{"ts":"2026-06-22T13:17:06.966Z","hook":"scout-block","event":"PreToolUse","tool":"Bash","target":"","note":"","dur":8,"status":"ok","exit":0,"error":""}
+{"ts":"2026-06-22T13:17:08.295Z","hook":"scout-block","event":"PreToolUse","tool":"Bash","target":"","note":"","dur":7,"status":"ok","exit":0,"error":""}
+{"ts":"2026-06-22T13:17:08.297Z","hook":"privacy-block","event":"PreToolUse","tool":"Bash","target":".key$)',","note":"bash-sensitive-file","dur":5,"status":"warn","exit":0,"error":""}
+{"ts":"2026-06-22T13:18:58.365Z","hook":"privacy-block","event":"PreToolUse","tool":"Bash","target":"","note":"","dur":4,"status":"ok","exit":0,"error":""}
+{"ts":"2026-06-22T13:18:58.368Z","hook":"scout-block","event":"PreToolUse","tool":"Bash","target":"","note":"","dur":6,"status":"ok","exit":0,"error":""}
+{"ts":"2026-06-22T13:19:26.751Z","hook":"privacy-block","event":"PreToolUse","tool":"Bash","target":"","note":"","dur":6,"status":"ok","exit":0,"error":""}
+{"ts":"2026-06-22T13:19:26.761Z","hook":"scout-block","event":"PreToolUse","tool":"Bash","target":"","note":"","dur":5,"status":"ok","exit":0,"error":""}
+{"ts":"2026-06-22T13:19:26.779Z","hook":"scout-block","event":"PreToolUse","tool":"Bash","target":"","note":"","dur":6,"status":"ok","exit":0,"error":""}
+{"ts":"2026-06-22T13:19:26.781Z","hook":"privacy-block","event":"PreToolUse","tool":"Bash","target":"","note":"","dur":6,"status":"ok","exit":0,"error":""}
+{"ts":"2026-06-22T13:20:48.632Z","hook":"privacy-block","event":"PreToolUse","tool":"Bash","target":"","note":"","dur":11,"status":"ok","exit":0,"error":""}
+{"ts":"2026-06-22T13:20:48.636Z","hook":"scout-block","event":"PreToolUse","tool":"Bash","target":"","note":"","dur":6,"status":"ok","exit":0,"error":""}
+{"ts":"2026-06-22T13:20:48.657Z","hook":"scout-block","event":"PreToolUse","tool":"Bash","target":"","note":"","dur":9,"status":"ok","exit":0,"error":""}
+{"ts":"2026-06-22T13:20:48.726Z","hook":"privacy-block","event":"PreToolUse","tool":"Bash","target":"","note":"","dur":7,"status":"ok","exit":0,"error":""}
+{"ts":"2026-06-22T13:20:48.732Z","hook":"scout-block","event":"PreToolUse","tool":"Bash","target":"","note":"","dur":8,"status":"ok","exit":0,"error":""}
+{"ts":"2026-06-22T13:20:48.746Z","hook":"privacy-block","event":"PreToolUse","tool":"Bash","target":"","note":"","dur":25,"status":"ok","exit":0,"error":""}
+{"ts":"2026-06-22T13:20:58.081Z","hook":"scout-block","event":"PreToolUse","tool":"Bash","target":"","note":"","dur":4,"status":"ok","exit":0,"error":""}
+{"ts":"2026-06-22T13:20:58.084Z","hook":"privacy-block","event":"PreToolUse","tool":"Bash","target":"","note":"","dur":6,"status":"ok","exit":0,"error":""}
+{"ts":"2026-06-22T13:21:13.893Z","hook":"privacy-block","event":"PreToolUse","tool":"Bash","target":"","note":"","dur":3,"status":"ok","exit":0,"error":""}
+{"ts":"2026-06-22T13:21:13.900Z","hook":"scout-block","event":"PreToolUse","tool":"Bash","target":"","note":"","dur":5,"status":"ok","exit":0,"error":""}
+{"ts":"2026-06-22T13:24:41.596Z","hook":"privacy-block","event":"PreToolUse","tool":"Grep","target":"","note":"","dur":4,"status":"ok","exit":0,"error":""}
+{"ts":"2026-06-22T13:24:41.603Z","hook":"scout-block","event":"PreToolUse","tool":"","target":"","note":"","dur":0,"status":"crash","exit":0,"error":"path should be a `path.relative()`d string, but got \"D:/Claude_Kit-main/Claude_Kit-main\""}
+{"ts":"2026-06-22T13:32:23.195Z","hook":"privacy-block","event":"PreToolUse","tool":"Bash","target":"","note":"","dur":4,"status":"ok","exit":0,"error":""}
+{"ts":"2026-06-22T13:32:23.202Z","hook":"scout-block","event":"PreToolUse","tool":"Bash","target":"","note":"","dur":4,"status":"ok","exit":0,"error":""}
+{"ts":"2026-06-22T13:33:04.857Z","hook":"privacy-block","event":"PreToolUse","tool":"Bash","target":"","note":"","dur":4,"status":"ok","exit":0,"error":""}
+{"ts":"2026-06-22T13:33:04.858Z","hook":"scout-block","event":"PreToolUse","tool":"Bash","target":"","note":"","dur":6,"status":"ok","exit":0,"error":""}
+{"ts":"2026-06-22T13:33:05.782Z","hook":"privacy-block","event":"PreToolUse","tool":"Bash","target":"","note":"","dur":5,"status":"ok","exit":0,"error":""}
+{"ts":"2026-06-22T13:33:05.791Z","hook":"scout-block","event":"PreToolUse","tool":"Bash","target":"","note":"","dur":5,"status":"ok","exit":0,"error":""}
+{"ts":"2026-06-22T13:39:21.435Z","hook":"privacy-block","event":"PreToolUse","tool":"Read","target":"","note":"","dur":9,"status":"ok","exit":0,"error":""}
+{"ts":"2026-06-22T13:39:21.454Z","hook":"scout-block","event":"PreToolUse","tool":"","target":"","note":"","dur":0,"status":"crash","exit":0,"error":"path should be a `path.relative()`d string, but got \"C:/Users/Admin/.claude/projects/D--Claude-Kit-main-Claude-Kit-main/memory/MEMORY.md\""}
+{"ts":"2026-06-22T13:39:21.458Z","hook":"privacy-block","event":"PreToolUse","tool":"Read","target":"","note":"","dur":6,"status":"ok","exit":0,"error":""}
+{"ts":"2026-06-22T13:39:21.454Z","hook":"scout-block","event":"PreToolUse","tool":"","target":"","note":"","dur":0,"status":"crash","exit":0,"error":"path should be a `path.relative()`d string, but got \"D:/Claude_Kit-main/Claude_Kit-main/README.md\""}
+{"ts":"2026-06-22T13:39:41.373Z","hook":"privacy-block","event":"PreToolUse","tool":"Edit","target":"","note":"","dur":5,"status":"ok","exit":0,"error":""}
+{"ts":"2026-06-22T13:39:41.382Z","hook":"scout-block","event":"PreToolUse","tool":"","target":"","note":"","dur":0,"status":"crash","exit":0,"error":"path should be a `path.relative()`d string, but got \"D:/Claude_Kit-main/Claude_Kit-main/README.md\""}
+{"ts":"2026-06-22T13:39:51.968Z","hook":"privacy-block","event":"PreToolUse","tool":"Edit","target":"","note":"","dur":4,"status":"ok","exit":0,"error":""}
+{"ts":"2026-06-22T13:39:51.973Z","hook":"scout-block","event":"PreToolUse","tool":"","target":"","note":"","dur":0,"status":"crash","exit":0,"error":"path should be a `path.relative()`d string, but got \"D:/Claude_Kit-main/Claude_Kit-main/README.md\""}
+{"ts":"2026-06-22T13:41:19.223Z","hook":"scout-block","event":"PreToolUse","tool":"","target":"","note":"","dur":0,"status":"crash","exit":0,"error":"path should be a `path.relative()`d string, but got \"D:/Claude_Kit-main/Claude_Kit-main/README.md\""}
+{"ts":"2026-06-22T13:41:19.231Z","hook":"privacy-block","event":"PreToolUse","tool":"Grep","target":"","note":"","dur":4,"status":"ok","exit":0,"error":""}
+{"ts":"2026-06-22T13:42:26.648Z","hook":"descriptive-name","event":"PreToolUse","tool":"Write","target":"","note":"","dur":1,"status":"ok","exit":0,"error":""}
+{"ts":"2026-06-22T13:42:26.672Z","hook":"privacy-block","event":"PreToolUse","tool":"Write","target":"","note":"","dur":4,"status":"ok","exit":0,"error":""}
+{"ts":"2026-06-22T13:42:26.680Z","hook":"scout-block","event":"PreToolUse","tool":"","target":"","note":"","dur":0,"status":"crash","exit":0,"error":"path should be a `path.relative()`d string, but got \"C:/Users/Admin/.claude/projects/D--Claude-Kit-main-Claude-Kit-main/memory/readme-canonical-repo-link.md\""}
+{"ts":"2026-06-22T13:42:39.082Z","hook":"descriptive-name","event":"PreToolUse","tool":"Write","target":"","note":"","dur":2,"status":"ok","exit":0,"error":""}
+{"ts":"2026-06-22T13:42:39.093Z","hook":"privacy-block","event":"PreToolUse","tool":"Write","target":"","note":"","dur":5,"status":"ok","exit":0,"error":""}
+{"ts":"2026-06-22T13:42:39.094Z","hook":"scout-block","event":"PreToolUse","tool":"","target":"","note":"","dur":0,"status":"crash","exit":0,"error":"path should be a `path.relative()`d string, but got \"C:/Users/Admin/.claude/projects/D--Claude-Kit-main-Claude-Kit-main/memory/MEMORY.md\""}
+{"ts":"2026-06-22T13:42:49.985Z","hook":"privacy-block","event":"PreToolUse","tool":"Bash","target":"","note":"","dur":7,"status":"ok","exit":0,"error":""}
+{"ts":"2026-06-22T13:42:49.990Z","hook":"privacy-block","event":"PreToolUse","tool":"Bash","target":"","note":"","dur":7,"status":"ok","exit":0,"error":""}
+{"ts":"2026-06-22T13:42:49.996Z","hook":"scout-block","event":"PreToolUse","tool":"Bash","target":"","note":"","dur":8,"status":"ok","exit":0,"error":""}
+{"ts":"2026-06-22T13:42:50.001Z","hook":"scout-block","event":"PreToolUse","tool":"Bash","target":"","note":"","dur":6,"status":"ok","exit":0,"error":""}
+{"ts":"2026-06-22T13:46:26.785Z","hook":"privacy-block","event":"PreToolUse","tool":"Read","target":"","note":"","dur":4,"status":"ok","exit":0,"error":""}
+{"ts":"2026-06-22T13:46:26.795Z","hook":"scout-block","event":"PreToolUse","tool":"","target":"","note":"","dur":0,"status":"crash","exit":0,"error":"path should be a `path.relative()`d string, but got \"C:/Users/Admin/.claude/projects/D--Claude-Kit-main-Claude-Kit-main/memory/MEMORY.md\""}
+{"ts":"2026-06-22T13:47:01.016Z","hook":"descriptive-name","event":"PreToolUse","tool":"Write","target":"","note":"","dur":2,"status":"ok","exit":0,"error":""}
+{"ts":"2026-06-22T13:47:01.039Z","hook":"privacy-block","event":"PreToolUse","tool":"Write","target":"","note":"","dur":4,"status":"ok","exit":0,"error":""}
+{"ts":"2026-06-22T13:47:01.047Z","hook":"scout-block","event":"PreToolUse","tool":"","target":"","note":"","dur":0,"status":"crash","exit":0,"error":"path should be a `path.relative()`d string, but got \"C:/Users/Admin/.claude/projects/D--Claude-Kit-main-Claude-Kit-main/memory/feedback-do-not-use-omc.md\""}
+{"ts":"2026-06-22T13:47:19.472Z","hook":"privacy-block","event":"PreToolUse","tool":"Edit","target":"","note":"","dur":3,"status":"ok","exit":0,"error":""}
+{"ts":"2026-06-22T13:47:19.480Z","hook":"scout-block","event":"PreToolUse","tool":"","target":"","note":"","dur":0,"status":"crash","exit":0,"error":"path should be a `path.relative()`d string, but got \"C:/Users/Admin/.claude/projects/D--Claude-Kit-main-Claude-Kit-main/memory/MEMORY.md\""}
+{"ts":"2026-06-22T13:47:30.016Z","hook":"privacy-block","event":"PreToolUse","tool":"Bash","target":"","note":"","dur":3,"status":"ok","exit":0,"error":""}
+{"ts":"2026-06-22T13:47:30.018Z","hook":"scout-block","event":"PreToolUse","tool":"Bash","target":"","note":"","dur":3,"status":"ok","exit":0,"error":""}
+{"ts":"2026-06-22T13:48:40.744Z","hook":"privacy-block","event":"PreToolUse","tool":"Bash","target":"","note":"","dur":11,"status":"ok","exit":0,"error":""}
+{"ts":"2026-06-22T13:48:40.748Z","hook":"scout-block","event":"PreToolUse","tool":"Bash","target":"","note":"","dur":6,"status":"ok","exit":0,"error":""}
+{"ts":"2026-06-22T13:48:40.763Z","hook":"privacy-block","event":"PreToolUse","tool":"Bash","target":"","note":"","dur":10,"status":"ok","exit":0,"error":""}
+{"ts":"2026-06-22T13:48:40.773Z","hook":"scout-block","event":"PreToolUse","tool":"Bash","target":"","note":"","dur":9,"status":"ok","exit":0,"error":""}
+{"ts":"2026-06-22T13:48:40.785Z","hook":"scout-block","event":"PreToolUse","tool":"Bash","target":"","note":"","dur":5,"status":"ok","exit":0,"error":""}
+{"ts":"2026-06-22T13:48:40.797Z","hook":"privacy-block","event":"PreToolUse","tool":"Bash","target":"","note":"","dur":7,"status":"ok","exit":0,"error":""}
+{"ts":"2026-06-22T13:48:41.951Z","hook":"privacy-block","event":"PreToolUse","tool":"Bash","target":"","note":"","dur":4,"status":"ok","exit":0,"error":""}
+{"ts":"2026-06-22T13:48:41.957Z","hook":"scout-block","event":"PreToolUse","tool":"Bash","target":"","note":"","dur":6,"status":"ok","exit":0,"error":""}
+{"ts":"2026-06-22T13:48:55.739Z","hook":"scout-block","event":"PreToolUse","tool":"Bash","target":"","note":"","dur":6,"status":"ok","exit":0,"error":""}
+{"ts":"2026-06-22T13:48:55.743Z","hook":"privacy-block","event":"PreToolUse","tool":"Bash","target":"","note":"","dur":3,"status":"ok","exit":0,"error":""}
+{"ts":"2026-06-22T13:49:10.360Z","hook":"privacy-block","event":"PreToolUse","tool":"Bash","target":"","note":"","dur":3,"status":"ok","exit":0,"error":""}
+{"ts":"2026-06-22T13:49:10.362Z","hook":"scout-block","event":"PreToolUse","tool":"Bash","target":"","note":"","dur":5,"status":"ok","exit":0,"error":""}
+{"ts":"2026-06-22T13:49:20.587Z","hook":"scout-block","event":"PreToolUse","tool":"Bash","target":"","note":"","dur":3,"status":"ok","exit":0,"error":""}
+{"ts":"2026-06-22T13:49:20.588Z","hook":"privacy-block","event":"PreToolUse","tool":"Bash","target":"","note":"","dur":4,"status":"ok","exit":0,"error":""}
+{"ts":"2026-06-22T14:00:54.441Z","hook":"privacy-block","event":"PreToolUse","tool":"Bash","target":"","note":"","dur":8,"status":"ok","exit":0,"error":""}
+{"ts":"2026-06-22T14:00:54.463Z","hook":"scout-block","event":"PreToolUse","tool":"Bash","target":"","note":"","dur":7,"status":"ok","exit":0,"error":""}
+{"ts":"2026-06-22T14:00:54.468Z","hook":"scout-block","event":"PreToolUse","tool":"Bash","target":"","note":"","dur":9,"status":"ok","exit":0,"error":""}
+{"ts":"2026-06-22T14:00:54.474Z","hook":"privacy-block","event":"PreToolUse","tool":"Bash","target":"","note":"","dur":7,"status":"ok","exit":0,"error":""}
+{"ts":"2026-06-22T14:00:54.477Z","hook":"privacy-block","event":"PreToolUse","tool":"Bash","target":"","note":"","dur":6,"status":"ok","exit":0,"error":""}
+{"ts":"2026-06-22T14:00:54.493Z","hook":"scout-block","event":"PreToolUse","tool":"Bash","target":"","note":"","dur":6,"status":"ok","exit":0,"error":""}
+{"ts":"2026-06-22T14:15:20.309Z","hook":"privacy-block","event":"PreToolUse","tool":"Bash","target":"","note":"","dur":4,"status":"ok","exit":0,"error":""}
+{"ts":"2026-06-22T14:15:20.324Z","hook":"scout-block","event":"PreToolUse","tool":"Bash","target":"","note":"","dur":7,"status":"ok","exit":0,"error":""}
+{"ts":"2026-06-22T14:15:22.337Z","hook":"scout-block","event":"PreToolUse","tool":"Bash","target":"","note":"","dur":3,"status":"ok","exit":0,"error":""}
+{"ts":"2026-06-22T14:15:22.343Z","hook":"privacy-block","event":"PreToolUse","tool":"Bash","target":"","note":"","dur":4,"status":"ok","exit":0,"error":""}
+{"ts":"2026-06-22T14:15:23.459Z","hook":"privacy-block","event":"PreToolUse","tool":"Bash","target":"","note":"","dur":4,"status":"ok","exit":0,"error":""}
+{"ts":"2026-06-22T14:15:23.461Z","hook":"scout-block","event":"PreToolUse","tool":"Bash","target":"","note":"","dur":7,"status":"ok","exit":0,"error":""}
+{"ts":"2026-06-22T14:15:24.636Z","hook":"privacy-block","event":"PreToolUse","tool":"Bash","target":"","note":"","dur":5,"status":"ok","exit":0,"error":""}
+{"ts":"2026-06-22T14:15:24.643Z","hook":"scout-block","event":"PreToolUse","tool":"Bash","target":"","note":"","dur":6,"status":"ok","exit":0,"error":""}
+{"ts":"2026-06-22T14:16:03.153Z","hook":"privacy-block","event":"PreToolUse","tool":"Bash","target":"","note":"","dur":5,"status":"ok","exit":0,"error":""}
+{"ts":"2026-06-22T14:16:03.159Z","hook":"scout-block","event":"PreToolUse","tool":"Bash","target":"","note":"","dur":7,"status":"ok","exit":0,"error":""}
+{"ts":"2026-06-22T14:16:04.312Z","hook":"privacy-block","event":"PreToolUse","tool":"Bash","target":"","note":"","dur":3,"status":"ok","exit":0,"error":""}
+{"ts":"2026-06-22T14:16:04.323Z","hook":"scout-block","event":"PreToolUse","tool":"Bash","target":"","note":"allowed-command","dur":0,"status":"ok","exit":0,"error":""}
+{"ts":"2026-06-22T14:16:05.353Z","hook":"privacy-block","event":"PreToolUse","tool":"Bash","target":"","note":"","dur":4,"status":"ok","exit":0,"error":""}
+{"ts":"2026-06-22T14:16:05.354Z","hook":"scout-block","event":"PreToolUse","tool":"Bash","target":"","note":"allowed-command","dur":0,"status":"ok","exit":0,"error":""}
+{"ts":"2026-06-22T14:16:35.095Z","hook":"privacy-block","event":"PreToolUse","tool":"Bash","target":"","note":"","dur":4,"status":"ok","exit":0,"error":""}
+{"ts":"2026-06-22T14:16:35.117Z","hook":"scout-block","event":"PreToolUse","tool":"Bash","target":"/node_modules","note":"node_modules","dur":8,"status":"block","exit":2,"error":""}
+{"ts":"2026-06-22T14:17:22.800Z","hook":"privacy-block","event":"PreToolUse","tool":"Read","target":"","note":"","dur":6,"status":"ok","exit":0,"error":""}
+{"ts":"2026-06-22T14:17:22.815Z","hook":"privacy-block","event":"PreToolUse","tool":"Read","target":"","note":"","dur":17,"status":"ok","exit":0,"error":""}
+{"ts":"2026-06-22T14:17:22.818Z","hook":"scout-block","event":"PreToolUse","tool":"","target":"","note":"","dur":0,"status":"crash","exit":0,"error":"path should be a `path.relative()`d string, but got \"D:/Claude_Kit-main/Claude_Kit-main/.claude/.ck.json\""}
+{"ts":"2026-06-22T14:17:22.828Z","hook":"scout-block","event":"PreToolUse","tool":"","target":"","note":"","dur":0,"status":"crash","exit":0,"error":"path should be a `path.relative()`d string, but got \"D:/Claude_Kit-main/Claude_Kit-main/.claude/rules/primary-workflow.md\""}
+{"ts":"2026-06-22T14:17:22.834Z","hook":"scout-block","event":"PreToolUse","tool":"","target":"","note":"","dur":0,"status":"crash","exit":0,"error":"path should be a `path.relative()`d string, but got \"D:/Claude_Kit-main/Claude_Kit-main/.claude/rules/development-rules.md\""}
+{"ts":"2026-06-22T14:17:22.858Z","hook":"privacy-block","event":"PreToolUse","tool":"Read","target":"","note":"","dur":11,"status":"ok","exit":0,"error":""}
+{"ts":"2026-06-22T14:17:22.872Z","hook":"scout-block","event":"PreToolUse","tool":"","target":"","note":"","dur":0,"status":"crash","exit":0,"error":"path should be a `path.relative()`d string, but got \"D:/Claude_Kit-main/Claude_Kit-main/.claude/hooks/docs/README.md\""}
+{"ts":"2026-06-22T14:17:22.889Z","hook":"privacy-block","event":"PreToolUse","tool":"Read","target":"","note":"","dur":11,"status":"ok","exit":0,"error":""}

@@ -1,0 +1,115 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://contracts.opsmind.ai/ai-runtime/v1/analysis-response.schema.json",
+  "title": "AnalysisResponseV1",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["status", "run_id", "model_id", "prompt_version", "schema_version", "usage", "cost_estimate"],
+  "properties": {
+    "status": {"enum": ["complete", "need_more_evidence", "abstain", "provider_unavailable", "budget_exceeded"]},
+    "run_id": {"type": "string", "format": "uuid"},
+    "model_id": {"type": "string", "minLength": 1, "maxLength": 256},
+    "prompt_version": {"type": "string", "minLength": 1, "maxLength": 256},
+    "schema_version": {"const": "analysis-v1"},
+    "hypotheses": {"type": "array", "maxItems": 20, "items": {"$ref": "#/$defs/hypothesis"}},
+    "counter_evidence": {"type": "array", "maxItems": 100, "items": {"type": "string", "minLength": 1, "maxLength": 1024}},
+    "missing_evidence": {"type": "array", "maxItems": 100, "items": {"type": "string", "minLength": 1, "maxLength": 1024}},
+    "citations": {"type": "array", "maxItems": 100, "items": {"$ref": "#/$defs/citation"}},
+    "confidence": {"type": "number", "minimum": 0, "maximum": 1},
+    "usage": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["prompt_tokens", "completion_tokens", "total_tokens"],
+      "properties": {
+        "prompt_tokens": {"type": "integer", "minimum": 0},
+        "completion_tokens": {"type": "integer", "minimum": 0},
+        "total_tokens": {"type": "integer", "minimum": 0}
+      }
+    },
+    "cost_estimate": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["currency", "amount"],
+      "properties": {
+        "currency": {"const": "USD"},
+        "amount": {"type": "number", "minimum": 0, "maximum": 1000000}
+      }
+    },
+    "requested_tool_calls": {"type": "array", "maxItems": 20, "items": {"$ref": "#/$defs/toolIntent"}}
+  },
+  "allOf": [
+    {
+      "if": {"required": ["status"], "properties": {"status": {"const": "complete"}}},
+      "then": {
+        "required": ["hypotheses", "citations"],
+        "properties": {
+          "hypotheses": {
+            "minItems": 1,
+            "items": {
+              "allOf": [
+                {"$ref": "#/$defs/hypothesis"},
+                {"required": ["citations"], "properties": {"citations": {"minItems": 1}}}
+              ]
+            }
+          },
+          "citations": {"minItems": 1}
+        }
+      }
+    },
+    {
+      "if": {
+        "required": ["requested_tool_calls"],
+        "properties": {"requested_tool_calls": {"minItems": 1}}
+      },
+      "then": {"properties": {"status": {"const": "need_more_evidence"}}}
+    },
+    {
+      "if": {"required": ["status"], "properties": {"status": {"const": "need_more_evidence"}}},
+      "then": {
+        "anyOf": [
+          {"required": ["missing_evidence"], "properties": {"missing_evidence": {"minItems": 1}}},
+          {"required": ["requested_tool_calls"], "properties": {"requested_tool_calls": {"minItems": 1}}}
+        ]
+      }
+    }
+  ],
+  "x-semantic-invariants": [
+    "usage.total_tokens equals usage.prompt_tokens plus usage.completion_tokens",
+    "every complete hypothesis citation also appears in top-level citations"
+  ],
+  "$defs": {
+    "citation": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["evidence_id", "digest", "claim"],
+      "properties": {
+        "evidence_id": {"type": "string", "format": "uuid"},
+        "digest": {"type": "string", "pattern": "^sha256:[0-9a-f]{64}$"},
+        "claim": {"type": "string", "minLength": 1, "maxLength": 1024}
+      }
+    },
+    "hypothesis": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["title", "explanation", "confidence"],
+      "properties": {
+        "title": {"type": "string", "minLength": 1, "maxLength": 256},
+        "explanation": {"type": "string", "minLength": 1, "maxLength": 4096},
+        "confidence": {"type": "number", "minimum": 0, "maximum": 1},
+        "citations": {"type": "array", "maxItems": 50, "items": {"$ref": "#/$defs/citation"}}
+      }
+    },
+    "toolIntent": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["intent_id", "connector", "operation", "arguments_digest", "rationale"],
+      "properties": {
+        "intent_id": {"type": "string", "format": "uuid"},
+        "connector": {"enum": ["metrics", "logs", "traces", "changes", "runbooks"]},
+        "operation": {"type": "string", "minLength": 1, "maxLength": 256},
+        "arguments_digest": {"type": "string", "pattern": "^sha256:[0-9a-f]{64}$"},
+        "rationale": {"type": "string", "minLength": 1, "maxLength": 1024}
+      }
+    }
+  }
+}

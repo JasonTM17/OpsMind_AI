@@ -1,0 +1,270 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://opsmind.local/schemas/product-production-contract.schema.json",
+  "title": "OpsMind Product and Production Contract",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["contractVersion", "status", "approvedBy", "approvedAt", "decisions"],
+  "properties": {
+    "$schema": { "type": "string" },
+    "contractVersion": {
+      "type": "string",
+      "pattern": "^(0|[1-9][0-9]*)\\.(0|[1-9][0-9]*)\\.(0|[1-9][0-9]*)(?:-[0-9A-Za-z-]+(?:\\.[0-9A-Za-z-]+)*)?(?:\\+[0-9A-Za-z-]+(?:\\.[0-9A-Za-z-]+)*)?$"
+    },
+    "status": { "enum": ["blocked", "approved"] },
+    "approvedBy": { "type": ["string", "null"] },
+    "approvedAt": { "type": ["string", "null"], "format": "date-time" },
+    "decisions": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "deploymentArchetype",
+        "targetEnvironment",
+        "tenantModel",
+        "identityProfile",
+        "deepseekEgressPolicy",
+        "firstLiveIntegration",
+        "evidenceArtifactStore",
+        "loadEnvelope",
+        "serviceObjectives",
+        "dataLifecycle",
+        "operationalOwnership",
+        "deliveryCapacity"
+      ],
+      "properties": {
+        "deploymentArchetype": {
+          "$ref": "#/$defs/decisionEnvelope",
+          "properties": { "value": { "oneOf": [{ "type": "null" }, { "$ref": "#/$defs/deploymentArchetypeValue" }] } }
+        },
+        "targetEnvironment": {
+          "$ref": "#/$defs/decisionEnvelope",
+          "properties": { "value": { "oneOf": [{ "type": "null" }, { "$ref": "#/$defs/targetEnvironmentValue" }] } }
+        },
+        "tenantModel": {
+          "$ref": "#/$defs/decisionEnvelope",
+          "properties": { "value": { "oneOf": [{ "type": "null" }, { "$ref": "#/$defs/tenantModelValue" }] } }
+        },
+        "identityProfile": {
+          "$ref": "#/$defs/decisionEnvelope",
+          "properties": { "value": { "oneOf": [{ "type": "null" }, { "$ref": "#/$defs/identityProfileValue" }] } }
+        },
+        "deepseekEgressPolicy": {
+          "$ref": "#/$defs/decisionEnvelope",
+          "properties": { "value": { "oneOf": [{ "type": "null" }, { "$ref": "#/$defs/deepseekEgressPolicyValue" }] } }
+        },
+        "firstLiveIntegration": {
+          "$ref": "#/$defs/decisionEnvelope",
+          "properties": { "value": { "oneOf": [{ "type": "null" }, { "$ref": "#/$defs/firstLiveIntegrationValue" }] } }
+        },
+        "evidenceArtifactStore": {
+          "$ref": "#/$defs/decisionEnvelope",
+          "properties": { "value": { "oneOf": [{ "type": "null" }, { "$ref": "#/$defs/evidenceArtifactStoreValue" }] } }
+        },
+        "loadEnvelope": {
+          "$ref": "#/$defs/decisionEnvelope",
+          "properties": { "value": { "oneOf": [{ "type": "null" }, { "$ref": "#/$defs/loadEnvelopeValue" }] } }
+        },
+        "serviceObjectives": {
+          "$ref": "#/$defs/decisionEnvelope",
+          "properties": { "value": { "oneOf": [{ "type": "null" }, { "$ref": "#/$defs/serviceObjectivesValue" }] } }
+        },
+        "dataLifecycle": {
+          "$ref": "#/$defs/decisionEnvelope",
+          "properties": { "value": { "oneOf": [{ "type": "null" }, { "$ref": "#/$defs/dataLifecycleValue" }] } }
+        },
+        "operationalOwnership": {
+          "$ref": "#/$defs/decisionEnvelope",
+          "properties": { "value": { "oneOf": [{ "type": "null" }, { "$ref": "#/$defs/operationalOwnershipValue" }] } }
+        },
+        "deliveryCapacity": {
+          "$ref": "#/$defs/decisionEnvelope",
+          "properties": { "value": { "oneOf": [{ "type": "null" }, { "$ref": "#/$defs/deliveryCapacityValue" }] } }
+        }
+      }
+    }
+  },
+  "$defs": {
+    "decisionEnvelope": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["state", "value", "recommended", "ownerRole", "approvedBy", "approvedAt", "evidence"],
+      "properties": {
+        "state": { "enum": ["pending", "approved", "rejected"] },
+        "value": { "type": ["object", "null"] },
+        "recommended": { "type": "string", "minLength": 1 },
+        "ownerRole": { "type": "string", "minLength": 1 },
+        "approvedBy": { "type": ["string", "null"] },
+        "approvedAt": { "type": ["string", "null"], "format": "date-time" },
+        "evidence": {
+          "type": ["string", "null"],
+          "pattern": "^[a-z][a-z0-9+.-]*://[^\\s]+$"
+        }
+      },
+      "allOf": [
+        {
+          "if": { "properties": { "state": { "const": "approved" } }, "required": ["state"] },
+          "then": {
+            "properties": {
+              "value": { "type": "object" },
+              "approvedBy": { "type": "string", "minLength": 2 },
+              "approvedAt": { "type": "string", "format": "date-time" },
+              "evidence": { "type": "string", "pattern": "^[a-z][a-z0-9+.-]*://[^\\s]+$" }
+            }
+          }
+        }
+      ]
+    },
+    "deploymentArchetypeValue": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["mode", "rationale"],
+      "properties": {
+        "mode": { "enum": ["internal-single-organization", "managed-saas", "customer-hosted"] },
+        "rationale": { "type": "string", "minLength": 12 }
+      }
+    },
+    "targetEnvironmentValue": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["substrate", "region", "residency", "environmentClass"],
+      "properties": {
+        "substrate": { "type": "string", "minLength": 2 },
+        "region": { "type": "string", "minLength": 2 },
+        "residency": { "type": "string", "minLength": 2 },
+        "environmentClass": { "const": "production" }
+      }
+    },
+    "tenantModelValue": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["organizationMode", "isolationMode", "maxOrganizations", "maxProjectsPerOrganization"],
+      "properties": {
+        "organizationMode": { "enum": ["single", "multi"] },
+        "isolationMode": { "enum": ["logical", "physical", "hybrid"] },
+        "maxOrganizations": { "type": "integer", "minimum": 1 },
+        "maxProjectsPerOrganization": { "type": "integer", "minimum": 1 }
+      }
+    },
+    "identityProfileValue": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["protocol", "provider", "authorizationFlow", "mfaRequired", "breakGlassOwner"],
+      "properties": {
+        "protocol": { "const": "oidc" },
+        "provider": { "type": "string", "minLength": 2 },
+        "authorizationFlow": { "const": "authorization-code-pkce" },
+        "mfaRequired": { "type": "boolean" },
+        "breakGlassOwner": { "type": "string", "minLength": 2 }
+      }
+    },
+    "deepseekEgressPolicyValue": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["mode", "allowedDataClasses", "residencyPolicy", "providerRetentionAllowed", "redactionRequired", "monthlyBudgetUsd", "fallbackMode"],
+      "properties": {
+        "mode": { "enum": ["disabled", "allowlisted-redacted"] },
+        "allowedDataClasses": { "type": "array", "items": { "type": "string", "minLength": 2 }, "uniqueItems": true },
+        "residencyPolicy": { "type": "string", "minLength": 2 },
+        "providerRetentionAllowed": { "type": "boolean" },
+        "redactionRequired": { "const": true },
+        "monthlyBudgetUsd": { "type": "number", "minimum": 0 },
+        "fallbackMode": { "enum": ["fail-closed", "local-model", "human-only"] }
+      },
+      "allOf": [
+        {
+          "if": { "properties": { "mode": { "const": "allowlisted-redacted" } } },
+          "then": { "properties": { "allowedDataClasses": { "minItems": 1 } } }
+        }
+      ]
+    },
+    "firstLiveIntegrationValue": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["connectorType", "endpointClass", "readOnly", "owner"],
+      "properties": {
+        "connectorType": { "enum": ["prometheus", "loki", "opensearch", "github", "gitlab", "kubernetes"] },
+        "endpointClass": { "enum": ["synthetic-non-production", "non-production", "production"] },
+        "readOnly": { "const": true },
+        "owner": { "type": "string", "minLength": 2 }
+      }
+    },
+    "evidenceArtifactStoreValue": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["localBackend", "productionBackend", "kmsBoundary", "retentionOwner", "restoreTargetHours"],
+      "properties": {
+        "localBackend": { "type": "string", "minLength": 2 },
+        "productionBackend": { "type": "string", "minLength": 2 },
+        "kmsBoundary": { "type": "string", "minLength": 2 },
+        "retentionOwner": { "type": "string", "minLength": 2 },
+        "restoreTargetHours": { "type": "number", "exclusiveMinimum": 0 }
+      }
+    },
+    "loadEnvelopeValue": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["maxOrganizations", "maxConcurrentInvestigations", "evidenceEventsPerSecond", "modelRequestsPerMinute"],
+      "properties": {
+        "maxOrganizations": { "type": "integer", "minimum": 1 },
+        "maxConcurrentInvestigations": { "type": "integer", "minimum": 1 },
+        "evidenceEventsPerSecond": { "type": "number", "exclusiveMinimum": 0 },
+        "modelRequestsPerMinute": { "type": "integer", "minimum": 1 }
+      }
+    },
+    "serviceObjectivesValue": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["availabilityPercent", "p95ApiLatencyMs", "rtoMinutes", "rpoMinutes"],
+      "properties": {
+        "availabilityPercent": { "type": "number", "exclusiveMinimum": 0, "maximum": 100 },
+        "p95ApiLatencyMs": { "type": "integer", "minimum": 1 },
+        "rtoMinutes": { "type": "integer", "minimum": 0 },
+        "rpoMinutes": { "type": "integer", "minimum": 0 }
+      }
+    },
+    "dataLifecycleValue": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["incidentRetentionDays", "evidenceRetentionDays", "auditRetentionDays", "deletionSlaHours", "trainingEligibility", "residency"],
+      "properties": {
+        "incidentRetentionDays": { "type": "integer", "minimum": 1 },
+        "evidenceRetentionDays": { "type": "integer", "minimum": 1 },
+        "auditRetentionDays": { "type": "integer", "minimum": 1 },
+        "deletionSlaHours": { "type": "integer", "minimum": 1 },
+        "trainingEligibility": { "const": "opt-in-only" },
+        "residency": { "type": "string", "minLength": 2 }
+      }
+    },
+    "operationalOwnershipValue": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["platformOwner", "onCallOwner", "securityRiskOwner", "privacyOwner", "connectorOwner", "databaseOwner", "workflowOwner", "providerSpendOwner"],
+      "properties": {
+        "platformOwner": { "type": "string", "minLength": 2 },
+        "onCallOwner": { "type": "string", "minLength": 2 },
+        "securityRiskOwner": { "type": "string", "minLength": 2 },
+        "privacyOwner": { "type": "string", "minLength": 2 },
+        "connectorOwner": { "type": "string", "minLength": 2 },
+        "databaseOwner": { "type": "string", "minLength": 2 },
+        "workflowOwner": { "type": "string", "minLength": 2 },
+        "providerSpendOwner": { "type": "string", "minLength": 2 }
+      }
+    },
+    "deliveryCapacityValue": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["contributors", "targetMonths", "budgetApproved", "skillCoverage"],
+      "properties": {
+        "contributors": { "type": "integer", "minimum": 1 },
+        "targetMonths": { "type": "integer", "minimum": 1, "maximum": 24 },
+        "budgetApproved": { "const": true },
+        "skillCoverage": {
+          "type": "array",
+          "minItems": 4,
+          "uniqueItems": true,
+          "items": { "enum": ["product", "frontend", "backend", "ai-ml", "sre-platform", "security-privacy", "data", "qa"] }
+        }
+      }
+    }
+  }
+}

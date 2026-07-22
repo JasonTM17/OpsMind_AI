@@ -1,0 +1,107 @@
+{
+  "realm": "opsmind-conformance",
+  "displayName": "OpsMind OIDC Conformance",
+  "enabled": true,
+  "sslRequired": "external",
+  "registrationAllowed": false,
+  "registrationEmailAsUsername": false,
+  "rememberMe": false,
+  "verifyEmail": false,
+  "loginWithEmailAllowed": false,
+  "duplicateEmailsAllowed": false,
+  "resetPasswordAllowed": false,
+  "editUsernameAllowed": false,
+  "bruteForceProtected": true,
+  "permanentLockout": false,
+  "failureFactor": 5,
+  "waitIncrementSeconds": 60,
+  "maxFailureWaitSeconds": 900,
+  "maxDeltaTimeSeconds": 43200,
+  "quickLoginCheckMilliSeconds": 1000,
+  "minimumQuickLoginWaitSeconds": 60,
+  "accessTokenLifespan": 300,
+  "accessTokenLifespanForImplicitFlow": 0,
+  "ssoSessionIdleTimeout": 600,
+  "ssoSessionMaxLifespan": 1800,
+  "clientSessionIdleTimeout": 600,
+  "clientSessionMaxLifespan": 1800,
+  "revokeRefreshToken": true,
+  "refreshTokenMaxReuse": 0,
+  "defaultSignatureAlgorithm": "RS256",
+  "passwordPolicy": "length(16)",
+  "otpPolicyType": "totp",
+  "otpPolicyAlgorithm": "HmacSHA256",
+  "otpPolicyInitialCounter": 0,
+  "otpPolicyDigits": 6,
+  "otpPolicyLookAheadWindow": 1,
+  "otpPolicyPeriod": 30,
+  "otpPolicyCodeReusable": false,
+  "eventsEnabled": true,
+  "eventsListeners": [
+    "jboss-logging"
+  ],
+  "adminEventsEnabled": true,
+  "adminEventsDetailsEnabled": false,
+  "clients": [
+    {
+      "clientId": "opsmind-conformance-browser",
+      "name": "OpsMind conformance browser",
+      "enabled": true,
+      "bearerOnly": false,
+      "consentRequired": false,
+      "standardFlowEnabled": true,
+      "implicitFlowEnabled": false,
+      "directAccessGrantsEnabled": false,
+      "serviceAccountsEnabled": false,
+      "publicClient": true,
+      "frontchannelLogout": true,
+      "protocol": "openid-connect",
+      "redirectUris": [
+        "http://127.0.0.1:19090/callback"
+      ],
+      "webOrigins": [],
+      "fullScopeAllowed": false,
+      "attributes": {
+        "pkce.code.challenge.method": "S256",
+        "post.logout.redirect.uris": "http://127.0.0.1:19090/logout",
+        "oauth2.device.authorization.grant.enabled": "false",
+        "oidc.ciba.grant.enabled": "false",
+        "backchannel.logout.session.required": "true",
+        "backchannel.logout.revoke.offline.tokens": "true"
+      },
+      "defaultClientScopes": [
+        "web-origins",
+        "acr",
+        "roles",
+        "profile",
+        "basic",
+        "email"
+      ],
+      "optionalClientScopes": [],
+      "protocolMappers": [
+        {
+          "name": "opsmind-platform-audience",
+          "protocol": "openid-connect",
+          "protocolMapper": "oidc-audience-mapper",
+          "consentRequired": false,
+          "config": {
+            "included.client.audience": "opsmind-platform-api",
+            "id.token.claim": "false",
+            "access.token.claim": "true",
+            "introspection.token.claim": "true"
+          }
+        },
+        {
+          "name": "opsmind-authentication-method-reference",
+          "protocol": "openid-connect",
+          "protocolMapper": "oidc-amr-mapper",
+          "consentRequired": false,
+          "config": {
+            "id.token.claim": "true",
+            "access.token.claim": "true"
+          }
+        }
+      ]
+    }
+  ]
+}

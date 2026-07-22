@@ -1,0 +1,19 @@
+{
+  "id": "synthetic-completion-1",
+  "model": "deepseek-v4-flash",
+  "choices": [
+    {
+      "message": {
+        "role": "assistant",
+        "content": "{\"status\":\"complete\",\"hypotheses\":[{\"title\":\"Synthetic latency regression\",\"explanation\":\"The redacted metric changed after a synthetic deployment.\",\"confidence\":0.82,\"citations\":[{\"evidence_id\":\"44444444-4444-4444-8444-444444444444\",\"digest\":\"sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa\",\"claim\":\"Latency increased after the deployment marker.\"}]}],\"counter_evidence\":[],\"missing_evidence\":[],\"citations\":[{\"evidence_id\":\"44444444-4444-4444-8444-444444444444\",\"digest\":\"sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa\",\"claim\":\"Latency increased after the deployment marker.\"}],\"confidence\":0.82}",
+        "reasoning_content": "synthetic transient reasoning that must be discarded"
+      },
+      "finish_reason": "stop"
+    }
+  ],
+  "usage": {
+    "prompt_tokens": 100,
+    "completion_tokens": 40,
+    "total_tokens": 140
+  }
+}

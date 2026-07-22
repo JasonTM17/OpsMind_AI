@@ -1,0 +1,16 @@
+packages:
+  - apps/*
+
+overrides:
+  postcss: 8.5.10
+  sharp: 0.35.3
+
+allowBuilds:
+  'sharp@0.35.3': true
+  'unrs-resolver@1.12.2': true
+
+strictDepBuilds: true
+verifyDepsBeforeRun: error
+enableGlobalVirtualStore: false
+nodeVersion: 24.12.0
+engineStrict: true

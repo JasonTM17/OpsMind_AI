@@ -1,0 +1,8 @@
+blank_issues_enabled: false
+contact_links:
+  - name: Security vulnerability report
+    url: https://github.com/JasonTM17/OpsMind_AI/security/advisories/new
+    about: Report a vulnerability privately. Do not disclose secrets or exploit details in a public issue.
+  - name: Support and troubleshooting
+    url: https://github.com/JasonTM17/OpsMind_AI/blob/main/SUPPORT.md
+    about: Read the support guide before opening a general question.

@@ -1,0 +1,69 @@
+version: 2
+updates:
+  - package-ecosystem: npm
+    directory: /
+    schedule:
+      interval: weekly
+    open-pull-requests-limit: 10
+    labels:
+      - dependencies
+      - javascript
+  - package-ecosystem: pip
+    directory: /services/ai-runtime
+    schedule:
+      interval: weekly
+    open-pull-requests-limit: 10
+    labels:
+      - dependencies
+      - python
+  - package-ecosystem: maven
+    directory: /services/platform-api
+    schedule:
+      interval: weekly
+    open-pull-requests-limit: 10
+    labels:
+      - dependencies
+      - java
+  - package-ecosystem: maven
+    directory: /services/tool-gateway
+    schedule:
+      interval: weekly
+    open-pull-requests-limit: 10
+    labels:
+      - dependencies
+      - java
+  - package-ecosystem: docker
+    directory: /services/platform-api
+    schedule:
+      interval: weekly
+    labels:
+      - dependencies
+      - containers
+  - package-ecosystem: docker
+    directory: /services/ai-runtime
+    schedule:
+      interval: weekly
+    labels:
+      - dependencies
+      - containers
+  - package-ecosystem: docker
+    directory: /services/tool-gateway
+    schedule:
+      interval: weekly
+    labels:
+      - dependencies
+      - containers
+  - package-ecosystem: docker
+    directory: /apps/operator-web
+    schedule:
+      interval: weekly
+    labels:
+      - dependencies
+      - containers
+  - package-ecosystem: github-actions
+    directory: /
+    schedule:
+      interval: weekly
+    labels:
+      - dependencies
+      - github-actions

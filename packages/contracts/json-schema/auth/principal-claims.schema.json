@@ -1,0 +1,35 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://contracts.opsmind.invalid/auth/principal-claims.schema.json",
+  "title": "OIDC Principal Claims",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["iss", "sub", "aud", "exp", "iat", "amr"],
+  "properties": {
+    "iss": { "type": "string", "format": "uri" },
+    "sub": { "type": "string", "minLength": 1, "maxLength": 255 },
+    "aud": {
+      "oneOf": [
+        { "type": "string", "minLength": 1, "maxLength": 255 },
+        { "type": "array", "minItems": 1, "uniqueItems": true, "items": { "type": "string", "minLength": 1, "maxLength": 255 } }
+      ]
+    },
+    "exp": { "type": "integer", "minimum": 1 },
+    "iat": { "type": "integer", "minimum": 1 },
+    "nbf": { "type": "integer", "minimum": 1 },
+    "auth_time": { "type": "integer", "minimum": 1 },
+    "amr": {
+      "type": "array",
+      "minItems": 1,
+      "maxItems": 20,
+      "uniqueItems": true,
+      "items": { "type": "string", "minLength": 1, "maxLength": 128 }
+    },
+    "acr": { "type": "string", "minLength": 1, "maxLength": 255 },
+    "email": { "type": "string", "format": "email", "maxLength": 320 },
+    "name": { "type": "string", "maxLength": 255 },
+    "scope": { "type": "string", "maxLength": 4096 },
+    "roles": { "type": "array", "uniqueItems": true, "items": { "type": "string", "maxLength": 128 } },
+    "org_id": { "type": "string", "format": "uuid" }
+  }
+}

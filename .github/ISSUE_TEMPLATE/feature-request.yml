@@ -1,0 +1,34 @@
+name: Feature request
+description: Propose a scoped, evidence-backed improvement.
+title: "feat: "
+labels:
+  - enhancement
+body:
+  - type: textarea
+    id: problem
+    attributes:
+      label: Problem and operator outcome
+      description: Which operator or platform problem should this solve?
+    validations:
+      required: true
+  - type: textarea
+    id: scope
+    attributes:
+      label: Proposed scope
+      description: Describe the smallest useful vertical slice and explicit non-goals.
+    validations:
+      required: true
+  - type: textarea
+    id: invariants
+    attributes:
+      label: Safety and tenancy invariants
+      description: Explain authorization, audit, rollback, privacy, and failure-mode requirements.
+    validations:
+      required: true
+  - type: textarea
+    id: acceptance
+    attributes:
+      label: Acceptance evidence
+      description: List tests, metrics, runbooks, or benchmark thresholds that would prove completion.
+    validations:
+      required: true

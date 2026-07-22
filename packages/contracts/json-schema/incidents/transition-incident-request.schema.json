@@ -1,0 +1,41 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://contracts.opsmind.invalid/incidents/transition-incident-request.schema.json",
+  "title": "Transition Incident Request",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["targetStatus", "reason"],
+  "properties": {
+    "targetStatus": {
+      "$ref": "./incident-types.schema.json#/$defs/status"
+    },
+    "reason": {
+      "$ref": "./incident-types.schema.json#/$defs/reason"
+    },
+    "rootCause": {
+      "$ref": "./incident-types.schema.json#/$defs/nonEmptyText"
+    },
+    "resolutionSummary": {
+      "$ref": "./incident-types.schema.json#/$defs/nonEmptyText"
+    }
+  },
+  "allOf": [
+    {
+      "if": {
+        "properties": { "targetStatus": { "const": "RESOLVED" } },
+        "required": ["targetStatus"]
+      },
+      "then": {
+        "required": ["rootCause", "resolutionSummary"]
+      },
+      "else": {
+        "not": {
+          "anyOf": [
+            { "required": ["rootCause"] },
+            { "required": ["resolutionSummary"] }
+          ]
+        }
+      }
+    }
+  ]
+}

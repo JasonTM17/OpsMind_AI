@@ -1,0 +1,22 @@
+{
+  "items": [
+    {
+      "eventId": "66666666-6666-4666-8666-666666666661",
+      "organizationId": "11111111-1111-4111-8111-111111111111",
+      "projectId": "22222222-2222-4222-8222-222222222222",
+      "incidentId": "33333333-3333-4333-8333-333333333333",
+      "incidentVersion": 0,
+      "eventKind": "INCIDENT_CREATED",
+      "actorId": "44444444-4444-4444-8444-444444444444",
+      "operationId": "55555555-5555-4555-8555-555555555551",
+      "occurredAt": "2030-01-01T00:00:00Z",
+      "reason": "Operator opened an incident after validating the synthetic alert.",
+      "fromStatus": null,
+      "toStatus": "OPEN",
+      "rootCause": null,
+      "resolutionSummary": null
+    }
+  ],
+  "pageSize": 25,
+  "hasMore": false
+}

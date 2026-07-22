@@ -1,0 +1,18 @@
+{
+  "id": "synthetic-completion-empty",
+  "model": "deepseek-v4-flash",
+  "choices": [
+    {
+      "message": {
+        "role": "assistant",
+        "content": ""
+      },
+      "finish_reason": "stop"
+    }
+  ],
+  "usage": {
+    "prompt_tokens": 10,
+    "completion_tokens": 0,
+    "total_tokens": 10
+  }
+}

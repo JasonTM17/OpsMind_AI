@@ -1,0 +1,79 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://contracts.opsmind.invalid/incidents/incident.schema.json",
+  "title": "Incident",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "id",
+    "organizationId",
+    "projectId",
+    "title",
+    "summary",
+    "severity",
+    "status",
+    "rootCause",
+    "resolutionSummary",
+    "createdBy",
+    "updatedBy",
+    "createdAt",
+    "updatedAt",
+    "version"
+  ],
+  "properties": {
+    "id": { "$ref": "./incident-types.schema.json#/$defs/uuid" },
+    "organizationId": { "$ref": "./incident-types.schema.json#/$defs/uuid" },
+    "projectId": { "$ref": "./incident-types.schema.json#/$defs/uuid" },
+    "title": {
+      "type": "string",
+      "minLength": 1,
+      "maxLength": 160,
+      "pattern": "\\S"
+    },
+    "summary": {
+      "type": "string",
+      "minLength": 1,
+      "maxLength": 4000,
+      "pattern": "\\S"
+    },
+    "severity": { "$ref": "./incident-types.schema.json#/$defs/severity" },
+    "status": { "$ref": "./incident-types.schema.json#/$defs/status" },
+    "rootCause": {
+      "type": ["string", "null"],
+      "minLength": 1,
+      "maxLength": 8000,
+      "pattern": "\\S"
+    },
+    "resolutionSummary": {
+      "type": ["string", "null"],
+      "minLength": 1,
+      "maxLength": 8000,
+      "pattern": "\\S"
+    },
+    "createdBy": { "$ref": "./incident-types.schema.json#/$defs/uuid" },
+    "updatedBy": { "$ref": "./incident-types.schema.json#/$defs/uuid" },
+    "createdAt": { "$ref": "./incident-types.schema.json#/$defs/timestamp" },
+    "updatedAt": { "$ref": "./incident-types.schema.json#/$defs/timestamp" },
+    "version": {
+      "type": "integer",
+      "minimum": 0,
+      "maximum": 2147483647
+    }
+  },
+  "allOf": [
+    {
+      "if": {
+        "properties": {
+          "status": { "enum": ["RESOLVED", "CLOSED"] }
+        },
+        "required": ["status"]
+      },
+      "then": {
+        "properties": {
+          "rootCause": { "$ref": "./incident-types.schema.json#/$defs/nonEmptyText" },
+          "resolutionSummary": { "$ref": "./incident-types.schema.json#/$defs/nonEmptyText" }
+        }
+      }
+    }
+  ]
+}

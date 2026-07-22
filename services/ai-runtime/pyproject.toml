@@ -1,0 +1,49 @@
+[build-system]
+requires = ["hatchling==1.31.0"]
+build-backend = "hatchling.build"
+
+[project]
+name = "opsmind-ai-runtime"
+version = "0.1.0"
+description = "Provider-neutral OpsMind AI runtime foundation"
+requires-python = ">=3.13,<3.14"
+dependencies = [
+  "fastapi==0.139.2",
+  "httpx2==2.7.0",
+  "PyJWT[crypto]==2.13.0",
+  "psycopg[binary]==3.3.4",
+  "psycopg-pool==3.3.1",
+  "pydantic==2.13.4",
+  "uvicorn==0.51.0",
+]
+
+[dependency-groups]
+dev = [
+  "mypy==2.3.0",
+  "pip-audit==2.10.1",
+  "pytest==9.1.1",
+  "ruff==0.15.22",
+]
+
+[tool.uv]
+required-version = "==0.11.29"
+
+[tool.hatch.build.targets.wheel]
+packages = ["src/opsmind_ai_runtime"]
+
+[tool.pytest.ini_options]
+addopts = "-ra --strict-config --strict-markers"
+testpaths = ["tests"]
+
+[tool.ruff]
+target-version = "py313"
+line-length = 100
+
+[tool.ruff.lint]
+select = ["E", "F", "I", "UP", "B", "SIM"]
+
+[tool.mypy]
+python_version = "3.13"
+strict = true
+packages = ["opsmind_ai_runtime"]
+mypy_path = "src"

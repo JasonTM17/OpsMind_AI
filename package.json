@@ -1,0 +1,28 @@
+{
+  "name": "opsmind-ai",
+  "version": "0.1.0",
+  "private": true,
+  "description": "Evidence-first AI SRE and DevSecOps platform workspace",
+  "packageManager": "pnpm@11.15.0",
+  "engines": {
+    "node": ">=24.0.0 <25.0.0",
+    "pnpm": ">=11.15.0 <12.0.0"
+  },
+  "scripts": {
+    "setup": "node scripts/dev/opsmind.mjs setup",
+    "dev": "node scripts/dev/opsmind.mjs dev",
+    "test": "node scripts/dev/opsmind.mjs test",
+    "lint": "node scripts/dev/opsmind.mjs lint",
+    "build": "node scripts/dev/opsmind.mjs build",
+    "up": "node scripts/dev/opsmind.mjs up",
+    "down": "node scripts/dev/opsmind.mjs down",
+    "migrate": "node scripts/dev/opsmind.mjs migrate",
+    "seed": "node scripts/dev/opsmind.mjs seed",
+    "evaluate": "node scripts/dev/opsmind.mjs evaluate",
+    "security": "node scripts/dev/opsmind.mjs security",
+    "security-scan": "node scripts/dev/opsmind.mjs security-scan",
+    "doctor": "node scripts/dev/opsmind.mjs doctor",
+    "validate:layout": "node scripts/validation/validate-repository-layout.mjs",
+    "validate:phase6": "node scripts/validation/validate-phase-06-tool-gateway.mjs"
+  }
+}

@@ -1,0 +1,18 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://contracts.opsmind.invalid/auth/tenant-scope.schema.json",
+  "title": "Verified Tenant Scope",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["organizationId"],
+  "properties": {
+    "organizationId": { "type": "string", "format": "uuid" },
+    "projectId": { "type": "string", "format": "uuid" },
+    "environmentId": { "type": "string", "format": "uuid" },
+    "roles": {
+      "type": "array",
+      "uniqueItems": true,
+      "items": { "type": "string", "pattern": "^[a-z][a-z0-9:_-]{1,63}$" }
+    }
+  }
+}

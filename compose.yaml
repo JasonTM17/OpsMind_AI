@@ -1,0 +1,239 @@
+name: opsmind
+
+x-runtime-security: &runtime-security
+  read_only: true
+  cap_drop:
+    - ALL
+  security_opt:
+    - no-new-privileges:true
+  restart: "no"
+
+services:
+  postgres:
+    image: pgvector/pgvector:0.8.2-pg17-trixie@sha256:5c97c57367a485a8e99389548db67d441ab1a878f5492c3df04989f34ecf3c75
+    environment:
+      POSTGRES_DB: ${POSTGRES_DB:-opsmind}
+      POSTGRES_USER: ${POSTGRES_USER:-opsmind_migrator}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-}
+      POSTGRES_APP_USER: ${POSTGRES_APP_USER:-opsmind_app}
+      POSTGRES_APP_PASSWORD: ${POSTGRES_APP_PASSWORD:-}
+      POSTGRES_DISPATCHER_USER: ${POSTGRES_DISPATCHER_USER:-opsmind_dispatcher}
+      POSTGRES_DISPATCHER_PASSWORD: ${POSTGRES_DISPATCHER_PASSWORD:-}
+      POSTGRES_AI_RUNTIME_USER: ${POSTGRES_AI_RUNTIME_USER:-opsmind_ai_runtime}
+      POSTGRES_AI_RUNTIME_PASSWORD: ${POSTGRES_AI_RUNTIME_PASSWORD:-}
+    volumes:
+      - type: bind
+        source: ${OPS_DATA_ROOT:-./.opsmind/data}/postgres
+        target: /var/lib/postgresql/data
+      - type: bind
+        source: ./services/platform-api/src/main/resources/db/bootstrap/001-create-runtime-role.sh
+        target: /docker-entrypoint-initdb.d/001-create-runtime-role.sh
+        read_only: true
+    ports:
+      - "127.0.0.1:${POSTGRES_PORT:-5432}:5432"
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U $${POSTGRES_USER} -d $${POSTGRES_DB}"]
+      interval: 5s
+      timeout: 3s
+      retries: 20
+    networks: [opsmind-internal]
+    restart: "no"
+
+  redis:
+    image: redis:8.8.0-alpine3.23@sha256:9d317178eceac8454a2284a9e6df2466b93c745529947f0cd42a0fa9609d7005
+    profiles: [cache]
+    command: ["redis-server", "--appendonly", "yes"]
+    ports:
+      - "127.0.0.1:${REDIS_PORT:-6379}:6379"
+    volumes:
+      - type: bind
+        source: ${OPS_DATA_ROOT:-./.opsmind/data}/redis
+        target: /data
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 5s
+      timeout: 3s
+      retries: 20
+    networks: [opsmind-internal]
+    restart: "no"
+
+  # Disabled by default. The approved local MinIO choice requires a fresh
+  # platform/security decision because its upstream repository is archived.
+  minio-review:
+    image: ${MINIO_IMAGE:-registry.invalid.example/opsmind/object-store-review-required:unapproved}
+    profiles: [object-storage-review]
+    command: ["server", "/data", "--console-address", ":9001"]
+    environment:
+      MINIO_ROOT_USER: ${MINIO_ROOT_USER:-}
+      MINIO_ROOT_PASSWORD: ${MINIO_ROOT_PASSWORD:-}
+    ports:
+      - "127.0.0.1:${MINIO_API_PORT:-9000}:9000"
+      - "127.0.0.1:${MINIO_CONSOLE_PORT:-9001}:9001"
+    volumes:
+      - type: bind
+        source: ${OPS_DATA_ROOT:-./.opsmind/data}/minio-review
+        target: /data
+    networks: [opsmind-internal]
+    restart: "no"
+
+  platform-migrate:
+    <<: *runtime-security
+    profiles: [application]
+    build:
+      context: .
+      dockerfile: services/platform-api/Dockerfile
+    environment:
+      OPSMIND_SECURITY_MODE: fail-closed
+      SPRING_PROFILES_ACTIVE: persistence
+      SPRING_DATASOURCE_URL: jdbc:postgresql://postgres:5432/${POSTGRES_DB:-opsmind}
+      SPRING_DATASOURCE_USERNAME: ${POSTGRES_USER:-opsmind_migrator}
+      SPRING_DATASOURCE_PASSWORD: ${POSTGRES_PASSWORD:-}
+      OPSMIND_FLYWAY_ENABLED: "true"
+    command:
+      - "--spring.main.web-application-type=none"
+      - "--opsmind.persistence.enabled=false"
+    depends_on:
+      postgres:
+        condition: service_healthy
+    tmpfs:
+      - /tmp:size=64m,mode=1777
+    networks: [opsmind-internal]
+
+  platform-api:
+    <<: *runtime-security
+    profiles: [application]
+    build:
+      context: .
+      dockerfile: services/platform-api/Dockerfile
+    environment:
+      PLATFORM_API_PORT: 8080
+      OPSMIND_MAX_JSON_BODY_BYTES: ${OPSMIND_MAX_JSON_BODY_BYTES:-65536}
+      OPS_ENABLE_WRITE_ACTIONS: "false"
+      OPSMIND_DISPATCHER_ENABLED: "false"
+      OPSMIND_SECURITY_MODE: ${OPSMIND_SECURITY_MODE:-fail-closed}
+      OIDC_ISSUER_URL: ${OIDC_ISSUER_URL:-https://idp.invalid.example/opsmind}
+      OIDC_AUDIENCE: ${OIDC_AUDIENCE:-opsmind-platform-api}
+      OIDC_REQUIRED_AMR: ${OIDC_REQUIRED_AMR:-mfa}
+      OIDC_MAX_TOKEN_LIFETIME: ${OIDC_MAX_TOKEN_LIFETIME:-PT5M}
+      OIDC_CLOCK_SKEW: ${OIDC_CLOCK_SKEW:-PT60S}
+      OIDC_JWKS_REFRESH_MINIMUM_INTERVAL: ${OIDC_JWKS_REFRESH_MINIMUM_INTERVAL:-PT1S}
+      OPSMIND_AI_CAPABILITY_ISSUANCE_ENABLED: ${OPSMIND_AI_CAPABILITY_ISSUANCE_ENABLED:-false}
+      OPSMIND_AI_CAPABILITY_ISSUER: ${OPSMIND_AI_CAPABILITY_ISSUER:-https://platform.invalid.example}
+      OPSMIND_AI_CAPABILITY_AUDIENCE: ${OPSMIND_AI_CAPABILITY_AUDIENCE:-opsmind-ai-runtime}
+      OPSMIND_AI_CAPABILITY_KEY_ID: ${OPSMIND_AI_CAPABILITY_KEY_ID:-}
+      OPSMIND_AI_CAPABILITY_PRIVATE_KEY_FILE: ${OPSMIND_AI_CAPABILITY_PRIVATE_KEY_FILE:-}
+      OPSMIND_AI_CAPABILITY_MAX_LIFETIME: ${OPSMIND_AI_CAPABILITY_MAX_LIFETIME:-PT4M}
+      OPSMIND_AI_RUNTIME_CLIENT_ENABLED: ${OPSMIND_AI_RUNTIME_CLIENT_ENABLED:-false}
+      OPSMIND_AI_RUNTIME_ENDPOINT: ${OPSMIND_AI_RUNTIME_ENDPOINT:-http://ai-runtime:8000/api/v1/analysis}
+      OPSMIND_AI_RUNTIME_ALLOW_LOCAL_CLEARTEXT: ${OPSMIND_AI_RUNTIME_ALLOW_LOCAL_CLEARTEXT:-false}
+      OPSMIND_AI_RUNTIME_CONNECT_TIMEOUT: ${OPSMIND_AI_RUNTIME_CONNECT_TIMEOUT:-PT2S}
+      OPSMIND_AI_RUNTIME_REQUEST_TIMEOUT: ${OPSMIND_AI_RUNTIME_REQUEST_TIMEOUT:-PT30S}
+      OPSMIND_AI_RUNTIME_MAX_RESPONSE_BODY_BYTES: ${OPSMIND_AI_RUNTIME_MAX_RESPONSE_BODY_BYTES:-1048576}
+      SPRING_PROFILES_ACTIVE: persistence
+      SPRING_DATASOURCE_URL: jdbc:postgresql://postgres:5432/${POSTGRES_DB:-opsmind}
+      SPRING_DATASOURCE_USERNAME: ${POSTGRES_APP_USER:-opsmind_app}
+      SPRING_DATASOURCE_PASSWORD: ${POSTGRES_APP_PASSWORD:-}
+      OPSMIND_FLYWAY_ENABLED: "false"
+    ports:
+      - "127.0.0.1:${PLATFORM_API_PORT:-8080}:8080"
+    depends_on:
+      postgres:
+        condition: service_healthy
+      platform-migrate:
+        condition: service_completed_successfully
+    healthcheck:
+      test: ["CMD", "curl", "--fail", "--silent", "http://127.0.0.1:8080/actuator/health"]
+      interval: 5s
+      timeout: 3s
+      retries: 20
+    tmpfs:
+      - /tmp:size=64m,mode=1777
+    networks: [opsmind-internal]
+
+  ai-runtime:
+    <<: *runtime-security
+    profiles: [application]
+    build:
+      context: .
+      dockerfile: services/ai-runtime/Dockerfile
+    environment:
+      OPS_ENABLE_DEEPSEEK_EGRESS: "false"
+      AI_RUNTIME_STATE_BACKEND: postgres
+      AI_RUNTIME_DATABASE_HOST: postgres
+      AI_RUNTIME_DATABASE_PORT: 5432
+      AI_RUNTIME_DATABASE_NAME: ${POSTGRES_DB:-opsmind}
+      AI_RUNTIME_DATABASE_USER: ${POSTGRES_AI_RUNTIME_USER:-opsmind_ai_runtime}
+      AI_RUNTIME_DATABASE_PASSWORD: ${POSTGRES_AI_RUNTIME_PASSWORD:-}
+      OPSMIND_AI_CAPABILITY_ISSUER: ${OPSMIND_AI_CAPABILITY_ISSUER:-https://platform.invalid.example}
+      OPSMIND_AI_CAPABILITY_AUDIENCE: ${OPSMIND_AI_CAPABILITY_AUDIENCE:-opsmind-ai-runtime}
+      OPSMIND_AI_CAPABILITY_JWKS_FILE: ${OPSMIND_AI_CAPABILITY_JWKS_FILE:-}
+    ports:
+      - "127.0.0.1:${AI_RUNTIME_PORT:-8000}:8000"
+    healthcheck:
+      test:
+        - CMD
+        - python
+        - -c
+        - import urllib.request; urllib.request.urlopen('http://127.0.0.1:8000/ready', timeout=2).read()
+      interval: 5s
+      timeout: 3s
+      retries: 20
+    depends_on:
+      postgres:
+        condition: service_healthy
+      platform-migrate:
+        condition: service_completed_successfully
+    tmpfs:
+      - /tmp:size=64m,mode=1777
+    networks: [opsmind-internal]
+
+  tool-gateway:
+    <<: *runtime-security
+    profiles: [application]
+    build:
+      context: .
+      dockerfile: services/tool-gateway/Dockerfile
+    environment:
+      TOOL_GATEWAY_PORT: 8081
+      OPS_ENABLE_WRITE_ACTIONS: "false"
+    ports:
+      - "127.0.0.1:${TOOL_GATEWAY_PORT:-8081}:8081"
+    healthcheck:
+      test: ["CMD", "curl", "--fail", "--silent", "http://127.0.0.1:8081/actuator/health"]
+      interval: 5s
+      timeout: 3s
+      retries: 20
+    tmpfs:
+      - /tmp:size=64m,mode=1777
+    networks: [opsmind-internal]
+
+  operator-web:
+    <<: *runtime-security
+    profiles: [application]
+    build:
+      context: .
+      dockerfile: apps/operator-web/Dockerfile
+    environment:
+      PORT: 3000
+    ports:
+      - "127.0.0.1:${OPERATOR_WEB_PORT:-3000}:3000"
+    depends_on:
+      platform-api:
+        condition: service_healthy
+    healthcheck:
+      test:
+        - CMD
+        - node
+        - -e
+        - fetch('http://127.0.0.1:3000/api/health').then(r=>{if(!r.ok)process.exit(1)}).catch(()=>process.exit(1))
+      interval: 5s
+      timeout: 3s
+      retries: 20
+    tmpfs:
+      - /tmp:size=64m,mode=1777
+      - /app/apps/operator-web/.next/cache:size=64m,uid=1000,gid=1000,mode=0700
+    networks: [opsmind-internal]
+
+networks:
+  opsmind-internal:
+    driver: bridge

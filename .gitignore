@@ -1,0 +1,48 @@
+# Local environment and secrets
+.env
+.env.*
+!.env.example
+*.pem
+*.key
+*.p12
+*.pfx
+*.jks
+*.keystore
+.netrc
+.pypirc
+.secrets/
+
+# OpsMind local state and generated verification output
+.opsmind/
+artifacts/
+repomix-output.xml
+
+# Build and dependency caches
+node_modules/
+.pnpm-store/
+.m2/
+.next/
+dist/
+build/
+target/
+.gradle/
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/
+.venv/
+__pycache__/
+*.py[cod]
+*.tsbuildinfo
+.coverage
+coverage/
+htmlcov/
+*.log
+
+# Editors and operating systems
+.idea/
+.vscode/
+.DS_Store
+Thumbs.db
+
+# Local ClaudeKit session state
+.claude/session-state/

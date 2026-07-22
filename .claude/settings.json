@@ -1,0 +1,57 @@
+{
+  "$schema": "https://json.schemastore.org/claude-code-settings.json",
+  "skillListingBudgetFraction": 0.03,
+  "skillListingMaxDescChars": 512,
+  "attribution": {
+    "commit": "",
+    "pr": ""
+  },
+  "hooks": {
+    "UserPromptSubmit": [
+      {
+        "hooks": [
+          {
+            "type": "command",
+            "command": "node \"$CLAUDE_PROJECT_DIR\"/.claude/hooks/simplify-gate.cjs",
+            "_origin": "engineer"
+          }
+        ]
+      }
+    ],
+    "PreToolUse": [
+      {
+        "matcher": "Write",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "node \"$CLAUDE_PROJECT_DIR\"/.claude/hooks/descriptive-name.cjs",
+            "_origin": "engineer"
+          }
+        ]
+      },
+      {
+        "matcher": "Bash|Glob|Grep|Read|Edit|Write",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "node \"$CLAUDE_PROJECT_DIR\"/.claude/hooks/scout-block.cjs",
+            "_origin": "engineer"
+          },
+          {
+            "type": "command",
+            "command": "node \"$CLAUDE_PROJECT_DIR\"/.claude/hooks/privacy-block.cjs",
+            "_origin": "engineer"
+          }
+        ]
+      }
+    ]
+  },
+  "disabledMcpjsonServers": [
+    "human-mcp"
+  ],
+  "statusLine": {
+    "type": "command",
+    "command": "node \"$CLAUDE_PROJECT_DIR\"/.claude/statusline.cjs",
+    "padding": 0
+  }
+}

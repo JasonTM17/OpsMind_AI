@@ -1,0 +1,196 @@
+{
+  "$schema": "./product-production-contract.schema.json",
+  "contractVersion": "0.1.0",
+  "status": "blocked",
+  "approvedBy": null,
+  "approvedAt": null,
+  "decisions": {
+    "deploymentArchetype": {
+      "state": "pending",
+      "value": {
+        "mode": "internal-single-organization",
+        "rationale": "Start with one internal organization to minimize tenancy, compliance, and operational risk while preserving explicit isolation contracts."
+      },
+      "recommended": "Internal single-organization deployment",
+      "ownerRole": "Product sponsor",
+      "approvedBy": null,
+      "approvedAt": null,
+      "evidence": null
+    },
+    "targetEnvironment": {
+      "state": "pending",
+      "value": {
+        "substrate": "managed-kubernetes",
+        "region": "ap-southeast-1",
+        "residency": "Singapore",
+        "environmentClass": "production"
+      },
+      "recommended": "Managed Kubernetes in one Singapore production region",
+      "ownerRole": "Platform and security owners",
+      "approvedBy": null,
+      "approvedAt": null,
+      "evidence": null
+    },
+    "tenantModel": {
+      "state": "pending",
+      "value": {
+        "organizationMode": "single",
+        "isolationMode": "logical",
+        "maxOrganizations": 1,
+        "maxProjectsPerOrganization": 100
+      },
+      "recommended": "One organization with logical project isolation and forced authorization boundaries",
+      "ownerRole": "Product and security owners",
+      "approvedBy": null,
+      "approvedAt": null,
+      "evidence": null
+    },
+    "identityProfile": {
+      "state": "pending",
+      "value": {
+        "protocol": "oidc",
+        "provider": "enterprise-oidc",
+        "authorizationFlow": "authorization-code-pkce",
+        "mfaRequired": true,
+        "breakGlassOwner": "security-operations"
+      },
+      "recommended": "Enterprise OIDC with Authorization Code plus PKCE, MFA, and security-owned break-glass",
+      "ownerRole": "Security and identity owners",
+      "approvedBy": null,
+      "approvedAt": null,
+      "evidence": null
+    },
+    "deepseekEgressPolicy": {
+      "state": "pending",
+      "value": {
+        "mode": "allowlisted-redacted",
+        "allowedDataClasses": [
+          "redacted-metrics",
+          "redacted-log-summaries"
+        ],
+        "residencyPolicy": "approved-provider-region-and-terms-required",
+        "providerRetentionAllowed": false,
+        "redactionRequired": true,
+        "monthlyBudgetUsd": 1000,
+        "fallbackMode": "human-only"
+      },
+      "recommended": "Permit only allowlisted redacted metrics and log summaries after provider-region and processing terms are approved",
+      "ownerRole": "Privacy, security, and product owners",
+      "approvedBy": null,
+      "approvedAt": null,
+      "evidence": null
+    },
+    "firstLiveIntegration": {
+      "state": "pending",
+      "value": {
+        "connectorType": "prometheus",
+        "endpointClass": "synthetic-non-production",
+        "readOnly": true,
+        "owner": "site-reliability-team"
+      },
+      "recommended": "Prometheus read-only connector against synthetic non-production metrics",
+      "ownerRole": "SRE and product owners",
+      "approvedBy": null,
+      "approvedAt": null,
+      "evidence": null
+    },
+    "evidenceArtifactStore": {
+      "state": "pending",
+      "value": {
+        "localBackend": "minio",
+        "productionBackend": "s3-compatible",
+        "kmsBoundary": "production-kms",
+        "retentionOwner": "platform-security",
+        "restoreTargetHours": 4
+      },
+      "recommended": "MinIO locally and S3-compatible production storage with production KMS and a four-hour restore target",
+      "ownerRole": "Platform and security owners",
+      "approvedBy": null,
+      "approvedAt": null,
+      "evidence": null
+    },
+    "loadEnvelope": {
+      "state": "pending",
+      "value": {
+        "maxOrganizations": 1,
+        "maxConcurrentInvestigations": 25,
+        "evidenceEventsPerSecond": 500,
+        "modelRequestsPerMinute": 120
+      },
+      "recommended": "Initial bounded envelope for one organization, validated and revised from G3 measurements",
+      "ownerRole": "Product and operations owners",
+      "approvedBy": null,
+      "approvedAt": null,
+      "evidence": null
+    },
+    "serviceObjectives": {
+      "state": "pending",
+      "value": {
+        "availabilityPercent": 99.9,
+        "p95ApiLatencyMs": 500,
+        "rtoMinutes": 120,
+        "rpoMinutes": 15
+      },
+      "recommended": "Initial 99.9 percent availability, 500 ms API p95, 120-minute RTO, and 15-minute RPO",
+      "ownerRole": "Product and operations owners",
+      "approvedBy": null,
+      "approvedAt": null,
+      "evidence": null
+    },
+    "dataLifecycle": {
+      "state": "pending",
+      "value": {
+        "incidentRetentionDays": 365,
+        "evidenceRetentionDays": 90,
+        "auditRetentionDays": 730,
+        "deletionSlaHours": 24,
+        "trainingEligibility": "opt-in-only",
+        "residency": "Singapore"
+      },
+      "recommended": "Explicit incident, evidence, and audit retention with 24-hour deletion and training opt-in only",
+      "ownerRole": "Privacy and data owners",
+      "approvedBy": null,
+      "approvedAt": null,
+      "evidence": null
+    },
+    "operationalOwnership": {
+      "state": "pending",
+      "value": {
+        "platformOwner": "platform-team",
+        "onCallOwner": "site-reliability-team",
+        "securityRiskOwner": "security-team",
+        "privacyOwner": "privacy-team",
+        "connectorOwner": "integrations-team",
+        "databaseOwner": "database-team",
+        "workflowOwner": "workflow-team",
+        "providerSpendOwner": "product-finance-owner"
+      },
+      "recommended": "Assign explicit role-level accountability for platform, on-call, risk, privacy, integrations, data, workflow, and provider spend",
+      "ownerRole": "Product sponsor",
+      "approvedBy": null,
+      "approvedAt": null,
+      "evidence": null
+    },
+    "deliveryCapacity": {
+      "state": "pending",
+      "value": {
+        "contributors": 6,
+        "targetMonths": 9,
+        "budgetApproved": true,
+        "skillCoverage": [
+          "product",
+          "frontend",
+          "backend",
+          "ai-ml",
+          "sre-platform",
+          "security-privacy"
+        ]
+      },
+      "recommended": "Six cross-functional contributors over nine months with approved delivery budget",
+      "ownerRole": "Product sponsor",
+      "approvedBy": null,
+      "approvedAt": null,
+      "evidence": null
+    }
+  }
+}

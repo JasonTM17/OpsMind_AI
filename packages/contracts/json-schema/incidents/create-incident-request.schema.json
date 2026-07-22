@@ -1,0 +1,28 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://contracts.opsmind.invalid/incidents/create-incident-request.schema.json",
+  "title": "Create Incident Request",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["title", "summary", "severity", "reason"],
+  "properties": {
+    "title": {
+      "type": "string",
+      "minLength": 1,
+      "maxLength": 160,
+      "pattern": "\\S"
+    },
+    "summary": {
+      "type": "string",
+      "minLength": 1,
+      "maxLength": 4000,
+      "pattern": "\\S"
+    },
+    "severity": {
+      "$ref": "./incident-types.schema.json#/$defs/severity"
+    },
+    "reason": {
+      "$ref": "./incident-types.schema.json#/$defs/reason"
+    }
+  }
+}

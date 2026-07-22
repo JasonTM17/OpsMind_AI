@@ -1,0 +1,669 @@
+openapi: 3.1.1
+info:
+  title: OpsMind Platform API
+  version: 0.4.0
+  description: >-
+    Canonical, versioned control-plane contract. Identity and scope are derived
+    from a verified OIDC access token; caller-supplied tenant fields are never
+    authoritative.
+servers:
+  - url: /api/v1
+    description: Versioned platform API
+tags:
+  - name: identity
+    description: Verified principal and effective tenant scope
+  - name: tenancy
+    description: Tenant-scoped resource discovery
+  - name: incidents
+    description: Authorized incident control-plane operations
+  - name: analysis
+    description: Authorized, bounded incident analysis delegation
+  - name: tool-gateway
+    description: Internal policy-controlled evidence acquisition boundary
+paths:
+  /tools/execute:
+    servers:
+      - url: /internal/v1
+        description: Internal Tool Gateway service boundary
+    post:
+      operationId: executeReadOnlyTool
+      tags: [tool-gateway]
+      security:
+        - workloadBearer: []
+          delegatedCapability: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/ToolExecutionRequest'
+      responses:
+        '200':
+          description: Tool execution succeeded or an identical durable execution was replayed
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ToolExecutionResponse'
+        '400':
+          description: Request, arguments, or signed deadline are invalid
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ToolExecutionResponse'
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/ProblemDetails'
+        '401':
+          $ref: '#/components/responses/Unauthenticated'
+        '403':
+          description: Workload or delegated policy does not authorize the exact request
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ToolExecutionResponse'
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/ProblemDetails'
+        '408':
+          description: The signed request deadline elapsed before connector dispatch
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ToolExecutionResponse'
+        '409':
+          description: Execution identity or one-use capability replay conflicts
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ToolExecutionResponse'
+        '413':
+          description: Request or inline evidence exceeds a hard byte bound
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ToolExecutionResponse'
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/ProblemDetails'
+        '502':
+          description: The typed connector failed
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ToolExecutionResponse'
+        '503':
+          description: Replay, receipt, audit, capacity, or cancellation dependency is unavailable
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ToolExecutionResponse'
+        '504':
+          description: The typed connector exceeded its bounded deadline
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ToolExecutionResponse'
+  /me:
+    get:
+      operationId: getCurrentPrincipal
+      tags: [identity]
+      security:
+        - oidcBearer: []
+      responses:
+        '200':
+          description: Verified principal and current organization scope
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/CurrentPrincipal'
+        '401':
+          $ref: '#/components/responses/Unauthenticated'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+  /organizations/{organizationId}/projects:
+    get:
+      operationId: listProjects
+      tags: [tenancy]
+      security:
+        - oidcBearer: []
+      parameters:
+        - $ref: '#/components/parameters/OrganizationId'
+        - $ref: '#/components/parameters/PageSize'
+        - $ref: '#/components/parameters/PageToken'
+      responses:
+        '200':
+          description: Projects visible to the verified principal
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ProjectPage'
+        '401':
+          $ref: '#/components/responses/Unauthenticated'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          $ref: '#/components/responses/NotFound'
+  /organizations/{organizationId}/projects/{projectId}/incidents:
+    post:
+      operationId: createIncident
+      tags: [incidents]
+      security:
+        - oidcBearer: [incident:write]
+      parameters:
+        - $ref: '#/components/parameters/OrganizationId'
+        - $ref: '#/components/parameters/ProjectId'
+        - $ref: '#/components/parameters/IdempotencyKey'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/CreateIncidentRequest'
+      responses:
+        '201':
+          description: Incident created with all durable effects committed
+          headers:
+            Location:
+              $ref: '#/components/headers/Location'
+            ETag:
+              $ref: '#/components/headers/ETag'
+            X-Operation-Id:
+              $ref: '#/components/headers/XOperationId'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Incident'
+        '400':
+          $ref: '#/components/responses/InvalidRequest'
+        '401':
+          $ref: '#/components/responses/Unauthenticated'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '409':
+          $ref: '#/components/responses/Conflict'
+        '415':
+          $ref: '#/components/responses/UnsupportedMediaType'
+        '413':
+          $ref: '#/components/responses/PayloadTooLarge'
+        '422':
+          $ref: '#/components/responses/UnprocessableContent'
+        '503':
+          $ref: '#/components/responses/ServiceUnavailable'
+  /organizations/{organizationId}/projects/{projectId}/incidents/{incidentId}:
+    get:
+      operationId: getIncident
+      tags: [incidents]
+      security:
+        - oidcBearer: [incident:read]
+      parameters:
+        - $ref: '#/components/parameters/OrganizationId'
+        - $ref: '#/components/parameters/ProjectId'
+        - $ref: '#/components/parameters/IncidentId'
+      responses:
+        '200':
+          description: Incident visible to the verified principal
+          headers:
+            ETag:
+              $ref: '#/components/headers/ETag'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Incident'
+        '400':
+          $ref: '#/components/responses/InvalidRequest'
+        '401':
+          $ref: '#/components/responses/Unauthenticated'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '503':
+          $ref: '#/components/responses/ServiceUnavailable'
+  /organizations/{organizationId}/projects/{projectId}/incidents/{incidentId}/transitions:
+    post:
+      operationId: transitionIncident
+      tags: [incidents]
+      security:
+        - oidcBearer: [incident:write]
+      parameters:
+        - $ref: '#/components/parameters/OrganizationId'
+        - $ref: '#/components/parameters/ProjectId'
+        - $ref: '#/components/parameters/IncidentId'
+        - $ref: '#/components/parameters/IdempotencyKey'
+        - $ref: '#/components/parameters/IfMatch'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/TransitionIncidentRequest'
+      responses:
+        '200':
+          description: Incident transitioned with all durable effects committed
+          headers:
+            ETag:
+              $ref: '#/components/headers/ETag'
+            X-Operation-Id:
+              $ref: '#/components/headers/XOperationId'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Incident'
+        '400':
+          $ref: '#/components/responses/InvalidRequest'
+        '401':
+          $ref: '#/components/responses/Unauthenticated'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '409':
+          $ref: '#/components/responses/Conflict'
+        '412':
+          $ref: '#/components/responses/PreconditionFailed'
+        '415':
+          $ref: '#/components/responses/UnsupportedMediaType'
+        '413':
+          $ref: '#/components/responses/PayloadTooLarge'
+        '428':
+          $ref: '#/components/responses/PreconditionRequired'
+        '422':
+          $ref: '#/components/responses/UnprocessableContent'
+        '503':
+          $ref: '#/components/responses/ServiceUnavailable'
+  /organizations/{organizationId}/projects/{projectId}/incidents/{incidentId}/timeline:
+    get:
+      operationId: getIncidentTimeline
+      tags: [incidents]
+      security:
+        - oidcBearer: [incident:read]
+      parameters:
+        - $ref: '#/components/parameters/OrganizationId'
+        - $ref: '#/components/parameters/ProjectId'
+        - $ref: '#/components/parameters/IncidentId'
+        - $ref: '#/components/parameters/PageSize'
+        - $ref: '#/components/parameters/PageToken'
+      responses:
+        '200':
+          description: Bounded immutable incident timeline page
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/IncidentTimelinePage'
+        '400':
+          $ref: '#/components/responses/InvalidRequest'
+        '401':
+          $ref: '#/components/responses/Unauthenticated'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '503':
+          $ref: '#/components/responses/ServiceUnavailable'
+  /organizations/{organizationId}/projects/{projectId}/incidents/{incidentId}/analysis:
+    post:
+      operationId: analyzeIncident
+      tags: [analysis]
+      security:
+        - oidcBearer: [incident:analyze]
+      parameters:
+        - $ref: '#/components/parameters/OrganizationId'
+        - $ref: '#/components/parameters/ProjectId'
+        - $ref: '#/components/parameters/IncidentId'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/StartIncidentAnalysisRequest'
+      responses:
+        '200':
+          description: Validated bounded analysis response with incident-scoped citations
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/AnalysisRuntimeResponse'
+        '400':
+          $ref: '#/components/responses/InvalidRequest'
+        '401':
+          $ref: '#/components/responses/Unauthenticated'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '408':
+          $ref: '#/components/responses/RequestTimeout'
+        '413':
+          $ref: '#/components/responses/PayloadTooLarge'
+        '422':
+          $ref: '#/components/responses/UnprocessableContent'
+        '429':
+          $ref: '#/components/responses/RateLimited'
+        '502':
+          $ref: '#/components/responses/BadGateway'
+        '503':
+          $ref: '#/components/responses/ServiceUnavailable'
+        '504':
+          $ref: '#/components/responses/GatewayTimeout'
+components:
+  securitySchemes:
+    oidcBearer:
+      type: openIdConnect
+      openIdConnectUrl: https://idp.example.invalid/.well-known/openid-configuration
+      description: Environment-specific OIDC provider with verified access-token scopes.
+    workloadBearer:
+      type: http
+      scheme: bearer
+      bearerFormat: JWT
+      description: Dedicated platform workload token with token_use=workload and exact audience.
+    delegatedCapability:
+      type: apiKey
+      in: header
+      name: X-OpsMind-Delegated-Capability
+      description: One-use RS256 capability bound to the exact tool action, resource and budget.
+  parameters:
+    OrganizationId:
+      name: organizationId
+      in: path
+      required: true
+      schema:
+        type: string
+        format: uuid
+        minLength: 36
+        maxLength: 36
+    ProjectId:
+      name: projectId
+      in: path
+      required: true
+      schema:
+        type: string
+        format: uuid
+        minLength: 36
+        maxLength: 36
+    IncidentId:
+      name: incidentId
+      in: path
+      required: true
+      schema:
+        type: string
+        format: uuid
+        minLength: 36
+        maxLength: 36
+    PageSize:
+      name: pageSize
+      in: query
+      required: false
+      schema:
+        type: integer
+        minimum: 1
+        maximum: 100
+        default: 25
+    PageToken:
+      name: pageToken
+      in: query
+      required: false
+      schema:
+        type: string
+        maxLength: 512
+    IdempotencyKey:
+      name: Idempotency-Key
+      in: header
+      required: true
+      description: >-
+        Opaque retry identity. Reusing a key with a different actor or exact
+        request digest returns a conflict; the value is never normalized.
+      schema:
+        type: string
+        minLength: 1
+        maxLength: 128
+        pattern: '^[\u0021-\u007E]+$'
+    IfMatch:
+      name: If-Match
+      in: header
+      required: true
+      description: One strong ETag containing the current non-negative resource version.
+      schema:
+        type: string
+        minLength: 3
+        maxLength: 22
+        pattern: '^"[0-9]+"$'
+  headers:
+    Location:
+      description: Canonical nested incident resource path.
+      required: true
+      schema:
+        type: string
+        format: uri-reference
+        minLength: 1
+        maxLength: 1024
+    ETag:
+      description: Strong ETag containing the current non-negative resource version.
+      required: true
+      schema:
+        type: string
+        minLength: 3
+        maxLength: 22
+        pattern: '^"[0-9]+"$'
+    XOperationId:
+      description: Durable UUID joining this mutation to timeline, audit, and outbox effects.
+      required: true
+      schema:
+        type: string
+        format: uuid
+        minLength: 36
+        maxLength: 36
+  schemas:
+    ProblemDetails:
+      $ref: '../json-schema/common/problem-details.schema.json'
+    TenantScope:
+      $ref: '../json-schema/auth/tenant-scope.schema.json'
+    CreateIncidentRequest:
+      $ref: '../json-schema/incidents/create-incident-request.schema.json'
+    TransitionIncidentRequest:
+      $ref: '../json-schema/incidents/transition-incident-request.schema.json'
+    Incident:
+      $ref: '../json-schema/incidents/incident.schema.json'
+    IncidentTimelinePage:
+      $ref: '../json-schema/incidents/incident-timeline-page.schema.json'
+    AnalysisRuntimeResponse:
+      $ref: '../json-schema/ai-runtime/v1/analysis-response.schema.json'
+    ToolExecutionRequest:
+      $ref: '../json-schema/tool-gateway/v1/tool-execution-request.schema.json'
+    ToolExecutionResponse:
+      $ref: '../json-schema/tool-gateway/v1/tool-execution-response.schema.json'
+    StartIncidentAnalysisRequest:
+      type: object
+      additionalProperties: false
+      required: [run_id, analysis_mode, purpose, token_budget, tool_budget, deadline_at]
+      properties:
+        run_id:
+          type: string
+          format: uuid
+        analysis_mode:
+          type: string
+          enum: [investigate, summarize]
+        purpose:
+          type: string
+          enum: [incident_investigation, incident_summary]
+        token_budget:
+          type: integer
+          minimum: 1
+          maximum: 100000
+        tool_budget:
+          type: integer
+          minimum: 0
+          maximum: 20
+        deadline_at:
+          type: string
+          format: date-time
+    CurrentPrincipal:
+      type: object
+      additionalProperties: false
+      required: [subject, issuer, scopes]
+      properties:
+        subject:
+          type: string
+          minLength: 1
+          maxLength: 255
+        issuer:
+          type: string
+          format: uri
+          maxLength: 2048
+        displayName:
+          type: string
+          maxLength: 255
+        email:
+          type: string
+          format: email
+          maxLength: 320
+        scopes:
+          type: array
+          maxItems: 256
+          uniqueItems: true
+          items:
+            type: string
+            minLength: 1
+            maxLength: 128
+        tenant:
+          $ref: '#/components/schemas/TenantScope'
+    Project:
+      type: object
+      additionalProperties: false
+      required: [id, organizationId, slug, name, version]
+      properties:
+        id:
+          type: string
+          format: uuid
+          minLength: 36
+          maxLength: 36
+        organizationId:
+          type: string
+          format: uuid
+          minLength: 36
+          maxLength: 36
+        slug:
+          type: string
+          minLength: 3
+          maxLength: 64
+          pattern: '^[a-z0-9][a-z0-9-]{1,62}[a-z0-9]$'
+        name:
+          type: string
+          minLength: 1
+          maxLength: 160
+        version:
+          type: integer
+          minimum: 0
+          maximum: 2147483647
+    ProjectPage:
+      type: object
+      additionalProperties: false
+      required: [items, pageSize, hasMore]
+      properties:
+        items:
+          type: array
+          maxItems: 100
+          items:
+            $ref: '#/components/schemas/Project'
+        pageSize:
+          type: integer
+          minimum: 1
+          maximum: 100
+        nextPageToken:
+          type: string
+          minLength: 1
+          maxLength: 512
+        hasMore:
+          type: boolean
+  responses:
+    InvalidRequest:
+      description: Request syntax or boundary validation failed
+      content:
+        application/problem+json:
+          schema:
+            $ref: '#/components/schemas/ProblemDetails'
+    Unauthenticated:
+      description: A valid access token was not supplied
+      content:
+        application/problem+json:
+          schema:
+            $ref: '#/components/schemas/ProblemDetails'
+    Forbidden:
+      description: The principal is authenticated but not authorized
+      content:
+        application/problem+json:
+          schema:
+            $ref: '#/components/schemas/ProblemDetails'
+    NotFound:
+      description: The resource does not exist or is not visible
+      content:
+        application/problem+json:
+          schema:
+            $ref: '#/components/schemas/ProblemDetails'
+    Conflict:
+      description: Idempotency identity, domain state, or an optimistic update race conflicts
+      content:
+        application/problem+json:
+          schema:
+            $ref: '#/components/schemas/ProblemDetails'
+    PreconditionFailed:
+      description: If-Match does not equal the current resource version
+      content:
+        application/problem+json:
+          schema:
+            $ref: '#/components/schemas/ProblemDetails'
+    PreconditionRequired:
+      description: A mutable-resource request omitted the required If-Match header
+      content:
+        application/problem+json:
+          schema:
+            $ref: '#/components/schemas/ProblemDetails'
+    UnprocessableContent:
+      description: The request is syntactically valid but violates a domain invariant
+      content:
+        application/problem+json:
+          schema:
+            $ref: '#/components/schemas/ProblemDetails'
+    UnsupportedMediaType:
+      description: The request body media type is not supported
+      content:
+        application/problem+json:
+          schema:
+            $ref: '#/components/schemas/ProblemDetails'
+    PayloadTooLarge:
+      description: The JSON request body exceeds the configured byte limit
+      content:
+        application/problem+json:
+          schema:
+            $ref: '#/components/schemas/ProblemDetails'
+    ServiceUnavailable:
+      description: Incident authorization or persistence is temporarily unavailable
+      content:
+        application/problem+json:
+          schema:
+            $ref: '#/components/schemas/ProblemDetails'
+    RequestTimeout:
+      description: The bounded analysis deadline elapsed before completion
+      content:
+        application/problem+json:
+          schema:
+            $ref: '#/components/schemas/ProblemDetails'
+    RateLimited:
+      description: The durable analysis budget or dependency rate limit was exceeded
+      content:
+        application/problem+json:
+          schema:
+            $ref: '#/components/schemas/ProblemDetails'
+    BadGateway:
+      description: The provider returned a permanent failure or invalid response
+      content:
+        application/problem+json:
+          schema:
+            $ref: '#/components/schemas/ProblemDetails'
+    GatewayTimeout:
+      description: The provider did not respond before the bounded deadline
+      content:
+        application/problem+json:
+          schema:
+            $ref: '#/components/schemas/ProblemDetails'

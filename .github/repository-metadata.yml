@@ -1,0 +1,38 @@
+# Source-of-truth for the GitHub repository About panel and release metadata.
+# Keep this file synchronized with the values applied through `gh repo edit`.
+name: OpsMind AI
+description: Evidence-first AI SRE/DevSecOps platform for traceable incident investigation, policy-gated remediation, tenant isolation, and measurable reliability.
+homepage: https://github.com/JasonTM17/OpsMind_AI#readme
+topics:
+  - ai
+  - sre
+  - devsecops
+  - incident-response
+  - observability
+  - llm
+  - rag
+  - security
+  - platform-engineering
+  - spring-boot
+  - fastapi
+  - postgresql
+  - deepseek
+  - reliability-engineering
+  - policy-as-code
+settings:
+  discussions: true
+  issues: true
+  wiki: false
+  projects: true
+  delete-branch-on-merge: true
+package-publication:
+  registries:
+    - docker.io
+    - ghcr.io
+  image-set:
+    - opsmind-platform-api
+    - opsmind-ai-runtime
+    - opsmind-tool-gateway
+    - opsmind-operator-web
+  parity: same multi-architecture digest in Docker Hub and GHCR
+  credentials: protected CI secrets and GitHub OIDC; never commit tokens
