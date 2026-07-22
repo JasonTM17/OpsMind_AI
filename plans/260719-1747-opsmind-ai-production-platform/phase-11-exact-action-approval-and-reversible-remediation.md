@@ -63,7 +63,7 @@ Introduce the first write-capable path without granting the model, browser or wo
 - `packages/contracts/json-schema/remediation/execution-intent.schema.json`
 - `packages/contracts/json-schema/remediation/execution-result.schema.json`
 - `packages/contracts/fixtures/remediation/canonicalization/`
-- `services/platform-api/src/main/resources/db/migration/V007__approval_and_remediation.sql`
+- next additive Platform Flyway migration (filename allocated at implementation time)
 - `services/platform-api/src/main/java/ai/opsmind/platform/approval/application/ApprovalService.java`
 - `services/platform-api/src/main/java/ai/opsmind/platform/approval/application/ExecutionIntentService.java`
 - `services/platform-api/src/main/java/ai/opsmind/platform/approval/api/ApprovalController.java`

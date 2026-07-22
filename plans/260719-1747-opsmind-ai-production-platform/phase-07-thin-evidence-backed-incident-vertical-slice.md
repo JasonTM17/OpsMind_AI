@@ -39,6 +39,9 @@ The slice must use one pure deterministic investigation state machine. Phase 7 s
   - Phase 5 must expose stable AI runtime contracts for `complete`, `need_more_evidence`, and `abstain`.
   - Phase 6 must expose stable Tool Gateway execution contracts and at least the connector families required by the chosen slice scenario.
   - Phase 4 incident/audit ledger must already persist incidents, evidence references, and timeline events.
+  - [Phase 4B](./phase-04b-bounded-evidence-record-ingress.md) must pass before
+    fixture clients are replaced; otherwise Tool Gateway results would produce
+    orphaned evidence IDs that cannot be authorized, replayed, or cited.
 - Scenario blocker:
   - Choose one representative incident class before implementation. Recommended first slice: deployment-caused latency regression because it exercises observability, deployment, source, and runbook evidence in one path.
 - Downstream:
@@ -70,11 +73,12 @@ and audit rows; step 5 does not yet append to `incident_timeline_events`; steps
 | Capability | Evidence-backed state |
 |---|---|
 | Reducer and runner | Pure deterministic reducer plus bounded synchronous in-process runner implemented |
-| Persistence | V006 PostgreSQL snapshot + contiguous immutable run-event ledger + same-transaction audit chain; forced RLS and optimistic revision checks implemented |
+| Persistence | V006 PostgreSQL snapshot/run ledger plus locally implemented V007 bounded evidence records in the same transaction; V007 live DB CI pending |
 | Integrity | Direct SQL cannot forge terminal snapshots/events, break event parity, or mutate append-only ledgers |
 | Workflow durability | Not implemented; persisted snapshots do not provide restart/resume semantics |
 | Incident timeline | Not implemented; events live in `investigation_run_events` and `audit_events`, not `incident_timeline_events` |
-| External clients | Fixture AI/Tool clients only; real capability-backed HTTP clients pending |
+| Evidence authorization | Bounded canonical records, deterministic identities, metadata-only audit/event payloads, and tenant/incident/run-authorized reads implemented locally |
+| External clients | Fixture AI/Tool clients only; real capability-backed HTTP clients start after V007 live DB CI passes |
 | Live path and UI | Selected live connector, CK/Stitch UI, browser E2E, cross-service trace, and p95 evidence pending |
 
 Static evidence: `CheckpointResult=PASS`; phase evidence: `PhaseExit=BLOCK`.

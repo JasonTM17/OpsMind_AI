@@ -372,9 +372,33 @@ Capability-backed clients, the allowlisted live connector, CK/Stitch UI/browser
 E2E, and cross-service trace/p95 evidence remain required. Phase 7 is **in
 progress**.
 
+## 2026-07-22 — Checkpoint 4B bounded evidence records (local verification)
+
+Implemented an immutable small-record evidence control plane before enabling
+real Phase 7 clients:
+
+- V007 `evidence_records` with a 64 KiB canonical JSON limit, independent
+  PostgreSQL SHA-256 verification, forced RLS, append-only triggers, constrained
+  runtime grants, and one-to-one linkage to `EVIDENCE_APPENDED` run events;
+- deterministic Platform-owned evidence/execution UUIDv8 identities scoped to
+  organization, run, and tool intent;
+- same-transaction run successor, run-event, evidence, and audit persistence;
+- metadata-only event/audit serialization, with canonical content available
+  only through a tenant/incident/run-authorized resolver that re-verifies the
+  digest and preserves caller order;
+- Gateway request/audit/provenance, redaction, truncation, and duplicate replay
+  metadata retained without exposing credentials or raw provider payloads.
+
+Local verification: Platform API `145` tests, `0` failures/errors and `18`
+environment-gated integration skips; Phase 4B static checkpoint PASS; repository
+layout, actionlint, diff, and working-tree/history secret scans PASS. Live fresh/upgrade
+PostgreSQL migration, RLS, rollback, and immutability tests remain pending on
+GitHub Actions, so checkpoint 4B is **not yet marked complete**. The large/raw
+artifact lifecycle remains blocked by B-006/B-008/B-012.
+
 ## Next Allowed Work
 
-1. Build the real Phase 7 integration through an allowlisted intent catalog,
+1. After the V007 PostgreSQL CI gate passes, build the real Phase 7 integration through an allowlisted intent catalog,
    short-lived capability issuance, independent workload authentication, and
    bounded Platform-to-AI Runtime/Tool Gateway HTTP clients; model output must
    never become an executable request directly.
@@ -389,8 +413,9 @@ progress**.
 5. Keep the external dispatcher loop disabled until Phase 9 binds its runtime
    identity, deterministic workflow ID, and reconciliation contract.
 6. Keep dependency downloads, container builds, and service startup behind a
-   fresh capacity/root preflight. At this checkpoint C has about 11 GB free and
-   D about 25 GB free; prefer CI for heavy Docker work to preserve both floors.
+   fresh capacity/root preflight. Both monitored volumes remain above their
+   floors, but prefer CI for heavy Docker work while C remains close to its
+   minimum reserve.
 
 ## Unresolved Questions
 

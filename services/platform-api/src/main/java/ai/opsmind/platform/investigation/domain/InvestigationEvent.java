@@ -5,6 +5,7 @@ import java.util.List;
 import java.util.UUID;
 
 import ai.opsmind.platform.analysis.AnalysisRuntimeResponse;
+import ai.opsmind.platform.evidence.CollectedEvidence;
 
 /** Immutable events emitted by the investigation reducer for persistence/projection. */
 public sealed interface InvestigationEvent
@@ -33,8 +34,20 @@ public sealed interface InvestigationEvent
         UUID evidenceId,
         String digest,
         String sourceType,
+        CollectedEvidence collectedEvidence,
         Instant occurredAt
-    ) implements InvestigationEvent { }
+    ) implements InvestigationEvent {
+        public EvidenceAppended(
+            UUID runId,
+            UUID intentId,
+            UUID evidenceId,
+            String digest,
+            String sourceType,
+            Instant occurredAt
+        ) {
+            this(runId, intentId, evidenceId, digest, sourceType, null, occurredAt);
+        }
+    }
 
     record Completed(UUID runId, AnalysisRuntimeResponse response, Instant occurredAt)
         implements InvestigationEvent { }

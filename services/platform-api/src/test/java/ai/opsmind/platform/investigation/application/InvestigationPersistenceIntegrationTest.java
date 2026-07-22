@@ -107,7 +107,6 @@ class InvestigationPersistenceIntegrationTest {
                 + "AND resource_id = ? AND schema_version = 'investigation-audit-v1'",
             runId.toString()
         )).isEqualTo(6);
-
         assertThatThrownBy(() -> store.require(TENANT_B, USER_B, runId))
             .isInstanceOf(PlatformProblemException.class)
             .satisfies(error -> assertThat(((PlatformProblemException) error).code())

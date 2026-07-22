@@ -79,6 +79,8 @@ jobs:
         run: sh scripts/dev/test-command-surface.sh
       - name: Validate canonical repository layout
         run: node scripts/validation/validate-repository-layout.mjs
+      - name: Validate bounded evidence-record checkpoint
+        run: node scripts/validation/validate-phase-04b-evidence-records.mjs
       - name: Test Java security tooling
         run: |
           node --test \
@@ -629,7 +631,7 @@ jobs:
           mkdir -p artifacts/verification/phase-03
           mvn --batch-mode --no-transfer-progress \
             -Dmaven.repo.local="$OPS_CACHE_ROOT/maven" \
-            -Dtest=TenantRlsPoolIntegrationTest,TransactionalOutboxIntegrationTest,TransactionalInboxIntegrationTest,PlatformUserStatusVerifierIntegrationTest,OutboxDispatcherWorkloadIntegrationTest,InvestigationPersistenceIntegrationTest,InvestigationPersistenceIntegrityIntegrationTest \
+            -Dtest=TenantRlsPoolIntegrationTest,TransactionalOutboxIntegrationTest,TransactionalInboxIntegrationTest,PlatformUserStatusVerifierIntegrationTest,OutboxDispatcherWorkloadIntegrationTest,InvestigationPersistenceIntegrationTest,InvestigationPersistenceIntegrityIntegrationTest,InvestigationEvidencePersistenceIntegrationTest,InvestigationEvidenceRollbackIntegrationTest \
             -f services/platform-api/pom.xml test \
             2>&1 | tee artifacts/verification/phase-03/authz-rls-pool-matrix.txt
       - name: Run alternating-tenant and append-only contract

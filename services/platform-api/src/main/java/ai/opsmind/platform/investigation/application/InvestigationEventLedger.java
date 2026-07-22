@@ -2,11 +2,14 @@ package ai.opsmind.platform.investigation.application;
 
 import java.nio.charset.StandardCharsets;
 import java.sql.Timestamp;
+import java.util.HexFormat;
 import java.util.List;
 import java.util.UUID;
 
 import ai.opsmind.platform.audit.AuditEvent;
 import ai.opsmind.platform.audit.AuditRepository;
+import ai.opsmind.platform.evidence.CollectedEvidence;
+import ai.opsmind.platform.evidence.EvidenceRecordWriter;
 import ai.opsmind.platform.investigation.domain.InvestigationEvent;
 import ai.opsmind.platform.investigation.domain.InvestigationStateMachine;
 
@@ -25,15 +28,18 @@ final class InvestigationEventLedger {
     private final JdbcTemplate jdbcTemplate;
     private final AuditRepository auditRepository;
     private final InvestigationPersistenceJsonCodec jsonCodec;
+    private final EvidenceRecordWriter evidenceWriter;
 
     InvestigationEventLedger(
         JdbcTemplate jdbcTemplate,
         AuditRepository auditRepository,
-        InvestigationPersistenceJsonCodec jsonCodec
+        InvestigationPersistenceJsonCodec jsonCodec,
+        EvidenceRecordWriter evidenceWriter
     ) {
         this.jdbcTemplate = jdbcTemplate;
         this.auditRepository = auditRepository;
         this.jsonCodec = jsonCodec;
+        this.evidenceWriter = evidenceWriter;
     }
 
     void append(
@@ -52,13 +58,22 @@ final class InvestigationEventLedger {
                 eventId, state.organizationId(), state.projectId(), state.incidentId(),
                 state.runId(), sequence, state.actorId(), event
             );
+            CollectedEvidence collected =
+                event instanceof InvestigationEvent.EvidenceAppended evidence
+                    ? evidence.collectedEvidence() : null;
             jdbcTemplate.update(
                 "INSERT INTO investigation_run_events (event_id, organization_id, project_id, "
-                    + "incident_id, run_id, sequence_no, event_type, actor_id, occurred_at, payload) "
-                    + "VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, CAST(? AS jsonb))",
+                    + "incident_id, run_id, sequence_no, event_type, actor_id, occurred_at, payload, "
+                    + "tool_execution_id, tool_request_digest) "
+                    + "VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, CAST(? AS jsonb), ?, ?)",
                 eventId, state.organizationId(), state.projectId(), state.incidentId(), state.runId(),
-                sequence, eventType, state.actorId(), Timestamp.from(jsonCodec.occurredAt(event)), payload
+                sequence, eventType, state.actorId(), Timestamp.from(jsonCodec.occurredAt(event)), payload,
+                collected == null ? null : collected.executionId(),
+                collected == null ? null : HexFormat.of().parseHex(collected.gatewayRequestDigest())
             );
+            if (event instanceof InvestigationEvent.EvidenceAppended evidence) {
+                evidenceWriter.append(state, eventId, evidence);
+            }
             auditRepository.append(new AuditEvent(
                 eventId, state.organizationId(), state.actorId(), eventType,
                 AuditEvent.INVESTIGATION_SCHEMA_VERSION, "investigation_run",

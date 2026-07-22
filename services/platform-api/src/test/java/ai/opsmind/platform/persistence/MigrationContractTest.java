@@ -129,6 +129,25 @@ class MigrationContractTest {
     }
 
     @Test
+    void evidenceMigrationBindsCanonicalContentToRunEventAndTenant() throws IOException {
+        String migration = readMigration("V007__bounded_evidence_records.sql");
+
+        assertThat(migration)
+            .contains("CREATE TABLE evidence_records")
+            .contains("CHECK (content_digest = public.digest(convert_to(canonical_content, 'UTF8'), 'sha256'))")
+            .contains("UNIQUE (organization_id, run_id, intent_id)")
+            .contains("gateway_duplicate           boolean NOT NULL")
+            .contains("REFERENCES investigation_run_events(event_id)")
+            .contains("evidence record does not match its investigation event")
+            .contains("DEFERRABLE INITIALLY DEFERRED")
+            .contains("evidence investigation event requires exactly one evidence record")
+            .contains("ALTER TABLE evidence_records FORCE ROW LEVEL SECURITY")
+            .contains("REVOKE UPDATE, DELETE, TRUNCATE ON evidence_records FROM opsmind_app")
+            .contains("REVOKE ALL ON evidence_records FROM opsmind_dispatcher")
+            .doesNotContain("raw_prompt", "chain_of_thought", "api_key", "credential_ref");
+    }
+
+    @Test
     void predecessorMigrationsRemainByteForByteStable()
         throws IOException, NoSuchAlgorithmException {
         assertThat(sha256("V001__identity_tenant_foundation.sql")).isEqualTo(V001_SHA256);

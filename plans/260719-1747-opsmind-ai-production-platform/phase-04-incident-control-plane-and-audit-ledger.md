@@ -13,6 +13,7 @@ dependencies: [2, 3]
 - [Plan](./plan.md)
 - [Phase 3](./phase-03-contracts-data-identity-and-tenant-foundation.md)
 - [Phase 4 scout report](./reports/scout-260721-phase-04-incident-control-plane.md)
+- [Checkpoint 4B evidence-record plan](./phase-04b-bounded-evidence-record-ingress.md)
 - [Requirements traceability](./research/master-prompt-requirements-traceability.md)
 - [Architecture and security research](./research/researcher-01-architecture-security.md)
 - [Active blockers](../../docs/blockers.md)
@@ -202,6 +203,13 @@ current workspace is unborn and dirty, and the latest body-limit source/test
 patch requires a fresh capacity-guarded Maven/PostgreSQL rerun before any
 immutable release claim. No DeepSeek key, registry credential, or package
 publication is part of this checkpoint.
+
+Checkpoint 4B is implemented locally as the minimum prerequisite for real Phase
+7 clients. It persists only bounded, normalized, redacted Tool Gateway evidence
+records and atomically links them to the investigation ledger. Static gates and
+the full offline Platform suite pass; live V007 PostgreSQL CI remains required
+before completion. It does not implement or claim the large-object lifecycle
+deferred above.
 
 ## Verification Matrix
 
