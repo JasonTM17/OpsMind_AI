@@ -1,7 +1,7 @@
 ---
 date: 2026-07-22
 scope: pending-java-security-ci-and-phase-07-docs
-status: pass-pending-remote-ci
+status: pass-remote-verified
 ---
 
 # Java Security CI Review
@@ -65,10 +65,11 @@ or Maven goal version, and does not claim Phase 7 completion.
 - SBOM/OSV: 111 + 97 components; 208 packages; zero vulnerability groups;
   Jackson 3.1.5; policy PASS.
 - Actionlint 1.7.12, layout validator, Phase 7 validator, diff check: PASS.
-- Secret scan: 1,098 files and 16 commits, zero findings.
+- Secret scan: 1,105 files and 18 commits, zero findings.
+- GitHub Actions run `29930327761`: `success` on revision `8a6bd398`; every
+  executable job passed and the Java security artifact confirms two SBOM
+  sources, 208 packages, zero vulnerability groups, and `Result=PASS`.
 
 ## Unresolved questions
 
-- Fresh revision-bound GitHub Actions proof is required before changing status
-  from `pass-pending-remote-ci`.
 - Thirteen Dependabot alerts in copied CK tooling remain separate hygiene work.

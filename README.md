@@ -181,9 +181,11 @@ run `29923961768` proves Ubuntu/Windows bootstrap, PostgreSQL V001-V006 trust
 contracts, Keycloak 26.7 conformance, Operator Web, AI Runtime, and Compose
 build/health for commit `0ec3cff`. The overall run was cancelled after both
 successful Java suites entered duplicate full-NVD downloads and hit their
-60-minute limits; the replacement CycloneDX/OSV job is locally verified and
-awaits revision-bound CI. An authorized production IdP profile and the broader
-phase exits are still required. The PostgreSQL matrix proves migration-
+60-minute limits. The replacement CycloneDX/OSV job is locally verified, and
+revision-bound run `29930327761` passes every executable job on `8a6bd398`; its
+security artifact covers two SBOMs and 208 packages with zero CVSS findings.
+An authorized production IdP profile and the broader phase exits are still
+required. The PostgreSQL matrix proves migration-
 role separation, pooled tenant-context cleanup, messaging crash-window recovery,
 and Phase 7 persistence/integrity. It also proves that an active platform user
 is accepted and an unknown or deprovisioned issuer/subject mapping is denied. The

@@ -357,12 +357,14 @@ Verification:
   Compose, and AI Runtime jobs. Both Java suites also completed successfully,
   but their jobs were cancelled at the 60-minute limit while two independent
   unauthenticated OWASP Dependency-Check processes each imported the full NVD
-  corpus. The local fix separates bounded Maven verification from one shared
-  CycloneDX/OSV policy job; revision-bound verification remains pending.
-- local replacement security proof generated SBOMs with 111 and 97 components,
-  scanned 208 packages using checksum-pinned OSV 2.4.0, found zero vulnerability
-  groups after the Jackson Databind 3.1.5 upgrade, and passed all seven evaluator
-  regression cases.
+  corpus. The replacement separates bounded Maven verification from one shared
+  CycloneDX/OSV policy job.
+- GitHub Actions run `29930327761` at revision `8a6bd398` completed successfully
+  across every executable job. Java dependency security completed in 32 seconds;
+  its artifact contains 111- and 97-component SBOMs, 208 scanned packages,
+  checksum-pinned OSV 2.4.0, zero vulnerability groups after the Jackson
+  Databind 3.1.5 upgrade, and `Result=PASS`. All nine local security-tool tests
+  also pass (two installer and seven evaluator cases).
 
 This checkpoint is durable data, not durable workflow. It does not resume an
 in-flight orchestrator and does not append to `incident_timeline_events`.
