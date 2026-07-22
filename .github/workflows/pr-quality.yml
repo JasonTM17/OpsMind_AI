@@ -454,6 +454,7 @@ jobs:
             if pg_isready --host "$PGHOST" --port "$PGPORT" --dbname "$PGDATABASE"; then
               exit 0
             fi
+            echo "PostgreSQL is not ready (attempt ${attempt}/30)." >&2
             sleep 1
           done
           exit 1
