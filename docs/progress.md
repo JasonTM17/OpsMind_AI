@@ -406,15 +406,17 @@ presence with cleanup PASS.
 Exact transition replay is now accepted only when the successor snapshot,
 deterministic event, tool execution/request digest, and complete evidence
 provenance match; drift fails closed. A real final-step audit conflict now also
-proves rollback after snapshot/event/evidence writes. Checkpoint 4B remains
-**in progress** until these new replay and audit-failure PostgreSQL cases pass on
-their pushed revision. The large/raw artifact lifecycle remains blocked by
+proves rollback after snapshot/event/evidence writes. GitHub Actions run
+`29940796700` at revision `14eb8837b94f16933722954e7a03e55a73295d16`
+passed all 11 executable jobs. Its PostgreSQL artifact reports 13 tests with zero
+failure/error/skip, including replay `1/1`, rollback `2/2`, and the guarded
+upgrade/cleanup proof. Bounded-record checkpoint 4B is **complete**. Phase 4 and
+G2 remain open because the large/raw artifact lifecycle is still blocked by
 B-006/B-008/B-012.
 
 ## Next Allowed Work
 
-1. After the remaining Phase 4B replay/rollback acceptance gates pass,
-   build the real Phase 7 integration through an allowlisted intent catalog,
+1. Build the real Phase 7 integration through an allowlisted intent catalog,
    short-lived capability issuance, independent workload authentication, and
    bounded Platform-to-AI Runtime/Tool Gateway HTTP clients; model output must
    never become an executable request directly.

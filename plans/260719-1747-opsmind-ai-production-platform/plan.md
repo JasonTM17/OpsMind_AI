@@ -53,7 +53,7 @@ Accepted scope remains full A-to-Z, but delivery is gate-driven: the approved G0
 | 1 | [Operating Envelope and Architecture Governance](./phase-01-operating-envelope-and-architecture-governance.md) | Completed |
 | 2 | [Monorepo and Developer Platform Foundation](./phase-02-monorepo-and-developer-platform-foundation.md) | In Progress |
 | 3 | [Contracts Data Identity and Tenant Foundation](./phase-03-contracts-data-identity-and-tenant-foundation.md) | In Progress |
-| 4 | [Incident Control Plane and Audit Ledger](./phase-04-incident-control-plane-and-audit-ledger.md) ([4B evidence ingress](./phase-04b-bounded-evidence-record-ingress.md)) | In Progress — 4A complete; 4B fresh-DB and V006→V007 upgrade CI PASS, replay/final-step rollback CI pending |
+| 4 | [Incident Control Plane and Audit Ledger](./phase-04-incident-control-plane-and-audit-ledger.md) ([4B evidence ingress](./phase-04b-bounded-evidence-record-ingress.md)) | In Progress — 4A and bounded-record checkpoint 4B complete; large/raw artifact lifecycle still open |
 | 5 | [DeepSeek AI Runtime and Model Gateway](./phase-05-deepseek-ai-runtime-and-model-gateway.md) | In Progress — static checkpoint PASS; PhaseExitGate BLOCK |
 | 6 | [Safe Tool Gateway and Read-only Connectors](./phase-06-safe-tool-gateway-and-read-only-connectors.md) | In progress — checkpoint PASS; PhaseExitGate BLOCK |
 | 7 | [Thin Evidence-backed Incident Vertical Slice](./phase-07-thin-evidence-backed-incident-vertical-slice.md) | In progress — durable persistence checkpoint PASS; PhaseExitGate BLOCK |
