@@ -562,7 +562,7 @@ jobs:
           mkdir -p artifacts/verification/phase-03
           evidence=artifacts/verification/phase-03/migration-and-rls.txt
           OPSMIND_EPHEMERAL_DB=true \
-            sh scripts/validation/run-phase-03-postgres-contract.sh > "$evidence" 2>&1
+            bash scripts/validation/run-phase-03-postgres-contract.sh > "$evidence" 2>&1
           cat "$evidence"
       - uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
         if: always()
