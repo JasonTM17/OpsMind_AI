@@ -51,6 +51,7 @@ const writer = requireMarkers(
 const reader = requireMarkers(
   "services/platform-api/src/main/java/ai/opsmind/platform/evidence/EvidenceRecordReader.java",
   [
+    "public class EvidenceRecordReader",
     "SELECT EXISTS (SELECT 1 FROM investigation_runs",
     "jsonb_array_elements_text",
     "evidence.lifecycle_state = 'AVAILABLE'",

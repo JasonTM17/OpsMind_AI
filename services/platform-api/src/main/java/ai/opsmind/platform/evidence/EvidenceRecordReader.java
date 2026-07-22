@@ -18,7 +18,7 @@ import org.springframework.transaction.support.TransactionSynchronizationManager
 /** Resolves an ordered evidence set after the caller has bound authorized tenant context. */
 @Repository
 @ConditionalOnProperty(prefix = "opsmind.persistence", name = "enabled", havingValue = "true")
-public final class EvidenceRecordReader {
+public class EvidenceRecordReader {
 
     private static final int MAXIMUM_ITEMS = 200;
 

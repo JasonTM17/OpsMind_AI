@@ -35,6 +35,10 @@ lifecycle. Phase 4 and G2 remain open.
    canonical digest mismatch is injected after the snapshot/event path starts;
    the test requires snapshot, run-event, evidence, and audit state to remain at
    the prior committed boundary.
+6. **Persistence-profile repository proxy failure — fixed after CI evidence.**
+   Spring exception translation requires a class proxy because the reader has
+   no interface. The repository is now non-final, and the Phase 4B static gate
+   locks that proxyable declaration.
 
 ## Risk Checks
 
@@ -58,7 +62,7 @@ lifecycle. Phase 4 and G2 remain open.
 
 ## Verification
 
-- Platform API: 145 tests, zero failures/errors, 18 environment-gated skips.
+- Platform API: 146 tests, zero failures/errors, 18 environment-gated skips.
 - Phase 4B static gate: PASS.
 - Repository layout, actionlint, and diff checks: PASS.
 - Secret scan: 1,121 files and 19 history commits, zero findings.
