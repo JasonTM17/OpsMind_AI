@@ -59,7 +59,7 @@ class InvestigationStateMachineTest {
     @Test
     void enforcesRoundBudgetBeforeAcceptingMoreWork() {
         InvestigationStateMachine.Step step = InvestigationStateMachine.start(new InvestigationCommand.Start(
-            RUN, UUID.randomUUID(), UUID.randomUUID(), UUID.randomUUID(),
+            RUN, UUID.randomUUID(), UUID.randomUUID(), UUID.randomUUID(), UUID.randomUUID(),
             new InvestigationCommand.Budget(1, 2, 10, 100), NOW, NOW.plusSeconds(30)
         ));
         step = InvestigationStateMachine.apply(step.state(), new InvestigationCommand.AnalysisReceived(
@@ -74,7 +74,7 @@ class InvestigationStateMachineTest {
 
     private InvestigationCommand.Start start() {
         return new InvestigationCommand.Start(
-            RUN, UUID.randomUUID(), UUID.randomUUID(), UUID.randomUUID(),
+            RUN, UUID.randomUUID(), UUID.randomUUID(), UUID.randomUUID(), UUID.randomUUID(),
             new InvestigationCommand.Budget(4, 4, 10, 1_000), NOW, NOW.plusSeconds(30)
         );
     }

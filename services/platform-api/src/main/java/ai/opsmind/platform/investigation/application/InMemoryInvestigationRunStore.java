@@ -12,7 +12,7 @@ import org.springframework.http.HttpStatus;
 import org.springframework.context.annotation.Profile;
 import org.springframework.stereotype.Repository;
 
-/** Repeatable local slice store. Durable PostgreSQL ownership is a Phase 7 exit requirement. */
+/** Repeatable local slice store used only by deterministic fixture tests. */
 @Repository
 @Profile("fixture")
 @ConditionalOnProperty(
@@ -25,7 +25,8 @@ public final class InMemoryInvestigationRunStore implements InvestigationRunStor
     private final Map<Key, InvestigationStateMachine.State> states = new ConcurrentHashMap<>();
 
     @Override
-    public void create(InvestigationStateMachine.State state) {
+    public void create(InvestigationStateMachine.Step initial) {
+        InvestigationStateMachine.State state = initial.state();
         if (states.putIfAbsent(new Key(state.organizationId(), state.runId()), state) != null) {
             throw new PlatformProblemException(
                 HttpStatus.CONFLICT,
@@ -36,9 +37,13 @@ public final class InMemoryInvestigationRunStore implements InvestigationRunStor
     }
 
     @Override
-    public void save(InvestigationStateMachine.State state) {
+    public void save(
+        InvestigationStateMachine.State previous,
+        InvestigationStateMachine.Step next
+    ) {
+        InvestigationStateMachine.State state = next.state();
         Key key = new Key(state.organizationId(), state.runId());
-        if (states.replace(key, state) == null) {
+        if (!states.replace(key, previous, state)) {
             throw new PlatformProblemException(
                 HttpStatus.CONFLICT,
                 "investigation.run-missing",
@@ -48,7 +53,10 @@ public final class InMemoryInvestigationRunStore implements InvestigationRunStor
     }
 
     @Override
-    public InvestigationStateMachine.State require(UUID organizationId, UUID runId) {
+    public InvestigationStateMachine.State require(UUID organizationId, UUID actorId, UUID runId) {
+        if (actorId == null) {
+            throw new IllegalArgumentException("Actor identifier is required.");
+        }
         InvestigationStateMachine.State state = states.get(new Key(organizationId, runId));
         if (state == null) {
             throw new PlatformProblemException(

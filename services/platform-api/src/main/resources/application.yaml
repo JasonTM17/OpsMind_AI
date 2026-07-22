@@ -60,7 +60,7 @@ opsmind:
   investigation:
     enabled: ${OPSMIND_INVESTIGATION_V1_ENABLED:false}
     fixture: ${OPSMIND_INVESTIGATION_FIXTURE:false}
-    store: ${OPSMIND_INVESTIGATION_STORE:in-memory}
+    store: ${OPSMIND_INVESTIGATION_STORE:postgres}
   security:
     mode: ${OPSMIND_SECURITY_MODE:fail-closed}
     audience: ${OIDC_AUDIENCE:opsmind-platform-api}

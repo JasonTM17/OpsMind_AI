@@ -6,6 +6,7 @@ import java.util.UUID;
 
 import ai.opsmind.platform.common.api.PlatformProblemException;
 import ai.opsmind.platform.identity.OpsMindPrincipal;
+import ai.opsmind.platform.incident.AuthorizedIncidentAnalysisEvidence;
 import ai.opsmind.platform.incident.IncidentAnalysisAuthorizer;
 import ai.opsmind.platform.investigation.api.StartInvestigationRequest;
 import ai.opsmind.platform.investigation.domain.InvestigationCommand;
@@ -48,7 +49,9 @@ public final class InvestigationRunService {
         UUID incidentId,
         StartInvestigationRequest request
     ) {
-        authorizer.requireEvidence(principal, organizationId, projectId, incidentId);
+        AuthorizedIncidentAnalysisEvidence authorized = authorizer.requireEvidence(
+            principal, organizationId, projectId, incidentId
+        );
         Instant now = Instant.now(clock);
         if (!request.deadlineAt().isAfter(now)) {
             throw new PlatformProblemException(
@@ -56,7 +59,7 @@ public final class InvestigationRunService {
             );
         }
         InvestigationCommand.Start command = new InvestigationCommand.Start(
-            request.runId(), organizationId, projectId, incidentId,
+            request.runId(), organizationId, projectId, incidentId, authorized.actorId(),
             new InvestigationCommand.Budget(
                 request.maxRounds(), request.maxToolCalls(), request.maxEvidenceItems(), request.maxTokens()
             ), now, request.deadlineAt()
@@ -71,8 +74,12 @@ public final class InvestigationRunService {
         UUID incidentId,
         UUID runId
     ) {
-        authorizer.requireEvidence(principal, organizationId, projectId, incidentId);
-        InvestigationStateMachine.State state = store.require(organizationId, runId);
+        AuthorizedIncidentAnalysisEvidence authorized = authorizer.requireEvidence(
+            principal, organizationId, projectId, incidentId
+        );
+        InvestigationStateMachine.State state = store.require(
+            organizationId, authorized.actorId(), runId
+        );
         if (!projectId.equals(state.projectId()) || !incidentId.equals(state.incidentId())) {
             throw new PlatformProblemException(
                 HttpStatus.NOT_FOUND, "investigation.run-not-found", "The investigation run was not found."

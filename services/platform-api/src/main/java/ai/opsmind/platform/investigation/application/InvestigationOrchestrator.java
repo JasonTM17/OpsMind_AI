@@ -32,7 +32,7 @@ public final class InvestigationOrchestrator {
 
     public InvestigationStateMachine.State run(InvestigationCommand.Start command) {
         InvestigationStateMachine.Step initial = InvestigationStateMachine.start(command);
-        store.create(initial.state());
+        store.create(initial);
         InvestigationStateMachine.State state = initial.state();
         while (!terminal(state.status())) {
             if (!Instant.now(clock).isBefore(state.deadlineAt())) {
@@ -56,6 +56,11 @@ public final class InvestigationOrchestrator {
                 catch (RuntimeException exception) {
                     return apply(state, new InvestigationCommand.Failed("Tool Gateway dependency failed."));
                 }
+                if (evidence == null) {
+                    return apply(state, new InvestigationCommand.Failed(
+                        "Tool Gateway returned invalid evidence."
+                    ));
+                }
                 state = apply(state, new InvestigationCommand.ToolEvidenceReceived(
                     evidence.intentId(), evidence.evidenceId(), evidence.digest(), evidence.sourceType()
                 ));
@@ -74,7 +79,7 @@ public final class InvestigationOrchestrator {
     ) {
         Instant now = Instant.now(clock);
         InvestigationStateMachine.Step step = InvestigationStateMachine.apply(state, command, now);
-        store.save(step.state());
+        store.save(state, step);
         return step.state();
     }
 

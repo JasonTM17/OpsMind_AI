@@ -119,8 +119,9 @@ final class InvestigationTransitions {
         List<AnalysisRuntimeResponse.ToolIntent> pending = state.pendingIntents().stream()
             .filter(intent -> !command.intentId().equals(intent.intentId())).toList();
         State next = new State(
-            state.runId(), state.organizationId(), state.projectId(), state.incidentId(), state.budget(),
-            pending.isEmpty() ? Status.ANALYZING : Status.WAITING_FOR_EVIDENCE,
+            state.runId(), state.organizationId(), state.projectId(), state.incidentId(), state.actorId(),
+            state.budget(), pending.isEmpty() ? Status.ANALYZING : Status.WAITING_FOR_EVIDENCE,
+            state.revision(), state.eventCount(),
             state.rounds(), state.toolCalls(), state.totalTokens(), state.requestedFingerprints(),
             evidenceIds, pending, state.finalResponse(), null, state.startedAt(), state.deadlineAt(), null
         );
@@ -161,8 +162,9 @@ final class InvestigationTransitions {
         AnalysisRuntimeResponse response, String reason, Instant endedAt
     ) {
         return new State(state.runId(), state.organizationId(), state.projectId(), state.incidentId(),
-            state.budget(), status, rounds, toolCalls, totalTokens, fingerprints, state.evidenceIds(),
-            pending, response, reason, state.startedAt(), state.deadlineAt(), endedAt);
+            state.actorId(), state.budget(), status, state.revision(), state.eventCount(), rounds,
+            toolCalls, totalTokens, fingerprints, state.evidenceIds(), pending, response, reason,
+            state.startedAt(), state.deadlineAt(), endedAt);
     }
 
     private static String fingerprint(AnalysisRuntimeResponse.ToolIntent intent) {
