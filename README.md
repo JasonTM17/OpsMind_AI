@@ -12,10 +12,13 @@ Phase 7 adds a pure bounded investigation reducer and feature-flagged runner.
 Flyway V006 provides tenant-scoped PostgreSQL run snapshots, a contiguous
 immutable investigation-event ledger, same-transaction audit-chain writes,
 forced RLS, and optimistic concurrency. This is durable data, not a durable
-workflow: restart/resume remains Phase 9, and current investigation events are
-not yet appended to the incident timeline. Real capability-backed service
-clients, a live non-production connector, CK/Stitch operator UI/browser E2E,
-cross-service tracing, and p95 evidence remain open, so G3 is not claimed.
+workflow. V007 adds immutable bounded canonical evidence records, exact replay,
+authorized reads, and full transaction rollback; revision-bound CI passes its
+fresh/upgrade and 13-case PostgreSQL gate. Restart/resume remains Phase 9, and
+current investigation events are not yet appended to the incident timeline.
+Real capability-backed service clients, a live non-production connector,
+CK/Stitch operator UI/browser E2E, cross-service tracing, and p95 evidence
+remain open, so G3 is not claimed.
 
 DeepSeek egress and all production credentials remain disabled by default.
 Production identity/provider/legal conformance, evidence-object lifecycle,
@@ -217,12 +220,12 @@ node .\scripts\validation\validate-phase-07-investigation-slice.mjs
 | Checkpoint | Current evidence | Scope limit |
 |---|---|---|
 | Governance/foundation | Secret scan, layout, portable surface, actionlint, Ubuntu/Windows bootstrap pass | G1 remains broader than one run |
-| PostgreSQL trust | V001-V006, pooled tenant/RLS, messaging recovery, Phase 7 persistence/integrity pass | Production database/DR not proven |
+| PostgreSQL trust | V001-V007, pooled tenant/RLS, messaging recovery, investigation persistence/evidence/upgrade/replay/rollback pass | Production database/DR and large-object lifecycle not proven |
 | Identity | Keycloak 26.7 conformance passes locally and in Linux CI | Not production-authorized enterprise IdP proof |
 | Incident control | CRUD subset, rollback/concurrency, timeline and audit-chain gates pass | Full Phase 4 remains open |
 | AI Runtime | 149 offline tests plus PostgreSQL state gate pass; DeepSeek adapter defaults to `deepseek-v4-flash` | No live provider call or legal/residency approval |
 | Tool Gateway | Static contract and 24 Maven tests pass | Durable stores, real issuer/client, and live connector pending |
-| Investigation | Static durable-persistence checkpoint passes; PostgreSQL forgery/optimistic-conflict tests pass | `PhaseExit=BLOCK`; no real clients/UI/live trace/p95 |
+| Investigation | Bounded-record checkpoint 4B passes static, fresh/upgrade, forgery, replay, authorization, and rollback gates | `PhaseExit=BLOCK`; no real clients/UI/live trace/p95 |
 | Compose | All application images build, start, and pass health smoke in CI | Not staging/production deployment evidence |
 
 Historical local evidence marked `REFERENCE_CONFORMANCE_NOT_PRODUCTION` stays

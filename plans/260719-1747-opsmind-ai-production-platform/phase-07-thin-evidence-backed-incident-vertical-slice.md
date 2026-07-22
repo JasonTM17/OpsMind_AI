@@ -64,21 +64,22 @@ The slice must use one pure deterministic investigation state machine. Phase 7 s
 8. `apps/operator-web` renders the incident investigation timeline, evidence list, tool calls, and final RCA via SSE or polling without showing raw chain-of-thought.
 
 The sequence above is the Phase 7 target, not the current-state claim. At the
-2026-07-22 checkpoint, steps 2 and 7 persist bounded run snapshots, run events,
-and audit rows; step 5 does not yet append to `incident_timeline_events`; steps
-3-6 still use fixture clients; and step 8 is not implemented.
+2026-07-23 checkpoint, steps 2 and 7 persist bounded run snapshots, run events,
+evidence records, and audit rows; step 5 does not yet append to
+`incident_timeline_events`; steps 3-6 still use fixture clients; and step 8 is
+not implemented.
 
 ## Current Checkpoint (2026-07-22)
 
 | Capability | Evidence-backed state |
 |---|---|
 | Reducer and runner | Pure deterministic reducer plus bounded synchronous in-process runner implemented |
-| Persistence | V006 PostgreSQL snapshot/run ledger plus locally implemented V007 bounded evidence records in the same transaction; V007 live DB CI pending |
+| Persistence | V006 PostgreSQL snapshot/run ledger plus V007 bounded evidence records in the same transaction; fresh and V006→V007 CI gates PASS |
 | Integrity | Direct SQL cannot forge terminal snapshots/events, break event parity, or mutate append-only ledgers |
 | Workflow durability | Not implemented; persisted snapshots do not provide restart/resume semantics |
 | Incident timeline | Not implemented; events live in `investigation_run_events` and `audit_events`, not `incident_timeline_events` |
-| Evidence authorization | Bounded canonical records, deterministic identities, metadata-only audit/event payloads, and tenant/incident/run-authorized reads implemented locally |
-| External clients | Fixture AI/Tool clients only; real capability-backed HTTP clients start after V007 live DB CI passes |
+| Evidence authorization | Checkpoint 4B complete: bounded canonical records, deterministic identities, metadata-only audit/event payloads, authorized reads, exact replay, and full-step rollback PASS in CI |
+| External clients | Fixture AI/Tool clients only; the [capability-backed integration plan](../260723-0021-phase-07-capability-backed-investigation/plan.md) is now in progress |
 | Live path and UI | Selected live connector, CK/Stitch UI, browser E2E, cross-service trace, and p95 evidence pending |
 
 Static evidence: `CheckpointResult=PASS`; phase evidence: `PhaseExit=BLOCK`.
