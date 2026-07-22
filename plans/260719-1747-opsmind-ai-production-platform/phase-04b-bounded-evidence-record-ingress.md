@@ -200,7 +200,7 @@ evidence body is introduced here.
 
 V007, the evidence value/canonicalizer/identity/writer/reader boundary, reducer
 transport, metadata-only event codec, static gate, and integration tests are
-implemented. Local Platform verification reports `145` tests, zero failures or
+implemented. Local Platform verification reports `146` tests, zero failures or
 errors, with `18` environment-gated database tests skipped. Phase 4B static
 validation, layout, actionlint, diff, and secret scans pass. Status remains
 `in_progress` until GitHub Actions applies V007 to fresh and upgraded PostgreSQL

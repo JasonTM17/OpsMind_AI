@@ -389,7 +389,7 @@ real Phase 7 clients:
 - Gateway request/audit/provenance, redaction, truncation, and duplicate replay
   metadata retained without exposing credentials or raw provider payloads.
 
-Local verification: Platform API `145` tests, `0` failures/errors and `18`
+Local verification: Platform API `146` tests, `0` failures/errors and `18`
 environment-gated integration skips; Phase 4B static checkpoint PASS; repository
 layout, actionlint, diff, and working-tree/history secret scans PASS. Live fresh/upgrade
 PostgreSQL migration, RLS, rollback, and immutability tests remain pending on
