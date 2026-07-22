@@ -29,6 +29,7 @@ public final class JdbcInvestigationRunStore implements InvestigationRunStore {
     private final InvestigationPersistenceJsonCodec jsonCodec;
     private final InvestigationRunSqlMapper sqlMapper;
     private final InvestigationEventLedger eventLedger;
+    private final InvestigationReplayVerifier replayVerifier;
 
     public JdbcInvestigationRunStore(
         JdbcTemplate jdbcTemplate,
@@ -36,7 +37,8 @@ public final class JdbcInvestigationRunStore implements InvestigationRunStore {
         PlatformTransactionManager transactionManager,
         InvestigationPersistenceJsonCodec jsonCodec,
         InvestigationRunSqlMapper sqlMapper,
-        InvestigationEventLedger eventLedger
+        InvestigationEventLedger eventLedger,
+        InvestigationReplayVerifier replayVerifier
     ) {
         this.jdbcTemplate = jdbcTemplate;
         this.tenantContextSql = tenantContextSql;
@@ -44,6 +46,7 @@ public final class JdbcInvestigationRunStore implements InvestigationRunStore {
         this.jsonCodec = jsonCodec;
         this.sqlMapper = sqlMapper;
         this.eventLedger = eventLedger;
+        this.replayVerifier = replayVerifier;
     }
 
     @Override
@@ -89,7 +92,10 @@ public final class JdbcInvestigationRunStore implements InvestigationRunStore {
                 sqlMapper.timestamp(state.endedAt()),
                 state.organizationId(), state.runId(), previous.revision(), previous.eventCount()
             );
-            if (updated != 1) throw conflict(null);
+            if (updated != 1) {
+                if (replayVerifier.matches(previous, next)) return null;
+                throw conflict(null);
+            }
             eventLedger.append(state, next.events(), previous.eventCount() + 1);
             return null;
         });
@@ -100,12 +106,7 @@ public final class JdbcInvestigationRunStore implements InvestigationRunStore {
         return execute(organizationId, actorId, () -> {
             try {
                 return jdbcTemplate.queryForObject(
-                    "SELECT run_id, organization_id, project_id, incident_id, actor_id, status, "
-                        + "max_rounds, max_tool_calls, max_evidence_items, max_tokens, revision, "
-                        + "event_count, rounds, tool_calls, total_tokens, "
-                        + "requested_fingerprints_state::text, evidence_ids_state::text, "
-                        + "pending_intents_state::text, final_response::text, terminal_reason, "
-                        + "started_at, deadline_at, ended_at FROM investigation_runs "
+                    "SELECT " + InvestigationRunSqlMapper.STATE_COLUMNS + " FROM investigation_runs "
                         + "WHERE organization_id = ? AND run_id = ?",
                     sqlMapper::mapState,
                     organizationId,

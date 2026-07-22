@@ -83,7 +83,7 @@ final class InvestigationEventLedger {
         }
     }
 
-    private UUID eventId(UUID organizationId, UUID runId, long sequence) {
+    static UUID eventId(UUID organizationId, UUID runId, long sequence) {
         return UUID.nameUUIDFromBytes(
             ("investigation:" + organizationId + ":" + runId + ":" + sequence)
                 .getBytes(StandardCharsets.UTF_8)

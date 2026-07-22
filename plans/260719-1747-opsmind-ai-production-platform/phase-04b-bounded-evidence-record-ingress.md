@@ -200,16 +200,25 @@ evidence body is introduced here.
 
 V007, the evidence value/canonicalizer/identity/writer/reader boundary, reducer
 transport, metadata-only event codec, static gate, and integration tests are
-implemented. Local Platform verification reports `146` tests, zero failures or
-errors, with `18` environment-gated database tests skipped. Phase 4B static
+implemented. Local Platform verification reports `148` tests, zero failures or
+errors, with `20` environment-gated database tests skipped. Phase 4B static
 validation, layout, actionlint, diff, and secret scans pass. GitHub Actions run
 `29936897223` at revision `77f7ab80edb64f7ac8a0a46b68c37a3ad2f043eb`
 completed successfully across 11 executable jobs. It applied fresh V001–V007,
 ran 11 PostgreSQL integration cases including evidence persistence and rollback,
-and passed Compose health smoke. The workflow now also contains an isolated,
-fail-closed V006→V007 upgrade proof; status remains `in_progress` until that new
-gate passes on the pushed revision and the remaining replay/failure-matrix
-acceptance claims are proven rather than inferred.
+and passed Compose health smoke. Run `29938632667` at revision
+`3da19efcb23db60e4c42c7a849f5a34c790f1a32` then proved the guarded disposable
+V006→V007 upgrade (`VersionBefore=6`, table absent, `VersionAfter=7`, table
+present, cleanup PASS) and completed every executable job including Compose.
+
+Exact stale-transition replay now requires equality across the persisted
+successor snapshot, deterministic run events, tool execution/request digest,
+and full immutable evidence provenance. Any drift returns
+`investigation.run-conflict`. The failure matrix also injects a real final-step
+audit primary-key conflict after snapshot/event/evidence writes and requires the
+whole transaction to remain at its prior boundary. Checkpoint status remains
+`in_progress` until these two new PostgreSQL cases pass on their own pushed
+revision; no live-CI completion claim is inferred from local guarded skips.
 
 ## Unresolved Questions
 

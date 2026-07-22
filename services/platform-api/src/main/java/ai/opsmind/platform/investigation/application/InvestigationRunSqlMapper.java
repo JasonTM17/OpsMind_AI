@@ -13,6 +13,14 @@ import org.springframework.stereotype.Component;
 @Component
 final class InvestigationRunSqlMapper {
 
+    static final String STATE_COLUMNS =
+        "run_id, organization_id, project_id, incident_id, actor_id, status, "
+            + "max_rounds, max_tool_calls, max_evidence_items, max_tokens, revision, "
+            + "event_count, rounds, tool_calls, total_tokens, "
+            + "requested_fingerprints_state::text, evidence_ids_state::text, "
+            + "pending_intents_state::text, final_response::text, terminal_reason, "
+            + "started_at, deadline_at, ended_at";
+
     private final InvestigationPersistenceJsonCodec jsonCodec;
 
     InvestigationRunSqlMapper(InvestigationPersistenceJsonCodec jsonCodec) {

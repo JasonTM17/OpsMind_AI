@@ -39,12 +39,22 @@ lifecycle. Phase 4 and G2 remain open.
    Spring exception translation requires a class proxy because the reader has
    no interface. The repository is now non-final, and the Phase 4B static gate
    locks that proxyable declaration.
-7. **Migration evidence covered only a fresh database — gate added.** The first
+7. **Migration evidence covered only a fresh database — fixed in CI.** The first
    successful revision-bound run applied V001–V007 but did not independently
    prove an existing V006 database could advance to V007. A disposable,
    prefix-guarded upgrade runner now migrates to V006, proves the evidence table
-   absent, advances to V007, proves it present, and requires cleanup. Its CI
-   result remains pending; no upgrade claim is made yet.
+   absent, advances to V007, proves it present, and requires cleanup. Run
+   `29938632667` passed that proof and the complete workflow.
+8. **Blanket stale-write conflict rejected exact retries — fixed locally.** A
+   stale update is now a no-op only when the stored successor snapshot,
+   deterministic event rows, tool identities/digests, and full evidence record
+   provenance all match. Content, request, execution, or source-provenance drift
+   still returns `investigation.run-conflict`. Revision-bound CI remains pending.
+9. **Final audit-step rollback was inferred — fixed locally.** A PostgreSQL test
+   reserves the deterministic audit event ID, lets snapshot, run-event, and
+   evidence writes execute, then forces the real audit repository to reject the
+   append. The test requires the prior boundary to remain intact. Revision-bound
+   CI remains pending.
 
 ## Risk Checks
 
@@ -68,14 +78,16 @@ lifecycle. Phase 4 and G2 remain open.
 
 ## Verification
 
-- Platform API: 146 tests, zero failures/errors, 18 environment-gated skips.
+- Platform API: 148 tests, zero failures/errors, 20 environment-gated skips.
 - Phase 4B static gate: PASS.
 - Repository layout, actionlint, and diff checks: PASS.
-- Secret scan: 1,138 files and 21 history commits, zero findings.
+- Secret scan: 1,144 files and 23 history commits, zero findings.
 - GitHub Actions run `29936897223` at revision `77f7ab8`: PASS; fresh V001–V007,
   11 live PostgreSQL cases with zero failure/error/skip, and Compose health smoke.
-- Isolated V006→V007 upgrade proof: implemented and locally syntax/static checked;
-  revision-bound CI pending.
+- GitHub Actions run `29938632667` at revision `3da19ef`: PASS; guarded
+  V006→V007 upgrade, cleanup, and all executable jobs including Compose passed.
+- Exact replay and final audit-step rollback PostgreSQL cases: locally compiled
+  and guarded; revision-bound live CI pending.
 
 ## Unresolved Questions
 
