@@ -68,6 +68,11 @@ CI, production IdP, or production deployment result is claimed.
 | Tool Gateway | Java 21, Maven 3.9.12, Spring Boot 4.1.0 |
 | Local database | Compose pins PostgreSQL/pgvector; the Phase 4 disposable gate used PostgreSQL 18.4. |
 
+CI installs Maven 3.9.12 from the official Apache repository with a pinned
+SHA-512 digest before every job that invokes Maven. The local PowerShell
+installer is `scripts/dev/install-pinned-maven.ps1`; actionlint remains pinned
+through its verified release installer.
+
 `compose.yaml` defines PostgreSQL, optional Redis, a disabled object-storage
 review profile, migration and least-privilege Platform/AI runtime roles, AI Runtime, Tool
 Gateway, and Operator Web. Model egress, write actions, and the external
