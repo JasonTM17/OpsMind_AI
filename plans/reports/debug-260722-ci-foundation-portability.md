@@ -1,7 +1,7 @@
 ---
 date: 2026-07-22
 scope: github-actions-foundation-portability
-status: resolved-locally-pending-ci
+status: resolved-remote-verified
 ---
 
 # CI Foundation Portability Investigation
@@ -74,11 +74,14 @@ with the pinned tools.
   `ScannerExit=0`, `Result=PASS` at CVSS 7.
 - Pinned actionlint 1.7.12 and repository layout validation: PASS after the
   workflow/security changes.
+- GitHub Actions run `29930327761` completed `success` on revision
+  `8a6bd398bd821be900abd2e1bc31882a9533fafa`. Every executable job passed;
+  dependency review was correctly skipped on the direct push. The Java security
+  job completed in 32 seconds and its artifact records two sources, 208
+  packages, zero vulnerability groups, and `Result=PASS`.
 
 ## Unresolved questions
 
-- The replacement SBOM/OSV workflow must still pass a fresh revision-bound
-  GitHub Actions run before this report can move to `resolved-remote-verified`.
 - Thirteen Dependabot alerts (9 high, 4 moderate) remain in copied CK tooling
   manifests under `.agents`, `.claude`, and `.codex`; they are outside the
   runtime dependency graph but should be patched or retired in a dedicated
