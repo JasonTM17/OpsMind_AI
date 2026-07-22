@@ -213,7 +213,12 @@ jobs:
           )
           Get-Content -LiteralPath $evidence
           $result = if ($status -eq 0) { 'PASS' } else { 'BLOCK' }
-          "Result=$result" | Tee-Object -FilePath $evidence -Append
+          [IO.File]::AppendAllText(
+            $evidence,
+            "Result=$result$([Environment]::NewLine)",
+            $utf8
+          )
+          Write-Output "Result=$result"
           exit $status
       - name: Validate Windows governance and command surface
         if: runner.os == 'Windows'
@@ -244,9 +249,14 @@ jobs:
           Get-Content -LiteralPath $evidence
           $status = if ($governanceStatus -eq 0 -and $surfaceStatus -eq 0) { 0 } else { 1 }
           $result = if ($status -eq 0) { 'PASS' } else { 'BLOCK' }
-          "GovernanceExit=$governanceStatus" | Tee-Object -FilePath $evidence -Append
-          "CommandSurfaceExit=$surfaceStatus" | Tee-Object -FilePath $evidence -Append
-          "Result=$result" | Tee-Object -FilePath $evidence -Append
+          [IO.File]::AppendAllText(
+            $evidence,
+            "GovernanceExit=$governanceStatus$([Environment]::NewLine)CommandSurfaceExit=$surfaceStatus$([Environment]::NewLine)Result=$result$([Environment]::NewLine)",
+            $utf8
+          )
+          Write-Output "GovernanceExit=$governanceStatus"
+          Write-Output "CommandSurfaceExit=$surfaceStatus"
+          Write-Output "Result=$result"
           exit $status
       - uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
         if: always()
