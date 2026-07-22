@@ -281,8 +281,20 @@ function Invoke-OpsMindPlatformRequest {
     if (-not [string]::IsNullOrWhiteSpace($AccessToken)) {
         $headers.Authorization = "Bearer $AccessToken"
     }
+    $requestParameters = @{
+        UseBasicParsing = $true
+        Uri = $Uri
+        Headers = $headers
+        TimeoutSec = 10
+    }
+    $supportsHttpErrorResponse = (Get-Command Invoke-WebRequest).Parameters.ContainsKey(
+        'SkipHttpErrorCheck'
+    )
+    if ($supportsHttpErrorResponse) {
+        $requestParameters.SkipHttpErrorCheck = $true
+    }
     try {
-        $response = Invoke-WebRequest -UseBasicParsing -Uri $Uri -Headers $headers -TimeoutSec 10
+        $response = Invoke-WebRequest @requestParameters
         return [pscustomobject]@{
             Status = [int]$response.StatusCode
             ContentType = [string]$response.Headers['Content-Type']
@@ -300,11 +312,17 @@ function Invoke-OpsMindPlatformRequest {
             -and $_.ErrorDetails.PSObject.Properties.Name -contains 'Message') {
             $body = [string]$_.ErrorDetails.Message
         }
-        if ([string]::IsNullOrWhiteSpace($body) `
+        if (-not $supportsHttpErrorResponse `
+            -and [string]::IsNullOrWhiteSpace($body) `
             -and $response.PSObject.Properties.Name -contains 'Content' `
             -and $null -ne $response.Content `
             -and $response.Content.PSObject.Methods.Name -contains 'ReadAsStringAsync') {
-            $body = $response.Content.ReadAsStringAsync().GetAwaiter().GetResult()
+            try {
+                $body = $response.Content.ReadAsStringAsync().GetAwaiter().GetResult()
+            }
+            catch [ObjectDisposedException] {
+                $body = ''
+            }
         }
         if ([string]::IsNullOrWhiteSpace($body) -and $response.PSObject.Methods.Name -contains 'GetResponseStream') {
             $stream = $response.GetResponseStream()

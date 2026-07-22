@@ -583,9 +583,19 @@ catch {
 finally {
     foreach ($name in $environmentNames) {
         try {
-            [Environment]::SetEnvironmentVariable($name, $previousEnvironment[$name], 'Process')
+            $expectedEnvironmentValue = $previousEnvironment[$name]
+            [Environment]::SetEnvironmentVariable($name, $expectedEnvironmentValue, 'Process')
+            if ([string]::IsNullOrEmpty($expectedEnvironmentValue)) {
+                Remove-Item -LiteralPath "Env:$name" -Force -ErrorAction SilentlyContinue
+            }
             $restored = [Environment]::GetEnvironmentVariable($name, 'Process')
-            if (-not [object]::Equals($restored, $previousEnvironment[$name])) {
+            $restoredCorrectly = if ([string]::IsNullOrEmpty($expectedEnvironmentValue)) {
+                [string]::IsNullOrEmpty($restored)
+            }
+            else {
+                $restored -ceq $expectedEnvironmentValue
+            }
+            if (-not $restoredCorrectly) {
                 $cleanupFailures.Add("environment:$name")
             }
         }
