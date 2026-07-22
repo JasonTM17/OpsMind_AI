@@ -619,6 +619,7 @@ jobs:
       POSTGRES_PASSWORD: placeholder-ci-only
       POSTGRES_APP_PASSWORD: placeholder-ci-runtime
       POSTGRES_DISPATCHER_PASSWORD: placeholder-ci-dispatcher
+      POSTGRES_AI_RUNTIME_PASSWORD: placeholder-ci-ai-runtime
       OPS_MIN_DOCKER_FREE_GB: "5"
     steps:
       - uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0 # v7.0.0
