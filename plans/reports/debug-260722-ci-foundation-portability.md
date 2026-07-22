@@ -33,7 +33,9 @@ with the pinned tools.
    `3.9.16` while `.maven-version` pins `3.9.12`. The project keeps the pin and
    installs the official Apache distribution with platform-specific SHA-512
    verification through `.github/actions/install-pinned-maven` before each
-   Maven job.
+   Maven job. The first cross-runner attempt exposed a PowerShell naming
+   collision with automatic read-only `$IsWindows`; the installer now uses the
+   distinct `$hostIsWindows` name.
 
 ## Verification
 
@@ -44,7 +46,9 @@ with the pinned tools.
 - Repository layout validator: PASS.
 - Portable command surface: 24/24 PASS under Git Bash.
 - Maven installer: verified release download and cache-hit paths on Windows
-  PowerShell 5.1, Maven 3.9.12 reported by the installed binary.
+  PowerShell 5.1, Maven 3.9.12 reported by the installed binary. The latest
+  GitHub run reached the installer on both OSes and failed only on the
+  now-fixed `$IsWindows` collision; a fresh run is required for release proof.
 
 ## Unresolved questions
 

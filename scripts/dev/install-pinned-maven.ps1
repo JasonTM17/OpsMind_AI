@@ -12,8 +12,8 @@ if ($version -notmatch '^\d+\.\d+\.\d+$') {
     throw "Invalid Maven version pin: $version"
 }
 
-$isWindows = $env:OS -eq 'Windows_NT'
-$platform = if ($isWindows) { 'windows' } else { 'unix' }
+$hostIsWindows = $env:OS -eq 'Windows_NT'
+$platform = if ($hostIsWindows) { 'windows' } else { 'unix' }
 $distribution = @{
     '3.9.12|windows' = @{
         Archive = 'apache-maven-3.9.12-bin.zip'
@@ -42,14 +42,14 @@ $DestinationRoot = [IO.Path]::GetFullPath($DestinationRoot).TrimEnd('\', '/')
 
 $mavenHome = Join-Path $DestinationRoot "apache-maven-$version"
 $mavenBin = Join-Path $mavenHome 'bin'
-$mavenExecutableName = if ($isWindows) { 'mvn.cmd' } else { 'mvn' }
+$mavenExecutableName = if ($hostIsWindows) { 'mvn.cmd' } else { 'mvn' }
 $mavenExecutable = Join-Path $mavenBin $mavenExecutableName
 
 function Test-MavenInstallation {
     param([Parameter(Mandatory = $true)][string]$Executable)
 
     if (-not (Test-Path -LiteralPath $Executable -PathType Leaf)) { return $false }
-    if (-not $isWindows) { & chmod +x $Executable }
+    if (-not $hostIsWindows) { & chmod +x $Executable }
     $versionLine = (& $Executable --version 2>&1 | Select-Object -First 1).ToString().Trim()
     $expectedPrefix = [regex]::Escape("Apache Maven $version")
     if ($versionLine -notmatch "^$expectedPrefix(\s|$)") {
@@ -88,7 +88,7 @@ if (-not (Test-MavenInstallation -Executable $mavenExecutable)) {
 
         $extractionRoot = Join-Path $temporaryRoot 'extracted'
         [void](New-Item -ItemType Directory -Path $extractionRoot -Force)
-        if ($isWindows) {
+        if ($hostIsWindows) {
             Expand-Archive -LiteralPath $archivePath -DestinationPath $extractionRoot -Force
         }
         else {
