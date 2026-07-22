@@ -20,6 +20,7 @@ import org.springframework.transaction.support.TransactionTemplate;
 @Repository
 @Profile("persistence")
 @ConditionalOnProperty(prefix = "opsmind.investigation", name = "store", havingValue = "postgres")
+@ConditionalOnProperty(prefix = "opsmind.persistence", name = "enabled", havingValue = "true")
 public final class JdbcInvestigationRunStore implements InvestigationRunStore {
 
     private final JdbcTemplate jdbcTemplate;
