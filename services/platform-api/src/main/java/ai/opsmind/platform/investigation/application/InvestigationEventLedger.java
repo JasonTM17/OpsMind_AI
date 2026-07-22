@@ -19,6 +19,7 @@ import org.springframework.transaction.support.TransactionSynchronizationManager
 @Component
 @Profile("persistence")
 @ConditionalOnProperty(prefix = "opsmind.investigation", name = "store", havingValue = "postgres")
+@ConditionalOnProperty(prefix = "opsmind.persistence", name = "enabled", havingValue = "true")
 final class InvestigationEventLedger {
 
     private final JdbcTemplate jdbcTemplate;
