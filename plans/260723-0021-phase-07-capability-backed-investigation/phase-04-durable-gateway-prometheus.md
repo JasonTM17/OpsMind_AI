@@ -44,16 +44,18 @@ and execute the first read against a real non-production Prometheus service.
 
 ## Acceptance
 
-- [ ] Gateway restart/retry converges to one logical evidence response.
-- [ ] No DB transaction spans connector I/O.
-- [ ] Runtime roles cannot mutate audit history or cross service schemas.
-- [ ] A real non-production Prometheus query returns bounded canonical evidence.
+- [x] Gateway restart/retry converges to one logical evidence response.
+- [x] No DB transaction spans connector I/O.
+- [x] Runtime roles cannot mutate audit history or cross service schemas.
+- [x] A real non-production Prometheus query returns bounded canonical evidence.
 
 ## Checkpoint Status
 
-Implementation and local deterministic gates pass. The exact revision still
-requires the guarded PostgreSQL job and digest-pinned Prometheus Compose smoke
-before these acceptance boxes can be checked and Phase 4 can be marked complete.
+Completed on commit `ace3642f9f94293e2ff10f580c6028eb997ec036`.
+[GitHub Actions run 29987371420](https://github.com/JasonTM17/OpsMind_AI/actions/runs/29987371420)
+passed the guarded PostgreSQL role/migration/concurrency suite, digest-pinned
+Prometheus config and live query-range Compose smoke, Java dependency security,
+service tests, Linux/Windows bootstrap, and cleanup.
 
 ## Rollback
 

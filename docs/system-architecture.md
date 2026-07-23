@@ -341,11 +341,11 @@ workload/capability JWKS, durable stores, the enabled manifest, and connector
 reachability are all available. The canonical OpenAPI route and Tool Gateway
 JSON Schemas are in `packages/contracts/`;
 `scripts/validation/validate-phase-06-tool-gateway.mjs` is the deterministic
-checkpoint gate. Phase 6 exit remains blocked by the durable large-evidence
-artifact adapter, the remaining connector families, and provider-specific
-cancellation plus tenant-scoped bulkhead proof. Revision-bound PostgreSQL and
-live Prometheus Compose evidence is required before the new durable/live
-checkpoint is promoted from implementation to verified completion.
+checkpoint gate. The durable PostgreSQL and live synthetic Prometheus checkpoint
+is revision-bound by successful GitHub Actions run `29987371420`. Phase 6 exit
+remains blocked by the durable large-evidence artifact adapter, the remaining
+connector families, and provider-specific cancellation plus tenant-scoped
+bulkhead proof.
 
 ## Investigation Orchestration (Phase 7 checkpoint)
 
@@ -420,9 +420,10 @@ Unknown fields, media types, statuses, denial codes, artifacts, unsafe content,
 or identity drift fail closed. A shared canonical fixture proves byte parity
 between Platform signing and Gateway digest verification.
 
-G3 stays blocked on revision-bound proof for the durable Tool Gateway and
-allowlisted live Prometheus connector, incident-timeline linkage, the CK/Stitch
-operator experience with browser E2E, and cross-service trace plus p95 evidence.
+G3 stays blocked on incident-timeline linkage, the CK/Stitch operator experience
+with browser E2E, and cross-service trace plus p95 evidence. Durable Tool Gateway
+and allowlisted synthetic Prometheus checkpoints are proven but do not by
+themselves establish the end-to-end investigation slice.
 
 ## Evidence Artifact Port
 

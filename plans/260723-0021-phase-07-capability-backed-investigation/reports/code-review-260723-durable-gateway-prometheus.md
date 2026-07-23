@@ -10,9 +10,9 @@
 
 ## Overall Assessment
 
-Local implementation is ready for revision-bound PostgreSQL and Compose proof.
-No known blocking source defect remains after the fixes below. Phase completion
-must wait for the guarded database and real Prometheus CI jobs.
+Implementation passed revision-bound PostgreSQL, Compose, dependency-security,
+and service proof in GitHub Actions run `29987371420`. No known blocking source
+defect remains for this checkpoint.
 
 ## Findings Fixed
 
@@ -61,10 +61,9 @@ must wait for the guarded database and real Prometheus CI jobs.
 - Compose application-profile config, Bash, PowerShell, and YAML syntax: pass
 - Documentation validator: links/config confirmations pass; heuristic
   code/config warnings are pre-existing false-positive categories
+- GitHub Actions `29987371420`: success on commit `ace3642`
 
 ## Unresolved Questions
 
-- Will the exact commit pass fresh PostgreSQL role/migration/concurrency tests in
-  GitHub Actions?
-- Will the digest-pinned Prometheus image pass promtool and live query-range
-  Compose smoke on the remote Docker runner?
+None for this checkpoint. Phase 7 cross-service trace, p95, and CK/Stitch UI
+proof remain separate planned work.

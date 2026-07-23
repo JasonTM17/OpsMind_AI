@@ -220,11 +220,12 @@ with five PostgreSQL-gated skips, Ruff and mypy are clean, and the full Maven
 suite passes. This does not replace the blocked Phase 5 exit gate or authorize
 provider traffic.
 
-The durable Tool Gateway and Prometheus implementation has local unit,
-configuration, contract, Compose-config, and syntax proof. PostgreSQL role,
-lease, rollback, append-only, and real Prometheus service checks run in the
-revision-bound GitHub workflow; no live/staging completion is claimed until that
-workflow succeeds for the exact commit.
+The durable Tool Gateway and synthetic Prometheus checkpoint is proven by
+successful revision-bound GitHub Actions run `29987371420` for commit
+`ace3642f9f94293e2ff10f580c6028eb997ec036`. It includes PostgreSQL role, lease,
+rollback, append-only, dependency-security, promtool, live query-range, health,
+and cleanup checks. This remains CI non-production evidence, not staging or
+production conformance.
 
 ## Remaining Deployment Decisions
 
