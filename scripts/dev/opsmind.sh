@@ -213,23 +213,24 @@ assert_application_compose_configuration() {
         printf '%s\n' 'POSTGRES_TOOL_GATEWAY_PASSWORD must be supplied through the process environment or an approved secret manager.' >&2
         exit 2
     fi
-    database_passwords=(
-        "$POSTGRES_PASSWORD"
-        "$POSTGRES_APP_PASSWORD"
-        "$POSTGRES_DISPATCHER_PASSWORD"
-        "$POSTGRES_AI_RUNTIME_PASSWORD"
-        "$POSTGRES_TOOL_GATEWAY_MIGRATOR_PASSWORD"
+    set -- \
+        "$POSTGRES_PASSWORD" \
+        "$POSTGRES_APP_PASSWORD" \
+        "$POSTGRES_DISPATCHER_PASSWORD" \
+        "$POSTGRES_AI_RUNTIME_PASSWORD" \
+        "$POSTGRES_TOOL_GATEWAY_MIGRATOR_PASSWORD" \
         "$POSTGRES_TOOL_GATEWAY_PASSWORD"
-    )
-    for ((left = 0; left < ${#database_passwords[@]}; left++)); do
-        for ((right = left + 1; right < ${#database_passwords[@]}; right++)); do
-            if [ "${database_passwords[$left]}" = "${database_passwords[$right]}" ]; then
+    while [ "$#" -gt 0 ]; do
+        left_password=$1
+        shift
+        for right_password in "$@"; do
+            if [ "$left_password" = "$right_password" ]; then
                 printf '%s\n' 'Migration and runtime-role passwords must be pairwise different.' >&2
                 exit 2
             fi
         done
     done
-    unset database_passwords left right
+    unset left_password right_password
     if [ -n "${POSTGRES_APP_USER:-}" ] && [ "$POSTGRES_APP_USER" != opsmind_app ]; then
         printf '%s\n' 'POSTGRES_APP_USER must remain opsmind_app; migration grants are intentionally explicit.' >&2
         exit 2
