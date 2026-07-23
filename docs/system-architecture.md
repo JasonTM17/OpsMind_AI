@@ -450,12 +450,20 @@ Unknown fields, media types, statuses, denial codes, artifacts, unsafe content,
 or identity drift fail closed. A shared canonical fixture proves byte parity
 between Platform signing and Gateway digest verification.
 
-G3 stays blocked on incident-timeline linkage, cross-service trace plus p95
-evidence, and the later BFF/session proof. The CK/Stitch operator workspace now
-has local unit, build, accessibility, responsive, and Chromium browser proof
-against the safe projection boundary. Durable Tool Gateway and allowlisted
-synthetic Prometheus checkpoints are proven but do not by themselves establish
-the end-to-end investigation slice.
+The local fixture-backed cross-service checkpoint now proves the complete
+Operator/Platform -> AI Runtime -> Platform -> Tool Gateway -> Prometheus ->
+evidence -> cited-terminal path for 100 warm runs. The revision-bound report
+records p50/p95/max latency, provider and Prometheus observations, durable
+run/evidence/analysis/receipt/audit counts, and a zero-resource cleanup result.
+The phase validator requires the report schema, threshold, exact counts,
+completed samples, current git head, and a clean working tree.
+
+G3 stays blocked on a named live non-production connector, provider/legal
+conformance, incident-timeline linkage, and the later BFF/session proof. The
+CK/Stitch operator workspace has local unit, build, accessibility, responsive,
+and Chromium browser proof against the safe projection boundary. Durable Tool
+Gateway and synthetic Prometheus evidence establish the local integration
+checkpoint but do not by themselves establish G3 or production readiness.
 
 ## Evidence Artifact Port
 

@@ -41,15 +41,16 @@ summary material needed to exercise the production request shape.
 
 ## Acceptance
 
-- [ ] One revision-bound run proves the entire cited read-only path. The
-  runner and local provider are implemented; the revision-bound report still
-  requires a disposable Compose/IdP execution.
+- [x] One revision-bound run proves the entire cited read-only path through a
+  disposable Compose/IdP execution; the 100-warm-run report is bound to the
+  clean revision and is validated fail-closed.
 - [ ] Failure paths are visible, sanitized, bounded, and leave no partial state.
-- [ ] Trace/correlation evidence joins every service boundary.
-- [ ] Secret/history/dependency/static/full-suite/Compose gates pass.
-- [ ] Phase 7 backend integration checkpoint is complete, while live DeepSeek,
-  frontend, Temporal resume, artifact lifecycle, and production release remain
-  explicitly open.
+- [x] Trace/correlation evidence joins every service boundary.
+- [x] Secret/history/dependency/static/full-suite/Compose gates pass for the
+  local fixture-backed checkpoint.
+- [x] Phase 7 backend integration checkpoint is complete, while live DeepSeek,
+  a named live non-production connector, frontend BFF/session, Temporal resume,
+  artifact lifecycle, and production release remain explicitly open.
 
 ## Rollback
 
