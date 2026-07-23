@@ -584,6 +584,16 @@ function validateCrossServiceReport() {
     || report.runs.some((run) => run?.status !== "COMPLETED")
   ) {
     reportErrors.push("cross-service run samples are incomplete or non-terminal");
+  } else {
+    const runIds = report.runs.map((run) => run.runId);
+    if (
+      runIds.some((runId) => typeof runId !== "string" || runId.length === 0)
+      || new Set(runIds).size !== runIds.length
+      || report.runs.some((run) =>
+        !Array.isArray(run.evidenceIds) || run.evidenceIds.length === 0)
+    ) {
+      reportErrors.push("cross-service run samples do not have unique IDs and evidence");
+    }
   }
   let currentHead = "";
   try {

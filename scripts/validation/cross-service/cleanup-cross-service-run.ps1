@@ -19,6 +19,21 @@ $expectedRunRoot = [IO.Path]::GetFullPath(
 if (-not $runRoot.Equals($expectedRunRoot, [StringComparison]::OrdinalIgnoreCase)) {
     throw 'Cross-service cleanup run root is invalid.'
 }
+if (Test-Path -LiteralPath $runRoot -PathType Container) {
+    $runRootItem = Get-Item -LiteralPath $runRoot -Force
+    if (($runRootItem.Attributes -band [IO.FileAttributes]::ReparsePoint) -ne 0) {
+        throw 'Cross-service cleanup refuses a reparse-point run root.'
+    }
+    $reparseChildren = @(
+        Get-ChildItem -LiteralPath $runRoot -Force -Recurse -ErrorAction Stop |
+            Where-Object {
+                ($_.Attributes -band [IO.FileAttributes]::ReparsePoint) -ne 0
+            }
+    )
+    if ($reparseChildren.Count -ne 0) {
+        throw 'Cross-service cleanup refuses reparse points inside the run root.'
+    }
+}
 
 $managedCommandPattern = [regex]::Escape($repositoryRoot) +
     '\\(?:services\\(?:platform-api|tool-gateway)\\target\\|' +
