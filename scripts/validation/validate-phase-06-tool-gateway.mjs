@@ -156,9 +156,37 @@ if (/ProcessBuilder|Runtime\.getRuntime|JdbcTemplate|createStatement|Files\.read
 }
 if (fs.existsSync(path.join(sourceRoot, "com"))) errors.push("parallel com.* gateway namespace exists");
 
+function sourceContains(relativePath, markers) {
+  const source = access.readSafeFile(path.join(repositoryRoot, relativePath));
+  return markers.every((marker) => source.includes(marker));
+}
+
+const platformIssuerConformant = sourceContains(
+  "services/platform-api/src/main/java/ai/opsmind/platform/delegation/RsaToolCapabilityTokenIssuer.java",
+  [
+    'claims.put("aud", List.of(audience))',
+    'claims.put("azp", authorizedParty)',
+    'claims.put("token_use", "delegated_capability")',
+    'claims.put("max_calls", 1)',
+    'claims.put("request_digest", grant.requestDigest())',
+    'claims.put("nonce", signer.randomIdentifier())',
+  ],
+) && sourceContains(
+  "services/platform-api/src/main/java/ai/opsmind/platform/delegation/ToolCapabilityGrant.java",
+  ["String requestDigest", "String action", "String resource", "Instant deadlineAt"],
+) && sourceContains(
+  "services/platform-api/src/test/java/ai/opsmind/platform/delegation/RsaToolCapabilityTokenIssuerTest.java",
+  ["delegated-tool-capability-claims-v1.valid.json", "issuesTheStrictGatewayFixtureClaimShape"],
+) && sourceContains(
+  "services/tool-gateway/src/main/java/ai/opsmind/toolgateway/application/DelegatedCapabilityRequestBinding.java",
+  ["requestDigester.digest(request)", "MessageDigest.isEqual"],
+);
+if (!platformIssuerConformant) {
+  errors.push("Platform API capability issuer conformance is incomplete or drifted");
+}
+
 const blockers = [
   "durable atomic nonce/receipt/audit/artifact adapters are absent",
-  "Platform API capability issuer conformance is absent",
   "three fixture connector families are absent",
   "selected live non-production read-only connector proof is absent",
   "provider-specific cancellation and tenant bulkhead proof is absent",

@@ -10,6 +10,8 @@ import java.security.PrivateKey;
 import java.security.interfaces.RSAPrivateKey;
 import java.util.Base64;
 
+import ai.opsmind.platform.delegation.Pkcs8RsaPrivateKeyLoader;
+
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.io.TempDir;
 

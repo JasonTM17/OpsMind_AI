@@ -48,6 +48,7 @@ class Rs256JwksDelegatedCapabilityVerifierTest {
     private JwtDecoder decoder;
     private GatewaySettings settings;
     private Rs256JwksDelegatedCapabilityVerifier verifier;
+    private RequestDigester requestDigester;
 
     @BeforeEach
     void setUp() throws Exception {
@@ -69,23 +70,27 @@ class Rs256JwksDelegatedCapabilityVerifierTest {
             null,
             URI.create("https://platform.invalid.example"),
             "opsmind-tool-gateway-workload",
+            "tool.execute",
             null,
             Duration.ofMinutes(5),
             65_536,
             262_144
         );
         Clock clock = Clock.fixed(NOW, ZoneOffset.UTC);
+        requestDigester = new RequestDigester(new tools.jackson.databind.ObjectMapper());
         verifier = new Rs256JwksDelegatedCapabilityVerifier(
             decoder,
             new FixtureNonceReplayStore(clock),
             settings,
-            clock
+            clock,
+            requestDigester
         );
     }
 
     @Test
     void verifiesRs256CapabilityAndExactBodyBinding() {
-        VerifiedCapability verified = verifier.verify(token("nonce-012345678901"), request("operator-001"));
+        ToolExecutionRequest request = request("operator-001");
+        VerifiedCapability verified = verifier.verify(token("nonce-012345678901", request), request);
 
         assertThat(verified.tenantId()).isEqualTo(TENANT_ID);
         assertThat(verified.actions()).containsExactly("observability:metrics.query:1.0");
@@ -93,51 +98,85 @@ class Rs256JwksDelegatedCapabilityVerifierTest {
 
     @Test
     void rejectsForgedBodyScopeBeforeNonceClaim() {
-        assertThatThrownBy(() -> verifier.verify(token("nonce-forged-0123456"), request("forged-actor")))
+        ToolExecutionRequest authorized = request("operator-001");
+        ToolExecutionRequest forged = copy(authorized, "forged-actor", authorized.arguments());
+        String token = token("nonce-forged-0123456", authorized);
+        assertThatThrownBy(() -> verifier.verify(token, forged))
             .isInstanceOfSatisfying(ToolDeniedException.class, exception ->
                 assertThat(exception.code()).isEqualTo(DenialCode.CAPABILITY_SCOPE_MISMATCH));
 
-        assertThat(verifier.verify(token("nonce-forged-0123456"), request("operator-001")))
-            .isNotNull();
+        assertThat(verifier.verify(token, authorized)).isNotNull();
     }
 
     @Test
     void rejectsNonceReplay() {
-        String token = token("nonce-replay-0123456");
-        verifier.verify(token, request("operator-001"));
+        ToolExecutionRequest request = request("operator-001");
+        String token = token("nonce-replay-0123456", request);
+        verifier.verify(token, request);
 
-        assertThatThrownBy(() -> verifier.verify(token, request("operator-001")))
+        assertThatThrownBy(() -> verifier.verify(token, request))
             .isInstanceOfSatisfying(ToolDeniedException.class, exception ->
                 assertThat(exception.code()).isEqualTo(DenialCode.CAPABILITY_REPLAYED));
     }
 
     @Test
     void reportsReplayProtectionOutageAsUnavailable() {
+        ToolExecutionRequest request = request("operator-001");
         Rs256JwksDelegatedCapabilityVerifier unavailableVerifier =
             new Rs256JwksDelegatedCapabilityVerifier(
                 decoder,
                 new FailClosedNonceReplayStore(),
                 settings,
-                Clock.fixed(NOW, ZoneOffset.UTC)
+                Clock.fixed(NOW, ZoneOffset.UTC),
+                requestDigester
             );
 
         assertThatThrownBy(() -> unavailableVerifier.verify(
-            token("nonce-unavailable-1234"),
-            request("operator-001")
+            token("nonce-unavailable-1234", request),
+            request
         )).isInstanceOfSatisfying(ToolDeniedException.class, exception ->
             assertThat(exception.code()).isEqualTo(DenialCode.CAPABILITY_UNAVAILABLE));
     }
 
-    private String token(String nonce) {
+    @Test
+    void rejectsWorkloadAnalysisAndExpiredTokenDomainsBeforeNonceClaim() {
+        ToolExecutionRequest request = request("operator-001");
+        assertDenied(token(
+            "nonce-workload-012345", request,
+            "opsmind-tool-gateway-workload", "workload", NOW.plusSeconds(120)
+        ), request, DenialCode.CAPABILITY_INVALID);
+        assertDenied(token(
+            "nonce-analysis-0123456", request,
+            "opsmind-ai-runtime", "delegated_capability", NOW.plusSeconds(120)
+        ), request, DenialCode.CAPABILITY_INVALID);
+        assertDenied(token(
+            "nonce-expired-0123456", request,
+            "opsmind-tool-gateway", "delegated_capability", NOW.minusSeconds(1)
+        ), request, DenialCode.CAPABILITY_EXPIRED);
+    }
+
+    private String token(String nonce, ToolExecutionRequest request) {
+        return token(
+            nonce, request, "opsmind-tool-gateway", "delegated_capability", NOW.plusSeconds(120)
+        );
+    }
+
+    private String token(
+        String nonce,
+        ToolExecutionRequest request,
+        String audience,
+        String tokenUse,
+        Instant expiresAt
+    ) {
         JwtClaimsSet claims = JwtClaimsSet.builder()
             .issuer("https://platform.invalid.example")
             .subject("operator-001")
-            .audience(List.of("opsmind-tool-gateway"))
+            .audience(List.of(audience))
             .issuedAt(NOW.minusSeconds(5))
-            .expiresAt(NOW.plusSeconds(120))
+            .expiresAt(expiresAt)
             .id("capability-test-001")
             .claim("azp", "opsmind-platform-api")
-            .claim("token_use", "delegated_capability")
+            .claim("token_use", tokenUse)
             .claim("org_id", TENANT_ID.toString())
             .claim("project_id", PROJECT_ID.toString())
             .claim("incident_id", INCIDENT_ID.toString())
@@ -147,11 +186,22 @@ class Rs256JwksDelegatedCapabilityVerifierTest {
             .claim("roles", List.of("operator:read"))
             .claim("max_calls", 1)
             .claim("max_bytes", 65_536)
+            .claim("request_digest", requestDigester.digest(request))
             .claim("nonce", nonce)
             .claim("policy_version", "policy-test")
             .build();
         JwsHeader header = JwsHeader.with(SignatureAlgorithm.RS256).keyId("tool-test-key").build();
         return encoder.encode(JwtEncoderParameters.from(header, claims)).getTokenValue();
+    }
+
+    private void assertDenied(
+        String token,
+        ToolExecutionRequest request,
+        DenialCode expectedCode
+    ) {
+        assertThatThrownBy(() -> verifier.verify(token, request))
+            .isInstanceOfSatisfying(ToolDeniedException.class, exception ->
+                assertThat(exception.code()).isEqualTo(expectedCode));
     }
 
     private ToolExecutionRequest request(String actor) {
@@ -169,6 +219,18 @@ class Rs256JwksDelegatedCapabilityVerifierTest {
             Map.of("service", "opsmind-api"),
             NOW.plusSeconds(30),
             new ToolExecutionRequest.ResultBudget(4_096, 10)
+        );
+    }
+
+    private ToolExecutionRequest copy(
+        ToolExecutionRequest source,
+        String actor,
+        Map<String, Object> arguments
+    ) {
+        return new ToolExecutionRequest(
+            source.executionId(), source.tenantId(), source.projectId(), source.incidentId(),
+            source.runId(), actor, source.tool(), source.action(), source.schemaVersion(),
+            source.resource(), arguments, source.deadlineAt(), source.resultBudget()
         );
     }
 }

@@ -14,6 +14,7 @@ public record GatewaySettings(
     URI jwkSetUri,
     URI workloadIssuer,
     String workloadAudience,
+    String workloadScope,
     URI workloadJwkSetUri,
     Duration maximumCapabilityLifetime,
     int maximumRequestBytes,
@@ -31,6 +32,7 @@ public record GatewaySettings(
         workloadIssuer = workloadIssuer == null ? capabilityIssuer : workloadIssuer;
         workloadAudience = workloadAudience == null
             ? "opsmind-tool-gateway-workload" : workloadAudience;
+        workloadScope = workloadScope == null ? "tool.execute" : workloadScope;
         workloadJwkSetUri = normalizeOptionalUri(workloadJwkSetUri);
         maximumCapabilityLifetime = maximumCapabilityLifetime == null
             ? Duration.ofMinutes(5) : maximumCapabilityLifetime;
@@ -48,6 +50,9 @@ public record GatewaySettings(
         requireHttps(workloadIssuer, "Workload issuer");
         if (workloadAudience.isBlank() || workloadAudience.length() > 128) {
             throw new IllegalArgumentException("Workload audience is invalid.");
+        }
+        if (!workloadScope.matches("[A-Za-z0-9._:/-]{1,128}")) {
+            throw new IllegalArgumentException("Workload scope is invalid.");
         }
         if (workloadJwkSetUri != null) requireHttps(workloadJwkSetUri, "Workload JWKS URI");
         if (maximumCapabilityLifetime.isNegative() || maximumCapabilityLifetime.isZero()

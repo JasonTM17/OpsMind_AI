@@ -62,6 +62,11 @@ release secrets or short-lived workload identities and never checked in.
   redaction controls are verified. The required synthetic smoke also needs an
   externally injected rotated staging key and immutable passing evidence.
 - Connector credentials exist only in the Tool Gateway trust zone.
+- Platform's Tool Gateway workload client secret and tool-capability PKCS8 key
+  are separate secret-manager bindings; neither reuses the AI capability key.
+  Enabling the workload adapter requires a same-origin issuer/token endpoint,
+  exact `tool.execute` scope, bounded timeouts/body size, and an externally
+  injected secret. Placeholder or partial configuration fails before network I/O.
 - Key rotation and revocation procedures are exercised before production release.
 - Checked-in Platform API, Compose, and environment defaults cap access-token
   lifetime at `PT5M`. Per-request platform-user deprovisioning is immediate;

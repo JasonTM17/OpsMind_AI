@@ -24,6 +24,7 @@ class WorkloadJwtValidatorTest {
             null,
             URI.create("https://identity.invalid.example"),
             "opsmind-tool-gateway-workload",
+            "tool.execute",
             null,
             Duration.ofMinutes(5),
             65_536,
@@ -49,7 +50,21 @@ class WorkloadJwtValidatorTest {
         )).hasErrors()).isTrue();
     }
 
+    @Test
+    void rejectsWorkloadTokenWithoutTheExactExecutionScope() {
+        assertThat(validator.validate(token(
+            "https://identity.invalid.example",
+            "opsmind-tool-gateway-workload",
+            "workload",
+            "analysis.execute"
+        )).hasErrors()).isTrue();
+    }
+
     private Jwt token(String issuer, String audience, String tokenUse) {
+        return token(issuer, audience, tokenUse, "tool.execute");
+    }
+
+    private Jwt token(String issuer, String audience, String tokenUse, String scope) {
         Instant now = Instant.now();
         return Jwt.withTokenValue("test-token")
             .header("alg", "RS256")
@@ -59,6 +74,7 @@ class WorkloadJwtValidatorTest {
             .issuedAt(now.minusSeconds(5))
             .expiresAt(now.plusSeconds(60))
             .claim("token_use", tokenUse)
+            .claim("scope", scope)
             .build();
     }
 }

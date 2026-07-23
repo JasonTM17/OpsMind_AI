@@ -1,0 +1,20 @@
+[
+  {
+    "connector": "metrics",
+    "operation": "query",
+    "tool": "observability",
+    "action": "metrics.query",
+    "schema_version": "1.0",
+    "resource": "prometheus:synthetic/opsmind-api",
+    "arguments": {
+      "service": "opsmind-api",
+      "metric": "http_request_duration_seconds",
+      "max_points": 3
+    },
+    "maximum_bytes": 65536,
+    "maximum_items": 10,
+    "required_role": "operator:read",
+    "policy_version": "policy-prometheus-read-v1",
+    "expected_manifest_version": "observability.metrics.query@1"
+  }
+]

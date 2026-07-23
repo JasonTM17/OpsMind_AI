@@ -20,10 +20,12 @@ public final class WorkloadJwtValidator implements OAuth2TokenValidator<Jwt> {
 
     private final OAuth2TokenValidator<Jwt> delegate;
     private final String audience;
+    private final String scope;
 
     public WorkloadJwtValidator(GatewaySettings settings) {
         this.delegate = JwtValidators.createDefaultWithIssuer(settings.workloadIssuer().toString());
         this.audience = settings.workloadAudience();
+        this.scope = settings.workloadScope();
     }
 
     @Override
@@ -31,7 +33,8 @@ public final class WorkloadJwtValidator implements OAuth2TokenValidator<Jwt> {
         OAuth2TokenValidatorResult standard = delegate.validate(jwt);
         if (standard.hasErrors()) return standard;
         if (!List.of(audience).equals(jwt.getAudience())
-            || !"workload".equals(jwt.getClaimAsString("token_use"))) {
+            || !"workload".equals(jwt.getClaimAsString("token_use"))
+            || !scope.equals(jwt.getClaimAsString("scope"))) {
             return OAuth2TokenValidatorResult.failure(INVALID_TOKEN);
         }
         return OAuth2TokenValidatorResult.success();
