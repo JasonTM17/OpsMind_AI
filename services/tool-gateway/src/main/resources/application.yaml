@@ -1,6 +1,11 @@
 spring:
   application:
     name: opsmind-tool-gateway
+  autoconfigure:
+    exclude:
+      - org.springframework.boot.jdbc.autoconfigure.DataSourceAutoConfiguration
+      - org.springframework.boot.flyway.autoconfigure.FlywayAutoConfiguration
+      - org.springframework.boot.jdbc.autoconfigure.health.DataSourceHealthContributorAutoConfiguration
   jackson:
     deserialization:
       fail-on-trailing-tokens: true
@@ -39,3 +44,18 @@ opsmind:
     maximum-capability-lifetime: 5m
     maximum-request-bytes: 65536
     maximum-result-bytes: 262144
+    persistence:
+      enabled: ${TOOL_GATEWAY_PERSISTENCE_ENABLED:false}
+      maximum-response-bytes: ${TOOL_GATEWAY_MAX_PERSISTED_RESPONSE_BYTES:131072}
+      execution-lease-duration: ${TOOL_GATEWAY_EXECUTION_LEASE_DURATION:PT30S}
+    prometheus:
+      enabled: ${TOOL_GATEWAY_PROMETHEUS_ENABLED:false}
+      base-uri: ${TOOL_GATEWAY_PROMETHEUS_BASE_URI:https://prometheus.invalid.example}
+      allow-internal-cleartext: ${TOOL_GATEWAY_PROMETHEUS_ALLOW_INTERNAL_CLEARTEXT:false}
+      connect-timeout: ${TOOL_GATEWAY_PROMETHEUS_CONNECT_TIMEOUT:PT2S}
+      request-timeout: ${TOOL_GATEWAY_PROMETHEUS_REQUEST_TIMEOUT:PT4S}
+      maximum-response-bytes: ${TOOL_GATEWAY_PROMETHEUS_MAX_RESPONSE_BYTES:65536}
+      maximum-series: ${TOOL_GATEWAY_PROMETHEUS_MAX_SERIES:1}
+      maximum-points: ${TOOL_GATEWAY_PROMETHEUS_MAX_POINTS:10}
+      query-window: ${TOOL_GATEWAY_PROMETHEUS_QUERY_WINDOW:PT2M}
+      query-step: ${TOOL_GATEWAY_PROMETHEUS_QUERY_STEP:PT1M}

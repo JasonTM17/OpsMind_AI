@@ -49,6 +49,12 @@ and execute the first read against a real non-production Prometheus service.
 - [ ] Runtime roles cannot mutate audit history or cross service schemas.
 - [ ] A real non-production Prometheus query returns bounded canonical evidence.
 
+## Checkpoint Status
+
+Implementation and local deterministic gates pass. The exact revision still
+requires the guarded PostgreSQL job and digest-pinned Prometheus Compose smoke
+before these acceptance boxes can be checked and Phase 4 can be marked complete.
+
 ## Rollback
 
 Disable the Prometheus manifest/client profile. Preserve forward-only schema and

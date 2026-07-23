@@ -79,6 +79,7 @@ class ToolExecutionServiceTest {
             new DeterministicToolAuditWriter(),
             new RequestDigester(objectMapper),
             connectorExecutor,
+            new DirectToolExecutionTransactionRunner(),
             List.of(new FixtureObservabilityConnector())
         );
     }

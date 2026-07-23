@@ -311,14 +311,41 @@ durably wired. Request/evidence digests use recursively ordered JSON keys.
 
 The default nonce replay, execution receipt, and audit adapters are deliberately
 unavailable and return stable failure responses; fixture adapters are explicitly
-non-production. `/health` remains process liveness and `/ready` returns `503`
-until workload/capability JWKS plus durable stores and an enabled connector are
-configured. The canonical OpenAPI route and Tool Gateway JSON Schemas are in
-`packages/contracts/`; `scripts/validation/validate-phase-06-tool-gateway.mjs`
-is a deterministic checkpoint gate. Platform issuer conformance now passes that
-gate. Phase 6 exit is still blocked by durable atomic receipt/audit/artifact
-wiring, three connector families, one live non-production target, and provider-specific
-cancellation/tenant-bulkhead proof.
+non-production. The `persistence` profile replaces them with PostgreSQL adapters
+in the separately owned `tool_gateway` schema. A fixed migration login owns the
+schema and Flyway history; the non-owner runtime login receives only the
+nonce/receipt DML and audit-append grants it needs. Platform and AI Runtime roles
+have no access.
+
+Nonce values are SHA-256 hashed before storage. Execution identity is bound to
+tenant, project, incident, run, and canonical request digest. A short PostgreSQL
+transaction claims a database-clock lease; connector HTTP runs without a
+database transaction; a second transaction atomically appends the success audit
+and completes the fenced receipt. Expired leases are reclaimable, while stale
+tokens cannot finalize. Same ID/same digest replays the exact bounded canonical
+response and changed scope or digest conflicts. Audit rows reject update,
+delete, and truncate.
+
+The `prometheus` profile installs the first live read-only connector. The
+catalog, not the model or caller, selects one of two exact recording-rule
+queries. The HTTP client uses a configured origin, direct networking, no
+redirects or retries, bounded time/body/series/points, and strict matrix JSON.
+Labels, timestamps, finite decimal values, warnings, encodings, and response
+identity are validated before normalization. Compose pins a non-production
+Prometheus image by digest and exposes only a loopback host port; internal
+cleartext is explicit and limited to the Compose-only `.opsmind.internal`
+origin. Production and external targets require HTTPS.
+
+`/health` remains process liveness and `/ready` returns `503` until
+workload/capability JWKS, durable stores, the enabled manifest, and connector
+reachability are all available. The canonical OpenAPI route and Tool Gateway
+JSON Schemas are in `packages/contracts/`;
+`scripts/validation/validate-phase-06-tool-gateway.mjs` is the deterministic
+checkpoint gate. Phase 6 exit remains blocked by the durable large-evidence
+artifact adapter, the remaining connector families, and provider-specific
+cancellation plus tenant-scoped bulkhead proof. Revision-bound PostgreSQL and
+live Prometheus Compose evidence is required before the new durable/live
+checkpoint is promoted from implementation to verified completion.
 
 ## Investigation Orchestration (Phase 7 checkpoint)
 
@@ -393,8 +420,8 @@ Unknown fields, media types, statuses, denial codes, artifacts, unsafe content,
 or identity drift fail closed. A shared canonical fixture proves byte parity
 between Platform signing and Gateway digest verification.
 
-G3 stays blocked on durable Tool Gateway nonce/receipt/audit stores, an
-allowlisted live read-only connector, incident-timeline linkage, the CK/Stitch
+G3 stays blocked on revision-bound proof for the durable Tool Gateway and
+allowlisted live Prometheus connector, incident-timeline linkage, the CK/Stitch
 operator experience with browser E2E, and cross-service trace plus p95 evidence.
 
 ## Evidence Artifact Port

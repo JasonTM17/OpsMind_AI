@@ -61,11 +61,18 @@ public record ToolManifest(
             URI uri = new URI(target);
             if (uri.getUserInfo() != null || uri.getQuery() != null || uri.getFragment() != null
                 || uri.getHost() == null) return false;
-            if ("fixture".equalsIgnoreCase(uri.getScheme())) {
+            if (uri.getScheme() == null) return false;
+            String scheme = uri.getScheme().toLowerCase(java.util.Locale.ROOT);
+            String host = uri.getHost().toLowerCase(java.util.Locale.ROOT);
+            if ("fixture".equals(scheme)) {
                 return uri.getPath() == null || uri.getPath().isEmpty();
             }
-            if (!"https".equalsIgnoreCase(uri.getScheme())) return false;
-            String host = uri.getHost().toLowerCase(java.util.Locale.ROOT);
+            if (!"https".equals(scheme)
+                && !("http".equals(scheme) && host.endsWith(".opsmind.internal"))) {
+                return false;
+            }
+            if (uri.getPath() != null && !uri.getPath().isEmpty()
+                && !"/".equals(uri.getPath())) return false;
             return !host.equals("localhost") && !host.equals("0.0.0.0")
                 && !host.equals("127.0.0.1") && !host.equals("::1")
                 && !host.startsWith("127.") && !host.startsWith("169.254.")

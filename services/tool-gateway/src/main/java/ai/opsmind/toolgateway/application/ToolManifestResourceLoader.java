@@ -16,6 +16,8 @@ public final class ToolManifestResourceLoader {
 
     private static final String FIXTURE_MANIFEST =
         "tool-manifests/observability-metrics-query-v1.json";
+    private static final String PROMETHEUS_MANIFEST =
+        "tool-manifests/observability-metrics-query-prometheus-v1.json";
     private static final String FIXTURE_SCHEMA_ID =
         "https://contracts.opsmind.invalid/tool-gateway/v1/tool-execution-request.schema.json";
 
@@ -26,20 +28,42 @@ public final class ToolManifestResourceLoader {
     }
 
     public ToolManifestRegistry loadFixtureRegistry() {
-        ManifestDocument document;
-        try (var input = new ClassPathResource(FIXTURE_MANIFEST).getInputStream()) {
-            document = objectMapper.readValue(input, ManifestDocument.class);
-        }
-        catch (IOException exception) {
-            throw new IllegalStateException("Tool manifest cannot be loaded safely.", exception);
-        }
-        if (document == null || !Set.of("fixture").equals(document.enabledProfiles())
+        ManifestDocument document = read(FIXTURE_MANIFEST);
+        if (!Set.of("fixture").equals(document.enabledProfiles())
             || !FIXTURE_SCHEMA_ID.equals(document.requestSchemaId())
             || !"fixture-read-only".equals(document.credentialProfile())
             || !Set.of("fixture://observability").equals(document.egressTargets())) {
             throw new IllegalStateException("Fixture manifest profile declaration is unsafe.");
         }
-        return new ToolManifestRegistry(List.of(document.toManifest()));
+        return new ToolManifestRegistry(List.of(document.toManifest(document.egressTargets())));
+    }
+
+    public ToolManifestRegistry loadPrometheusRegistry(String egressTarget) {
+        ManifestDocument document = read(PROMETHEUS_MANIFEST);
+        if (!Set.of("prometheus").equals(document.enabledProfiles())
+            || !FIXTURE_SCHEMA_ID.equals(document.requestSchemaId())
+            || !"prometheus-read-only".equals(document.credentialProfile())
+            || !"prometheus-read-only".equals(document.connectorId())
+            || !Set.of("configured://prometheus-base-uri").equals(document.egressTargets())) {
+            throw new IllegalStateException("Prometheus manifest profile declaration is unsafe.");
+        }
+        return new ToolManifestRegistry(List.of(
+            document.toManifest(Set.of(egressTarget))
+        ));
+    }
+
+    private ManifestDocument read(String resource) {
+        ManifestDocument document;
+        try (var input = new ClassPathResource(resource).getInputStream()) {
+            document = objectMapper.readValue(input, ManifestDocument.class);
+        }
+        catch (IOException exception) {
+            throw new IllegalStateException("Tool manifest cannot be loaded safely.", exception);
+        }
+        if (document == null) {
+            throw new IllegalStateException("Tool manifest document is empty.");
+        }
+        return document;
     }
 
     private record ManifestDocument(
@@ -63,12 +87,12 @@ public final class ToolManifestResourceLoader {
         @JsonProperty("redaction_class") String redactionClass,
         @JsonProperty("audit_class") String auditClass
     ) {
-        private ToolManifest toManifest() {
+        private ToolManifest toManifest(Set<String> effectiveEgressTargets) {
             return new ToolManifest(
                 tool, action, schemaVersion, manifestVersion, connectorId, true, readOnly,
                 requestSchemaId, riskClass, requiredRole, resourcePrefix, credentialProfile,
                 Duration.ofMillis(timeoutMilliseconds), maximumBytes, maximumItems,
-                allowedArguments, egressTargets, redactionClass, auditClass
+                allowedArguments, effectiveEgressTargets, redactionClass, auditClass
             );
         }
     }

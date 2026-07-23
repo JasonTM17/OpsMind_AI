@@ -21,14 +21,14 @@ services:
       POSTGRES_DISPATCHER_PASSWORD: ${POSTGRES_DISPATCHER_PASSWORD:-}
       POSTGRES_AI_RUNTIME_USER: ${POSTGRES_AI_RUNTIME_USER:-opsmind_ai_runtime}
       POSTGRES_AI_RUNTIME_PASSWORD: ${POSTGRES_AI_RUNTIME_PASSWORD:-}
+      POSTGRES_TOOL_GATEWAY_MIGRATOR_USER: ${POSTGRES_TOOL_GATEWAY_MIGRATOR_USER:-opsmind_tool_gateway_migrator}
+      POSTGRES_TOOL_GATEWAY_MIGRATOR_PASSWORD: ${POSTGRES_TOOL_GATEWAY_MIGRATOR_PASSWORD:-}
+      POSTGRES_TOOL_GATEWAY_USER: ${POSTGRES_TOOL_GATEWAY_USER:-opsmind_tool_gateway}
+      POSTGRES_TOOL_GATEWAY_PASSWORD: ${POSTGRES_TOOL_GATEWAY_PASSWORD:-}
     volumes:
       - type: bind
         source: ${OPS_DATA_ROOT:-./.opsmind/data}/postgres
         target: /var/lib/postgresql/data
-      - type: bind
-        source: ./services/platform-api/src/main/resources/db/bootstrap/001-create-runtime-role.sh
-        target: /docker-entrypoint-initdb.d/001-create-runtime-role.sh
-        read_only: true
     ports:
       - "127.0.0.1:${POSTGRES_PORT:-5432}:5432"
     healthcheck:
@@ -38,6 +38,42 @@ services:
       retries: 20
     networks: [opsmind-internal]
     restart: "no"
+
+  database-provision:
+    <<: *runtime-security
+    profiles: [application]
+    image: pgvector/pgvector:0.8.2-pg17-trixie@sha256:5c97c57367a485a8e99389548db67d441ab1a878f5492c3df04989f34ecf3c75
+    user: postgres
+    entrypoint:
+      - /bin/bash
+      - /opt/opsmind/bootstrap/001-create-runtime-role.sh
+    environment:
+      PGHOST: postgres
+      PGPORT: 5432
+      POSTGRES_DB: ${POSTGRES_DB:-opsmind}
+      POSTGRES_USER: ${POSTGRES_USER:-opsmind_migrator}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-}
+      POSTGRES_APP_USER: ${POSTGRES_APP_USER:-opsmind_app}
+      POSTGRES_APP_PASSWORD: ${POSTGRES_APP_PASSWORD:-}
+      POSTGRES_DISPATCHER_USER: ${POSTGRES_DISPATCHER_USER:-opsmind_dispatcher}
+      POSTGRES_DISPATCHER_PASSWORD: ${POSTGRES_DISPATCHER_PASSWORD:-}
+      POSTGRES_AI_RUNTIME_USER: ${POSTGRES_AI_RUNTIME_USER:-opsmind_ai_runtime}
+      POSTGRES_AI_RUNTIME_PASSWORD: ${POSTGRES_AI_RUNTIME_PASSWORD:-}
+      POSTGRES_TOOL_GATEWAY_MIGRATOR_USER: ${POSTGRES_TOOL_GATEWAY_MIGRATOR_USER:-opsmind_tool_gateway_migrator}
+      POSTGRES_TOOL_GATEWAY_MIGRATOR_PASSWORD: ${POSTGRES_TOOL_GATEWAY_MIGRATOR_PASSWORD:-}
+      POSTGRES_TOOL_GATEWAY_USER: ${POSTGRES_TOOL_GATEWAY_USER:-opsmind_tool_gateway}
+      POSTGRES_TOOL_GATEWAY_PASSWORD: ${POSTGRES_TOOL_GATEWAY_PASSWORD:-}
+    volumes:
+      - type: bind
+        source: ./services/platform-api/src/main/resources/db/bootstrap/001-create-runtime-role.sh
+        target: /opt/opsmind/bootstrap/001-create-runtime-role.sh
+        read_only: true
+    depends_on:
+      postgres:
+        condition: service_healthy
+    tmpfs:
+      - /tmp:size=16m,mode=1777
+    networks: [opsmind-internal]
 
   redis:
     image: redis:8.8.0-alpine3.23@sha256:9d317178eceac8454a2284a9e6df2466b93c745529947f0cd42a0fa9609d7005
@@ -56,6 +92,46 @@ services:
       retries: 20
     networks: [opsmind-internal]
     restart: "no"
+
+  prometheus:
+    <<: *runtime-security
+    profiles: [application]
+    image: prom/prometheus:v3.12.0-distroless@sha256:f39df5334dee301b885f77e0ff1159f5d8a43bf9db518f885544594799a1e3c2
+    user: "65532:65532"
+    command:
+      - "--config.file=/etc/prometheus/prometheus.yml"
+      - "--storage.tsdb.path=/prometheus"
+      - "--storage.tsdb.retention.time=1h"
+      - --web.listen-address=0.0.0.0:9090
+      - "--log.level=warn"
+    volumes:
+      - type: bind
+        source: ./deploy/prometheus/prometheus.yml
+        target: /etc/prometheus/prometheus.yml
+        read_only: true
+      - type: bind
+        source: ./deploy/prometheus/opsmind-recording-rules.yml
+        target: /etc/prometheus/opsmind-recording-rules.yml
+        read_only: true
+    ports:
+      - "127.0.0.1:${PROMETHEUS_PORT:-9090}:9090"
+    healthcheck:
+      test:
+        - CMD
+        - /bin/promtool
+        - check
+        - healthy
+        - --url=http://127.0.0.1:9090
+      interval: 5s
+      timeout: 3s
+      retries: 20
+    tmpfs:
+      - /prometheus:size=128m,uid=65532,gid=65532,mode=0700
+      - /tmp:size=16m,uid=65532,gid=65532,mode=0700
+    networks:
+      opsmind-internal:
+        aliases:
+          - prometheus.opsmind.internal
 
   # Disabled by default. The approved local MinIO choice requires a fresh
   # platform/security decision because its upstream repository is archived.
@@ -93,8 +169,8 @@ services:
       - "--spring.main.web-application-type=none"
       - "--opsmind.persistence.enabled=false"
     depends_on:
-      postgres:
-        condition: service_healthy
+      database-provision:
+        condition: service_completed_successfully
     tmpfs:
       - /tmp:size=64m,mode=1777
     networks: [opsmind-internal]
@@ -140,8 +216,8 @@ services:
     ports:
       - "127.0.0.1:${PLATFORM_API_PORT:-8080}:8080"
     depends_on:
-      postgres:
-        condition: service_healthy
+      database-provision:
+        condition: service_completed_successfully
       platform-migrate:
         condition: service_completed_successfully
     healthcheck:
@@ -199,6 +275,15 @@ services:
     environment:
       TOOL_GATEWAY_PORT: 8081
       OPS_ENABLE_WRITE_ACTIONS: "false"
+      SPRING_PROFILES_ACTIVE: persistence,prometheus
+      TOOL_GATEWAY_DATABASE_URL: jdbc:postgresql://postgres:5432/${POSTGRES_DB:-opsmind}
+      TOOL_GATEWAY_DATABASE_USER: ${POSTGRES_TOOL_GATEWAY_USER:-opsmind_tool_gateway}
+      TOOL_GATEWAY_DATABASE_PASSWORD: ${POSTGRES_TOOL_GATEWAY_PASSWORD:-}
+      TOOL_GATEWAY_PERSISTENCE_ENABLED: "true"
+      TOOL_GATEWAY_FLYWAY_ENABLED: "false"
+      TOOL_GATEWAY_PROMETHEUS_ENABLED: "true"
+      TOOL_GATEWAY_PROMETHEUS_BASE_URI: http://prometheus.opsmind.internal:9090
+      TOOL_GATEWAY_PROMETHEUS_ALLOW_INTERNAL_CLEARTEXT: "true"
     ports:
       - "127.0.0.1:${TOOL_GATEWAY_PORT:-8081}:8081"
     healthcheck:
@@ -206,6 +291,35 @@ services:
       interval: 5s
       timeout: 3s
       retries: 20
+    depends_on:
+      postgres:
+        condition: service_healthy
+      tool-gateway-migrate:
+        condition: service_completed_successfully
+      prometheus:
+        condition: service_healthy
+    tmpfs:
+      - /tmp:size=64m,mode=1777
+    networks: [opsmind-internal]
+
+  tool-gateway-migrate:
+    <<: *runtime-security
+    profiles: [application]
+    build:
+      context: .
+      dockerfile: services/tool-gateway/Dockerfile
+    environment:
+      SPRING_PROFILES_ACTIVE: persistence
+      TOOL_GATEWAY_DATABASE_URL: jdbc:postgresql://postgres:5432/${POSTGRES_DB:-opsmind}
+      TOOL_GATEWAY_DATABASE_USER: ${POSTGRES_TOOL_GATEWAY_MIGRATOR_USER:-opsmind_tool_gateway_migrator}
+      TOOL_GATEWAY_DATABASE_PASSWORD: ${POSTGRES_TOOL_GATEWAY_MIGRATOR_PASSWORD:-}
+      TOOL_GATEWAY_PERSISTENCE_ENABLED: "true"
+      TOOL_GATEWAY_FLYWAY_ENABLED: "true"
+    command:
+      - "--spring.main.web-application-type=none"
+    depends_on:
+      database-provision:
+        condition: service_completed_successfully
     tmpfs:
       - /tmp:size=64m,mode=1777
     networks: [opsmind-internal]

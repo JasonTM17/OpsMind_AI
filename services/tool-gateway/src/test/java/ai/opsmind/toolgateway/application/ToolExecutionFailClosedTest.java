@@ -57,6 +57,7 @@ class ToolExecutionFailClosedTest {
                 new FailClosedToolAuditWriter(),
                 new RequestDigester(objectMapper),
                 executor,
+                new DirectToolExecutionTransactionRunner(),
                 List.of(new FixtureObservabilityConnector())
             );
             response = service.execute("verified", request());

@@ -78,16 +78,19 @@ claimed.
 
 Student promotion is not on the Phase 15 critical path. Bounded training smoke is mandatory, while shadow/canary promotion proceeds only when the candidate beats the approved gates.
 
-Phase 6 has a deterministic Spring Tool Gateway checkpoint. Twenty-nine Maven
-tests pass; the contract gate validates four Tool Gateway schemas, five fixtures,
+Phase 6 has a deterministic Spring Tool Gateway checkpoint. The contract gate
+validates four Tool Gateway schemas, canonical fixtures,
 canonical request/evidence digests, manifest/OpenAPI ownership, source-level
 generic-executor prohibitions, dedicated workload-vs-capability token domains,
 exact workload scope, canonical request-body capability binding, resource-bound
 selectors, recursive DLP, bounded connector execution, and fail-closed readiness.
-Platform capability issuer conformance now passes. This is not a Phase 6 exit:
-durable atomic nonce/receipt/audit/artifact adapters, three
-fixture connector families, one live non-production read-only target, and
-provider-specific cancellation/tenant-bulkhead proof remain open.
+Platform capability issuer conformance now passes. The dedicated Tool Gateway
+schema/roles, hashed nonce claims, fenced receipts, transactional audit
+finalization, and exact read-only Prometheus connector are implemented with
+guarded PostgreSQL and Compose conformance gates. This is not a Phase 6 exit:
+revision-bound durable/live proof, the large-evidence artifact adapter,
+remaining connector families, and provider-specific cancellation plus
+tenant-bulkhead proof remain open.
 
 Phase 7 now includes a pure command/event reducer, bounded in-process runner,
 fixture-only `metrics.query` path, cited-completion guard, duplicate/no-progress
@@ -106,8 +109,11 @@ and reuses the hardened AI Runtime transport. The non-fixture Tool Gateway
 client now resolves immutable selectors before credential acquisition, binds a
 one-use capability to exact canonical bytes, sends a separate workload bearer,
 and verifies identity, provenance, bounds, and evidence digest before
-persistence. Durable Gateway state, the selected live connector, CK/Stitch
-UI/browser E2E, and cross-service trace/p95 evidence remain open.
+persistence. The durable Gateway and selected Prometheus implementation now
+reserve with a database-clock lease, execute HTTP outside transactions, and
+atomically finalize audit plus receipt. Local gates pass; revision-bound
+PostgreSQL/Prometheus CI evidence, CK/Stitch UI/browser E2E, and cross-service
+trace/p95 evidence remain open.
 
 ## Staffing Scenarios
 

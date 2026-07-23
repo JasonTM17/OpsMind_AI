@@ -7,5 +7,9 @@ public interface ToolConnector {
 
     String id();
 
+    default boolean available() {
+        return true;
+    }
+
     ConnectorEvidence execute(ToolExecutionRequest request, ToolManifest manifest);
 }

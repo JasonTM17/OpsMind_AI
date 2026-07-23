@@ -1,0 +1,12 @@
+groups:
+  - name: opsmind-synthetic-observability
+    interval: 15s
+    rules:
+      - record: opsmind:http_request_duration_seconds:synthetic
+        expr: vector(0.42)
+        labels:
+          service: opsmind-api
+      - record: opsmind:http_errors_total:synthetic
+        expr: vector(3)
+        labels:
+          service: opsmind-api
