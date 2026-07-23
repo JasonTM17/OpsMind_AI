@@ -168,46 +168,6 @@ function Wait-CrossServiceHttp {
     throw "$Uri did not become ready within $TimeoutSeconds seconds."
 }
 
-function Wait-CrossServiceHttps {
-    param(
-        [Parameter(Mandatory = $true)][uri]$Uri,
-        [Parameter(Mandatory = $true)][Diagnostics.Process]$Process,
-        [int]$TimeoutSeconds = 90
-    )
-
-    Add-Type -AssemblyName System.Net.Http
-    $handler = [System.Net.Http.HttpClientHandler]::new()
-    $handler.ServerCertificateCustomValidationCallback = {
-        param($request, $certificate, $chain, $policyErrors)
-        return $true
-    }
-    $client = [System.Net.Http.HttpClient]::new($handler)
-    try {
-        $deadline = [DateTime]::UtcNow.AddSeconds($TimeoutSeconds)
-        while ([DateTime]::UtcNow -lt $deadline) {
-            if ($Process.HasExited) {
-                throw "Managed process exited before $Uri became ready."
-            }
-            try {
-                $responseTask = $client.GetAsync($Uri)
-                if ($responseTask.Wait(2000) -and
-                    [int]$responseTask.Result.StatusCode -eq 200) {
-                    return
-                }
-            }
-            catch {
-                # Retry until the bounded deadline.
-            }
-            Start-Sleep -Milliseconds 500
-        }
-    }
-    finally {
-        $client.Dispose()
-        $handler.Dispose()
-    }
-    throw "$Uri did not become ready within $TimeoutSeconds seconds."
-}
-
 function Invoke-CrossServiceSql {
     param(
         [Parameter(Mandatory = $true)][string]$DockerPath,
