@@ -108,7 +108,7 @@ reasoning, unrestricted URLs, arbitrary PromQL, private labels, or unredacted
 evidence payloads.
 
 Plain, specific operational language is required. Avoid marketing claims,
-emoji as icons, placeholder people or companies, and invented round-number
+emoji as icons, fictitious people or companies, and invented round-number
 telemetry.
 
 ## Verification
