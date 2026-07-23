@@ -1,6 +1,7 @@
 package ai.opsmind.platform.investigation.domain;
 
 import java.time.Instant;
+import java.time.temporal.ChronoUnit;
 import java.util.List;
 import java.util.Set;
 import java.util.UUID;
@@ -41,6 +42,9 @@ public final class InvestigationStateMachine {
         Instant endedAt
     ) {
         public State {
+            startedAt = canonicalInstant(startedAt);
+            deadlineAt = canonicalInstant(deadlineAt);
+            endedAt = canonicalInstant(endedAt);
             if (runId == null || organizationId == null || projectId == null || incidentId == null
                 || actorId == null || budget == null || status == null || revision < 0 || eventCount < 1
                 || rounds < 0 || toolCalls < 0 || totalTokens < 0 || startedAt == null
@@ -85,13 +89,14 @@ public final class InvestigationStateMachine {
             null, command.startedAt(), command.deadlineAt(), null
         );
         return new Step(state, List.of(new InvestigationEvent.RunStarted(
-            command.runId(), command.incidentId(), command.budget(), command.startedAt())));
+            command.runId(), command.incidentId(), command.budget(), state.startedAt())));
     }
 
     public static Step apply(State state, InvestigationCommand command, Instant occurredAt) {
         require(state, "state");
         require(command, "command");
         require(occurredAt, "occurredAt");
+        occurredAt = canonicalInstant(occurredAt);
         if (terminal(state.status())) return new Step(state, List.of());
         Step transition = switch (command) {
             case InvestigationCommand.AnalysisReceived received ->
@@ -125,5 +130,13 @@ public final class InvestigationStateMachine {
 
     private static <T> void require(T value, String name) {
         if (value == null) throw new IllegalArgumentException(name + " is required.");
+    }
+
+    /**
+     * PostgreSQL timestamptz and the durable event envelope share microsecond precision.
+     * Canonicalizing at the reducer boundary keeps snapshots and append-only event metadata equal.
+     */
+    private static Instant canonicalInstant(Instant value) {
+        return value == null ? null : value.truncatedTo(ChronoUnit.MICROS);
     }
 }

@@ -24,7 +24,8 @@ request.
 | 2 | [Investigation AI adapter](./phase-02-investigation-ai-adapter.md) | Completed | 1 |
 | 3 | [Platform Tool Gateway client](./phase-03-platform-tool-gateway-client.md) | Completed | 1 |
 | 4 | [Durable Gateway and Prometheus connector](./phase-04-durable-gateway-prometheus.md) | Completed | 3 |
-| 5 | [Cross-service verification](./phase-05-cross-service-verification.md) | Pending | 2, 4 |
+| 4A | [Operator investigation workspace](./phase-04a-operator-investigation-workspace.md) | In progress | 2, 4 |
+| 5 | [Cross-service verification](./phase-05-cross-service-verification.md) | Pending | 2, 4, 4A |
 
 ## Locked Decisions
 
@@ -48,7 +49,7 @@ request.
 
 ## Exit Criteria
 
-- All five phase acceptance lists pass with revision-bound artifacts.
+- All phase acceptance lists pass with revision-bound artifacts.
 - A real non-production Prometheus service, not a mocked connector, supplies
   the selected bounded evidence in CI or an approved staging profile.
 - The trace proves Operator/Platform → AI Runtime → Platform → Tool Gateway →

@@ -25,6 +25,7 @@ import ai.opsmind.platform.common.api.JsonRequestBodyLimitFilter;
 import ai.opsmind.platform.common.api.PlatformExceptionHandler;
 import ai.opsmind.platform.common.api.PlatformProblemException;
 import ai.opsmind.platform.common.api.PlatformProblemWriter;
+import ai.opsmind.platform.common.api.OperatorProjection;
 import ai.opsmind.platform.identity.JwtPrincipalMapper;
 
 import org.junit.jupiter.api.AfterEach;
@@ -186,6 +187,42 @@ class IncidentControllerHttpTest {
             )))
             .andExpect(content().string(org.hamcrest.Matchers.not(
                 org.hamcrest.Matchers.containsString(ORGANIZATION_ID.toString())
+            )));
+    }
+
+    @Test
+    void exactOperatorMediaTypeReturnsRedactedProjectionAssurance() throws Exception {
+        String credential = "opaque-" + "credential".repeat(4);
+        IncidentResponse unsafe = new IncidentResponse(
+            INCIDENT_ID, ORGANIZATION_ID, PROJECT_ID,
+            "Contact ops@example.test", "Authorization: Bearer " + credential,
+            IncidentSeverity.SEV2, IncidentStatus.INVESTIGATING,
+            null, null, UUID.randomUUID(), UUID.randomUUID(),
+            Instant.parse("2030-01-01T00:00:00Z"),
+            Instant.parse("2030-01-01T00:01:00Z"), 3
+        );
+        when(queries.detail(any(), eq(ORGANIZATION_ID), eq(PROJECT_ID), eq(INCIDENT_ID)))
+            .thenReturn(new IncidentDetailResult(unsafe, "\"3\""));
+
+        mvc.perform(get(COLLECTION_PATH + "/" + INCIDENT_ID)
+                .principal(authentication(Set.of("incident:read")))
+                .header(HttpHeaders.ACCEPT, OperatorProjection.MEDIA_TYPE_VALUE))
+            .andExpect(status().isOk())
+            .andExpect(content().contentType(OperatorProjection.MEDIA_TYPE))
+            .andExpect(header().string(
+                OperatorProjection.CLASSIFICATION_HEADER, OperatorProjection.CLASSIFICATION
+            ))
+            .andExpect(header().string(
+                OperatorProjection.REDACTION_VERSION_HEADER, OperatorProjection.REDACTION_VERSION
+            ))
+            .andExpect(header().string(OperatorProjection.REDACTION_COUNT_HEADER, "2"))
+            .andExpect(header().string(HttpHeaders.CACHE_CONTROL, "no-store"))
+            .andExpect(header().string(HttpHeaders.VARY, "Accept"))
+            .andExpect(header().doesNotExist(HttpHeaders.ETAG))
+            .andExpect(jsonPath("$.title").value("Contact [REDACTED_EMAIL]"))
+            .andExpect(jsonPath("$.summary").value("[REDACTED_SECRET]"))
+            .andExpect(content().string(org.hamcrest.Matchers.not(
+                org.hamcrest.Matchers.containsString(credential)
             )));
     }
 

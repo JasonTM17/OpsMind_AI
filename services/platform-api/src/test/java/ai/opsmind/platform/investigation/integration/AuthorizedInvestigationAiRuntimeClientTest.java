@@ -123,6 +123,7 @@ class AuthorizedInvestigationAiRuntimeClientTest {
         assertThat(grant.getValue().allowedDataClasses())
             .containsExactlyInAnyOrder("redacted_incident_summary", "redacted_metrics");
         assertThat(body).contains(EVIDENCE_ID.toString(), record.digest(), SELECTOR_DIGEST);
+        assertThat(body).contains("\"token_budget\":1000", "remaining_token_budget");
         assertThat(body).doesNotContain("max_points", "opsmind-api\",\"metric", "query=", "PromQL\":");
     }
 
@@ -195,7 +196,8 @@ class AuthorizedInvestigationAiRuntimeClientTest {
     @Test
     void elapsedDeadlineStopsBeforeAuthorizationOrNetwork() {
         InvestigationAnalysisRequest elapsed = new InvestigationAnalysisRequest(
-            principal(), initialIncident(), RUN_ID, Set.of(), 0, 4, 1_000, 2, NOW
+            principal(), initialIncident(), RUN_ID, Set.of(), 0, 4,
+            1_000, 1_000, 2, 2, NOW
         );
 
         assertThatThrownBy(() -> client.analyze(elapsed))
@@ -228,7 +230,8 @@ class AuthorizedInvestigationAiRuntimeClientTest {
     @Test
     void exhaustedAnalysisBudgetStopsBeforeAuthorizationAndNetwork() {
         InvestigationAnalysisRequest exhausted = new InvestigationAnalysisRequest(
-            principal(), initialIncident(), RUN_ID, Set.of(), 4, 0, 0, 0,
+            principal(), initialIncident(), RUN_ID, Set.of(), 4, 0,
+            1_000, 0, 2, 0,
             NOW.plusSeconds(120)
         );
 
@@ -247,7 +250,8 @@ class AuthorizedInvestigationAiRuntimeClientTest {
         when(tokenIssuer.issue(any())).thenReturn("header.payload.signature");
         when(runtimeClient.analyze(any(), any(), any())).thenReturn(abstainResponse());
         InvestigationAnalysisRequest longRun = new InvestigationAnalysisRequest(
-            principal(), initialIncident(), RUN_ID, Set.of(), 0, 4, 1_000, 0,
+            principal(), initialIncident(), RUN_ID, Set.of(), 0, 4,
+            1_000, 1_000, 2, 0,
             NOW.plusSeconds(900)
         );
 
@@ -303,7 +307,8 @@ class AuthorizedInvestigationAiRuntimeClientTest {
     private InvestigationAnalysisRequest request(Set<UUID> evidenceIds, int completedRounds) {
         return new InvestigationAnalysisRequest(
             principal(), initialIncident(), RUN_ID, evidenceIds, completedRounds,
-            4 - completedRounds, 1_000, 2, NOW.plusSeconds(120)
+            4 - completedRounds, 1_000, 1_000 - (completedRounds * 100),
+            2, 2, NOW.plusSeconds(120)
         );
     }
 

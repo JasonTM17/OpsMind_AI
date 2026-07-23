@@ -18,6 +18,7 @@ from opsmind_ai_runtime.config.settings import RuntimeSettings
 from opsmind_ai_runtime.domain.analysis_contracts import (
     AnalysisRequestV1,
     DataClassification,
+    EvidenceReference,
 )
 
 JWT_CANARY = "eyJ" + "hbGciOiJSUzI1NiJ9" + ".payload.signature"
@@ -263,3 +264,48 @@ def test_policy_loader_accepts_one_exact_authorization(tmp_path) -> None:
         region="sg",
         data_classes=request.data_classifications,
     )
+
+
+def test_local_fixture_policy_may_include_redacted_incident_summary(tmp_path) -> None:
+    request = _request().model_copy(
+        update={
+            "data_classifications": frozenset(
+                {DataClassification.REDACTED_INCIDENT_SUMMARY}
+            ),
+            "context_refs": (
+                EvidenceReference(
+                    evidence_id=uuid4(),
+                    digest="sha256:" + "b" * 64,
+                    source_type="incident_summary",
+                ),
+            ),
+        }
+    )
+    policy_file = tmp_path / "fixture-egress-policy.json"
+    policy_file.write_text(
+        "{"
+        '"version":"egress-policy-v1",'
+        '"rules":[{'
+        f'"tenant_id":"{request.tenant_id}",'
+        '"purpose":"incident_investigation",'
+        '"provider":"fixture",'
+        '"region":"zz",'
+        '"data_classes":["redacted_incident_summary"]'
+        "}]}\n",
+        encoding="utf-8",
+    )
+
+    policy = TenantEgressPolicy.from_file(policy_file, allow_incident_summary=True)
+    settings = _settings(
+        provider="fixture",
+        base_url="http://127.0.0.1:19090/v1",
+        api_key=None,
+        allowed_data_classes=frozenset({"redacted_incident_summary"}),
+        allowed_provider_hosts=frozenset(),
+        provider_region="zz",
+    )
+
+    decision = evaluate_egress(request, settings, policy)
+
+    assert decision.provider == "fixture"
+    assert "user@example.com" not in decision.sanitized_prompt

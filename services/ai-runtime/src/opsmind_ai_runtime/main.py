@@ -121,7 +121,10 @@ def build_default_app() -> FastAPI:
             expected_issuer=settings.capability_expected_issuer,
             expected_audience=settings.capability_expected_audience,
         )
-        egress_policy = TenantEgressPolicy.from_file(settings.egress_policy_file or "")
+        egress_policy = TenantEgressPolicy.from_file(
+            settings.egress_policy_file or "",
+            allow_incident_summary=settings.provider == "fixture",
+        )
     except (OSError, ValueError):
         return create_app(
             analysis_service=UnavailableAnalysisService("delegation.unavailable"),
@@ -131,7 +134,7 @@ def build_default_app() -> FastAPI:
         )
     client = DeepSeekClient(
         base_url=settings.base_url,
-        credential=settings.api_key or "",
+        credential=settings.api_key or "fixture-provider",
         model=settings.model,
         timeout_seconds=settings.default_timeout_seconds,
         max_retries=settings.max_retries,

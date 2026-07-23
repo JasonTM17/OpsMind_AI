@@ -1,6 +1,6 @@
 # OpsMind AI Codebase Summary
 
-Last verified: 2026-07-22
+Last verified: 2026-07-23
 
 ## Purpose and Verification Basis
 
@@ -35,6 +35,10 @@ documentation. Source code and canonical contracts take precedence.
 | Phase 7 | In progress; integration phases 1–4 complete. Cross-service trace, p95, CK/Stitch UI, and browser E2E exit remain blocked. |
 | Later phases | Durable workflow, RAG, remediation, complete operator UX, evaluation, and production-hardening outcomes remain pending. |
 
+Phase 7's local Operator Web checkpoint is now complete for the safe
+projection boundary; cross-service trace/p95, incident-timeline linkage, and
+the production BFF/session gate remain open.
+
 Historical Phase 3/4 workstation transcripts remain local/reference evidence
 and explicitly deny release status. Revision-bound GitHub Actions evidence is
 tracked separately; no production IdP or production deployment result is
@@ -44,7 +48,7 @@ claimed.
 
 | Path | Current responsibility |
 |---|---|
-| `apps/operator-web/` | Next.js foundation page and `/api/health`; incident workflows are not implemented in the web app. |
+| `apps/operator-web/` | Next.js server-rendered operator investigation workspace with a server-only Platform client, versioned safe-projection parser, degraded states, and Playwright coverage. |
 | `services/platform-api/` | Spring Boot control plane for OIDC identity, tenant/project access, persistence, messaging primitives, checkpoint 4A incidents, and the Phase 7 deterministic plus PostgreSQL persistence checkpoint. |
 | `services/ai-runtime/` | FastAPI bounded analysis runtime with provider-neutral contracts, DeepSeek adapter, shared PostgreSQL replay/accounting, startup/periodic capability probe, `/health` liveness, and `/ready` readiness; live egress remains disabled. |
 | `services/tool-gateway/` | Spring Boot fail-closed Tool Gateway: separated workload/delegated JWT trust, manifest registry, bounded DLP execution, dedicated PostgreSQL nonce/receipt/audit state, and exact read-only Prometheus query-range connector. Default profiles remain fail closed; durable/live checkpoint has revision-bound CI proof. |
@@ -85,6 +89,13 @@ Runtime, Tool Gateway, and Operator Web. Model egress, write actions, and the
 external dispatcher remain disabled by default. Long-running services use
 non-owner roles; Flyway runs through separate migration services.
 
+The Phase 7 cross-service harness is under
+`scripts/validation/cross-service/`: a loopback-only DeepSeek-compatible
+fixture provider and a 100-warm-run Platform benchmark that emits p50/p95,
+correlation IDs, evidence IDs, and bounded terminal-state proof without
+persisting credentials or raw prompts. The report is intentionally ignored
+until a disposable Compose/IdP execution produces it.
+
 ## Implemented Platform API Boundaries
 
 The current controllers expose:
@@ -105,6 +116,12 @@ requires `Idempotency-Key`; transition also requires a strong numeric
 `If-Match`. Mutation responses carry an ETag and `X-Operation-Id`; create also
 returns `Location`. Timeline pages accept 1-100 items and an opaque,
 incident-bound cursor.
+
+Incident and investigation detail reads additionally support the typed
+`application/vnd.opsmind.operator-projection.v1+json` representation. It carries
+projection-class, redaction-version, and redaction-count assurances, is
+`no-store`, varies on `Accept`, and is scoped by organization/project/
+incident/run. Legacy JSON remains available for non-browser callers.
 
 The canonical public contract is
 `packages/contracts/openapi/opsmind-v1.yaml` (OpenAPI 3.1.1, contract version
@@ -183,7 +200,9 @@ audit JSON intentionally retain metadata only.
 This is persistence, not durable orchestration. The code does not resume an
 in-flight runner after process loss and does not append investigation events to
 `incident_timeline_events`. Only fixture implementations of the Phase 7 AI and
-Tool ports exist, so the live capability-backed path and G3 remain open.
+Tool ports are currently usable in the local Operator Web browser harness, so
+the live capability-backed path and G3 remain open. The browser harness mirrors
+the typed Platform projection and rejects unassured or unclassified media.
 
 ## Security and Failure Posture
 

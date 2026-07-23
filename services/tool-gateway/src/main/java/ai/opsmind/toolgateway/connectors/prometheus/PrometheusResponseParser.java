@@ -12,6 +12,9 @@ import java.util.regex.Pattern;
 import ai.opsmind.toolgateway.domain.DenialCode;
 import ai.opsmind.toolgateway.domain.ToolDeniedException;
 
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+
 import tools.jackson.core.JacksonException;
 import tools.jackson.databind.DeserializationFeature;
 import tools.jackson.databind.ObjectMapper;
@@ -19,6 +22,7 @@ import tools.jackson.databind.ObjectReader;
 
 final class PrometheusResponseParser {
 
+    private static final Logger LOGGER = LoggerFactory.getLogger(PrometheusResponseParser.class);
     private static final Pattern FINITE_DECIMAL = Pattern.compile(
         "-?(?:\\d+(?:\\.\\d+)?|\\.\\d+)(?:[eE][+-]?\\d+)?"
     );
@@ -35,6 +39,8 @@ final class PrometheusResponseParser {
     ) {
         reader = objectMapper.readerFor(PrometheusApiResponse.class)
             .with(DeserializationFeature.FAIL_ON_UNKNOWN_PROPERTIES)
+            .without(DeserializationFeature.FAIL_ON_MISSING_CREATOR_PROPERTIES)
+            .without(DeserializationFeature.FAIL_ON_NULL_CREATOR_PROPERTIES)
             .with(DeserializationFeature.FAIL_ON_TRAILING_TOKENS);
         this.maximumSeries = maximumSeries;
         this.maximumPoints = maximumPoints;
@@ -178,6 +184,15 @@ final class PrometheusResponseParser {
     }
 
     private ToolDeniedException invalid(String message, Throwable cause) {
+        String failureType = cause == null ? "none" : cause.getClass().getSimpleName();
+        String path = cause instanceof JacksonException jackson
+            ? jackson.getPathReference() : "none";
+        LOGGER.debug(
+            "Prometheus response rejected. reason={} failureType={} path={}",
+            message,
+            failureType,
+            path == null || path.isBlank() ? "root" : path
+        );
         return new ToolDeniedException(DenialCode.CONNECTOR_FAILED, message, cause);
     }
 

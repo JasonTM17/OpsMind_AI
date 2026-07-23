@@ -236,7 +236,18 @@ services:
       context: .
       dockerfile: services/ai-runtime/Dockerfile
     environment:
-      OPS_ENABLE_DEEPSEEK_EGRESS: "false"
+      AI_PROVIDER: ${AI_PROVIDER:-disabled}
+      AI_FIXTURE_PROVIDER_ENABLED: ${AI_FIXTURE_PROVIDER_ENABLED:-false}
+      DEEPSEEK_API_BASE_URL: ${DEEPSEEK_API_BASE_URL:-https://deepseek.invalid.example/v1}
+      AI_PROVIDER_ALLOWED_HOSTS: ${AI_PROVIDER_ALLOWED_HOSTS:-api.deepseek.com}
+      DEEPSEEK_MODEL: ${DEEPSEEK_MODEL:-deepseek-v4-flash}
+      DEEPSEEK_API_KEY: ${DEEPSEEK_API_KEY:-}
+      OPS_ENABLE_DEEPSEEK_EGRESS: ${OPS_ENABLE_DEEPSEEK_EGRESS:-false}
+      AI_ALLOWED_DATA_CLASSES: ${AI_ALLOWED_DATA_CLASSES:-}
+      AI_PROVIDER_REGION: ${AI_PROVIDER_REGION:-}
+      AI_EGRESS_POLICY_FILE: ${AI_EGRESS_POLICY_FILE:-/run/opsmind/egress-policy.json}
+      AI_INPUT_COST_USD_PER_MILLION: ${AI_INPUT_COST_USD_PER_MILLION:-0}
+      AI_OUTPUT_COST_USD_PER_MILLION: ${AI_OUTPUT_COST_USD_PER_MILLION:-0}
       AI_RUNTIME_STATE_BACKEND: postgres
       AI_RUNTIME_DATABASE_HOST: postgres
       AI_RUNTIME_DATABASE_PORT: 5432
@@ -246,6 +257,11 @@ services:
       OPSMIND_AI_CAPABILITY_ISSUER: ${OPSMIND_AI_CAPABILITY_ISSUER:-https://platform.invalid.example}
       OPSMIND_AI_CAPABILITY_AUDIENCE: ${OPSMIND_AI_CAPABILITY_AUDIENCE:-opsmind-ai-runtime}
       OPSMIND_AI_CAPABILITY_JWKS_FILE: ${OPSMIND_AI_CAPABILITY_JWKS_FILE:-}
+    volumes:
+      - type: bind
+        source: ${AI_EGRESS_POLICY_HOST_PATH:-./.opsmind/config/ai-egress-policy.json}
+        target: /run/opsmind/egress-policy.json
+        read_only: true
     ports:
       - "127.0.0.1:${AI_RUNTIME_PORT:-8000}:8000"
     healthcheck:
@@ -332,6 +348,10 @@ services:
       dockerfile: apps/operator-web/Dockerfile
     environment:
       PORT: 3000
+      OPSMIND_DEPLOYMENT_ENVIRONMENT: ${OPSMIND_DEPLOYMENT_ENVIRONMENT:-local}
+      OPSMIND_OPERATOR_AUTH_MODE: ${OPSMIND_OPERATOR_AUTH_MODE:-disabled}
+      OPSMIND_PLATFORM_API_URL: ${OPSMIND_PLATFORM_API_URL:-http://platform-api:8080}
+      OPSMIND_PLATFORM_API_TIMEOUT_MS: ${OPSMIND_PLATFORM_API_TIMEOUT_MS:-3000}
     ports:
       - "127.0.0.1:${OPERATOR_WEB_PORT:-3000}:3000"
     depends_on:

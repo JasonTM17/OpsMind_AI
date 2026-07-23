@@ -15,7 +15,9 @@ public record InvestigationAnalysisRequest(
     Set<UUID> evidenceIds,
     int completedRounds,
     int remainingRounds,
+    int totalTokenBudget,
     int remainingTokens,
+    int totalToolBudget,
     int remainingToolCalls,
     Instant deadlineAt
 ) {
@@ -26,8 +28,11 @@ public record InvestigationAnalysisRequest(
             || completedRounds < 0 || completedRounds > 20
             || remainingRounds < 0 || remainingRounds > 20
             || completedRounds + remainingRounds > 20
-            || remainingTokens < 0 || remainingTokens > 100_000
-            || remainingToolCalls < 0 || remainingToolCalls > 20 || deadlineAt == null) {
+            || totalTokenBudget < 1 || totalTokenBudget > 100_000
+            || remainingTokens < 0 || remainingTokens > totalTokenBudget
+            || totalToolBudget < 0 || totalToolBudget > 20
+            || remainingToolCalls < 0 || remainingToolCalls > totalToolBudget
+            || deadlineAt == null) {
             throw new IllegalArgumentException("Investigation analysis request is invalid.");
         }
     }

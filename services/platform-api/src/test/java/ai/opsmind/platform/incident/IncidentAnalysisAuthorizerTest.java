@@ -69,6 +69,25 @@ class IncidentAnalysisAuthorizerTest {
     }
 
     @Test
+    void readAuthorizationUsesReadScopeAndRoleMode() {
+        when(access.requireAccess(
+            any(), eq(ORGANIZATION_ID), eq(PROJECT_ID), eq(IncidentAccessMode.READ)
+        )).thenReturn(new IncidentActor(ACTOR_ID, "VIEWER", "VIEWER"));
+        when(incidents.find(ORGANIZATION_ID, PROJECT_ID, INCIDENT_ID))
+            .thenReturn(Optional.of(snapshot()));
+
+        UUID result = authorizer.requireReadAccess(
+            principal(Set.of("incident:read")), ORGANIZATION_ID, PROJECT_ID, INCIDENT_ID
+        );
+
+        assertThat(result).isEqualTo(ACTOR_ID);
+        verify(access).requireAccess(
+            any(), eq(ORGANIZATION_ID), eq(PROJECT_ID), eq(IncidentAccessMode.READ)
+        );
+        verify(transactions).commit(transaction);
+    }
+
+    @Test
     void resolvesEvidenceInsideTheSameAnalyzeAuthorizationTransaction() {
         UUID runId = UUID.randomUUID();
         UUID evidenceId = UUID.randomUUID();

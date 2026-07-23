@@ -45,13 +45,28 @@ public final class IncidentAnalysisAuthorizer {
         return requireEvidence(principal, organizationId, projectId, incidentId).actorId();
     }
 
+    public UUID requireReadAccess(
+        OpsMindPrincipal principal,
+        UUID organizationId,
+        UUID projectId,
+        UUID incidentId
+    ) {
+        return authorize(
+            principal, organizationId, projectId, incidentId,
+            IncidentScopePolicy.READ_SCOPE, IncidentAccessMode.READ,
+            (incident, actor) -> actor.id()
+        );
+    }
+
     public AuthorizedIncidentAnalysisEvidence requireEvidence(
         OpsMindPrincipal principal,
         UUID organizationId,
         UUID projectId,
         UUID incidentId
     ) {
-        return authorize(principal, organizationId, projectId, incidentId,
+        return authorize(
+            principal, organizationId, projectId, incidentId,
+            IncidentScopePolicy.ANALYZE_SCOPE, IncidentAccessMode.ANALYZE,
             (incident, actor) -> AuthorizedIncidentAnalysisEvidence.from(incident, actor.id()));
     }
 
@@ -64,13 +79,16 @@ public final class IncidentAnalysisAuthorizer {
         List<UUID> evidenceIds
     ) {
         if (runId == null) throw new IllegalArgumentException("Investigation run is required.");
-        return authorize(principal, organizationId, projectId, incidentId, (incident, actor) ->
-            new AuthorizedIncidentAnalysisContext(
-                AuthorizedIncidentAnalysisEvidence.from(incident, actor.id()),
-                evidenceReader.resolve(
-                    organizationId, projectId, incidentId, runId, evidenceIds
+        return authorize(
+            principal, organizationId, projectId, incidentId,
+            IncidentScopePolicy.ANALYZE_SCOPE, IncidentAccessMode.ANALYZE,
+            (incident, actor) ->
+                new AuthorizedIncidentAnalysisContext(
+                    AuthorizedIncidentAnalysisEvidence.from(incident, actor.id()),
+                    evidenceReader.resolve(
+                        organizationId, projectId, incidentId, runId, evidenceIds
+                    )
                 )
-            )
         );
     }
 
@@ -79,14 +97,16 @@ public final class IncidentAnalysisAuthorizer {
         UUID organizationId,
         UUID projectId,
         UUID incidentId,
+        String requiredScope,
+        IncidentAccessMode accessMode,
         AuthorizedWork<T> work
     ) {
-        IncidentScopePolicy.require(principal, IncidentScopePolicy.ANALYZE_SCOPE);
+        IncidentScopePolicy.require(principal, requiredScope);
         IncidentCommandValidator.requireResourceIds(organizationId, projectId, incidentId);
         try {
             T result = transactions.execute(status -> {
                 IncidentActor actor = accessRepository.requireAccess(
-                    principal, organizationId, projectId, IncidentAccessMode.ANALYZE
+                    principal, organizationId, projectId, accessMode
                 );
                 IncidentSnapshot incident = incidentRepository.find(
                     organizationId, projectId, incidentId

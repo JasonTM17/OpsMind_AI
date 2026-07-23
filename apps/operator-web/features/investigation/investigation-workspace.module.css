@@ -1,0 +1,96 @@
+.workspace {
+  display: grid;
+  grid-template-columns:
+    minmax(15.5rem, 22fr)
+    minmax(28rem, 50fr)
+    minmax(19rem, 28fr);
+  width: 100%;
+  max-width: 120rem;
+  min-height: calc(100dvh - 250px);
+  margin: 0 auto;
+  border-right: 1px solid var(--border-subtle);
+  border-left: 1px solid var(--border-subtle);
+}
+
+.degraded {
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr) auto;
+  align-items: center;
+  gap: var(--space-4);
+  padding: var(--space-3) var(--page-gutter);
+  border-bottom: 1px solid var(--status-danger);
+  background: var(--status-danger-surface);
+  color: var(--text-primary);
+}
+
+.degraded strong {
+  color: var(--status-danger);
+  font-family: var(--font-mono);
+  font-size: 0.75rem;
+  text-transform: uppercase;
+}
+
+.degraded span {
+  color: var(--text-secondary);
+  font-size: 0.82rem;
+}
+
+.degraded a {
+  display: inline-grid;
+  min-height: 44px;
+  place-items: center;
+  padding: 0 var(--space-4);
+  border: 1px solid var(--border-strong);
+  border-radius: var(--radius-control);
+  color: var(--text-primary);
+  text-decoration: none;
+}
+
+.footer {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: space-between;
+  gap: var(--space-3);
+  padding: var(--space-4) var(--page-gutter);
+  border-top: 1px solid var(--border-subtle);
+  color: var(--text-tertiary);
+  font-family: var(--font-mono);
+  font-size: 0.68rem;
+  font-variant-numeric: tabular-nums;
+}
+
+@media (max-width: 1320px) {
+  .workspace {
+    grid-template-columns: minmax(15rem, 24fr) minmax(27rem, 48fr) minmax(18rem, 28fr);
+  }
+}
+
+@media (max-width: 1080px) {
+  .workspace {
+    grid-template-columns: minmax(15rem, 0.65fr) minmax(0, 1.35fr);
+  }
+
+  .workspace > :last-child {
+    grid-column: 1 / -1;
+  }
+}
+
+@media (max-width: 767px) {
+  .workspace {
+    grid-template-columns: minmax(0, 1fr);
+    min-height: auto;
+    border: 0;
+  }
+
+  .workspace > :last-child {
+    grid-column: auto;
+  }
+
+  .degraded {
+    grid-template-columns: 1fr;
+  }
+
+  .degraded a {
+    justify-self: start;
+  }
+}

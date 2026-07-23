@@ -15,7 +15,12 @@ import ai.opsmind.toolgateway.domain.ToolExecutionRequest;
 import ai.opsmind.toolgateway.domain.ToolExecutionResponse;
 import ai.opsmind.toolgateway.domain.ToolOutcome;
 
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+
 public final class ToolExecutionService {
+
+    private static final Logger LOGGER = LoggerFactory.getLogger(ToolExecutionService.class);
 
     private final DelegatedCapabilityVerifier capabilityVerifier;
     private final ToolManifestRegistry manifestRegistry;
@@ -66,17 +71,22 @@ public final class ToolExecutionService {
         String policyVersion = null;
         String manifestVersion = null;
         ExecutionReceiptStore.Lease lease = null;
+        String stage = "capability-verification";
         try {
             VerifiedCapability capability = capabilityVerifier.verify(capabilityToken, request);
             capabilityId = capability.capabilityId();
             policyVersion = capability.policyVersion();
+            stage = "manifest-resolution";
             ToolManifest manifest = manifestRegistry.require(request);
             manifestVersion = manifest.manifestVersion();
+            stage = "policy-evaluation";
             policyEvaluator.evaluate(request, manifest, capability);
+            stage = "audit-availability";
             if (!durability.auditAvailable()) {
                 throw denied(DenialCode.AUDIT_UNAVAILABLE, "Durable tool audit storage is unavailable.");
             }
 
+            stage = "execution-claim";
             ExecutionReceiptStore.Claim claim = durability.claim(request, requestDigest);
             switch (claim.status()) {
                 case REPLAY -> {
@@ -106,15 +116,18 @@ public final class ToolExecutionService {
                 }
             }
 
+            stage = "connector-selection";
             ToolConnector connector = connectors.get(manifest.connectorId());
             if (connector == null) {
                 throw denied(DenialCode.ACTION_DISABLED, "Tool connector is unavailable.");
             }
+            stage = "connector-execution";
             EvidenceEnvelope evidence = connectorExecutor.execute(
                 () -> evidenceNormalizer.normalize(connector.execute(request, manifest), manifest, request),
                 request,
                 manifest
             );
+            stage = "success-finalization";
             ToolExecutionResponse response = durability.finalizeSuccess(
                 lease, evidence, capabilityId, manifestVersion, policyVersion
             );
@@ -122,6 +135,11 @@ public final class ToolExecutionService {
             return response;
         }
         catch (ToolDeniedException exception) {
+            LOGGER.debug(
+                "Tool execution denied. stage={} code={}",
+                stage,
+                exception.code().value()
+            );
             return responseFactory.denial(
                 executionId,
                 requestDigest,
@@ -132,6 +150,11 @@ public final class ToolExecutionService {
             );
         }
         catch (RuntimeException exception) {
+            LOGGER.debug(
+                "Tool execution failed safely. stage={} failureType={}",
+                stage,
+                exception.getClass().getSimpleName()
+            );
             return responseFactory.denial(
                 executionId,
                 requestDigest,

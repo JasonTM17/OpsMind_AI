@@ -75,6 +75,45 @@ class InvestigationRunServiceTest {
         );
     }
 
+    @Test
+    void readsOnlyThroughReadAuthorizationAndFullyScopedStoreLookup() {
+        IncidentAnalysisAuthorizer authorizer = mock(IncidentAnalysisAuthorizer.class);
+        InvestigationOrchestrator orchestrator = mock(InvestigationOrchestrator.class);
+        InvestigationRunStore store = mock(InvestigationRunStore.class);
+        InvestigationRunService service = new InvestigationRunService(
+            authorizer, orchestrator, store, new InvestigationProjectionAssembler(),
+            Clock.fixed(NOW, ZoneOffset.UTC)
+        );
+        OpsMindPrincipal principal = new OpsMindPrincipal(
+            URI.create("https://idp.example.test/opsmind"), "operator-001", null, null,
+            Set.of("incident:read")
+        );
+        InvestigationStateMachine.State state = InvestigationStateMachine.start(
+            new InvestigationCommand.Start(
+                RUN_ID, ORGANIZATION_ID, PROJECT_ID, INCIDENT_ID, ACTOR_ID,
+                new InvestigationCommand.Budget(4, 2, 10, 1_000),
+                NOW, NOW.plusSeconds(120)
+            )
+        ).state();
+        when(authorizer.requireReadAccess(
+            principal, ORGANIZATION_ID, PROJECT_ID, INCIDENT_ID
+        )).thenReturn(ACTOR_ID);
+        when(store.requireScoped(
+            ORGANIZATION_ID, PROJECT_ID, INCIDENT_ID, ACTOR_ID, RUN_ID
+        )).thenReturn(state);
+
+        assertThat(service.get(
+            principal, ORGANIZATION_ID, PROJECT_ID, INCIDENT_ID, RUN_ID
+        ).runId()).isEqualTo(RUN_ID);
+
+        verify(authorizer).requireReadAccess(
+            principal, ORGANIZATION_ID, PROJECT_ID, INCIDENT_ID
+        );
+        verify(store).requireScoped(
+            ORGANIZATION_ID, PROJECT_ID, INCIDENT_ID, ACTOR_ID, RUN_ID
+        );
+    }
+
     private OpsMindPrincipal principal() {
         return new OpsMindPrincipal(
             URI.create("https://idp.example.test/opsmind"), "operator-001", null, null,

@@ -62,6 +62,8 @@ class PrometheusObservabilityConnectorTest {
             );
         assertThat(evidence.source()).isEqualTo("prometheus");
         assertThat(evidence.targetIdentity()).isEqualTo("prometheus:synthetic/opsmind-api");
+        assertThat(evidence.observedAt()).isEqualTo(Instant.parse("2030-01-01T00:02:00Z"));
+        assertThat(evidence.observedAt()).isEqualTo(evidence.windowEnd());
         assertThat(evidence.trustClass()).isEqualTo("source-attested");
         assertThat(evidence.content()).containsEntry("series_count", 1);
         assertThat(connector.available()).isTrue();

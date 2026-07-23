@@ -36,7 +36,8 @@ final class InvestigationTestFixtures {
         return new InvestigationAnalysisRequest(
             context(command).principal(), incident(command), command.runId(), evidenceIds,
             completedRounds, command.budget().maxRounds() - completedRounds,
-            command.budget().maxTokens(), command.budget().maxToolCalls(), command.deadlineAt()
+            command.budget().maxTokens(), command.budget().maxTokens(),
+            command.budget().maxToolCalls(), command.budget().maxToolCalls(), command.deadlineAt()
         );
     }
 

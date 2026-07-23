@@ -72,6 +72,34 @@ class InvestigationStateMachineTest {
         assertThat(step.events()).hasSize(2);
     }
 
+    @Test
+    void canonicalizesReducerTimestampsToDurableMicrosecondPrecision() {
+        Instant nanosecondStart = NOW.plusNanos(123_456_789);
+        InvestigationCommand.Start command = new InvestigationCommand.Start(
+            RUN, UUID.randomUUID(), UUID.randomUUID(), UUID.randomUUID(), UUID.randomUUID(),
+            new InvestigationCommand.Budget(4, 4, 10, 1_000),
+            nanosecondStart, nanosecondStart.plusSeconds(30).plusNanos(111)
+        );
+
+        InvestigationStateMachine.Step started = InvestigationStateMachine.start(command);
+        Instant expectedStart = Instant.parse("2030-01-01T00:00:00.123456Z");
+        assertThat(started.state().startedAt()).isEqualTo(expectedStart);
+        assertThat(started.state().deadlineAt())
+            .isEqualTo(Instant.parse("2030-01-01T00:00:30.123456Z"));
+        assertThat(((InvestigationEvent.RunStarted) started.events().getFirst()).occurredAt())
+            .isEqualTo(expectedStart);
+
+        InvestigationStateMachine.Step applied = InvestigationStateMachine.apply(
+            started.state(),
+            new InvestigationCommand.Failed("Dependency failed."),
+            NOW.plusSeconds(1).plusNanos(999)
+        );
+        Instant expectedEnd = Instant.parse("2030-01-01T00:00:01Z");
+        assertThat(applied.state().endedAt()).isEqualTo(expectedEnd);
+        assertThat(((InvestigationEvent.Failed) applied.events().getFirst()).occurredAt())
+            .isEqualTo(expectedEnd);
+    }
+
     private InvestigationCommand.Start start() {
         return new InvestigationCommand.Start(
             RUN, UUID.randomUUID(), UUID.randomUUID(), UUID.randomUUID(), UUID.randomUUID(),

@@ -1,0 +1,135 @@
+.shell {
+  min-height: 100dvh;
+}
+
+.topbar {
+  position: sticky;
+  top: 0;
+  z-index: var(--z-sticky);
+  display: grid;
+  grid-template-columns: auto auto minmax(0, 1fr) auto auto;
+  align-items: center;
+  gap: var(--space-4);
+  min-height: 60px;
+  padding: 0 var(--page-gutter);
+  border-bottom: 1px solid var(--border-subtle);
+  background: color-mix(in srgb, var(--surface-canvas) 94%, transparent);
+  backdrop-filter: blur(10px);
+}
+
+.wordmark {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-2);
+  min-height: 44px;
+  color: var(--text-primary);
+  font-size: 1rem;
+  font-weight: 650;
+  letter-spacing: -0.02em;
+  text-decoration: none;
+}
+
+.wordmark > span {
+  width: 10px;
+  height: 10px;
+  border: 2px solid var(--accent-signal);
+  transform: rotate(45deg);
+}
+
+.wordmark strong {
+  color: var(--accent-signal);
+  font-weight: inherit;
+}
+
+.environment {
+  padding: 0.25rem 0.45rem;
+  border: 1px solid var(--accent-muted);
+  border-radius: 2px;
+  color: var(--accent-signal);
+  font-family: var(--font-mono);
+  font-size: 0.68rem;
+  font-weight: 650;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+
+.breadcrumb {
+  min-width: 0;
+  margin: 0;
+  color: var(--text-secondary);
+  font-size: 0.85rem;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.health {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  color: var(--text-secondary);
+  font-size: 0.78rem;
+}
+
+.health > span {
+  width: 8px;
+  height: 8px;
+  border: 1px solid var(--status-stable);
+  border-radius: 50%;
+  background: var(--status-stable);
+}
+
+.health[data-state="not-asserted"] > span {
+  border-color: var(--text-tertiary);
+  background: transparent;
+}
+
+.operator {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  color: var(--text-secondary);
+  font-size: 0.8rem;
+}
+
+.operator > span:first-child {
+  display: grid;
+  width: 34px;
+  height: 34px;
+  place-items: center;
+  border: 1px solid var(--border-strong);
+  border-radius: var(--radius-control);
+  color: var(--text-primary);
+  font-family: var(--font-mono);
+  font-size: 0.7rem;
+}
+
+@media (max-width: 820px) {
+  .topbar {
+    grid-template-columns: auto auto 1fr auto;
+  }
+
+  .breadcrumb {
+    display: none;
+  }
+}
+
+@media (max-width: 560px) {
+  .topbar {
+    gap: var(--space-2);
+  }
+
+  .health {
+    justify-self: end;
+  }
+
+  .health,
+  .operator > span:last-child {
+    font-size: 0;
+  }
+
+  .health > span {
+    width: 10px;
+    height: 10px;
+  }
+}

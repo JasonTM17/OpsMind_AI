@@ -170,8 +170,11 @@ class RuntimeSettings:
             raise ValueError("legacy DeepSeek model alias is retired")
         if provider == "deepseek" and model not in SUPPORTED_MODELS and model not in LEGACY_MODELS:
             raise ValueError("DEEPSEEK_MODEL is not in the operator allowlist")
-        if provider not in {"disabled", "deepseek"}:
-            raise ValueError("AI_PROVIDER must be disabled or deepseek")
+        fixture_enabled = _bool("AI_FIXTURE_PROVIDER_ENABLED")
+        if provider not in {"disabled", "deepseek", "fixture"}:
+            raise ValueError("AI_PROVIDER must be disabled, deepseek, or fixture")
+        if provider == "fixture" and not fixture_enabled:
+            raise ValueError("AI_FIXTURE_PROVIDER_ENABLED must be true for the fixture provider")
         state_backend = os.getenv("AI_RUNTIME_STATE_BACKEND", "memory").strip().lower()
         if state_backend not in {"memory", "postgres"}:
             raise ValueError("AI_RUNTIME_STATE_BACKEND must be memory or postgres")
@@ -242,10 +245,18 @@ class RuntimeSettings:
 
         provider_host = (urlsplit(self.base_url).hostname or "").lower().rstrip(".")
         return (
-            self.provider == "deepseek"
+            self.provider in {"deepseek", "fixture"}
             and self.egress_enabled
-            and bool(self.api_key)
-            and provider_host in self.allowed_provider_hosts
+            and (
+                bool(self.api_key)
+                if self.provider == "deepseek"
+                else provider_host in {"localhost", "127.0.0.1", "::1"}
+            )
+            and (
+                provider_host in self.allowed_provider_hosts
+                if self.provider == "deepseek"
+                else provider_host in {"localhost", "127.0.0.1", "::1"}
+            )
             and self.input_cost_per_million_usd > 0
             and self.output_cost_per_million_usd > 0
             and bool(self.allowed_data_classes)

@@ -11,4 +11,12 @@ public interface InvestigationRunStore {
     void save(InvestigationStateMachine.State previous, InvestigationStateMachine.Step next);
 
     InvestigationStateMachine.State require(UUID organizationId, UUID actorId, UUID runId);
+
+    InvestigationStateMachine.State requireScoped(
+        UUID organizationId,
+        UUID projectId,
+        UUID incidentId,
+        UUID actorId,
+        UUID runId
+    );
 }

@@ -94,6 +94,13 @@ final class ToolGatewayDependencyFailureMapper {
     }
 
     private PlatformProblemException mapped(int status, String code) {
+        if (status == 401 && "caller.unauthenticated".equals(code)) {
+            return problem(
+                HttpStatus.BAD_GATEWAY,
+                "dependency.tool-gateway-workload-unauthenticated",
+                "The Tool Gateway rejected the platform workload identity."
+            );
+        }
         if (status == 408 && "deadline.expired".equals(code)) {
             return problem(HttpStatus.REQUEST_TIMEOUT, "tool-gateway.deadline-exceeded",
                 "The tool execution deadline elapsed.");

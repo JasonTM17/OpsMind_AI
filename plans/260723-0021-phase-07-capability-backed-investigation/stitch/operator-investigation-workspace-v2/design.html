@@ -1,0 +1,443 @@
+<!DOCTYPE html>
+
+<html class="dark" lang="en"><head>
+<meta charset="utf-8"/>
+<meta content="width=device-width, initial-scale=1.0" name="viewport"/>
+<title>OpsMind AI | Forensic Workbench</title>
+<script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500;600&amp;family=Geist:wght@400;500;600;700&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<style>
+        .material-symbols-outlined {
+            font-variation-settings: 'FILL' 0, 'wght' 400, 'GRAD' 0, 'opsz' 24;
+            vertical-align: middle;
+        }
+        body {
+            background-color: #191209;
+            background-image: url("https://www.transparenttextures.com/patterns/stardust.png");
+            color: #eee0d0;
+            overflow-x: hidden;
+        }
+        .custom-scrollbar::-webkit-scrollbar { width: 4px; }
+        .custom-scrollbar::-webkit-scrollbar-track { background: #130d05; }
+        .custom-scrollbar::-webkit-scrollbar-thumb { background: #524533; border-radius: 2px; }
+        .hairline-border { border: 1px solid #2D2F31; }
+        .amber-glow-focus:focus { outline: 1px solid #ffb000; outline-offset: -1px; }
+    </style>
+<script id="tailwind-config">
+        tailwind.config = {
+            darkMode: "class",
+            theme: {
+                extend: {
+                    colors: {
+                        "surface-container-low": "#211a11",
+                        "error": "#ffb4ab",
+                        "surface-bright": "#40382d",
+                        "secondary-fixed-dim": "#c4c6cc",
+                        "primary-fixed": "#ffddaf",
+                        "on-secondary": "#2d3135",
+                        "on-background": "#eee0d0",
+                        "inverse-on-surface": "#372f25",
+                        "secondary-container": "#46494e",
+                        "background": "#191209",
+                        "secondary": "#c4c6cc",
+                        "on-tertiary-fixed-variant": "#004e60",
+                        "on-secondary-fixed-variant": "#44474b",
+                        "outline": "#9f8e78",
+                        "on-primary-fixed-variant": "#614000",
+                        "surface-dim": "#191209",
+                        "on-primary-fixed": "#281800",
+                        "tertiary-container": "#00d0fe",
+                        "tertiary": "#a1e5ff",
+                        "surface-tint": "#ffba43",
+                        "on-primary-container": "#6a4700",
+                        "tertiary-fixed": "#b7eaff",
+                        "inverse-primary": "#805600",
+                        "on-tertiary": "#003543",
+                        "on-error": "#690005",
+                        "surface-container-highest": "#3c3429",
+                        "primary-container": "#ffb000",
+                        "on-tertiary-container": "#00556a",
+                        "surface-variant": "#3c3429",
+                        "on-surface-variant": "#d7c4ac",
+                        "error-container": "#93000a",
+                        "on-error-container": "#ffdad6",
+                        "surface-container-lowest": "#130d05",
+                        "on-secondary-container": "#b6b8be",
+                        "on-secondary-fixed": "#181c20",
+                        "secondary-fixed": "#e0e2e8",
+                        "surface-container": "#251e15",
+                        "primary": "#ffd597",
+                        "on-tertiary-fixed": "#001f28",
+                        "on-surface": "#eee0d0",
+                        "surface": "#191209",
+                        "surface-container-high": "#30291e",
+                        "on-primary": "#432c00",
+                        "primary-fixed-dim": "#ffba43",
+                        "inverse-surface": "#eee0d0",
+                        "outline-variant": "#524533",
+                        "tertiary-fixed-dim": "#4cd6ff"
+                    },
+                    borderRadius: { "DEFAULT": "0.125rem", "lg": "0.25rem", "xl": "0.5rem", "full": "0.75rem" },
+                    spacing: { "stack-md": "8px", "gutter": "16px", "stack-lg": "16px", "unit": "4px", "margin": "24px", "stack-sm": "4px" },
+                    fontFamily: {
+                        "label-caps": ["Geist"],
+                        "data-mono-sm": ["IBM Plex Mono"],
+                        "body-sm": ["Geist"],
+                        "headline-md": ["Geist"],
+                        "data-mono": ["IBM Plex Mono"],
+                        "body-md": ["Geist"],
+                        "headline-sm": ["Geist"],
+                        "headline-lg": ["Geist"]
+                    },
+                    fontSize: {
+                        "label-caps": ["10px", { "lineHeight": "1", "letterSpacing": "0.08em", "fontWeight": "700" }],
+                        "data-mono-sm": ["11px", { "lineHeight": "1.4", "letterSpacing": "0.02em", "fontWeight": "400" }],
+                        "body-sm": ["12px", { "lineHeight": "1.5", "letterSpacing": "0", "fontWeight": "400" }],
+                        "headline-md": ["24px", { "lineHeight": "1.2", "letterSpacing": "-0.01em", "fontWeight": "600" }],
+                        "data-mono": ["13px", { "lineHeight": "1.6", "letterSpacing": "-0.01em", "fontWeight": "400" }],
+                        "body-md": ["14px", { "lineHeight": "1.5", "letterSpacing": "0", "fontWeight": "400" }],
+                        "headline-sm": ["18px", { "lineHeight": "1.4", "letterSpacing": "0", "fontWeight": "500" }],
+                        "headline-lg": ["32px", { "lineHeight": "1.2", "letterSpacing": "-0.02em", "fontWeight": "600" }]
+                    }
+                }
+            }
+        }
+    </script>
+</head>
+<body class="font-body-md text-on-surface bg-surface h-screen flex flex-col overflow-hidden">
+<!-- TopNavBar -->
+<header class="flex justify-between items-center w-full px-margin h-12 bg-surface border-b border-outline-variant docked full-width top-0 z-50">
+<div class="flex items-center gap-6">
+<span class="font-headline-md text-headline-md font-bold text-primary">OpsMind AI</span>
+<div class="flex items-center gap-3 border-l border-outline-variant pl-6">
+<span class="text-primary font-bold border-b-2 border-primary font-data-mono text-data-mono h-full flex items-center">STAGING</span>
+<span class="text-on-surface-variant font-medium font-data-mono text-data-mono hover:text-primary transition-colors cursor-pointer">Stripe/Checkout</span>
+</div>
+</div>
+<div class="flex items-center gap-6">
+<div class="flex items-center gap-2 px-3 py-1 bg-surface-container border border-outline-variant">
+<div class="w-2 h-2 rounded-full bg-primary-container"></div>
+<span class="font-data-mono-sm text-data-mono-sm text-on-surface-variant">Cluster: Prod-EU-1</span>
+</div>
+<div class="flex items-center gap-4">
+<span class="material-symbols-outlined text-primary cursor-pointer transition-opacity active:opacity-80">health_metrics</span>
+<span class="material-symbols-outlined text-primary cursor-pointer transition-opacity active:opacity-80">account_circle</span>
+</div>
+</div>
+</header>
+<!-- Degraded Status Strip -->
+<div class="bg-error-container text-on-error-container px-margin py-1 font-data-mono-sm text-data-mono-sm flex items-center gap-2">
+<span class="material-symbols-outlined text-[14px]">warning</span>
+<span>Prometheus unavailable — retry was not attempted; durable state unchanged</span>
+</div>
+<!-- Main Content Area -->
+<main class="flex-1 flex overflow-hidden">
+<!-- Left Rail: Navigation & Hypothesis -->
+<nav class="flex flex-col h-full w-[22%] bg-surface-container-low border-r border-outline-variant py-stack-lg overflow-y-auto custom-scrollbar">
+<div class="px-gutter mb-8">
+<div class="font-label-caps text-label-caps text-on-surface-variant mb-2">INCIDENT_ID</div>
+<div class="font-headline-sm text-headline-sm text-on-surface font-bold">INC-2026-0723-041</div>
+<div class="font-data-mono-sm text-data-mono-sm text-error mt-1 flex items-center gap-1">
+<span class="w-2 h-2 rounded-full bg-error"></span> SEV-2 Investigating
+                </div>
+</div>
+<!-- Tab Navigation -->
+<div class="flex flex-col gap-1 mb-8">
+<button class="flex items-center gap-3 px-gutter py-3 text-primary border-r-2 border-primary bg-surface-container-high transition-all active:scale-95">
+<span class="material-symbols-outlined">analytics</span>
+<span class="font-label-caps text-label-caps">EVIDENCE</span>
+</button>
+<button class="flex items-center gap-3 px-gutter py-3 text-on-surface-variant hover:bg-surface-container-highest transition-all active:scale-95">
+<span class="material-symbols-outlined">psychology</span>
+<span class="font-label-caps text-label-caps">HYPOTHESIS</span>
+</button>
+<button class="flex items-center gap-3 px-gutter py-3 text-on-surface-variant hover:bg-surface-container-highest transition-all active:scale-95">
+<span class="material-symbols-outlined">verified</span>
+<span class="font-label-caps text-label-caps">CONCLUSION</span>
+</button>
+<button class="flex items-center gap-3 px-gutter py-3 text-on-surface-variant hover:bg-surface-container-highest transition-all active:scale-95">
+<span class="material-symbols-outlined">terminal</span>
+<span class="font-label-caps text-label-caps">TOOLS</span>
+</button>
+</div>
+<!-- Hypothesis Card -->
+<div class="mx-gutter p-stack-lg border border-outline-variant bg-surface-container mb-8">
+<div class="font-label-caps text-label-caps text-on-surface-variant mb-3 uppercase tracking-widest">Active Hypothesis</div>
+<p class="font-body-sm text-body-sm text-on-surface mb-4 leading-relaxed">p95 latency rose after payment-router deploy</p>
+<div class="space-y-4">
+<div class="flex justify-between items-center">
+<span class="font-data-mono-sm text-data-mono-sm text-on-surface-variant">Confidence</span>
+<span class="font-data-mono text-data-mono text-primary">0.78</span>
+</div>
+<div class="w-full h-1 bg-surface-container-highest">
+<div class="h-full bg-primary-container" style="width: 78%"></div>
+</div>
+<div class="grid grid-cols-2 gap-4">
+<div>
+<span class="font-label-caps text-label-caps text-on-surface-variant block mb-1">ROUND</span>
+<span class="font-data-mono text-data-mono text-on-surface">2 / 4</span>
+</div>
+<div>
+<span class="font-label-caps text-label-caps text-on-surface-variant block mb-1">EVIDENCE</span>
+<span class="font-data-mono text-data-mono text-on-surface">3 / 4</span>
+</div>
+</div>
+</div>
+</div>
+<!-- Constraints -->
+<div class="px-gutter mb-8">
+<div class="font-label-caps text-label-caps text-on-surface-variant mb-3 uppercase tracking-widest">Session Constraints</div>
+<div class="space-y-3">
+<div class="flex justify-between border-b border-outline-variant pb-2">
+<span class="font-data-mono-sm text-data-mono-sm text-on-surface-variant">Tool calls left</span>
+<span class="font-data-mono text-data-mono text-on-surface">2</span>
+</div>
+<div class="flex justify-between border-b border-outline-variant pb-2">
+<span class="font-data-mono-sm text-data-mono-sm text-on-surface-variant">Tokens avail</span>
+<span class="font-data-mono text-data-mono text-on-surface">1,840</span>
+</div>
+<div class="flex items-center gap-2 pt-1">
+<span class="material-symbols-outlined text-[16px] text-primary">timer</span>
+<span class="font-data-mono-sm text-data-mono-sm text-on-surface">Deadline indicator: <span class="text-primary">14:45 UTC</span></span>
+</div>
+</div>
+</div>
+<div class="mt-auto px-gutter py-stack-lg border-t border-outline-variant flex flex-col gap-2">
+<button class="w-full py-3 bg-primary-container text-on-primary font-label-caps text-label-caps hover:opacity-90 transition-opacity flex items-center justify-center gap-2">
+<span class="material-symbols-outlined text-[18px]">play_arrow</span>
+                    RUN DIAGNOSTIC
+                </button>
+<div class="flex justify-around pt-4">
+<span class="material-symbols-outlined text-on-surface-variant cursor-pointer hover:text-on-surface transition-colors">settings</span>
+<span class="material-symbols-outlined text-on-surface-variant cursor-pointer hover:text-on-surface transition-colors">help</span>
+</div>
+</div>
+</nav>
+<!-- Center Spine: Evidence Spine -->
+<section class="flex-1 h-full bg-surface overflow-y-auto custom-scrollbar flex flex-col">
+<!-- Spine Header -->
+<div class="p-margin border-b border-outline-variant sticky top-0 bg-surface/90 backdrop-blur-sm z-10">
+<div class="flex justify-between items-start mb-4">
+<div>
+<h1 class="font-headline-lg text-headline-lg text-on-surface">Checkout latency regression</h1>
+<div class="flex items-center gap-4 mt-2">
+<span class="font-data-mono text-data-mono px-2 py-0.5 bg-surface-container-highest border border-outline-variant rounded">checkout-api</span>
+<span class="font-data-mono-sm text-data-mono-sm text-on-surface-variant">Start 14:03 UTC</span>
+<span class="font-data-mono-sm text-data-mono-sm text-primary">Elapsed 18m 42s</span>
+</div>
+</div>
+<button class="hairline-border p-3 hover:bg-surface-container-highest transition-colors">
+<span class="material-symbols-outlined">share</span>
+</button>
+</div>
+</div>
+<!-- Evidence Feed -->
+<div class="p-margin space-y-12">
+<!-- Event 1: Primary Discovery -->
+<article class="relative pl-8 border-l border-outline-variant">
+<div class="absolute -left-1.5 top-0 w-3 h-3 rounded-full bg-primary-container ring-4 ring-background"></div>
+<div class="flex items-center gap-2 mb-2">
+<span class="font-data-mono-sm text-data-mono-sm text-on-surface-variant">14:08:22 UTC</span>
+<span class="font-data-mono-sm text-data-mono-sm text-secondary px-2 border border-outline-variant">ID: 8f2a9c</span>
+</div>
+<div class="hairline-border bg-surface-container-low p-stack-lg rounded shadow-sm">
+<div class="flex justify-between items-center mb-4 border-b border-outline-variant pb-stack-lg">
+<div class="flex items-center gap-3">
+<span class="material-symbols-outlined text-primary">monitoring</span>
+<span class="font-data-mono text-data-mono font-bold">metrics.query/prometheus <span class="text-on-surface-variant font-normal">v1.0.0</span></span>
+</div>
+<span class="font-data-mono-sm text-data-mono-sm text-on-surface-variant">Execution: 438ms</span>
+</div>
+<!-- Latency Chart Visualization -->
+<div class="mb-6">
+<div class="flex justify-between items-end mb-2">
+<span class="font-label-caps text-label-caps text-on-surface-variant uppercase">P95 LATENCY ANALYSIS</span>
+<span class="font-data-mono-sm text-data-mono-sm"><span class="text-primary font-bold">1.84s</span> vs 612ms base</span>
+</div>
+<div class="h-32 w-full bg-surface-container-lowest border border-outline-variant relative overflow-hidden group">
+<div class="absolute inset-0 flex items-center justify-center opacity-10 pointer-events-none">
+<div class="w-full h-[1px] bg-outline-variant"></div>
+</div>
+
+</div>
+</div>
+<!-- Data Table -->
+<div class="overflow-x-auto mb-4">
+<table class="w-full font-data-mono-sm text-data-mono-sm">
+<thead class="border-b border-outline-variant">
+<tr class="text-left text-on-surface-variant">
+<th class="py-1 px-2">TIMESTAMP</th>
+<th class="py-1 px-2">SERVICE</th>
+<th class="py-1 px-2">p95 (ms)</th>
+<th class="py-1 px-2">STATUS</th>
+</tr>
+</thead>
+<tbody>
+<tr class="border-b border-outline-variant/50 hover:bg-surface-container transition-colors">
+<td class="py-1 px-2">14:08:00</td>
+<td class="py-1 px-2">checkout-api</td>
+<td class="py-1 px-2 text-primary">1842</td>
+<td class="py-1 px-2">DEGRADED</td>
+</tr>
+<tr class="border-b border-outline-variant/50 hover:bg-surface-container transition-colors bg-surface-container-lowest">
+<td class="py-1 px-2">14:07:00</td>
+<td class="py-1 px-2">checkout-api</td>
+<td class="py-1 px-2 text-primary">1798</td>
+<td class="py-1 px-2">DEGRADED</td>
+</tr>
+<tr class="border-b border-outline-variant/50 hover:bg-surface-container transition-colors">
+<td class="py-1 px-2">14:06:00</td>
+<td class="py-1 px-2">checkout-api</td>
+<td class="py-1 px-2 text-on-surface">615</td>
+<td class="py-1 px-2 text-on-surface-variant">STABLE</td>
+</tr>
+</tbody>
+</table>
+<div class="text-center py-2 text-on-surface-variant border-b border-outline-variant/50 italic">
+                                + 39 additional data points omitted
+                            </div>
+</div>
+<div class="flex justify-between items-center text-on-surface-variant">
+<div class="flex gap-4">
+<span class="font-data-mono-sm text-data-mono-sm">Citations: <span class="text-primary underline cursor-pointer">E-01</span>, <span class="text-primary underline cursor-pointer">E-02</span></span>
+</div>
+<div class="flex items-center gap-2">
+<span class="material-symbols-outlined text-[16px]">link</span>
+<a class="font-data-mono-sm text-data-mono-sm underline" href="#">manifest.json</a>
+</div>
+</div>
+</div>
+</article>
+<!-- Event 2: Deployment Linkage -->
+<article class="relative pl-8 border-l border-outline-variant">
+<div class="absolute -left-1 top-0 w-2 h-2 rounded-full bg-outline-variant ring-4 ring-background"></div>
+<div class="flex items-center gap-2 mb-2">
+<span class="font-data-mono-sm text-data-mono-sm text-on-surface-variant">14:12:05 UTC</span>
+<span class="font-data-mono-sm text-data-mono-sm text-secondary px-2 border border-outline-variant">ID: a2c14d</span>
+</div>
+<div class="hairline-border bg-surface-container-low p-stack-lg rounded">
+<div class="flex items-center gap-3">
+<span class="material-symbols-outlined text-primary">history</span>
+<span class="font-data-mono text-data-mono">deployment.lookup/k8s-events <span class="text-on-surface-variant">Found correlative rollout</span></span>
+</div>
+</div>
+</article>
+<!-- Read-only Marker -->
+<div class="py-8 flex items-center gap-4">
+<div class="flex-1 h-[1px] bg-outline-variant"></div>
+<div class="font-label-caps text-label-caps text-on-surface-variant flex items-center gap-2">
+<span class="material-symbols-outlined text-[14px]">lock</span> READ-ONLY SESSION BOUNDARY
+                    </div>
+<div class="flex-1 h-[1px] bg-outline-variant"></div>
+</div>
+</div>
+</section>
+<!-- Right Rail: Conclusion & Provenance -->
+<aside class="w-[28%] h-full bg-surface-container border-l border-outline-variant flex flex-col custom-scrollbar overflow-y-auto">
+<!-- Verdict Section -->
+<div class="p-margin border-b border-outline-variant bg-surface-container-high">
+<div class="flex justify-between items-center mb-4">
+<span class="font-label-caps text-label-caps text-primary tracking-widest uppercase">Cited Conclusion</span>
+<span class="font-data-mono text-data-mono-sm bg-primary-container/20 text-primary-container px-2 border border-primary-container/40">COMPLETE</span>
+</div>
+<div class="flex items-baseline gap-2 mb-4">
+<span class="font-headline-md text-headline-md font-bold text-on-surface">0.83</span>
+<span class="font-data-mono-sm text-data-mono-sm text-on-surface-variant">CONFIDENCE RATING</span>
+</div>
+<div class="p-stack-lg bg-surface-container-low border border-outline-variant">
+<p class="font-body-md text-body-md text-on-surface leading-relaxed italic">
+                        "Latency regression caused by thread pool exhaustion in the <span class="text-primary">payment-router</span> component. This occurred immediately following the rollout of <span class="font-data-mono text-data-mono-sm">v1.12.4</span> which introduced a synchronous I/O blocking call in the main handler."
+                    </p>
+</div>
+</div>
+<!-- Provenance & Checks -->
+<div class="p-margin space-y-8">
+<div>
+<div class="font-label-caps text-label-caps text-on-surface-variant mb-4 uppercase tracking-widest">Provenance Checks</div>
+<div class="space-y-1">
+<div class="flex justify-between items-center p-2 border border-outline-variant bg-surface-container-low">
+<span class="font-data-mono text-data-mono text-on-surface">Prometheus</span>
+<span class="material-symbols-outlined text-primary" style="font-variation-settings: 'FILL' 1;">check_circle</span>
+</div>
+<div class="flex justify-between items-center p-2 border border-outline-variant bg-surface-container-low">
+<span class="font-data-mono text-data-mono text-on-surface">Jaeger Traces</span>
+<span class="material-symbols-outlined text-primary" style="font-variation-settings: 'FILL' 1;">check_circle</span>
+</div>
+<div class="flex justify-between items-center p-2 border border-outline-variant bg-surface-container-low">
+<span class="font-data-mono text-data-mono text-on-surface">K8s API Server</span>
+<span class="material-symbols-outlined text-primary" style="font-variation-settings: 'FILL' 1;">check_circle</span>
+</div>
+</div>
+</div>
+<div>
+<div class="font-label-caps text-label-caps text-on-surface-variant mb-4 uppercase tracking-widest">Trace Correlation</div>
+<div class="p-stack-lg border border-outline-variant bg-surface-container-lowest font-data-mono text-data-mono">
+<div class="flex justify-between mb-2">
+<span class="text-on-surface-variant">Span ID:</span>
+<span class="text-primary select-all">8f2a9c-0112-9982</span>
+</div>
+<div class="flex justify-between">
+<span class="text-on-surface-variant">Trace State:</span>
+<span class="text-on-surface">sampled/confirmed</span>
+</div>
+</div>
+</div>
+<!-- Technical Specs/Metadata -->
+<div class="pt-margin border-t border-outline-variant">
+<div class="flex items-start gap-3">
+<div class="w-10 h-10 hairline-border bg-surface flex items-center justify-center">
+<span class="material-symbols-outlined text-on-surface-variant">fingerprint</span>
+</div>
+<div>
+<div class="font-label-caps text-label-caps text-on-surface-variant mb-1 uppercase">Analyst Cryptography</div>
+<div class="font-data-mono-sm text-data-mono-sm text-on-surface-variant break-all">
+                                SHA-256: 3a4f...e82d
+                            </div>
+</div>
+</div>
+</div>
+</div>
+<!-- Contextual Tooltip Placeholder -->
+<div class="mt-auto p-margin">
+<div class="bg-surface-bright/20 border border-outline-variant p-stack-lg text-body-sm text-on-surface-variant">
+<span class="material-symbols-outlined text-[16px] mr-1">info</span>
+                    Session auto-locks in 11m to preserve audit trails.
+                </div>
+</div>
+</aside>
+</main>
+<!-- Footer -->
+<footer class="flex justify-between items-center w-full px-margin h-8 bg-surface-container-lowest border-t border-outline-variant docked full-width bottom-0 z-50">
+<div class="flex items-center gap-6">
+<span class="font-label-caps text-label-caps text-secondary uppercase">OpsMind AI v2.4</span>
+<span class="font-data-mono-sm text-data-mono-sm text-on-surface-variant border-l border-outline-variant pl-4">Trace ID: 8f2a9c</span>
+</div>
+<div class="flex items-center gap-8">
+<span class="font-data-mono-sm text-data-mono-sm text-on-surface-variant">Keyboard Shortcuts (Shift+?)</span>
+<div class="flex items-center gap-2">
+<div class="w-2 h-2 rounded-full bg-primary-container"></div>
+<span class="font-data-mono-sm text-data-mono-sm text-on-surface-variant">Refresh Status: Live</span>
+</div>
+<span class="font-data-mono-sm text-data-mono-sm text-on-surface-variant border-l border-outline-variant pl-4">Data Residency: EU-West-1</span>
+</div>
+</footer>
+<!-- Micro-interaction Scripts -->
+<script>
+        document.addEventListener('DOMContentLoaded', () => {
+            // Hover effect for data rows
+            const rows = document.querySelectorAll('tr');
+            rows.forEach(row => {
+                row.addEventListener('mouseenter', () => row.classList.add('bg-surface-container-highest/20'));
+                row.addEventListener('mouseleave', () => row.classList.remove('bg-surface-container-highest/20'));
+            });
+
+            // Simulate live update indicator
+            const liveIndicator = document.querySelector('.bg-primary-container.w-2');
+            setInterval(() => {
+                liveIndicator.style.opacity = liveIndicator.style.opacity === '0.5' ? '1' : '0.5';
+            }, 1500);
+        });
+    </script>
+</body></html>

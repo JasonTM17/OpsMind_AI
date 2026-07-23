@@ -5,14 +5,20 @@ import java.time.Instant;
 import java.util.UUID;
 
 import ai.opsmind.platform.analysis.AnalysisRuntimeResponse;
+import ai.opsmind.platform.common.api.PlatformProblemException;
 import ai.opsmind.platform.investigation.domain.InvestigationCommand;
 import ai.opsmind.platform.investigation.domain.InvestigationStateMachine;
 import ai.opsmind.platform.investigation.integration.InvestigationAnalysisRequest;
 import ai.opsmind.platform.investigation.integration.InvestigationAiRuntimeClient;
 import ai.opsmind.platform.investigation.integration.InvestigationToolGatewayClient;
 
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+
 /** Bounded in-process runner. Temporal can replace this adapter without replacing the reducer. */
 public final class InvestigationOrchestrator {
+
+    private static final Logger LOGGER = LoggerFactory.getLogger(InvestigationOrchestrator.class);
 
     private final InvestigationRunStore store;
     private final InvestigationAiRuntimeClient aiRuntime;
@@ -52,11 +58,13 @@ public final class InvestigationOrchestrator {
             try {
                 response = aiRuntime.analyze(new InvestigationAnalysisRequest(
                     context.principal(), context.initialIncident(), state.runId(), state.evidenceIds(),
-                    state.rounds(), remainingRounds, remainingTokens,
+                    state.rounds(), remainingRounds, state.budget().maxTokens(), remainingTokens,
+                    state.budget().maxToolCalls(),
                     state.budget().maxToolCalls() - state.toolCalls(), state.deadlineAt()
                 ));
             }
             catch (RuntimeException exception) {
+                logDependencyFailure(state.runId(), "ai-runtime", exception);
                 return apply(state, new InvestigationCommand.Failed("AI Runtime dependency failed."));
             }
             state = apply(state, new InvestigationCommand.AnalysisReceived(response));
@@ -71,6 +79,7 @@ public final class InvestigationOrchestrator {
                     ));
                 }
                 catch (RuntimeException exception) {
+                    logDependencyFailure(state.runId(), "tool-gateway", exception);
                     return apply(state, new InvestigationCommand.Failed("Tool Gateway dependency failed."));
                 }
                 if (evidence == null) {
@@ -119,5 +128,16 @@ public final class InvestigationOrchestrator {
             case COMPLETED, ABSTAINED, BUDGET_EXCEEDED, NO_PROGRESS, FAILED -> true;
             default -> false;
         };
+    }
+
+    private void logDependencyFailure(UUID runId, String dependency, RuntimeException exception) {
+        String code = exception instanceof PlatformProblemException problem
+            ? problem.code() : "dependency.unexpected-failure";
+        LOGGER.warn(
+            "Investigation dependency failed. runId={} dependency={} code={}",
+            runId,
+            dependency,
+            code
+        );
     }
 }

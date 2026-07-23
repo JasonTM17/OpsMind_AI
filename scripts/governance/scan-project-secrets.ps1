@@ -71,6 +71,134 @@ function Test-PathContainsAnyReparsePoint {
     return $false
 }
 
+function Get-Sha256Hex {
+    param([Parameter(Mandatory = $true)][byte[]]$Bytes)
+
+    $sha256 = [Security.Cryptography.SHA256]::Create()
+    try {
+        return ([BitConverter]::ToString($sha256.ComputeHash($Bytes)) -replace '-', '').ToLowerInvariant()
+    }
+    finally {
+        $sha256.Dispose()
+    }
+}
+
+function Get-ReviewedMediaCatalog {
+    param([Parameter(Mandatory = $true)][string]$Root)
+
+    $catalog = New-Object 'Collections.Generic.Dictionary[string,object]' $pathComparer
+    $catalogFindings = @()
+    $manifestRelativePath = 'docs/media/media-manifest.json'
+    $manifestPath = Join-Path $Root ($manifestRelativePath -replace '/', [IO.Path]::DirectorySeparatorChar)
+    if (-not (Test-Path -LiteralPath $manifestPath)) {
+        return [pscustomobject]@{ Catalog = $catalog; Findings = $catalogFindings }
+    }
+    if (-not (Test-Path -LiteralPath $manifestPath -PathType Leaf) -or
+        (Test-PathContainsReparsePoint -Path $manifestPath -RepositoryRoot $Root)) {
+        $catalogFindings += [pscustomobject]@{ Path = $manifestRelativePath; Rule = 'reviewed-media-manifest-unsafe' }
+        return [pscustomobject]@{ Catalog = $catalog; Findings = $catalogFindings }
+    }
+
+    try {
+        $manifestBytes = [IO.File]::ReadAllBytes($manifestPath)
+        if ($manifestBytes.Length -gt 64KB -or $manifestBytes -contains 0) {
+            throw 'Manifest is not a bounded UTF-8 text file.'
+        }
+        $strictUtf8 = New-Object Text.UTF8Encoding($false, $true)
+        $manifest = $strictUtf8.GetString($manifestBytes) | ConvertFrom-Json
+    }
+    catch {
+        $catalogFindings += [pscustomobject]@{ Path = $manifestRelativePath; Rule = 'reviewed-media-manifest-invalid' }
+        return [pscustomobject]@{ Catalog = $catalog; Findings = $catalogFindings }
+    }
+
+    if ($manifest.schemaVersion -ne 1 -or $null -eq $manifest.media) {
+        $catalogFindings += [pscustomobject]@{ Path = $manifestRelativePath; Rule = 'reviewed-media-manifest-schema' }
+        return [pscustomobject]@{ Catalog = $catalog; Findings = $catalogFindings }
+    }
+
+    foreach ($entry in @($manifest.media)) {
+        $entryProperties = @($entry.PSObject.Properties.Name)
+        $missingRequiredProperties = @(@(
+            'path', 'sha256', 'byteSize', 'mediaType', 'width',
+            'height', 'frames', 'source', 'review'
+        ) | Where-Object { $_ -notin $entryProperties })
+        if ($missingRequiredProperties.Count -gt 0) {
+            $catalogFindings += [pscustomobject]@{ Path = $manifestRelativePath; Rule = 'reviewed-media-manifest-entry-invalid' }
+            continue
+        }
+        $normalizedPath = if ($null -ne $entry.path) { ([string]$entry.path -replace '\\', '/') } else { '' }
+        $expectedMediaType = if ($normalizedPath.EndsWith('.png', [StringComparison]::Ordinal)) {
+            'image/png'
+        }
+        elseif ($normalizedPath.EndsWith('.gif', [StringComparison]::Ordinal)) {
+            'image/gif'
+        }
+        else {
+            ''
+        }
+        $maximumBytes = if ($expectedMediaType -eq 'image/png') { 2MB } else { 10MB }
+        if ($normalizedPath -cnotmatch '^docs/media/[a-z0-9]+(?:-[a-z0-9]+)*\.(?:png|gif)$' -or
+            ([string]$entry.sha256) -cnotmatch '^[a-f0-9]{64}$' -or
+            [long]$entry.byteSize -le 0 -or [long]$entry.byteSize -gt $maximumBytes -or
+            [string]$entry.mediaType -cne $expectedMediaType -or
+            [int]$entry.width -le 0 -or [int]$entry.height -le 0 -or [int]$entry.frames -le 0 -or
+            [string]::IsNullOrWhiteSpace([string]$entry.source) -or
+            [string]::IsNullOrWhiteSpace([string]$entry.review) -or
+            $catalog.ContainsKey($normalizedPath)) {
+            $catalogFindings += [pscustomobject]@{ Path = $manifestRelativePath; Rule = 'reviewed-media-manifest-entry-invalid' }
+            continue
+        }
+        $catalog.Add($normalizedPath, $entry)
+    }
+    return [pscustomobject]@{ Catalog = $catalog; Findings = $catalogFindings }
+}
+
+function Test-ReviewedMediaBytes {
+    param(
+        [Parameter(Mandatory = $true)][string]$DisplayPath,
+        [Parameter(Mandatory = $true)][byte[]]$Bytes,
+        [Parameter(Mandatory = $true)]$Catalog
+    )
+
+    $logicalPath = ($DisplayPath -replace '\\', '/')
+    if ($logicalPath.StartsWith('git-index/', [StringComparison]::OrdinalIgnoreCase)) {
+        $logicalPath = $logicalPath.Substring('git-index/'.Length)
+    }
+    if (-not $Catalog.ContainsKey($logicalPath)) {
+        return [pscustomobject]@{ Declared = $false; Valid = $false }
+    }
+
+    $entry = $Catalog[$logicalPath]
+    $valid = $Bytes.Length -eq [long]$entry.byteSize -and
+        (Get-Sha256Hex -Bytes $Bytes) -ceq [string]$entry.sha256
+    if ($valid -and [string]$entry.mediaType -ceq 'image/png') {
+        $valid = $Bytes.Length -ge 24 -and
+            $Bytes[0] -eq 0x89 -and $Bytes[1] -eq 0x50 -and $Bytes[2] -eq 0x4E -and $Bytes[3] -eq 0x47 -and
+            $Bytes[4] -eq 0x0D -and $Bytes[5] -eq 0x0A -and $Bytes[6] -eq 0x1A -and $Bytes[7] -eq 0x0A
+        if ($valid) {
+            $width = ([int]$Bytes[16] -shl 24) -bor ([int]$Bytes[17] -shl 16) -bor
+                ([int]$Bytes[18] -shl 8) -bor [int]$Bytes[19]
+            $height = ([int]$Bytes[20] -shl 24) -bor ([int]$Bytes[21] -shl 16) -bor
+                ([int]$Bytes[22] -shl 8) -bor [int]$Bytes[23]
+            $valid = $width -eq [int]$entry.width -and $height -eq [int]$entry.height -and [int]$entry.frames -eq 1
+        }
+    }
+    elseif ($valid -and [string]$entry.mediaType -ceq 'image/gif') {
+        $signature = if ($Bytes.Length -ge 6) { [Text.Encoding]::ASCII.GetString($Bytes, 0, 6) } else { '' }
+        $valid = $Bytes.Length -ge 10 -and $signature -in @('GIF87a', 'GIF89a')
+        if ($valid) {
+            $width = [int]$Bytes[6] + (256 * [int]$Bytes[7])
+            $height = [int]$Bytes[8] + (256 * [int]$Bytes[9])
+            $valid = $width -eq [int]$entry.width -and $height -eq [int]$entry.height
+        }
+    }
+    else {
+        $valid = $false
+    }
+    return [pscustomobject]@{ Declared = $true; Valid = $valid }
+}
+
 function Get-TreeCandidateFiles {
     param(
         [Parameter(Mandatory = $true)][string]$Root,
@@ -388,6 +516,9 @@ $pathspecs = @(
 )
 $historyPathspecArguments = ' -- ' + ($pathspecs -join ' ')
 $findings = @()
+$reviewedMediaResult = Get-ReviewedMediaCatalog -Root $repositoryRoot
+$reviewedMediaCatalog = $reviewedMediaResult.Catalog
+$findings += @($reviewedMediaResult.Findings)
 
 $previousErrorActionPreference = $ErrorActionPreference
 $trackedPaths = @()
@@ -495,7 +626,8 @@ catch {
 
 $textFilesScanned = 0
 $binaryFilesSkipped = 0
-$maximumFileBytes = 5MB
+$reviewedBinaryFiles = 0
+$maximumFileBytes = 10MB
 
 try {
 foreach ($candidateFile in @($candidateFiles)) {
@@ -524,6 +656,16 @@ foreach ($candidateFile in @($candidateFiles)) {
     }
     catch {
         $findings += [pscustomobject]@{ Path = $relativePath; Rule = 'file-read-failed' }
+        continue
+    }
+    $reviewedMedia = Test-ReviewedMediaBytes -DisplayPath $relativePath -Bytes $bytes -Catalog $reviewedMediaCatalog
+    if ($reviewedMedia.Declared) {
+        if ($reviewedMedia.Valid) {
+            $reviewedBinaryFiles++
+        }
+        else {
+            $findings += [pscustomobject]@{ Path = $relativePath; Rule = 'reviewed-media-integrity-mismatch' }
+        }
         continue
     }
     if ($bytes.Length -ge 4 -and
@@ -635,8 +777,16 @@ else {
         elseif ($binaryHistoryRead.ExitCode -ne 0) {
             $findings += [pscustomobject]@{ Path = 'git-history'; Rule = 'git-binary-history-enumeration-failed' }
         }
-        elseif (@($binaryHistoryRead.Text -split '\r?\n' | Where-Object { $_ -match '^\s*-\s+-\s+' }).Count -gt 0) {
-            $findings += [pscustomobject]@{ Path = 'git-history'; Rule = 'binary-history-unscanned' }
+        else {
+            foreach ($binaryHistoryLine in @($binaryHistoryRead.Text -split '\r?\n' | Where-Object { $_ -match '^\s*-\s+-\s+' })) {
+                $binaryHistoryPath = ($binaryHistoryLine -replace '^\s*-\s+-\s+', '').Trim() -replace '\\', '/'
+                if ($binaryHistoryPath.StartsWith('"') -or -not $reviewedMediaCatalog.ContainsKey($binaryHistoryPath)) {
+                    $findings += [pscustomobject]@{
+                        Path = if ($binaryHistoryPath.StartsWith('"')) { 'git-history' } else { "git-history/$binaryHistoryPath" }
+                        Rule = 'binary-history-unscanned'
+                    }
+                }
+            }
         }
 
         try {
@@ -683,6 +833,7 @@ $lines = @(
     ('CandidateFiles={0}' -f $candidateFiles.Count),
     ('TextFilesScanned={0}' -f $textFilesScanned),
     ('BinaryFilesSkipped={0}' -f $binaryFilesSkipped),
+    ('ReviewedBinaryFiles={0}' -f $reviewedBinaryFiles),
     ('HistoryCommits={0}' -f $historyCommitCount),
     ('HistoryBytesScanned={0}' -f $historyBytesScanned),
     ('Findings={0}' -f $findings.Count)

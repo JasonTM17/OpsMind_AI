@@ -106,6 +106,8 @@ load_environment() {
             OPS_CACHE_ROOT|OPS_ARTIFACT_ROOT|OPS_DATA_ROOT|OPS_MODEL_ROOT|\
             OPS_MIN_C_FREE_GB|OPS_MIN_D_FREE_GB|OPS_MIN_WORKSPACE_FREE_GB|\
             OPERATOR_WEB_PORT|PLATFORM_API_PORT|OPSMIND_MAX_JSON_BODY_BYTES|AI_RUNTIME_MAX_JSON_BODY_BYTES|\
+            OPSMIND_DEPLOYMENT_ENVIRONMENT|\
+            OPSMIND_OPERATOR_AUTH_MODE|OPSMIND_PLATFORM_API_URL|OPSMIND_PLATFORM_API_TIMEOUT_MS|OPSMIND_PLATFORM_API_ALLOW_LOOPBACK_CLEARTEXT|\
             OPSMIND_AI_RUNTIME_CLIENT_ENABLED|OPSMIND_AI_RUNTIME_ENDPOINT|OPSMIND_AI_RUNTIME_ALLOW_LOCAL_CLEARTEXT|\
             OPSMIND_AI_RUNTIME_CONNECT_TIMEOUT|OPSMIND_AI_RUNTIME_REQUEST_TIMEOUT|OPSMIND_AI_RUNTIME_MAX_RESPONSE_BODY_BYTES|\
             AI_RUNTIME_BODY_RECEIVE_TIMEOUT_SECONDS|AI_RUNTIME_PORT|TOOL_GATEWAY_PORT|PROMETHEUS_PORT|\
@@ -114,7 +116,9 @@ load_environment() {
             SPRING_DATASOURCE_USERNAME|OPSMIND_FLYWAY_ENABLED|OPSMIND_DB_POOL_MAX|\
             OPSMIND_DB_CONNECTION_TIMEOUT_MS|MINIO_ROOT_USER|MINIO_IMAGE|OIDC_ISSUER_URL|OIDC_AUDIENCE|\
             OIDC_REQUIRED_AMR|OIDC_MAX_TOKEN_LIFETIME|OIDC_CLOCK_SKEW|OIDC_JWKS_REFRESH_MINIMUM_INTERVAL|\
-            DEEPSEEK_API_BASE_URL|AI_PROVIDER_ALLOWED_HOSTS|AI_RUNTIME_STATE_BACKEND|AI_RUNTIME_DATABASE_HOST|\
+            AI_PROVIDER|AI_FIXTURE_PROVIDER_ENABLED|DEEPSEEK_MODEL|DEEPSEEK_API_BASE_URL|AI_PROVIDER_ALLOWED_HOSTS|\
+            AI_ALLOWED_DATA_CLASSES|AI_PROVIDER_REGION|AI_EGRESS_POLICY_FILE|AI_EGRESS_POLICY_HOST_PATH|\
+            AI_INPUT_COST_USD_PER_MILLION|AI_OUTPUT_COST_USD_PER_MILLION|AI_RUNTIME_STATE_BACKEND|AI_RUNTIME_DATABASE_HOST|\
             AI_RUNTIME_DATABASE_PORT|AI_RUNTIME_DATABASE_NAME|AI_RUNTIME_DATABASE_USER|AI_RUNTIME_DB_POOL_MIN|\
             AI_RUNTIME_DB_POOL_MAX|AI_RUNTIME_DB_POOL_TIMEOUT_SECONDS|AI_RUNTIME_RESERVATION_LEASE_SECONDS|\
             TOOL_GATEWAY_DATABASE_URL|TOOL_GATEWAY_DATABASE_USER|TOOL_GATEWAY_PERSISTENCE_ENABLED|\
@@ -307,7 +311,8 @@ initialize_bounded_process_environment() {
     UV_PROJECT_ENVIRONMENT="$python_environment"
     UV_PYTHON="$required_python_version"
     UV_PYTHON_DOWNLOADS=never
-    export TMP TEMP TMPDIR NODE_OPTIONS MAVEN_OPTS UV_CACHE_DIR UV_PROJECT_ENVIRONMENT UV_PYTHON UV_PYTHON_DOWNLOADS
+    PLAYWRIGHT_BROWSERS_PATH="$cache_root/playwright"
+    export TMP TEMP TMPDIR NODE_OPTIONS MAVEN_OPTS UV_CACHE_DIR UV_PROJECT_ENVIRONMENT UV_PYTHON UV_PYTHON_DOWNLOADS PLAYWRIGHT_BROWSERS_PATH
 }
 
 resolve_python_bootstrap() {
@@ -506,6 +511,9 @@ case "$command_name" in
         run_checked node scripts/dev/install-pinned-actionlint.mjs --cache-root "$cache_root"
         run_checked corepack pnpm --config.ci=true "--config.store-dir=$pnpm_store" install --frozen-lockfile
         capacity_guard
+        run_checked corepack pnpm "--config.store-dir=$pnpm_store" --filter @opsmind/operator-web \
+            exec playwright install --with-deps chromium
+        capacity_guard
         [ -x "$uv_tool_python" ] || run_checked "$python_command" $python_selector -m venv "$uv_tool_environment"
         [ -x "$uv_executable" ] || run_checked "$uv_tool_python" -m pip install --disable-pip-version-check --cache-dir "$cache_root/pip" "uv==$uv_version"
         run_checked "$uv_executable" sync --project "$ai_runtime_root" --locked
@@ -540,6 +548,10 @@ case "$command_name" in
         run_checked env OPS_LAYOUT_EVIDENCE_PATH="$phase_evidence_root/repository-layout.txt" \
             node scripts/validation/validate-repository-layout.mjs
         run_checked corepack pnpm "--config.store-dir=$pnpm_store" --filter @opsmind/operator-web test
+        capacity_guard
+        run_checked corepack pnpm "--config.store-dir=$pnpm_store" --filter @opsmind/operator-web build
+        run_checked corepack pnpm "--config.store-dir=$pnpm_store" --filter @opsmind/operator-web test:e2e:production
+        run_checked corepack pnpm "--config.store-dir=$pnpm_store" --filter @opsmind/operator-web test:e2e
         capacity_guard
         run_checked mvn -q "-Dmaven.repo.local=$maven_repository" -f "$platform_pom" test
         capacity_guard

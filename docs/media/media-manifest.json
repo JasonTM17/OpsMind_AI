@@ -1,0 +1,27 @@
+{
+  "schemaVersion": 1,
+  "media": [
+    {
+      "path": "docs/media/operator-investigation-workspace.png",
+      "sha256": "4b4781a3d66ea5d169d463cff7304862994df018f2f57814f64010896e234b0f",
+      "byteSize": 234318,
+      "mediaType": "image/png",
+      "width": 1280,
+      "height": 1831,
+      "frames": 1,
+      "source": "Playwright Phase 7 browser verification",
+      "review": "Operator-safe projection reviewed: model prose withheld, durable citations retained, no credential or raw prompt material displayed."
+    },
+    {
+      "path": "docs/media/operator-investigation-workspace-walkthrough.gif",
+      "sha256": "23bda9fce995dd9ed03747b8a0458bc5a8cb5c09eaee108ceaed660f8cb0afc2",
+      "byteSize": 616356,
+      "mediaType": "image/gif",
+      "width": 720,
+      "height": 480,
+      "frames": 10,
+      "source": "Reviewed PNG rendered as a bounded vertical walkthrough",
+      "review": "Derived only from the reviewed operator-safe projection screenshot; optimized to remain below the repository media budget."
+    }
+  ]
+}
