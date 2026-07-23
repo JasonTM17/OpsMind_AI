@@ -175,12 +175,13 @@ function Wait-CrossServiceHttps {
         [int]$TimeoutSeconds = 90
     )
 
-    $handler = [Net.Http.HttpClientHandler]::new()
+    Add-Type -AssemblyName System.Net.Http
+    $handler = [System.Net.Http.HttpClientHandler]::new()
     $handler.ServerCertificateCustomValidationCallback = {
         param($request, $certificate, $chain, $policyErrors)
         return $true
     }
-    $client = [Net.Http.HttpClient]::new($handler)
+    $client = [System.Net.Http.HttpClient]::new($handler)
     try {
         $deadline = [DateTime]::UtcNow.AddSeconds($TimeoutSeconds)
         while ([DateTime]::UtcNow -lt $deadline) {
