@@ -35,9 +35,11 @@ documentation. Source code and canonical contracts take precedence.
 | Phase 7 | In progress; integration phases 1–4 complete. Cross-service trace, p95, CK/Stitch UI, and browser E2E exit remain blocked. |
 | Later phases | Durable workflow, RAG, remediation, complete operator UX, evaluation, and production-hardening outcomes remain pending. |
 
-Phase 7's local Operator Web checkpoint is now complete for the safe
-projection boundary; cross-service trace/p95, incident-timeline linkage, and
-the production BFF/session gate remain open.
+Phase 7's local Operator Web and fixture-backed cross-service checkpoints are
+complete for the safe projection boundary; incident-timeline linkage, live
+provider/connector conformance, and the production BFF/session gate remain
+open. The revision-bound report contains 100 warm runs and binds its git head
+and clean-tree assertion to the tested commit.
 
 Historical Phase 3/4 workstation transcripts remain local/reference evidence
 and explicitly deny release status. Revision-bound GitHub Actions evidence is
@@ -232,7 +234,7 @@ See [Security Model](./security-model.md) for the complete threat model and
 | Platform API Maven suite | Pass | Local verification, including pgJDBC `42.7.13` and V005 migration contracts |
 | `scripts/validation/validate-phase-05-ai-runtime.mjs` | Static checkpoint PASS | Exit gate remains BLOCK: active B-004 plus absent passing rotated-key synthetic smoke |
 | `scripts/validation/validate-phase-06-tool-gateway.mjs` | Durable Prometheus connector checkpoint PASS with schemas, canonical fixtures, digest/manifest/OpenAPI/source abuse checks | Phase exit BLOCK: artifact adapter, remaining connector families, tenant bulkhead, and provider-specific cancellation proof |
-| `scripts/validation/validate-phase-07-investigation-slice.mjs` | Durable Gateway/Prometheus implementation checkpoint PASS | Phase exit BLOCK: CK/Stitch UI/browser E2E and cross-service trace/p95 proof |
+| `scripts/validation/validate-phase-07-investigation-slice.mjs` | CK/Stitch/browser plus 100-warm-run revision-bound cross-service checkpoint PASS | G3 still requires live provider/connector, timeline, and BFF/session proof |
 | GitHub Actions `29987371420` | PASS on commit `ace3642`: PostgreSQL trust contracts, live Prometheus Compose query, dependency security, service suites, Keycloak, and cross-platform bootstrap | CI non-production evidence; not the Phase 7 cross-service trace or staging conformance |
 
 | Evidence | Verified result | Scope limitation |

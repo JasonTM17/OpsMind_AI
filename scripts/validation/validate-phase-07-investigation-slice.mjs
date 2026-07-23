@@ -612,6 +612,8 @@ const blockers = [
     ? crossServiceReportErrors
     : []),
 ];
+const phaseExitPass =
+  errors.length === 0 && crossServiceReportErrors.length === 0;
 const lines = [
   "OpsMind Phase 7 investigation slice validation",
   "ValidationScope=OPERATOR_WORKSPACE_CHECKPOINT",
@@ -624,7 +626,7 @@ const lines = [
   `CrossServiceReportErrors=${crossServiceReportErrors.length}`,
   `Errors=${errors.length}`,
   `CheckpointResult=${errors.length === 0 ? "PASS" : "BLOCK"}`,
-  "PhaseExit=BLOCK",
+  `PhaseExit=${phaseExitPass ? "PASS" : "BLOCK"}`,
   ...blockers.map((blocker) => `PhaseExitBlocker=${blocker}`),
   ...crossServiceReportErrors.slice(0, 50).map((error) => `CrossServiceReportError=${error}`),
   ...errors.slice(0, 50).map((error) => `Error=${error}`),

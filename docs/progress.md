@@ -462,12 +462,39 @@ Verified:
 - Phase validator: `CheckpointResult=PASS`; `PhaseExit=BLOCK` only for the
   still-missing cross-service trace and p95 benchmark evidence.
 
-Remaining:
+Historical remaining at time of the previous entry (superseded by the
+revision-bound checkpoint below):
 
 - A real capability-backed Platform â†’ AI Runtime â†’ Tool Gateway â†’
   Prometheus trace with 100 warm runs and p95 evidence.
 - Incident-timeline linkage, production BFF/session proof, and final reviewed
   screenshot/GIF media manifest.
+
+## 2026-07-23 — Revision-bound cross-service and media proof
+
+The local Phase 7 integration checkpoint now has a disposable, independently
+authenticated end-to-end harness. It provisions loopback OIDC/JWKS and
+capability keys outside Git, isolated PostgreSQL roles with forced RLS, the
+real Platform/AI Runtime/Tool Gateway adapters, and a synthetic Prometheus
+response bounded by the immutable Platform catalog.
+
+Revision `743b2c5f8d4bf8b6facc69111e34d855d3dcc163` completed 100 warm runs:
+
+- terminal status `PASS`;
+- p50/p95/max latency `776.78/1,434.60/2,586.57 ms` against a 5,000 ms p95 threshold;
+- provider observations `probe=1`, `analysis=200`, Prometheus queries `100`;
+- durable PostgreSQL state `runs=100`, `evidence=100`, `analysis=200`,
+  `toolReceipts=100`, `toolAuditEvents=100`;
+- zero prohibited log material, tagged process, disposable container, or
+  managed secret after cleanup.
+
+The report is written to ignored local state under
+`.opsmind/reports/cross-service-trace.json`; the phase validator binds its
+`gitHead` and clean-tree assertion to the revision under test. This closes the
+local fixture-backed cross-service checkpoint, not G3. A named live
+non-production connector, provider/legal conformance, incident-timeline
+linkage, production BFF/session proof, and release-scale evaluation remain
+explicit blockers.
 
 ## Unresolved Questions
 

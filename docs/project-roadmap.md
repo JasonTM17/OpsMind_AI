@@ -98,10 +98,11 @@ detection, budget terminal states, tenant/run projections, two canonical
 contracts, and two OpenAPI operations. Additive Flyway V006 persists run
 snapshots, contiguous immutable investigation events, and matching
 `investigation-audit-v1` rows with forced RLS and optimistic revision checks.
-The static validator reports `CheckpointResult=PASS` and `PhaseExit=BLOCK`; the
-PostgreSQL CI gate exercises migration, persistence, and direct SQL integrity
-tests. This is not G3: orchestration has no restart/resume semantics, events are
-not yet linked to `incident_timeline_events`; Platform now has the immutable
+The static and revision-bound validator reports `CheckpointResult=PASS` and
+`PhaseExit=PASS` for the local integration checkpoint; the PostgreSQL CI gate
+exercises migration, persistence, and direct SQL integrity tests. This is not
+G3: orchestration has no restart/resume semantics, events are not yet linked to
+`incident_timeline_events`; Platform now has the immutable
 intent catalog, tool capability issuer, and bounded OAuth workload-token adapter,
 and the non-fixture investigation AI client now re-authorizes each round's
 evidence, publishes selector-only prompts, signs the exact canonical request,
@@ -111,15 +112,17 @@ one-use capability to exact canonical bytes, sends a separate workload bearer,
 and verifies identity, provenance, bounds, and evidence digest before
 persistence. The durable Gateway and selected Prometheus implementation now
 reserve with a database-clock lease, execute HTTP outside transactions, and
-atomically finalize audit plus receipt. Revision-bound PostgreSQL/Prometheus
-evidence now passes. CK/Stitch UI/browser E2E and cross-service trace/p95
-evidence remain open.
+atomically finalize audit plus receipt. Revision-bound PostgreSQL/synthetic
+Prometheus evidence now passes for 100 warm runs with p95 below the local
+threshold. CK/Stitch UI/browser E2E also passes. G3 still requires a named live
+non-production connector, provider/legal conformance, incident-timeline
+linkage, and BFF/session proof.
 
 The local CK/Stitch operator workspace now also has unit, lint, typecheck,
 production-build, accessibility, responsive, keyboard, reduced-motion, and
 Chromium E2E proof against a versioned redacted operator projection.
-Cross-service trace/p95 evidence, incident-timeline linkage, and BFF/session
-proof remain open.
+Incident-timeline linkage, BFF/session proof, and live-provider conformance
+remain open.
 
 ## Staffing Scenarios
 
