@@ -239,6 +239,9 @@ INSERT INTO incidents (
         -StderrPath (Join-Path $runRoot 'identity.stderr.log') `
         -Environment $identityEnvironment
     Wait-CrossServiceTcp -Port $identityPort -Process $identityProcess
+    Wait-CrossServiceHttps `
+        -Uri "https://127.0.0.1:$identityPort/__opsmind/status" `
+        -Process $identityProcess
     if (-not (Test-Path -LiteralPath $capabilityJwks -PathType Leaf)) {
         throw 'Fixture identity did not publish capability JWKS.'
     }
