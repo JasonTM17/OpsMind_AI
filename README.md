@@ -224,8 +224,8 @@ node .\scripts\validation\validate-phase-07-investigation-slice.mjs
 | Identity | Keycloak 26.7 conformance passes locally and in Linux CI | Not production-authorized enterprise IdP proof |
 | Incident control | CRUD subset, rollback/concurrency, timeline and audit-chain gates pass | Full Phase 4 remains open |
 | AI Runtime | 149 offline tests plus PostgreSQL state gate pass; DeepSeek adapter defaults to `deepseek-v4-flash` | No live provider call or legal/residency approval |
-| Tool Gateway | Static contract and 24 Maven tests pass | Durable stores, real issuer/client, and live connector pending |
-| Investigation | Bounded-record checkpoint 4B passes static, fresh/upgrade, forgery, replay, authorization, and rollback gates | `PhaseExit=BLOCK`; no real clients/UI/live trace/p95 |
+| Tool Gateway | Static contract, Platform issuer conformance, workload OAuth boundary, and 29 Maven tests pass | Durable stores, execution client, and live connector pending |
+| Investigation | Bounded-record checkpoint 4B plus immutable tool-intent catalog pass | `PhaseExit=BLOCK`; identity primitives are not yet wired into real clients/UI/live trace/p95 |
 | Compose | All application images build, start, and pass health smoke in CI | Not staging/production deployment evidence |
 
 Historical local evidence marked `REFERENCE_CONFORMANCE_NOT_PRODUCTION` stays

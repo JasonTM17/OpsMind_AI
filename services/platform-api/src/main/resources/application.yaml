@@ -61,6 +61,29 @@ opsmind:
     enabled: ${OPSMIND_INVESTIGATION_V1_ENABLED:false}
     fixture: ${OPSMIND_INVESTIGATION_FIXTURE:false}
     store: ${OPSMIND_INVESTIGATION_STORE:postgres}
+  tool-gateway:
+    capability:
+      enabled: ${OPSMIND_TOOL_CAPABILITY_ISSUANCE_ENABLED:false}
+      issuer: ${OPSMIND_TOOL_CAPABILITY_ISSUER:https://platform.invalid.example}
+      audience: ${OPSMIND_TOOL_CAPABILITY_AUDIENCE:opsmind-tool-gateway}
+      authorized-party: ${OPSMIND_TOOL_CAPABILITY_AUTHORIZED_PARTY:opsmind-platform-api}
+      key-id: ${OPSMIND_TOOL_CAPABILITY_KEY_ID:}
+      private-key-path: ${OPSMIND_TOOL_CAPABILITY_PRIVATE_KEY_FILE:}
+      maximum-lifetime: ${OPSMIND_TOOL_CAPABILITY_MAX_LIFETIME:PT2M}
+    workload:
+      enabled: ${OPSMIND_TOOL_WORKLOAD_AUTH_ENABLED:false}
+      issuer: ${OPSMIND_TOOL_WORKLOAD_ISSUER:https://idp.invalid.example/opsmind}
+      token-endpoint: ${OPSMIND_TOOL_WORKLOAD_TOKEN_ENDPOINT:https://idp.invalid.example/opsmind/oauth2/token}
+      allow-local-cleartext: ${OPSMIND_TOOL_WORKLOAD_ALLOW_LOCAL_CLEARTEXT:false}
+      audience: ${OPSMIND_TOOL_WORKLOAD_AUDIENCE:opsmind-tool-gateway-workload}
+      client-id: ${OPSMIND_TOOL_WORKLOAD_CLIENT_ID:}
+      client-secret: ${OPSMIND_TOOL_WORKLOAD_CLIENT_SECRET:}
+      scope: ${OPSMIND_TOOL_WORKLOAD_SCOPE:tool.execute}
+      connect-timeout: ${OPSMIND_TOOL_WORKLOAD_CONNECT_TIMEOUT:PT2S}
+      request-timeout: ${OPSMIND_TOOL_WORKLOAD_REQUEST_TIMEOUT:PT5S}
+      refresh-skew: ${OPSMIND_TOOL_WORKLOAD_REFRESH_SKEW:PT30S}
+      maximum-token-lifetime: ${OPSMIND_TOOL_WORKLOAD_MAX_TOKEN_LIFETIME:PT5M}
+      maximum-response-body-bytes: ${OPSMIND_TOOL_WORKLOAD_MAX_RESPONSE_BODY_BYTES:16384}
   security:
     mode: ${OPSMIND_SECURITY_MODE:fail-closed}
     audience: ${OIDC_AUDIENCE:opsmind-platform-api}

@@ -16,6 +16,7 @@
   "roles": ["operator:read"],
   "max_calls": 1,
   "max_bytes": 65536,
+  "request_digest": "45e795204343e4e5dc30decd9aa73b80966abe6ba900062df09f9cd81b84a1d0",
   "nonce": "nonce-fixture-0123456789",
   "policy_version": "policy-fixture-v1"
 }

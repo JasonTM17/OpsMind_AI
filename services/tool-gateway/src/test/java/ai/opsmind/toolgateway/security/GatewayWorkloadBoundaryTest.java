@@ -55,6 +55,7 @@ class GatewayWorkloadBoundaryTest {
             null,
             URI.create("https://platform.invalid.example"),
             "opsmind-tool-gateway-workload",
+            "tool.execute",
             null,
             Duration.ofMinutes(5),
             65_536,

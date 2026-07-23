@@ -79,7 +79,8 @@ public class GatewayRuntimeConfiguration {
     DelegatedCapabilityVerifier delegatedCapabilityVerifier(
         GatewaySettings settings,
         NonceReplayStore nonceReplayStore,
-        Clock gatewayClock
+        Clock gatewayClock,
+        RequestDigester requestDigester
     ) {
         if (settings.jwkSetUri() == null) return new FailClosedCapabilityVerifier();
         NimbusJwtDecoder decoder = NimbusJwtDecoder.withJwkSetUri(settings.jwkSetUri().toString())
@@ -90,7 +91,8 @@ public class GatewayRuntimeConfiguration {
             decoder,
             nonceReplayStore,
             settings,
-            gatewayClock
+            gatewayClock,
+            requestDigester
         );
     }
 

@@ -34,6 +34,7 @@ opsmind:
     platform-caller-id: opsmind-platform-api
     workload-issuer: ${TOOL_GATEWAY_WORKLOAD_ISSUER:https://platform.invalid.example}
     workload-audience: opsmind-tool-gateway-workload
+    workload-scope: tool.execute
     workload-jwk-set-uri: ${TOOL_GATEWAY_WORKLOAD_JWK_SET_URI:}
     maximum-capability-lifetime: 5m
     maximum-request-bytes: 65536

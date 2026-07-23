@@ -3,6 +3,8 @@ package ai.opsmind.platform.analysis;
 import java.security.SecureRandom;
 import java.time.Clock;
 
+import ai.opsmind.platform.delegation.Pkcs8RsaPrivateKeyLoader;
+
 import tools.jackson.databind.ObjectMapper;
 
 import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;

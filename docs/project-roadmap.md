@@ -78,13 +78,14 @@ claimed.
 
 Student promotion is not on the Phase 15 critical path. Bounded training smoke is mandatory, while shadow/canary promotion proceeds only when the candidate beats the approved gates.
 
-Phase 6 has a deterministic Spring Tool Gateway checkpoint. Twenty-four Maven
+Phase 6 has a deterministic Spring Tool Gateway checkpoint. Twenty-nine Maven
 tests pass; the contract gate validates four Tool Gateway schemas, five fixtures,
 canonical request/evidence digests, manifest/OpenAPI ownership, source-level
 generic-executor prohibitions, dedicated workload-vs-capability token domains,
-resource-bound selectors, recursive DLP, bounded connector execution, and
-fail-closed readiness. This is not a Phase 6 exit: durable atomic nonce/receipt/
-audit/artifact adapters, Platform API capability issuer conformance, three
+exact workload scope, canonical request-body capability binding, resource-bound
+selectors, recursive DLP, bounded connector execution, and fail-closed readiness.
+Platform capability issuer conformance now passes. This is not a Phase 6 exit:
+durable atomic nonce/receipt/audit/artifact adapters, three
 fixture connector families, one live non-production read-only target, and
 provider-specific cancellation/tenant-bulkhead proof remain open.
 
@@ -97,8 +98,9 @@ snapshots, contiguous immutable investigation events, and matching
 The static validator reports `CheckpointResult=PASS` and `PhaseExit=BLOCK`; the
 PostgreSQL CI gate exercises migration, persistence, and direct SQL integrity
 tests. This is not G3: orchestration has no restart/resume semantics, events are
-not yet linked to `incident_timeline_events`, capability-backed Platform-to-AI
-Runtime/Tool Gateway clients and the selected live connector are absent, and the
+not yet linked to `incident_timeline_events`; Platform now has the immutable
+intent catalog, tool capability issuer, and bounded OAuth workload-token adapter,
+but the orchestration clients and selected live connector are absent. The
 CK/Stitch UI/browser E2E plus cross-service trace/p95 evidence remain open.
 
 ## Staffing Scenarios

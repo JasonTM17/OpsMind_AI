@@ -280,13 +280,24 @@ and AI-runtime egress boundaries.
 
 `services/tool-gateway` is a separate Spring process. The only execution route
 is `POST /internal/v1/tools/execute`; it requires a dedicated platform workload
-JWT (`aud=opsmind-tool-gateway-workload`, `token_use=workload`) and a separate
+JWT (`aud=opsmind-tool-gateway-workload`, `token_use=workload`, exact
+`scope=tool.execute`) and a separate
 one-use RS256 delegated capability (`aud=opsmind-tool-gateway`,
 `token_use=delegated_capability`). Capability claims bind the exact tenant,
 project, incident, run, composite `tool:action:schema` identifier, resource,
-role, one-call budget, nonce, policy version, and expiry. The body is
-non-authoritative and must match those claims exactly. A capability token cannot
-be used as the workload bearer token.
+role, one-call budget, nonce, policy version, expiry, and SHA-256 digest of the
+entire canonical execution request. Request binding is verified before the
+one-use nonce is claimed. The body is non-authoritative and must match those
+claims exactly. A capability token cannot be used as the workload bearer token.
+
+Platform now owns distinct capability and workload credential adapters. The
+tool capability issuer reuses only the low-level RS256 signing primitive from
+the AI capability path; its grant type, audience, token-use claim, key binding,
+and claims remain separate. The OAuth client-credentials adapter permits only a
+same-origin bounded token endpoint, uses no redirects or retries, caps the body,
+single-flights refresh, and accepts only an exact issuer/audience/token-use/
+scope/lifetime JWT. Credentials and returned bearer values are never persisted
+or rendered in configuration diagnostics.
 
 Dispatch is registry-key based and reads the checked-in manifest through
 `ToolManifestResourceLoader`; the fixture action is read-only, selector-bound,
@@ -304,9 +315,9 @@ non-production. `/health` remains process liveness and `/ready` returns `503`
 until workload/capability JWKS plus durable stores and an enabled connector are
 configured. The canonical OpenAPI route and Tool Gateway JSON Schemas are in
 `packages/contracts/`; `scripts/validation/validate-phase-06-tool-gateway.mjs`
-is a deterministic checkpoint gate. Phase 6 exit is still blocked by durable
-atomic receipt/audit/artifact wiring, Platform API issuer conformance, three
-connector families, one live non-production target, and provider-specific
+is a deterministic checkpoint gate. Platform issuer conformance now passes that
+gate. Phase 6 exit is still blocked by durable atomic receipt/audit/artifact
+wiring, three connector families, one live non-production target, and provider-specific
 cancellation/tenant-bulkhead proof.
 
 ## Investigation Orchestration (Phase 7 checkpoint)
@@ -346,8 +357,10 @@ provide object upload, hold, restore, purge, malware scanning, or residency.
 
 This checkpoint does **not** append to `incident_timeline_events` and does not
 provide workflow restart/resume semantics; the orchestrator is still synchronous
-and in-process. Fixture AI/Tool clients remain non-production. G3 therefore stays
-blocked on capability-backed clients, an allowlisted live read-only connector,
+and in-process. Fixture AI/Tool clients remain non-production. The identity
+primitives and immutable intent catalog are implemented but not yet wired into
+the orchestration ports. G3 therefore stays blocked on capability-backed clients,
+an allowlisted live read-only connector,
 incident-timeline linkage, the CK/Stitch operator experience with browser E2E,
 and cross-service trace plus p95 evidence.
 

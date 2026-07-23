@@ -7,7 +7,7 @@
   "required": [
     "iss", "sub", "aud", "iat", "exp", "jti", "azp", "token_use",
     "org_id", "project_id", "incident_id", "run_id", "actions", "resources",
-    "roles", "max_calls", "max_bytes", "nonce", "policy_version"
+    "roles", "max_calls", "max_bytes", "request_digest", "nonce", "policy_version"
   ],
   "properties": {
     "iss": { "type": "string", "format": "uri", "maxLength": 2048 },
@@ -48,6 +48,7 @@
     },
     "max_calls": { "const": 1 },
     "max_bytes": { "type": "integer", "minimum": 1, "maximum": 10485760 },
+    "request_digest": { "type": "string", "pattern": "^[a-f0-9]{64}$" },
     "nonce": { "type": "string", "minLength": 16, "maxLength": 128 },
     "policy_version": { "type": "string", "minLength": 1, "maxLength": 64 }
   }

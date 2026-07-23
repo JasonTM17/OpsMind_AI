@@ -31,7 +31,8 @@ class EvidenceNormalizerBoundaryTest {
         GatewaySettings settings = new GatewaySettings(
             URI.create("https://platform.invalid.example"), "opsmind-tool-gateway",
             "opsmind-platform-api", null, URI.create("https://platform.invalid.example"),
-            "opsmind-tool-gateway-workload", null, Duration.ofMinutes(5), 65_536, 262_144
+            "opsmind-tool-gateway-workload", "tool.execute", null,
+            Duration.ofMinutes(5), 65_536, 262_144
         );
         JsonMapper mapper = JsonMapper.builder().findAndAddModules().build();
         normalizer = new EvidenceNormalizer(mapper, settings);

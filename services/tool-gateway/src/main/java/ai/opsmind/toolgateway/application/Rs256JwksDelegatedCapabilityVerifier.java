@@ -24,17 +24,20 @@ public final class Rs256JwksDelegatedCapabilityVerifier implements DelegatedCapa
     private final NonceReplayStore nonceReplayStore;
     private final GatewaySettings settings;
     private final Clock clock;
+    private final DelegatedCapabilityRequestBinding requestBinding;
 
     public Rs256JwksDelegatedCapabilityVerifier(
         JwtDecoder jwtDecoder,
         NonceReplayStore nonceReplayStore,
         GatewaySettings settings,
-        Clock clock
+        Clock clock,
+        RequestDigester requestDigester
     ) {
         this.jwtDecoder = jwtDecoder;
         this.nonceReplayStore = nonceReplayStore;
         this.settings = settings;
         this.clock = clock;
+        this.requestBinding = new DelegatedCapabilityRequestBinding(requestDigester);
     }
 
     @Override
@@ -57,7 +60,7 @@ public final class Rs256JwksDelegatedCapabilityVerifier implements DelegatedCapa
 
         validateStandardClaims(jwt);
         VerifiedCapability capability = claims(jwt);
-        validateBodyBinding(capability, request);
+        requestBinding.validate(capability, jwt, request);
         String nonce = requiredString(jwt, "nonce", 128);
         boolean nonceClaimed;
         try {
@@ -143,27 +146,6 @@ public final class Rs256JwksDelegatedCapabilityVerifier implements DelegatedCapa
                 exception
             );
         }
-    }
-
-    private void validateBodyBinding(VerifiedCapability capability, ToolExecutionRequest request) {
-        if (!capability.subject().equals(request.actorSubject())
-            || !capability.tenantId().equals(request.tenantId())
-            || !capability.projectId().equals(request.projectId())
-            || !capability.incidentId().equals(request.incidentId())
-            || !capability.runId().equals(request.runId())
-            || !capability.actions().equals(Set.of(canonicalAction(request)))
-            || !capability.resources().equals(Set.of(request.resource()))
-            || request.resultBudget() == null
-            || request.resultBudget().maxBytes() > capability.maximumBytes()) {
-            throw denied(
-                DenialCode.CAPABILITY_SCOPE_MISMATCH,
-                "Request scope does not match the delegated capability."
-            );
-        }
-    }
-
-    private String canonicalAction(ToolExecutionRequest request) {
-        return request.tool() + ":" + request.action() + ":" + request.schemaVersion();
     }
 
     private String requiredString(Jwt jwt, String name, int maximumLength) {

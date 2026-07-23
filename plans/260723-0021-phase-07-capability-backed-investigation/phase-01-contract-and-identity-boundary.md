@@ -53,6 +53,21 @@ bodies, and one credential domain from acquiring authority in another domain.
 - [ ] Disabled/missing/partial configuration fails before a network call.
 - [ ] Unit and cross-language fixture tests pass without real secrets.
 
+## Checkpoint Evidence (2026-07-23)
+
+- Immutable catalog and one Prometheus template pass selector/digest/collision tests.
+- Tool capabilities now match the checked-in Gateway fixture and bind the full
+  canonical request digest before nonce consumption.
+- Workload OAuth uses bounded same-origin client credentials, exact identity
+  domain/scope checks, secret-safe failures, and synchronized single-flight cache.
+- Platform full suite: 163 tests, 0 failures/errors, 20 environment-gated skips.
+- Tool Gateway full suite: 29 tests, 0 failures/errors/skips.
+- Repository layout, Tool Gateway static validator, and project secret scan pass.
+
+Remaining before phase closure: publish safe selectors through the real
+investigation AI prompt and wire both credential domains into the HTTP execution
+client. Until then the feature stays disabled and fixture ports remain active.
+
 ## Rollback
 
 Disable the new client profile and retain fixture adapters. No migration occurs

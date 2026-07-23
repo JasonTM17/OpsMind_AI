@@ -1,4 +1,4 @@
-package ai.opsmind.platform.analysis;
+package ai.opsmind.platform.common.http;
 
 import java.io.ByteArrayOutputStream;
 import java.io.IOException;
@@ -10,7 +10,7 @@ import java.util.concurrent.CompletionStage;
 import java.util.concurrent.Flow;
 
 /** Collects an HTTP response body while cancelling the exchange at the byte ceiling. */
-final class BoundedResponseBodySubscriber implements HttpResponse.BodySubscriber<byte[]> {
+public final class BoundedResponseBodySubscriber implements HttpResponse.BodySubscriber<byte[]> {
 
     private final int maximumBytes;
     private final ByteArrayOutputStream buffer;
@@ -18,7 +18,7 @@ final class BoundedResponseBodySubscriber implements HttpResponse.BodySubscriber
     private Flow.Subscription subscription;
     private boolean aborted;
 
-    BoundedResponseBodySubscriber(int maximumBytes) {
+    public BoundedResponseBodySubscriber(int maximumBytes) {
         if (maximumBytes < 1) {
             throw new IllegalArgumentException("Response body limit must be positive.");
         }
@@ -43,9 +43,7 @@ final class BoundedResponseBodySubscriber implements HttpResponse.BodySubscriber
 
     @Override
     public void onNext(List<ByteBuffer> items) {
-        if (result.isDone()) {
-            return;
-        }
+        if (result.isDone()) return;
         for (ByteBuffer item : items) {
             int remaining = item.remaining();
             if (remaining > maximumBytes - buffer.size()) {
@@ -69,17 +67,9 @@ final class BoundedResponseBodySubscriber implements HttpResponse.BodySubscriber
         result.complete(buffer.toByteArray());
     }
 
-    synchronized void abort() {
+    public synchronized void abort() {
         aborted = true;
-        if (subscription != null) {
-            subscription.cancel();
-        }
+        if (subscription != null) subscription.cancel();
         result.completeExceptionally(new IOException("HTTP response collection was cancelled."));
-    }
-}
-
-final class ResponseBodyTooLargeException extends IOException {
-    ResponseBodyTooLargeException() {
-        super("HTTP response exceeded the configured byte limit.");
     }
 }
