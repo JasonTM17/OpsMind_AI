@@ -6,6 +6,7 @@ import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import java.util.List;
 import java.util.Map;
 import java.util.UUID;
+import java.time.Duration;
 
 import ai.opsmind.platform.analysis.AnalysisRuntimeResponse;
 
@@ -67,7 +68,7 @@ class InvestigationToolIntentCatalogTest {
         return new InvestigationToolInvocation(
             "metrics", "query", ARGUMENTS_DIGEST, "observability", "metrics.query", "1.0",
             resource, Map.of("service", "opsmind-api", "metric", "latency", "max_points", 3),
-            65_536, 10, "operator:read", "policy-prometheus-read-v1",
+            65_536, 10, Duration.ofSeconds(5), "operator:read", "policy-prometheus-read-v1",
             "observability.metrics.query@1"
         );
     }

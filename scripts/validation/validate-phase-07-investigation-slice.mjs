@@ -188,17 +188,57 @@ if (!capabilityBackedAiPresent) {
   errors.push("capability-backed investigation AI client contract is incomplete");
 }
 
+const toolClientPath = path.join(
+  sourceRoot, "integration", "HttpInvestigationToolGatewayClient.java",
+);
+const toolRequestPath = path.join(
+  sourceRoot, "integration", "ToolGatewayRequestCanonicalizer.java",
+);
+const toolResponsePath = path.join(
+  sourceRoot, "integration", "ToolGatewayResponseValidator.java",
+);
+const toolTransportPath = path.join(
+  sourceRoot, "integration", "DeadlineBoundedToolGatewayHttpExchange.java",
+);
+const toolFixturePath = path.join(
+  repositoryRoot, "packages", "contracts", "fixtures", "tool-gateway",
+  "investigation-tool-execution-request-v1.canonical.json",
+);
+const capabilityBackedToolFiles = [
+  toolClientPath,
+  toolRequestPath,
+  toolResponsePath,
+  toolTransportPath,
+  toolFixturePath,
+];
+const capabilityBackedToolMarkers = [
+  [toolClientPath, "workloadTokens.accessToken()"],
+  [toolClientPath, "capabilityTokens.issue(new ToolCapabilityGrant("],
+  [toolClientPath, ".header(\"Authorization\", \"Bearer \" + workloadToken)"],
+  [toolClientPath, ".header(CAPABILITY_HEADER, capabilityToken)"],
+  [toolRequestPath, "InvestigationToolInvocation invocation = catalog.resolve(intent)"],
+  [toolRequestPath, "RequestDigest.sha256(body)"],
+  [toolResponsePath, "evidenceCanonicalizer.canonicalize(evidence.content())"],
+  [toolResponsePath, "request.invocation().expectedManifestVersion()"],
+  [toolTransportPath, "httpClient.sendAsync("],
+  [sliceConfigurationPath, "new HttpInvestigationToolGatewayClient("],
+];
+const capabilityBackedToolPresent = capabilityBackedToolFiles.every(fs.existsSync)
+  && capabilityBackedToolMarkers.every(([file, marker]) =>
+    access.readSafeFile(file).includes(marker));
+if (!capabilityBackedToolPresent) {
+  errors.push("dual-credential investigation Tool Gateway client contract is incomplete");
+}
+
 const blockers = [
-  capabilityBackedAiPresent
-    ? "real Platform API capability-backed Tool Gateway client is absent"
-    : "real Platform API capability-backed AI Runtime and Tool Gateway clients are absent",
+  "durable Tool Gateway nonce, execution-receipt, and audit stores are absent",
   "selected live non-production read-only connector evidence is absent",
   "CK/Stitch operator investigation UI and browser E2E proof are absent",
   "cross-service trace and p95 benchmark evidence are absent",
 ];
 const lines = [
   "OpsMind Phase 7 investigation slice validation",
-  "ValidationScope=CAPABILITY_BACKED_AI_CHECKPOINT",
+  "ValidationScope=DUAL_CREDENTIAL_TOOL_CLIENT_CHECKPOINT",
   `JsonSchemasParsed=${schemaFiles.length}`,
   `JsonFixturesParsed=${fixtureFiles.length}`,
   `LocalReferencesResolved=${referenceCount}`,

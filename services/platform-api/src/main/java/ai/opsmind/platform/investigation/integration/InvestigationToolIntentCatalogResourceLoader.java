@@ -6,6 +6,7 @@ import java.util.Arrays;
 import java.util.HexFormat;
 import java.util.Map;
 import java.util.TreeMap;
+import java.time.Duration;
 
 import ai.opsmind.platform.common.api.RequestDigest;
 
@@ -61,7 +62,7 @@ final class InvestigationToolIntentCatalogResourceLoader {
             return new InvestigationToolInvocation(
                 value.connector(), value.operation(), digest, value.tool(), value.action(),
                 value.schemaVersion(), value.resource(), arguments, value.maximumBytes(),
-                value.maximumItems(), value.requiredRole(), value.policyVersion(),
+                value.maximumItems(), value.maximumDuration(), value.requiredRole(), value.policyVersion(),
                 value.expectedManifestVersion()
             );
         }
@@ -80,6 +81,7 @@ final class InvestigationToolIntentCatalogResourceLoader {
         Map<String, Object> arguments,
         @JsonProperty("maximum_bytes") int maximumBytes,
         @JsonProperty("maximum_items") int maximumItems,
+        @JsonProperty("maximum_duration") Duration maximumDuration,
         @JsonProperty("required_role") String requiredRole,
         @JsonProperty("policy_version") String policyVersion,
         @JsonProperty("expected_manifest_version") String expectedManifestVersion

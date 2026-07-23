@@ -1,5 +1,6 @@
 package ai.opsmind.platform.investigation.integration;
 
+import java.time.Duration;
 import java.util.Map;
 import java.util.Set;
 import java.util.regex.Pattern;
@@ -16,6 +17,7 @@ public record InvestigationToolInvocation(
     Map<String, Object> arguments,
     int maximumBytes,
     int maximumItems,
+    Duration maximumDuration,
     String requiredRole,
     String policyVersion,
     String expectedManifestVersion
@@ -37,6 +39,8 @@ public record InvestigationToolInvocation(
             || maximumPoints < 1 || maximumPoints > 100
             || maximumBytes < 1 || maximumBytes > 65_536
             || maximumItems < 1 || maximumItems > 100
+            || maximumDuration == null || maximumDuration.isNegative()
+            || maximumDuration.isZero() || maximumDuration.compareTo(Duration.ofSeconds(30)) > 0
             || !"operator:read".equals(requiredRole) || !safe(policyVersion, 64)
             || !safe(expectedManifestVersion, 128)) {
             throw new IllegalArgumentException("Investigation tool invocation is invalid.");

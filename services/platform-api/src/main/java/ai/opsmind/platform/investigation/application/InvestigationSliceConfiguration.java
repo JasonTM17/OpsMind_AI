@@ -8,6 +8,9 @@ import ai.opsmind.platform.analysis.AnalysisEvidenceResolver;
 import ai.opsmind.platform.analysis.AnalysisRequestCanonicalizer;
 import ai.opsmind.platform.analysis.AnalysisRuntimeClient;
 import ai.opsmind.platform.evidence.EvidenceContentCanonicalizer;
+import ai.opsmind.platform.delegation.ToolCapabilityProperties;
+import ai.opsmind.platform.delegation.ToolCapabilityTokenIssuer;
+import ai.opsmind.platform.delegation.WorkloadTokenProvider;
 import ai.opsmind.platform.incident.IncidentAnalysisAuthorizer;
 import ai.opsmind.platform.investigation.integration.AuthorizedInvestigationAiRuntimeClient;
 import ai.opsmind.platform.investigation.integration.FixtureInvestigationAiRuntimeClient;
@@ -15,6 +18,8 @@ import ai.opsmind.platform.investigation.integration.FixtureInvestigationToolGat
 import ai.opsmind.platform.investigation.integration.InvestigationAiRuntimeClient;
 import ai.opsmind.platform.investigation.integration.InvestigationToolGatewayClient;
 import ai.opsmind.platform.investigation.integration.InvestigationToolIntentCatalog;
+import ai.opsmind.platform.investigation.integration.HttpInvestigationToolGatewayClient;
+import ai.opsmind.platform.investigation.integration.ToolGatewayClientProperties;
 
 import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
 import org.springframework.context.annotation.Bean;
@@ -65,6 +70,24 @@ public class InvestigationSliceConfiguration {
     @ConditionalOnProperty(prefix = "opsmind.investigation", name = "fixture", havingValue = "true")
     InvestigationToolGatewayClient fixtureInvestigationToolGatewayClient() {
         return new FixtureInvestigationToolGatewayClient();
+    }
+
+    @Bean
+    @Profile("!fixture")
+    InvestigationToolGatewayClient httpInvestigationToolGatewayClient(
+        ToolGatewayClientProperties properties,
+        WorkloadTokenProvider workloadTokens,
+        ToolCapabilityTokenIssuer capabilityTokens,
+        InvestigationToolIntentCatalog catalog,
+        EvidenceContentCanonicalizer evidenceCanonicalizer,
+        ObjectMapper objectMapper,
+        ToolCapabilityProperties capabilityProperties,
+        Clock investigationClock
+    ) {
+        return new HttpInvestigationToolGatewayClient(
+            properties, workloadTokens, capabilityTokens, catalog, evidenceCanonicalizer,
+            objectMapper, capabilityProperties.maximumLifetime(), investigationClock
+        );
     }
 
     @Bean

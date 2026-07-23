@@ -40,10 +40,24 @@ only a fully verified Gateway response into `CollectedEvidence`.
 
 ## Acceptance
 
-- [ ] Unknown/mutated AI intent cannot cause HTTP.
-- [ ] Only exact catalog body bytes receive a matching capability.
-- [ ] Only a fully verified inline response becomes persisted evidence.
-- [ ] Ambiguous transport is not retried automatically.
+- [x] Unknown/mutated AI intent cannot cause HTTP.
+- [x] Only exact catalog body bytes receive a matching capability.
+- [x] Only a fully verified inline response becomes persisted evidence.
+- [x] Ambiguous transport is not retried automatically.
+
+## Evidence
+
+- `HttpInvestigationToolGatewayClient` sends one direct, no-redirect bounded
+  POST with separate workload and delegated-capability headers.
+- The shared canonical investigation request fixture is byte-equal to the
+  Platform request and accepted by the Tool Gateway request digester.
+- Boundary tests reject execution/request/content digest, manifest, target,
+  provenance, audit, truncation/artifact, item-bound, media-type, and unknown
+  field drift; documented denial codes map to sanitized dependency errors.
+- Credential acquisition and capability issuance happen only after the
+  immutable selector catalog resolves the model intent.
+- Full local verification: Platform API 190 tests with 0 failures/errors and
+  20 environment-gated skips; Tool Gateway 30 tests with 0 failures/errors.
 
 ## Rollback
 

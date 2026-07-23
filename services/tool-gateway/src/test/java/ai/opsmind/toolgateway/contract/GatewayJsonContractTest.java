@@ -49,6 +49,20 @@ class GatewayJsonContractTest {
         assertThat(response.get("evidence").size()).isEqualTo(1);
     }
 
+    @Test
+    void platformInvestigationFixtureUsesExactGatewayCanonicalBytes() throws IOException {
+        Path fixture = repositoryRoot().resolve(
+            "packages/contracts/fixtures/tool-gateway/"
+                + "investigation-tool-execution-request-v1.canonical.json"
+        );
+        byte[] canonicalBytes = Files.readString(fixture).stripTrailing()
+            .getBytes(java.nio.charset.StandardCharsets.UTF_8);
+        ToolExecutionRequest request = jsonMapper.readValue(canonicalBytes, ToolExecutionRequest.class);
+
+        assertThat(new RequestDigester(jsonMapper).digest(request))
+            .isEqualTo(RequestDigester.sha256(canonicalBytes));
+    }
+
     private Path repositoryRoot() {
         Path candidate = Path.of("").toAbsolutePath();
         while (candidate != null) {

@@ -13,6 +13,7 @@
     },
     "maximum_bytes": 65536,
     "maximum_items": 10,
+    "maximum_duration": "PT5S",
     "required_role": "operator:read",
     "policy_version": "policy-prometheus-read-v1",
     "expected_manifest_version": "observability.metrics.query@1"
