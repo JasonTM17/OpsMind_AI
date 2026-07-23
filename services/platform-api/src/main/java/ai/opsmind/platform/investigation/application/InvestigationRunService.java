@@ -64,7 +64,10 @@ public final class InvestigationRunService {
                 request.maxRounds(), request.maxToolCalls(), request.maxEvidenceItems(), request.maxTokens()
             ), now, request.deadlineAt()
         );
-        return projections.assemble(orchestrator.run(command));
+        return projections.assemble(orchestrator.run(
+            command,
+            new InvestigationExecutionContext(principal, authorized)
+        ));
     }
 
     public InvestigationRunReadModel get(

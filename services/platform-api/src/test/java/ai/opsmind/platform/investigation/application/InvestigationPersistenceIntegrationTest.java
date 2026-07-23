@@ -95,7 +95,10 @@ class InvestigationPersistenceIntegrationTest {
             new FixtureInvestigationToolGatewayClient(),
             Clock.fixed(NOW, ZoneOffset.UTC)
         );
-        InvestigationStateMachine.State completed = orchestrator.run(start(runId));
+        InvestigationCommand.Start command = start(runId);
+        InvestigationStateMachine.State completed = orchestrator.run(
+            command, InvestigationTestFixtures.context(command)
+        );
 
         InvestigationStateMachine.State rehydrated = store.require(TENANT_A, USER_A, runId);
         assertThat(rehydrated).isEqualTo(completed);

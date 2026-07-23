@@ -329,6 +329,26 @@ is the replaceable in-process runner: it calls AI and Tool Gateway ports, applie
 validated commands to the reducer, and saves each state through a run-store port.
 Phase 9 can replace the runner with Temporal without replacing the domain model.
 
+The non-fixture AI port receives the verified principal and the immutable
+incident snapshot captured by the initial authorization transaction. Before
+every model round it opens a new short authorization transaction, resolves the
+run's exact sorted evidence IDs, re-verifies canonical metric content and digest,
+and rejects truncated or non-metric records. No database transaction spans model
+network I/O. The prompt contains only redacted incident material, authorized
+metric records, remaining budgets, and public catalog selector triples; PromQL,
+targets, labels, and executable arguments remain server-owned and absent.
+
+Each round is canonicalized through the existing analysis request builder and
+receives a fresh AI capability bound to the internal actor, tenant, incident,
+run, purpose, approved classifications, exact request digest, and normalized
+per-round deadline. That deadline is the earlier of the durable run deadline and
+the configured AI-capability lifetime, so a long investigation never produces a
+body whose deadline outlives its token. The adapter delegates to the existing
+bounded `AnalysisRuntimeClient`.
+Before the reducer sees a response, it rechecks run, prompt version, token/tool
+budget, every selector against the immutable catalog, and every top-level or
+nested citation against an authorized persisted metric ID plus digest.
+
 The current local fixture permits only `metrics.query`. A final `complete`
 response becomes `COMPLETED` only when every citation references evidence already
 present in the state; otherwise it terminates as visible `ABSTAINED`. Duplicate
@@ -357,10 +377,10 @@ provide object upload, hold, restore, purge, malware scanning, or residency.
 
 This checkpoint does **not** append to `incident_timeline_events` and does not
 provide workflow restart/resume semantics; the orchestrator is still synchronous
-and in-process. Fixture AI/Tool clients remain non-production. The identity
-primitives and immutable intent catalog are implemented but not yet wired into
-the orchestration ports. G3 therefore stays blocked on capability-backed clients,
-an allowlisted live read-only connector,
+and in-process. Fixture AI/Tool clients remain non-production and profile-bound.
+The capability-backed AI orchestration port is wired; the real Tool Gateway HTTP
+port is not. G3 therefore stays blocked on that Tool Gateway client, an
+allowlisted live read-only connector,
 incident-timeline linkage, the CK/Stitch operator experience with browser E2E,
 and cross-service trace plus p95 evidence.
 

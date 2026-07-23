@@ -21,7 +21,7 @@ request.
 | Phase | Scope | Status | Depends on |
 |---|---|---|---|
 | 1 | [Contract and identity boundary](./phase-01-contract-and-identity-boundary.md) | In progress | Checkpoint 4B |
-| 2 | [Investigation AI adapter](./phase-02-investigation-ai-adapter.md) | Pending | 1 |
+| 2 | [Investigation AI adapter](./phase-02-investigation-ai-adapter.md) | Completed | 1 |
 | 3 | [Platform Tool Gateway client](./phase-03-platform-tool-gateway-client.md) | Pending | 1 |
 | 4 | [Durable Gateway and Prometheus connector](./phase-04-durable-gateway-prometheus.md) | Pending | 3 |
 | 5 | [Cross-service verification](./phase-05-cross-service-verification.md) | Pending | 2, 4 |

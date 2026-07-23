@@ -87,7 +87,10 @@ class InvestigationEvidencePersistenceIntegrationTest {
     @Test
     void persistsAuthorizesAndProtectsCanonicalEvidence() {
         UUID runId = UUID.randomUUID();
-        InvestigationStateMachine.State completed = orchestrator().run(start(runId));
+        InvestigationCommand.Start command = start(runId);
+        InvestigationStateMachine.State completed = orchestrator().run(
+            command, InvestigationTestFixtures.context(command)
+        );
         UUID evidenceId = completed.evidenceIds().iterator().next();
 
         assertThat(count("evidence_records", runId)).isEqualTo(1);

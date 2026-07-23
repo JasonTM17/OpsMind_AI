@@ -106,13 +106,15 @@ class InvestigationEvidenceReplayIntegrationTest {
     }
 
     private InvestigationStateMachine.Step waiting(UUID runId) {
-        InvestigationStateMachine.Step initial = InvestigationStateMachine.start(new InvestigationCommand.Start(
+        InvestigationCommand.Start command = new InvestigationCommand.Start(
             runId, TENANT_A, PROJECT_A, incidentId, USER_A,
             new InvestigationCommand.Budget(4, 4, 20, 8_000), NOW, NOW.plusSeconds(120)
-        ));
+        );
+        InvestigationStateMachine.Step initial = InvestigationStateMachine.start(command);
         store.create(initial);
-        AnalysisRuntimeResponse response = new FixtureInvestigationAiRuntimeClient()
-            .analyze(runId, Set.of(), 1);
+        AnalysisRuntimeResponse response = new FixtureInvestigationAiRuntimeClient().analyze(
+            InvestigationTestFixtures.analysisRequest(command, Set.of(), 1)
+        );
         InvestigationStateMachine.Step waiting = InvestigationStateMachine.apply(
             initial.state(), new InvestigationCommand.AnalysisReceived(response), NOW.plusSeconds(1)
         );
