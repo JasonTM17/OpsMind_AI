@@ -157,7 +157,7 @@ function Get-ReviewedMediaCatalog {
 function Test-ReviewedMediaBytes {
     param(
         [Parameter(Mandatory = $true)][string]$DisplayPath,
-        [Parameter(Mandatory = $true)][byte[]]$Bytes,
+        [Parameter(Mandatory = $true)][AllowEmptyCollection()][byte[]]$Bytes,
         [Parameter(Mandatory = $true)]$Catalog
     )
 

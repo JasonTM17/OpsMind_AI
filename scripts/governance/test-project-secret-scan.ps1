@@ -76,6 +76,7 @@ $extensionlessPath = Join-Path $isolatedRepository "opsmind-secret-scan-test-$su
 $utf32Path = Join-Path $isolatedRepository "utf32-canary-$suffix.conf"
 $genericCredentialPath = Join-Path $isolatedRepository "credential-canary-$suffix.conf"
 $benignTokenSourcePath = Join-Path $isolatedRepository "benign-token-source-$suffix.txt"
+$emptyTextPath = Join-Path $isolatedRepository "empty-text-$suffix.txt"
 $historyCanaryPath = Join-Path $isolatedRepository "history-canary-$suffix.txt"
 $binaryCanaryPath = Join-Path $isolatedRepository "binary-canary-$suffix.bin"
 $reviewedMediaDirectory = Join-Path $isolatedRepository 'docs\media'
@@ -110,6 +111,12 @@ try {
     Invoke-SecretScan -ScannerPath $scannerPath -RepositoryRoot $isolatedRepository `
         -EvidencePath (Join-Path $isolatedEvidenceRoot 'baseline.txt') `
         -ExpectedExitCode 0
+
+    [IO.File]::WriteAllBytes($emptyTextPath, [byte[]]@())
+    Invoke-SecretScan -ScannerPath $scannerPath -RepositoryRoot $isolatedRepository `
+        -EvidencePath (Join-Path $isolatedEvidenceRoot 'empty-text-file.txt') `
+        -ExpectedExitCode 0
+    Remove-Item -LiteralPath $emptyTextPath -Force
 
     [void](New-Item -ItemType Directory -Path $reviewedMediaDirectory -Force)
     $reviewedPngBytes = [Convert]::FromBase64String(
@@ -318,11 +325,11 @@ try {
         -EvidencePath (Join-Path $isolatedEvidenceRoot 'binary-history.txt') `
         -ExpectedExitCode 7 -ExpectedRule 'binary-history-unscanned'
 
-    Write-Output 'Project secret-scan tests: PASS (16/16)'
+    Write-Output 'Project secret-scan tests: PASS (17/17)'
 }
 finally {
     $env:OPS_ARTIFACT_ROOT = $previousArtifactRoot
-    foreach ($path in @($ignoredEnvironmentPath, $extensionlessPath, $utf32Path, $genericCredentialPath, $benignTokenSourcePath, $historyCanaryPath, $binaryCanaryPath, $stagedCanaryPath, $historicalSensitivePath, $externalArtifactCanaryPath)) {
+    foreach ($path in @($ignoredEnvironmentPath, $extensionlessPath, $utf32Path, $genericCredentialPath, $benignTokenSourcePath, $emptyTextPath, $historyCanaryPath, $binaryCanaryPath, $stagedCanaryPath, $historicalSensitivePath, $externalArtifactCanaryPath)) {
         if (Test-Path -LiteralPath $path -PathType Leaf) {
             Remove-Item -LiteralPath $path -Force
         }
