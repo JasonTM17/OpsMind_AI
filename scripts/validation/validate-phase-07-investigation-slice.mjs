@@ -144,15 +144,61 @@ if (!durablePersistencePresent) {
   errors.push("durable investigation persistence contract is incomplete");
 }
 
+const authorizedAiClientPath = path.join(
+  sourceRoot, "integration", "AuthorizedInvestigationAiRuntimeClient.java",
+);
+const analysisBoundaryPath = path.join(
+  sourceRoot, "integration", "InvestigationAnalysisBoundaryValidator.java",
+);
+const analysisPromptPath = path.join(
+  sourceRoot, "integration", "InvestigationAnalysisPromptAssembler.java",
+);
+const analysisRequestPath = path.join(
+  sourceRoot, "integration", "InvestigationAnalysisRequest.java",
+);
+const sliceConfigurationPath = path.join(
+  sourceRoot, "application", "InvestigationSliceConfiguration.java",
+);
+const capabilityBackedAiFiles = [
+  authorizedAiClientPath,
+  analysisBoundaryPath,
+  analysisPromptPath,
+  analysisRequestPath,
+  sliceConfigurationPath,
+];
+const capabilityBackedAiMarkers = [
+  [authorizedAiClientPath, "authorizer.requireEvidenceRecords("],
+  [authorizedAiClientPath, "tokenIssuer.issue(new AnalysisCapabilityGrant("],
+  [authorizedAiClientPath, "runtimeClient.analyze("],
+  [authorizedAiClientPath, "catalog.publicSelectors()"],
+  [authorizedAiClientPath, "roundDeadline(request.deadlineAt())"],
+  [analysisBoundaryPath, "response.requestedToolCalls().forEach(catalog::resolve)"],
+  [analysisBoundaryPath, "allowedCitations.get(citation.evidenceId())"],
+  [analysisPromptPath, "Do not invent evidence, PromQL"],
+  [analysisRequestPath, "int remainingTokens"],
+  [analysisRequestPath, "int remainingToolCalls"],
+  [sliceConfigurationPath, "@Profile(\"!fixture\")"],
+  [sliceConfigurationPath, "new AuthorizedInvestigationAiRuntimeClient("],
+  [sliceConfigurationPath, "capabilityProperties.maximumLifetime()"],
+];
+const capabilityBackedAiPresent = capabilityBackedAiFiles.every(fs.existsSync)
+  && capabilityBackedAiMarkers.every(([file, marker]) =>
+    access.readSafeFile(file).includes(marker));
+if (!capabilityBackedAiPresent) {
+  errors.push("capability-backed investigation AI client contract is incomplete");
+}
+
 const blockers = [
-  "real Platform API capability-backed AI Runtime and Tool Gateway clients are absent",
+  capabilityBackedAiPresent
+    ? "real Platform API capability-backed Tool Gateway client is absent"
+    : "real Platform API capability-backed AI Runtime and Tool Gateway clients are absent",
   "selected live non-production read-only connector evidence is absent",
   "CK/Stitch operator investigation UI and browser E2E proof are absent",
   "cross-service trace and p95 benchmark evidence are absent",
 ];
 const lines = [
   "OpsMind Phase 7 investigation slice validation",
-  "ValidationScope=DURABLE_PERSISTENCE_CONTRACT_CHECKPOINT",
+  "ValidationScope=CAPABILITY_BACKED_AI_CHECKPOINT",
   `JsonSchemasParsed=${schemaFiles.length}`,
   `JsonFixturesParsed=${fixtureFiles.length}`,
   `LocalReferencesResolved=${referenceCount}`,

@@ -16,7 +16,10 @@ workflow. V007 adds immutable bounded canonical evidence records, exact replay,
 authorized reads, and full transaction rollback; revision-bound CI passes its
 fresh/upgrade and 13-case PostgreSQL gate. Restart/resume remains Phase 9, and
 current investigation events are not yet appended to the incident timeline.
-Real capability-backed service clients, a live non-production connector,
+The non-fixture investigation AI port now re-authorizes every evidence set,
+assembles a selector-only bounded prompt, signs the exact canonical body, and
+reuses the existing AI Runtime transport. The capability-backed Tool Gateway
+HTTP client, a live non-production connector,
 CK/Stitch operator UI/browser E2E, cross-service tracing, and p95 evidence
 remain open, so G3 is not claimed.
 

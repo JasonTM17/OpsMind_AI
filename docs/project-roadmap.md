@@ -100,7 +100,10 @@ PostgreSQL CI gate exercises migration, persistence, and direct SQL integrity
 tests. This is not G3: orchestration has no restart/resume semantics, events are
 not yet linked to `incident_timeline_events`; Platform now has the immutable
 intent catalog, tool capability issuer, and bounded OAuth workload-token adapter,
-but the orchestration clients and selected live connector are absent. The
+and the non-fixture investigation AI client now re-authorizes each round's
+evidence, publishes selector-only prompts, signs the exact canonical request,
+and reuses the hardened AI Runtime transport. The capability-backed Tool Gateway
+HTTP client and selected live connector are still absent. The
 CK/Stitch UI/browser E2E plus cross-service trace/p95 evidence remain open.
 
 ## Staffing Scenarios

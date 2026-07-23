@@ -64,9 +64,10 @@ bodies, and one credential domain from acquiring authority in another domain.
 - Tool Gateway full suite: 29 tests, 0 failures/errors/skips.
 - Repository layout, Tool Gateway static validator, and project secret scan pass.
 
-Remaining before phase closure: publish safe selectors through the real
-investigation AI prompt and wire both credential domains into the HTTP execution
-client. Until then the feature stays disabled and fixture ports remain active.
+Safe selectors are now published through the capability-backed investigation AI
+prompt. Remaining before phase closure: wire workload bearer and delegated tool
+capability into the real Tool Gateway HTTP execution client. Until then the
+feature stays disabled and fixture ports remain profile-bound.
 
 ## Rollback
 

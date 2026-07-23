@@ -7,6 +7,7 @@ import java.util.UUID;
 import ai.opsmind.platform.analysis.AnalysisRuntimeResponse;
 import ai.opsmind.platform.investigation.domain.InvestigationCommand;
 import ai.opsmind.platform.investigation.domain.InvestigationStateMachine;
+import ai.opsmind.platform.investigation.integration.InvestigationAnalysisRequest;
 import ai.opsmind.platform.investigation.integration.InvestigationAiRuntimeClient;
 import ai.opsmind.platform.investigation.integration.InvestigationToolGatewayClient;
 
@@ -30,7 +31,11 @@ public final class InvestigationOrchestrator {
         this.clock = clock;
     }
 
-    public InvestigationStateMachine.State run(InvestigationCommand.Start command) {
+    public InvestigationStateMachine.State run(
+        InvestigationCommand.Start command,
+        InvestigationExecutionContext context
+    ) {
+        requireMatchingContext(command, context);
         InvestigationStateMachine.Step initial = InvestigationStateMachine.start(command);
         store.create(initial);
         InvestigationStateMachine.State state = initial.state();
@@ -38,9 +43,18 @@ public final class InvestigationOrchestrator {
             if (!Instant.now(clock).isBefore(state.deadlineAt())) {
                 return apply(state, new InvestigationCommand.Failed("Investigation deadline exceeded."));
             }
+            int remainingRounds = state.budget().maxRounds() - state.rounds();
+            int remainingTokens = state.budget().maxTokens() - state.totalTokens();
+            if (remainingRounds < 1 || remainingTokens < 1) {
+                return apply(state, new InvestigationCommand.Failed("Investigation analysis budget exhausted."));
+            }
             AnalysisRuntimeResponse response;
             try {
-                response = aiRuntime.analyze(state.runId(), state.evidenceIds(), state.rounds());
+                response = aiRuntime.analyze(new InvestigationAnalysisRequest(
+                    context.principal(), context.initialIncident(), state.runId(), state.evidenceIds(),
+                    state.rounds(), remainingRounds, remainingTokens,
+                    state.budget().maxToolCalls() - state.toolCalls(), state.deadlineAt()
+                ));
             }
             catch (RuntimeException exception) {
                 return apply(state, new InvestigationCommand.Failed("AI Runtime dependency failed."));
@@ -75,6 +89,19 @@ public final class InvestigationOrchestrator {
             }
         }
         return state;
+    }
+
+    private void requireMatchingContext(
+        InvestigationCommand.Start command,
+        InvestigationExecutionContext context
+    ) {
+        if (context == null
+            || !command.organizationId().equals(context.initialIncident().organizationId())
+            || !command.projectId().equals(context.initialIncident().projectId())
+            || !command.incidentId().equals(context.initialIncident().incidentId())
+            || !command.actorId().equals(context.initialIncident().actorId())) {
+            throw new IllegalArgumentException("Investigation execution context does not match the run.");
+        }
     }
 
     private InvestigationStateMachine.State apply(

@@ -8,7 +8,6 @@ import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
 import java.sql.Timestamp;
 import java.time.Instant;
-import java.util.Set;
 import java.util.UUID;
 
 import ai.opsmind.platform.analysis.AnalysisRuntimeResponse;
@@ -120,8 +119,9 @@ class InvestigationEvidenceRollbackIntegrationTest {
     private InvestigationStateMachine.Step waiting(UUID runId) {
         InvestigationStateMachine.Step initial = InvestigationStateMachine.start(start(runId));
         store.create(initial);
-        AnalysisRuntimeResponse response = new FixtureInvestigationAiRuntimeClient()
-            .analyze(runId, Set.of(), 1);
+        AnalysisRuntimeResponse response = new FixtureInvestigationAiRuntimeClient().analyze(
+            InvestigationTestFixtures.analysisRequest(start(runId), java.util.Set.of(), 1)
+        );
         InvestigationStateMachine.Step waiting = InvestigationStateMachine.apply(
             initial.state(), new InvestigationCommand.AnalysisReceived(response), NOW.plusSeconds(1)
         );

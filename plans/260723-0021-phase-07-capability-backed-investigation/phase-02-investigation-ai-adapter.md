@@ -39,12 +39,30 @@ rounds without duplicating HTTP, capability, or error-taxonomy code.
 
 ## Acceptance
 
-- [ ] The adapter reuses the existing analysis transport and signer boundary.
-- [ ] Every provider-visible evidence byte came from an authorized redacted
+- [x] The adapter reuses the existing analysis transport and signer boundary.
+- [x] Every provider-visible evidence byte came from an authorized redacted
   Platform record or the authorized incident snapshot.
-- [ ] A response cannot cite or execute anything outside supplied references and
+- [x] A response cannot cite or execute anything outside supplied references and
   catalog selectors.
-- [ ] No network call occurs after authorization/evidence/deadline failure.
+- [x] No network call occurs after authorization/evidence/deadline failure.
+
+## Checkpoint Evidence (2026-07-23)
+
+- The synchronous runner carries the initially authorized incident snapshot and
+  derives remaining round, token, and tool budgets from reducer state.
+- Every round re-authorizes the verified principal and resolves exact evidence
+  IDs inside one short transaction before prompt assembly or model I/O.
+- Prompt tests prove untrusted strings stay serialized as data and public
+  selector triples contain no PromQL, target, label, or executable argument.
+- Capability tests bind the internal actor and exact canonical request digest;
+  response checks reject unknown selectors, citation drift, nested foreign
+  citations, prompt/run drift, and provider budget overrun. Long run deadlines
+  are capped per round by the configured capability lifetime.
+- Focused adapter/runner/service tests: 15 tests, 0 failures/errors.
+- Platform full suite: 177 tests, 0 failures/errors, 20 environment-gated skips.
+- Repository layout and Phase 7 static checkpoint validators pass. Phase exit
+  remains blocked by the real Tool Gateway client, live connector, UI/E2E, and
+  cross-service trace/p95 evidence.
 
 ## Rollback
 
