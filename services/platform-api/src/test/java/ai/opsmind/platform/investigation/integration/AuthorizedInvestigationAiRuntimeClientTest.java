@@ -372,7 +372,8 @@ class AuthorizedInvestigationAiRuntimeClientTest {
             "metrics", "query", SELECTOR_DIGEST, "observability", "metrics.query", "1.0",
             "prometheus:synthetic/opsmind-api",
             Map.of("service", "opsmind-api", "metric", "latency", "max_points", 20),
-            65_536, 10, "operator:read", "policy-v1", "observability.metrics.query@1"
+            65_536, 10, Duration.ofSeconds(5), "operator:read", "policy-v1",
+            "observability.metrics.query@1"
         );
     }
 }

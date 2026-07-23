@@ -378,11 +378,24 @@ provide object upload, hold, restore, purge, malware scanning, or residency.
 This checkpoint does **not** append to `incident_timeline_events` and does not
 provide workflow restart/resume semantics; the orchestrator is still synchronous
 and in-process. Fixture AI/Tool clients remain non-production and profile-bound.
-The capability-backed AI orchestration port is wired; the real Tool Gateway HTTP
-port is not. G3 therefore stays blocked on that Tool Gateway client, an
-allowlisted live read-only connector,
-incident-timeline linkage, the CK/Stitch operator experience with browser E2E,
-and cross-service trace plus p95 evidence.
+The non-fixture Tool Gateway port resolves the model's selector through the
+immutable Platform catalog before credential acquisition. It derives stable
+execution/evidence IDs, builds canonical server-owned request bytes, and caps
+the call deadline by the run, capability TTL, and manifest duration. It sends
+one direct, no-redirect bounded POST with a workload bearer and an unrelated
+one-use delegated capability in separate headers. Ambiguous transport failures
+are not retried.
+
+Only `SUCCEEDED` or `DUPLICATE` responses with exact execution/request/content
+digests, manifest, target, audit ID, self-consistent provenance, result bounds,
+and one non-truncated inline evidence envelope become `CollectedEvidence`.
+Unknown fields, media types, statuses, denial codes, artifacts, unsafe content,
+or identity drift fail closed. A shared canonical fixture proves byte parity
+between Platform signing and Gateway digest verification.
+
+G3 stays blocked on durable Tool Gateway nonce/receipt/audit stores, an
+allowlisted live read-only connector, incident-timeline linkage, the CK/Stitch
+operator experience with browser E2E, and cross-service trace plus p95 evidence.
 
 ## Evidence Artifact Port
 

@@ -102,9 +102,12 @@ not yet linked to `incident_timeline_events`; Platform now has the immutable
 intent catalog, tool capability issuer, and bounded OAuth workload-token adapter,
 and the non-fixture investigation AI client now re-authorizes each round's
 evidence, publishes selector-only prompts, signs the exact canonical request,
-and reuses the hardened AI Runtime transport. The capability-backed Tool Gateway
-HTTP client and selected live connector are still absent. The
-CK/Stitch UI/browser E2E plus cross-service trace/p95 evidence remain open.
+and reuses the hardened AI Runtime transport. The non-fixture Tool Gateway
+client now resolves immutable selectors before credential acquisition, binds a
+one-use capability to exact canonical bytes, sends a separate workload bearer,
+and verifies identity, provenance, bounds, and evidence digest before
+persistence. Durable Gateway state, the selected live connector, CK/Stitch
+UI/browser E2E, and cross-service trace/p95 evidence remain open.
 
 ## Staffing Scenarios
 

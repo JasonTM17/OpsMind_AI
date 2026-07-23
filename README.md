@@ -18,10 +18,12 @@ fresh/upgrade and 13-case PostgreSQL gate. Restart/resume remains Phase 9, and
 current investigation events are not yet appended to the incident timeline.
 The non-fixture investigation AI port now re-authorizes every evidence set,
 assembles a selector-only bounded prompt, signs the exact canonical body, and
-reuses the existing AI Runtime transport. The capability-backed Tool Gateway
-HTTP client, a live non-production connector,
-CK/Stitch operator UI/browser E2E, cross-service tracing, and p95 evidence
-remain open, so G3 is not claimed.
+reuses the existing AI Runtime transport. The Platform Tool Gateway client
+resolves only immutable catalog selectors, derives deterministic identities,
+sends independent workload and one-use capability credentials, and accepts
+only fully verified inline evidence. Durable Gateway stores, a live
+non-production connector, CK/Stitch operator UI/browser E2E, cross-service
+tracing, and p95 evidence remain open, so G3 is not claimed.
 
 DeepSeek egress and all production credentials remain disabled by default.
 Production identity/provider/legal conformance, evidence-object lifecycle,
@@ -227,8 +229,8 @@ node .\scripts\validation\validate-phase-07-investigation-slice.mjs
 | Identity | Keycloak 26.7 conformance passes locally and in Linux CI | Not production-authorized enterprise IdP proof |
 | Incident control | CRUD subset, rollback/concurrency, timeline and audit-chain gates pass | Full Phase 4 remains open |
 | AI Runtime | 149 offline tests plus PostgreSQL state gate pass; DeepSeek adapter defaults to `deepseek-v4-flash` | No live provider call or legal/residency approval |
-| Tool Gateway | Static contract, Platform issuer conformance, workload OAuth boundary, and 29 Maven tests pass | Durable stores, execution client, and live connector pending |
-| Investigation | Bounded-record checkpoint 4B plus immutable tool-intent catalog pass | `PhaseExit=BLOCK`; identity primitives are not yet wired into real clients/UI/live trace/p95 |
+| Tool Gateway | Static contract, Platform issuer conformance, workload OAuth boundary, and dual-credential Platform execution client pass | Durable stores and live connector pending |
+| Investigation | Bounded-record checkpoint 4B, capability-backed AI rounds, and exact-bound Tool Gateway client pass | `PhaseExit=BLOCK`; live connector/UI/cross-service trace/p95 remain open |
 | Compose | All application images build, start, and pass health smoke in CI | Not staging/production deployment evidence |
 
 Historical local evidence marked `REFERENCE_CONFORMANCE_NOT_PRODUCTION` stays

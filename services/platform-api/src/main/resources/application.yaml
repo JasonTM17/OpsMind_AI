@@ -62,6 +62,13 @@ opsmind:
     fixture: ${OPSMIND_INVESTIGATION_FIXTURE:false}
     store: ${OPSMIND_INVESTIGATION_STORE:postgres}
   tool-gateway:
+    client:
+      enabled: ${OPSMIND_TOOL_GATEWAY_CLIENT_ENABLED:false}
+      endpoint: ${OPSMIND_TOOL_GATEWAY_ENDPOINT:https://tool-gateway.invalid.example/internal/v1/tools/execute}
+      allow-local-cleartext: ${OPSMIND_TOOL_GATEWAY_ALLOW_LOCAL_CLEARTEXT:false}
+      connect-timeout: ${OPSMIND_TOOL_GATEWAY_CONNECT_TIMEOUT:PT2S}
+      request-timeout: ${OPSMIND_TOOL_GATEWAY_REQUEST_TIMEOUT:PT10S}
+      maximum-response-body-bytes: ${OPSMIND_TOOL_GATEWAY_MAX_RESPONSE_BODY_BYTES:131072}
     capability:
       enabled: ${OPSMIND_TOOL_CAPABILITY_ISSUANCE_ENABLED:false}
       issuer: ${OPSMIND_TOOL_CAPABILITY_ISSUER:https://platform.invalid.example}

@@ -64,10 +64,11 @@ bodies, and one credential domain from acquiring authority in another domain.
 - Tool Gateway full suite: 29 tests, 0 failures/errors/skips.
 - Repository layout, Tool Gateway static validator, and project secret scan pass.
 
-Safe selectors are now published through the capability-backed investigation AI
-prompt. Remaining before phase closure: wire workload bearer and delegated tool
-capability into the real Tool Gateway HTTP execution client. Until then the
-feature stays disabled and fixture ports remain profile-bound.
+Safe selectors are published through the capability-backed investigation AI
+prompt. The non-fixture HTTP execution client now sends an independently
+acquired workload bearer and a one-use delegated capability bound to the exact
+canonical request. The feature remains disabled by default and fixture ports
+remain profile-bound.
 
 ## Rollback
 
