@@ -425,6 +425,10 @@ const aiRuntimeLauncherPath = path.join(
   repositoryRoot, "scripts", "validation", "cross-service",
   "run-ai-runtime.py",
 );
+const fixtureIdentityProbePath = path.join(
+  repositoryRoot, "scripts", "validation", "cross-service",
+  "probe-fixture-identity.mjs",
+);
 const operatorFiles = [
   operatorRoutePath,
   operatorSessionPath,
@@ -456,6 +460,7 @@ const operatorFiles = [
   fixtureIdentityPath,
   fixturePrometheusPath,
   aiRuntimeLauncherPath,
+  fixtureIdentityProbePath,
 ];
 const operatorMarkers = [
   [operatorRoutePath, "loadInvestigationWorkspace(await params)"],
@@ -506,13 +511,13 @@ const operatorMarkers = [
   [crossServiceHarnessPath, "CrossServiceVerification=PASS"],
   [crossServiceHarnessPath, "RemoveRunDirectory"],
   [crossServiceSupportPath, "Get-CrossServiceAvailablePorts"],
-  [crossServiceSupportPath, "Wait-CrossServiceHttps"],
   [crossServiceCleanupPath, "CrossServiceRunCleanup=PASS"],
   [crossServiceCleanupPath, "tagPattern"],
   [crossServiceFinalizePath, "CrossServiceDurableState=PASS"],
   [fixtureIdentityPath, "cross-service-identity-v1"],
   [fixturePrometheusPath, "expectedQuery"],
   [aiRuntimeLauncherPath, "AI Runtime"],
+  [fixtureIdentityProbePath, "FixtureIdentityProbe=PASS"],
 ];
 const missingOperatorFiles = operatorFiles.filter((file) => !fs.existsSync(file));
 const missingOperatorMarkers = operatorMarkers.filter(([file, marker]) =>

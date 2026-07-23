@@ -239,9 +239,17 @@ INSERT INTO incidents (
         -StderrPath (Join-Path $runRoot 'identity.stderr.log') `
         -Environment $identityEnvironment
     Wait-CrossServiceTcp -Port $identityPort -Process $identityProcess
-    Wait-CrossServiceHttps `
-        -Uri "https://127.0.0.1:$identityPort/__opsmind/status" `
-        -Process $identityProcess
+    Invoke-CrossServiceProcess -Executable $executables.Node -Arguments @(
+        (Join-Path $PSScriptRoot 'probe-fixture-identity.mjs'),
+        "--opsmind-cross-service-run-id=$runId"
+    ) -WorkingDirectory $repositoryRoot `
+        -StdoutPath (Join-Path $runRoot 'identity-probe.stdout.log') `
+        -StderrPath (Join-Path $runRoot 'identity-probe.stderr.log') `
+        -Environment @{
+            OPSMIND_IDENTITY_PROBE_URL =
+                "https://127.0.0.1:$identityPort/__opsmind/status"
+            OPSMIND_IDENTITY_PROBE_CA_FILE = $tlsCertificate
+        }
     if (-not (Test-Path -LiteralPath $capabilityJwks -PathType Leaf)) {
         throw 'Fixture identity did not publish capability JWKS.'
     }
