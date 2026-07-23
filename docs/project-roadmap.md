@@ -29,8 +29,8 @@ The detailed executable plan is [plans/260719-1747-opsmind-ai-production-platfor
 | 3 | Contracts, data, identity, and tenant foundation | G2 | In progress |
 | 4 | Incident control plane, evidence lifecycle, and audit | G2/G3 | In progress; checkpoint 4A local proof complete |
 | 5 | DeepSeek AI runtime and provider gateway | G3 | In progress; static checkpoint passed, exit gate blocked |
-| 6 | Safe Tool Gateway and read-only connectors | G3 | In progress; checkpoint PASS, PhaseExitGate BLOCK |
-| 7 | Evidence-backed incident vertical slice | G3 | In progress; durable persistence checkpoint PASS, PhaseExitGate BLOCK |
+| 6 | Safe Tool Gateway and read-only connectors | G3 | In progress; durable Prometheus checkpoint PASS, PhaseExitGate BLOCK |
+| 7 | Evidence-backed incident vertical slice | G3 | In progress; phases 1–4 complete, cross-service/UI exit BLOCK |
 | 8 | Simulator and evaluation baseline | G3/G7 | Pending |
 | 9 | Durable Temporal investigation workflow | G4 | Pending |
 | 10 | Permission-aware RAG and knowledge lifecycle | G5 | Pending |
@@ -87,10 +87,10 @@ selectors, recursive DLP, bounded connector execution, and fail-closed readiness
 Platform capability issuer conformance now passes. The dedicated Tool Gateway
 schema/roles, hashed nonce claims, fenced receipts, transactional audit
 finalization, and exact read-only Prometheus connector are implemented with
-guarded PostgreSQL and Compose conformance gates. This is not a Phase 6 exit:
-revision-bound durable/live proof, the large-evidence artifact adapter,
-remaining connector families, and provider-specific cancellation plus
-tenant-bulkhead proof remain open.
+guarded PostgreSQL and Compose conformance gates. GitHub Actions run
+`29987371420` proves the exact durable/live checkpoint. This is not a Phase 6
+exit: the large-evidence artifact adapter, remaining connector families, and
+provider-specific cancellation plus tenant-bulkhead proof remain open.
 
 Phase 7 now includes a pure command/event reducer, bounded in-process runner,
 fixture-only `metrics.query` path, cited-completion guard, duplicate/no-progress
@@ -111,9 +111,9 @@ one-use capability to exact canonical bytes, sends a separate workload bearer,
 and verifies identity, provenance, bounds, and evidence digest before
 persistence. The durable Gateway and selected Prometheus implementation now
 reserve with a database-clock lease, execute HTTP outside transactions, and
-atomically finalize audit plus receipt. Local gates pass; revision-bound
-PostgreSQL/Prometheus CI evidence, CK/Stitch UI/browser E2E, and cross-service
-trace/p95 evidence remain open.
+atomically finalize audit plus receipt. Revision-bound PostgreSQL/Prometheus
+evidence now passes. CK/Stitch UI/browser E2E and cross-service trace/p95
+evidence remain open.
 
 ## Staffing Scenarios
 

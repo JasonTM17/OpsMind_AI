@@ -31,8 +31,8 @@ documentation. Source code and canonical contracts take precedence.
 | Phase 3 | In progress; identity, tenant/RLS, persistence, and messaging substrate exists. Production-authorized IdP conformance remains open. |
 | Phase 4 | In progress; checkpoint 4A incident write ledger is locally complete. Full Phase 4 and G2/G3 are not complete. |
 | Phase 5 | In progress; provider-neutral analysis, DeepSeek adapter, egress guards, durable PostgreSQL state, V005 append-only probe audit, Platform API integration, and stream assembly exist. Static checkpoint passes; exit remains blocked by B-004 and missing rotated-key synthetic smoke. |
-| Phase 6 | In progress; fail-closed gateway plus durable PostgreSQL and live Prometheus implementation checkpoints pass locally. Revision-bound durable/live proof and broader connector exit remain blocked. |
-| Phase 7 | In progress; deterministic reducer, bounded service adapters, durable evidence persistence, Gateway receipts/audit, and exact Prometheus connector exist. Cross-service trace/live CI/UI exit remains blocked. |
+| Phase 6 | In progress; durable PostgreSQL and synthetic Prometheus checkpoint passes revision-bound CI. Artifact/broader-connector exit remains blocked. |
+| Phase 7 | In progress; integration phases 1–4 complete. Cross-service trace, p95, CK/Stitch UI, and browser E2E exit remain blocked. |
 | Later phases | Durable workflow, RAG, remediation, complete operator UX, evaluation, and production-hardening outcomes remain pending. |
 
 Historical Phase 3/4 workstation transcripts remain local/reference evidence
@@ -47,7 +47,7 @@ claimed.
 | `apps/operator-web/` | Next.js foundation page and `/api/health`; incident workflows are not implemented in the web app. |
 | `services/platform-api/` | Spring Boot control plane for OIDC identity, tenant/project access, persistence, messaging primitives, checkpoint 4A incidents, and the Phase 7 deterministic plus PostgreSQL persistence checkpoint. |
 | `services/ai-runtime/` | FastAPI bounded analysis runtime with provider-neutral contracts, DeepSeek adapter, shared PostgreSQL replay/accounting, startup/periodic capability probe, `/health` liveness, and `/ready` readiness; live egress remains disabled. |
-| `services/tool-gateway/` | Spring Boot fail-closed Tool Gateway: separated workload/delegated JWT trust, manifest registry, bounded DLP execution, dedicated PostgreSQL nonce/receipt/audit state, and exact read-only Prometheus query-range connector. Default profiles remain fail closed; durable/live revision proof remains pending. |
+| `services/tool-gateway/` | Spring Boot fail-closed Tool Gateway: separated workload/delegated JWT trust, manifest registry, bounded DLP execution, dedicated PostgreSQL nonce/receipt/audit state, and exact read-only Prometheus query-range connector. Default profiles remain fail closed; durable/live checkpoint has revision-bound CI proof. |
 | `packages/contracts/` | Canonical OpenAPI, JSON Schema, and synthetic fixtures. |
 | `scripts/dev/` | Shared command dispatcher and PowerShell/portable launchers. |
 | `scripts/storage/` | Capacity and storage-root preflight guards. |
@@ -214,6 +214,7 @@ See [Security Model](./security-model.md) for the complete threat model and
 | `scripts/validation/validate-phase-05-ai-runtime.mjs` | Static checkpoint PASS | Exit gate remains BLOCK: active B-004 plus absent passing rotated-key synthetic smoke |
 | `scripts/validation/validate-phase-06-tool-gateway.mjs` | Durable Prometheus connector checkpoint PASS with schemas, canonical fixtures, digest/manifest/OpenAPI/source abuse checks | Phase exit BLOCK: artifact adapter, remaining connector families, tenant bulkhead, and provider-specific cancellation proof |
 | `scripts/validation/validate-phase-07-investigation-slice.mjs` | Durable Gateway/Prometheus implementation checkpoint PASS | Phase exit BLOCK: CK/Stitch UI/browser E2E and cross-service trace/p95 proof |
+| GitHub Actions `29987371420` | PASS on commit `ace3642`: PostgreSQL trust contracts, live Prometheus Compose query, dependency security, service suites, Keycloak, and cross-platform bootstrap | CI non-production evidence; not the Phase 7 cross-service trace or staging conformance |
 
 | Evidence | Verified result | Scope limitation |
 |---|---|---|
