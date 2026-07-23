@@ -277,6 +277,8 @@ jobs:
     needs: [foundation, clean-bootstrap]
     runs-on: ubuntu-latest
     timeout-minutes: 20
+    env:
+      PLAYWRIGHT_BROWSERS_PATH: ${{ github.workspace }}/.opsmind/cache/playwright
     steps:
       - uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0 # v7.0.0
       - name: Initial storage preflight
@@ -295,6 +297,11 @@ jobs:
           sh scripts/storage/assert-storage-roots.sh --create-missing
       - name: Install dependencies
         run: pnpm --store-dir "$OPS_CACHE_ROOT/pnpm-store" install --frozen-lockfile
+      - name: Install revision-bound Chromium
+        run: |
+          sh scripts/storage/check-capacity.sh
+          pnpm --filter @opsmind/operator-web exec playwright install --with-deps chromium
+          sh scripts/storage/check-capacity.sh
       - name: Test, lint, typecheck, and build
         shell: bash
         run: |
@@ -310,6 +317,8 @@ jobs:
             pnpm --filter @opsmind/operator-web lint
             pnpm --filter @opsmind/operator-web typecheck
             pnpm --filter @opsmind/operator-web build
+            pnpm --filter @opsmind/operator-web test:e2e:production
+            pnpm --filter @opsmind/operator-web test:e2e
           )
           frontend_quality > "$evidence" 2>&1
           status=$?
@@ -321,7 +330,10 @@ jobs:
         if: always()
         with:
           name: frontend-quality
-          path: artifacts/verification/phase-02/frontend-quality.txt
+          path: |
+            artifacts/verification/phase-02/frontend-quality.txt
+            artifacts/verification/phase-07/operator-browser/
+            artifacts/verification/phase-07/operator-browser-production/
           if-no-files-found: error
 
   python:

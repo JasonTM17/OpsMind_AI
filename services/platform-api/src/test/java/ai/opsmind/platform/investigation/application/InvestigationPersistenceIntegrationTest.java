@@ -102,6 +102,9 @@ class InvestigationPersistenceIntegrationTest {
 
         InvestigationStateMachine.State rehydrated = store.require(TENANT_A, USER_A, runId);
         assertThat(rehydrated).isEqualTo(completed);
+        assertThat(store.requireScoped(
+            TENANT_A, PROJECT_A, incidentId, USER_A, runId
+        )).isEqualTo(completed);
         assertThat(rehydrated.status()).isEqualTo(InvestigationStateMachine.Status.COMPLETED);
         assertThat(rehydrated.eventCount()).isEqualTo(6);
         assertThat(sequenceNumbers(runId)).containsExactly(1L, 2L, 3L, 4L, 5L, 6L);
@@ -112,6 +115,16 @@ class InvestigationPersistenceIntegrationTest {
         )).isEqualTo(6);
         assertThatThrownBy(() -> store.require(TENANT_B, USER_B, runId))
             .isInstanceOf(PlatformProblemException.class)
+            .satisfies(error -> assertThat(((PlatformProblemException) error).code())
+                .isEqualTo("investigation.run-not-found"));
+        assertThatThrownBy(() -> store.requireScoped(
+            TENANT_A, UUID.randomUUID(), incidentId, USER_A, runId
+        )).isInstanceOf(PlatformProblemException.class)
+            .satisfies(error -> assertThat(((PlatformProblemException) error).code())
+                .isEqualTo("investigation.run-not-found"));
+        assertThatThrownBy(() -> store.requireScoped(
+            TENANT_A, PROJECT_A, UUID.randomUUID(), USER_A, runId
+        )).isInstanceOf(PlatformProblemException.class)
             .satisfies(error -> assertThat(((PlatformProblemException) error).code())
                 .isEqualTo("investigation.run-not-found"));
     }

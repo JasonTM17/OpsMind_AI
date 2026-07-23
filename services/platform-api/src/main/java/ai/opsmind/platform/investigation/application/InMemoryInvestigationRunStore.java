@@ -66,5 +66,28 @@ public final class InMemoryInvestigationRunStore implements InvestigationRunStor
         return state;
     }
 
+    @Override
+    public InvestigationStateMachine.State requireScoped(
+        UUID organizationId,
+        UUID projectId,
+        UUID incidentId,
+        UUID actorId,
+        UUID runId
+    ) {
+        InvestigationStateMachine.State state = require(organizationId, actorId, runId);
+        if (!projectId.equals(state.projectId()) || !incidentId.equals(state.incidentId())) {
+            throw notFound();
+        }
+        return state;
+    }
+
+    private PlatformProblemException notFound() {
+        return new PlatformProblemException(
+            HttpStatus.NOT_FOUND,
+            "investigation.run-not-found",
+            "The investigation run was not found."
+        );
+    }
+
     private record Key(UUID organizationId, UUID runId) { }
 }

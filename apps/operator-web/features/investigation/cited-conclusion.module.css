@@ -1,0 +1,233 @@
+.conclusion {
+  min-width: 0;
+  padding: var(--space-5);
+  border-left: 1px solid var(--border-subtle);
+  background: var(--surface-panel);
+}
+
+.conclusion > header {
+  display: flex;
+  align-items: start;
+  justify-content: space-between;
+  gap: var(--space-3);
+  padding-bottom: var(--space-5);
+  border-bottom: 1px solid var(--border-strong);
+}
+
+.conclusion > header p {
+  margin: 0 0 var(--space-1);
+  color: var(--accent-signal);
+  font-family: var(--font-mono);
+  font-size: 0.7rem;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+
+.conclusion h2 {
+  margin: 0;
+  color: var(--text-primary);
+  font-size: 1.35rem;
+}
+
+.conclusion h3 {
+  margin: 0;
+  color: var(--text-primary);
+  font-size: 0.86rem;
+}
+
+.conclusion > header > span {
+  padding: 0.3rem 0.45rem;
+  border: 1px solid var(--border-strong);
+  border-radius: 2px;
+  color: var(--text-secondary);
+  font-family: var(--font-mono);
+  font-size: 0.68rem;
+}
+
+.conclusion > header > span[data-complete="true"] {
+  border-color: var(--status-stable);
+  color: var(--status-stable);
+}
+
+.finding,
+.citations,
+.alternatives,
+.counterEvidence,
+.provenance,
+.correlation,
+.stopped {
+  padding: var(--space-5) 0;
+  border-bottom: 1px solid var(--border-subtle);
+}
+
+.score {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: var(--space-3);
+  margin-bottom: var(--space-5);
+}
+
+.score span {
+  color: var(--text-tertiary);
+  font-size: 0.75rem;
+}
+
+.score strong {
+  color: var(--accent-signal);
+  font-family: var(--font-mono);
+  font-size: 1.7rem;
+  font-variant-numeric: tabular-nums;
+}
+
+.finding h3 {
+  font-size: 1.05rem;
+  line-height: 1.35;
+}
+
+.finding p,
+.alternatives p,
+.counterEvidence li,
+.stopped p,
+.correlation p {
+  margin: var(--space-3) 0 0;
+  color: var(--text-secondary);
+  font-size: 0.85rem;
+  line-height: 1.55;
+}
+
+.references {
+  color: var(--text-tertiary) !important;
+  font-family: var(--font-mono);
+  font-size: 0.72rem !important;
+}
+
+.references span {
+  color: var(--accent-signal);
+}
+
+.citations ol {
+  display: grid;
+  gap: var(--space-3);
+  margin: var(--space-4) 0 0;
+  padding: 0;
+  list-style: none;
+}
+
+.citations li {
+  padding: var(--space-3);
+  border-left: 2px solid var(--accent-muted);
+  background: var(--surface-raised);
+}
+
+.citations li > span {
+  color: var(--accent-signal);
+  font-family: var(--font-mono);
+  font-size: 0.7rem;
+}
+
+.citations p {
+  margin: var(--space-2) 0;
+  color: var(--text-secondary);
+  font-size: 0.8rem;
+  line-height: 1.5;
+}
+
+.citations code {
+  display: block;
+  color: var(--text-tertiary);
+  font-family: var(--font-mono);
+  font-size: 0.66rem;
+  overflow-wrap: anywhere;
+}
+
+.alternatives > ol,
+.counterEvidence > ul {
+  display: grid;
+  gap: var(--space-3);
+  margin: var(--space-4) 0 0;
+  padding: 0;
+  list-style: none;
+}
+
+.alternatives > ol > li {
+  padding: var(--space-3);
+  border-left: 2px solid var(--border-strong);
+  background: var(--surface-raised);
+}
+
+.alternatives li > div {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: var(--space-3);
+}
+
+.alternatives h4 {
+  margin: 0;
+  color: var(--text-primary);
+  font-size: 0.84rem;
+}
+
+.alternatives strong {
+  color: var(--accent-signal);
+  font-family: var(--font-mono);
+  font-size: 0.78rem;
+}
+
+.counterEvidence > ul > li {
+  position: relative;
+  padding-left: var(--space-4);
+}
+
+.counterEvidence > ul > li::before {
+  content: "◇";
+  position: absolute;
+  left: 0;
+  color: var(--text-tertiary);
+}
+
+.provenance dl {
+  display: grid;
+  gap: var(--space-2);
+  margin: var(--space-4) 0 0;
+}
+
+.provenance dl > div {
+  display: grid;
+  grid-template-columns: minmax(6rem, 0.7fr) minmax(0, 1fr);
+  gap: var(--space-3);
+}
+
+.provenance dt {
+  color: var(--text-tertiary);
+  font-size: 0.74rem;
+}
+
+.provenance dd {
+  margin: 0;
+  color: var(--text-secondary);
+  font-family: var(--font-mono);
+  font-size: 0.72rem;
+  overflow-wrap: anywhere;
+}
+
+.correlation {
+  border-bottom: 0;
+}
+
+.correlation h3 {
+  margin-bottom: var(--space-3);
+}
+
+.stopped {
+  border-left: 2px solid var(--status-danger);
+  padding-left: var(--space-4);
+}
+
+@media (max-width: 1080px) {
+  .conclusion {
+    border-top: 1px solid var(--border-subtle);
+    border-left: 0;
+  }
+}

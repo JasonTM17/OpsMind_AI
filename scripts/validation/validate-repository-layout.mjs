@@ -18,6 +18,7 @@ const ignoredDirectories = new Set([
   ".opsmind",
   "artifacts",
   "node_modules",
+  ".venv",
   "target",
 ]);
 const expectedFiles = [

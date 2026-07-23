@@ -115,6 +115,12 @@ atomically finalize audit plus receipt. Revision-bound PostgreSQL/Prometheus
 evidence now passes. CK/Stitch UI/browser E2E and cross-service trace/p95
 evidence remain open.
 
+The local CK/Stitch operator workspace now also has unit, lint, typecheck,
+production-build, accessibility, responsive, keyboard, reduced-motion, and
+Chromium E2E proof against a versioned redacted operator projection.
+Cross-service trace/p95 evidence, incident-timeline linkage, and BFF/session
+proof remain open.
+
 ## Staffing Scenarios
 
 G0.5 selected six cross-functional contributors and a nine-month target. The

@@ -208,9 +208,18 @@ paths:
           description: Incident visible to the verified principal
           headers:
             ETag:
-              $ref: '#/components/headers/ETag'
+              $ref: '#/components/headers/ReadModelETag'
+            X-OpsMind-Projection-Class:
+              $ref: '#/components/headers/OperatorProjectionClass'
+            X-OpsMind-Redaction-Version:
+              $ref: '#/components/headers/OperatorRedactionVersion'
+            X-OpsMind-Redaction-Count:
+              $ref: '#/components/headers/OperatorRedactionCount'
           content:
             application/json:
+              schema:
+                $ref: '#/components/schemas/Incident'
+            application/vnd.opsmind.operator-projection.v1+json:
               schema:
                 $ref: '#/components/schemas/Incident'
         '400':
@@ -221,6 +230,8 @@ paths:
           $ref: '#/components/responses/Forbidden'
         '404':
           $ref: '#/components/responses/NotFound'
+        '406':
+          $ref: '#/components/responses/UnacceptableMediaType'
         '503':
           $ref: '#/components/responses/ServiceUnavailable'
   /organizations/{organizationId}/projects/{projectId}/incidents/{incidentId}/transitions:
@@ -401,8 +412,18 @@ paths:
       responses:
         '200':
           description: Authorized investigation projection
+          headers:
+            X-OpsMind-Projection-Class:
+              $ref: '#/components/headers/OperatorProjectionClass'
+            X-OpsMind-Redaction-Version:
+              $ref: '#/components/headers/OperatorRedactionVersion'
+            X-OpsMind-Redaction-Count:
+              $ref: '#/components/headers/OperatorRedactionCount'
           content:
             application/json:
+              schema:
+                $ref: '#/components/schemas/InvestigationView'
+            application/vnd.opsmind.operator-projection.v1+json:
               schema:
                 $ref: '#/components/schemas/InvestigationView'
         '401':
@@ -411,6 +432,8 @@ paths:
           $ref: '#/components/responses/Forbidden'
         '404':
           $ref: '#/components/responses/NotFound'
+        '406':
+          $ref: '#/components/responses/UnacceptableMediaType'
         '503':
           $ref: '#/components/responses/ServiceUnavailable'
 components:
@@ -512,6 +535,16 @@ components:
         minLength: 3
         maxLength: 22
         pattern: '^"[0-9]+"$'
+    ReadModelETag:
+      description: >
+        Strong resource-version ETag present on the legacy application/json
+        incident representation and omitted from the policy-versioned operator
+        representation.
+      schema:
+        type: string
+        minLength: 3
+        maxLength: 22
+        pattern: '^"[0-9]+"$'
     XOperationId:
       description: Durable UUID joining this mutation to timeline, audit, and outbox effects.
       required: true
@@ -520,6 +553,26 @@ components:
         format: uuid
         minLength: 36
         maxLength: 36
+    OperatorProjectionClass:
+      description: >
+        Present only on the vendor operator representation after typed
+        allowlisting and display projection policy enforcement.
+      schema:
+        type: string
+        const: operator-browser-safe-v1
+    OperatorRedactionVersion:
+      description: Display transformation policy applied to this representation.
+      schema:
+        type: string
+        const: display-redaction-v1
+    OperatorRedactionCount:
+      description: >
+        Number of emitted string leaves changed or withheld by display policy;
+        present only on the vendor operator representation.
+      schema:
+        type: integer
+        minimum: 0
+        maximum: 999999
   schemas:
     ProblemDetails:
       $ref: '../json-schema/common/problem-details.schema.json'
@@ -697,6 +750,12 @@ components:
             $ref: '#/components/schemas/ProblemDetails'
     UnsupportedMediaType:
       description: The request body media type is not supported
+      content:
+        application/problem+json:
+          schema:
+            $ref: '#/components/schemas/ProblemDetails'
+    UnacceptableMediaType:
+      description: The requested response representation is not available
       content:
         application/problem+json:
           schema:

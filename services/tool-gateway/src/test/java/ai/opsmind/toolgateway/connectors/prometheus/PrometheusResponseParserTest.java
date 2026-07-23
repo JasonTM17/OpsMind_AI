@@ -13,6 +13,7 @@ import ai.opsmind.toolgateway.domain.ToolDeniedException;
 
 import org.junit.jupiter.api.Test;
 
+import tools.jackson.databind.DeserializationFeature;
 import tools.jackson.databind.json.JsonMapper;
 
 class PrometheusResponseParserTest {
@@ -40,7 +41,11 @@ class PrometheusResponseParserTest {
         """;
 
     private final PrometheusResponseParser parser = new PrometheusResponseParser(
-        JsonMapper.builder().findAndAddModules().build(),
+        JsonMapper.builder()
+            .findAndAddModules()
+            .enable(DeserializationFeature.FAIL_ON_MISSING_CREATOR_PROPERTIES)
+            .enable(DeserializationFeature.FAIL_ON_NULL_CREATOR_PROPERTIES)
+            .build(),
         1,
         10
     );

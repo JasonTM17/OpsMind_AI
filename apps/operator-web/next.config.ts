@@ -9,6 +9,7 @@ const nextConfig: NextConfig = {
   outputFileTracingRoot: workspaceRoot,
   poweredByHeader: false,
   reactStrictMode: true,
+  devIndicators: false,
   turbopack: {
     root: workspaceRoot,
   },

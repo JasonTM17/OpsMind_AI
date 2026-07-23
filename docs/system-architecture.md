@@ -376,12 +376,42 @@ Before the reducer sees a response, it rechecks run, prompt version, token/tool
 budget, every selector against the immutable catalog, and every top-level or
 nested citation against an authorized persisted metric ID plus digest.
 
+### Operator projection boundary
+
+The browser does not consume the internal investigation read model directly.
+Platform exposes a versioned
+`application/vnd.opsmind.operator-projection.v1+json` representation for
+incident and investigation detail reads. The projection is a typed structural
+mapping: model identifiers become the approved adapter label, model-authored
+explanations and rationale become controlled display labels, and only the
+allowlisted `metrics.query` catalog intent can cross the browser boundary.
+`OperatorDisplayRedactor` applies Unicode normalization, control/bidi removal,
+and deterministic secret/query/prompt pattern redaction to every emitted text
+leaf. Its count is the number of changed emitted leaves, not a raw regex match
+count.
+
+Every projection response carries `X-OpsMind-Projection-Class`,
+`X-OpsMind-Redaction-Version`, and `X-OpsMind-Redaction-Count`; it is
+`Cache-Control: no-store` and varies on `Accept`. The browser accepts only the
+vendor representation and fails closed when the media type or assurance
+headers are missing or inconsistent. Legacy JSON remains available for
+non-browser callers with normal ETag semantics. Read access is authorized with
+`incident:read`, and the run lookup is scoped by organization, project,
+incident, and run in both the service and JDBC query.
+
 The current local fixture permits only `metrics.query`. A final `complete`
 response becomes `COMPLETED` only when every citation references evidence already
 present in the state; otherwise it terminates as visible `ABSTAINED`. Duplicate
 tool fingerprints, duplicate evidence, token/round/tool/evidence exhaustion,
 provider failure and no-progress are explicit terminal states. Feature flags are
 off by default.
+
+The cross-service harness uses a separate loopback `AI_PROVIDER=fixture` mode
+that speaks the same bounded DeepSeek HTTP contract and startup capability
+probe. It may receive the already-redacted incident snapshot solely to exercise
+the production Platform request shape; the normal `deepseek` provider path
+continues to allow only the approved external data classes. The fixture mode
+cannot be enabled without an explicit non-production flag.
 
 Flyway V006 adds feature-gated PostgreSQL persistence for tenant-scoped run
 snapshots plus a contiguous, immutable `investigation_run_events` ledger. Each
@@ -420,10 +450,12 @@ Unknown fields, media types, statuses, denial codes, artifacts, unsafe content,
 or identity drift fail closed. A shared canonical fixture proves byte parity
 between Platform signing and Gateway digest verification.
 
-G3 stays blocked on incident-timeline linkage, the CK/Stitch operator experience
-with browser E2E, and cross-service trace plus p95 evidence. Durable Tool Gateway
-and allowlisted synthetic Prometheus checkpoints are proven but do not by
-themselves establish the end-to-end investigation slice.
+G3 stays blocked on incident-timeline linkage, cross-service trace plus p95
+evidence, and the later BFF/session proof. The CK/Stitch operator workspace now
+has local unit, build, accessibility, responsive, and Chromium browser proof
+against the safe projection boundary. Durable Tool Gateway and allowlisted
+synthetic Prometheus checkpoints are proven but do not by themselves establish
+the end-to-end investigation slice.
 
 ## Evidence Artifact Port
 

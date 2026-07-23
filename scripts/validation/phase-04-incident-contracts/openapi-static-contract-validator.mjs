@@ -63,7 +63,7 @@ const routeContracts = [
     markers: [
       "operationId: getIncident", "oidcBearer: [incident:read]",
       "#/components/parameters/OrganizationId", "#/components/parameters/ProjectId",
-      "#/components/parameters/IncidentId", "'200':", "#/components/headers/ETag",
+      "#/components/parameters/IncidentId", "'200':", "#/components/headers/ReadModelETag",
       "'400':", "'401':", "'403':", "'404':", "'503':", "#/components/schemas/Incident",
     ],
   },

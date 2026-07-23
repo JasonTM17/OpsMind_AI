@@ -26,6 +26,28 @@ def test_provider_key_without_egress_flag_is_not_ready(monkeypatch: pytest.Monke
     assert RuntimeSettings.from_env(now=datetime.now(UTC)).provider_ready is False
 
 
+def test_fixture_provider_requires_explicit_non_production_enablement(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    monkeypatch.setenv("AI_PROVIDER", "fixture")
+    with pytest.raises(ValueError, match="AI_FIXTURE_PROVIDER_ENABLED"):
+        RuntimeSettings.from_env()
+
+    monkeypatch.setenv("AI_FIXTURE_PROVIDER_ENABLED", "true")
+    monkeypatch.setenv("OPS_ENABLE_DEEPSEEK_EGRESS", "true")
+    monkeypatch.setenv("DEEPSEEK_API_BASE_URL", "http://127.0.0.1:19090/v1")
+    monkeypatch.setenv("AI_INPUT_COST_USD_PER_MILLION", "1")
+    monkeypatch.setenv("AI_OUTPUT_COST_USD_PER_MILLION", "2")
+    monkeypatch.setenv("AI_ALLOWED_DATA_CLASSES", "redacted_metrics")
+    monkeypatch.setenv("AI_PROVIDER_REGION", "zz")
+    monkeypatch.setenv("AI_EGRESS_POLICY_FILE", "D:/config/fixture-policy.json")
+
+    settings = RuntimeSettings.from_env()
+
+    assert settings.provider == "fixture"
+    assert settings.provider_ready is True
+
+
 @pytest.mark.parametrize(
     "url",
     [

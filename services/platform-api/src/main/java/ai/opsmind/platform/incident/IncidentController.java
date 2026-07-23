@@ -13,6 +13,7 @@ import ai.opsmind.platform.common.api.CorrelationIdFilter;
 import ai.opsmind.platform.common.api.IdempotencyKey;
 import ai.opsmind.platform.common.api.OptimisticConcurrency;
 import ai.opsmind.platform.common.api.PlatformProblemException;
+import ai.opsmind.platform.common.api.OperatorProjection;
 import ai.opsmind.platform.identity.JwtPrincipalMapper;
 import ai.opsmind.platform.identity.OpsMindPrincipal;
 
@@ -32,6 +33,7 @@ import org.springframework.web.bind.annotation.RequestHeader;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
+import org.springframework.web.HttpMediaTypeNotAcceptableException;
 
 @Validated
 @RestController
@@ -75,17 +77,28 @@ public class IncidentController {
         return mutationResponse(result);
     }
 
-    @GetMapping("/{incidentId}")
-    ResponseEntity<IncidentResponse> detail(
+    @GetMapping(
+        value = "/{incidentId}",
+        produces = {MediaType.APPLICATION_JSON_VALUE, OperatorProjection.MEDIA_TYPE_VALUE}
+    )
+    ResponseEntity<?> detail(
         Authentication authentication,
         @PathVariable UUID organizationId,
         @PathVariable UUID projectId,
-        @PathVariable UUID incidentId
-    ) {
+        @PathVariable UUID incidentId,
+        @RequestHeader(name = HttpHeaders.ACCEPT, required = false) String accept
+    ) throws HttpMediaTypeNotAcceptableException {
         IncidentDetailResult result = queryService.detail(
             principal(authentication), organizationId, projectId, incidentId
         );
+        if (OperatorProjection.requested(accept)) {
+            OperatorProjection<OperatorIncidentProjection> projection =
+                OperatorIncidentProjection.from(result.incident());
+            return projection.responseBuilder().body(projection.body());
+        }
         return ResponseEntity.ok()
+            .contentType(MediaType.APPLICATION_JSON)
+            .varyBy(HttpHeaders.ACCEPT)
             .header(HttpHeaders.ETAG, result.etag())
             .body(result.incident());
     }

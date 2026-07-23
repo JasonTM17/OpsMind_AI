@@ -48,7 +48,7 @@ const asymmetricIssuer = read("services/platform-api/src/main/java/ai/opsmind/pl
 const asymmetricConfiguration = read("services/platform-api/src/main/java/ai/opsmind/platform/analysis/AnalysisCapabilityConfiguration.java");
 const requestCanonicalizer = read("services/platform-api/src/main/java/ai/opsmind/platform/analysis/AnalysisRequestCanonicalizer.java");
 const runtimeClient = read("services/platform-api/src/main/java/ai/opsmind/platform/analysis/HttpAnalysisRuntimeClient.java");
-const boundedResponse = read("services/platform-api/src/main/java/ai/opsmind/platform/analysis/BoundedResponseBodySubscriber.java");
+const boundedResponse = read("services/platform-api/src/main/java/ai/opsmind/platform/common/http/BoundedResponseBodySubscriber.java");
 const deadlineExchange = read("services/platform-api/src/main/java/ai/opsmind/platform/analysis/DeadlineBoundedAnalysisHttpExchange.java");
 const clientConfiguration = read("services/platform-api/src/main/java/ai/opsmind/platform/analysis/AnalysisRuntimeClientConfiguration.java");
 const analysisController = read("services/platform-api/src/main/java/ai/opsmind/platform/analysis/IncidentAnalysisController.java");
@@ -77,7 +77,7 @@ if (!settings.includes('"deepseek-v4-flash"') || !settings.includes('provider ==
   errors.push("DeepSeek default/allowlist guard missing");
 }
 if (!settings.includes('provider_host in self.allowed_provider_hosts') || !settings.includes('and self.egress_enabled') ||
-    !settings.includes('and bool(self.api_key)') || !settings.includes('and bool(self.allowed_data_classes)') ||
+    !settings.includes('bool(self.api_key)') || !settings.includes('and bool(self.allowed_data_classes)') ||
     !settings.includes('and _REGION_PATTERN.fullmatch(self.provider_region)') ||
     !settings.includes('and bool(self.egress_policy_file)')) {
   errors.push("provider readiness must require exact host, policy flag, key, region, policy file, and data class");
@@ -105,7 +105,7 @@ if (!asymmetricVerifier.includes('algorithms=["RS256"]') || !asymmetricParser.in
     !main.includes("RsaJwksCapabilityVerifier.from_file") || main.includes("HmacCapabilityVerifier")) {
   errors.push("AI runtime must verify strict local-JWKS RS256 capabilities without HMAC fallback");
 }
-if (!asymmetricIssuer.includes('header.put("alg", "RS256")') || !asymmetricIssuer.includes('claims.put("request_digest"') ||
+if (!asymmetricIssuer.includes("new RsaJwtSigner") || !asymmetricIssuer.includes('claims.put("request_digest"') ||
     !asymmetricConfiguration.includes("Pkcs8RsaPrivateKeyLoader")) {
   errors.push("Platform API asymmetric capability issuer or secret-mounted key loader missing");
 }
@@ -136,8 +136,10 @@ if (!tenantEgressPolicy.includes("class TenantEgressPolicy") ||
     !service.includes("self._egress_policy")) {
   errors.push("strict tenant/purpose/provider/region egress policy missing");
 }
-if (tenantEgressPolicy.includes("REDACTED_INCIDENT_SUMMARY")) {
-  errors.push("unapproved incident-summary class must not enter external egress policy");
+if (tenantEgressPolicy.includes("REDACTED_INCIDENT_SUMMARY") &&
+    (!egressPolicy.includes('settings.provider == "fixture"') ||
+      !tenantEgressPolicy.includes("allow_incident_summary"))) {
+  errors.push("incident-summary data class must remain fixture-only and explicitly gated");
 }
 if (!providerProbe.includes("class DeepSeekCapabilityProbe") ||
     !providerProbe.includes("StartupGatedAnalysisService") ||

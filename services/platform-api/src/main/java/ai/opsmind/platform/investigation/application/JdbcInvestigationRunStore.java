@@ -10,7 +10,6 @@ import ai.opsmind.platform.tenancy.TenantContextSql;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
 import org.springframework.context.annotation.Profile;
 import org.springframework.dao.DataAccessException;
-import org.springframework.dao.EmptyResultDataAccessException;
 import org.springframework.http.HttpStatus;
 import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.stereotype.Repository;
@@ -28,6 +27,7 @@ public final class JdbcInvestigationRunStore implements InvestigationRunStore {
     private final TransactionTemplate transactions;
     private final InvestigationPersistenceJsonCodec jsonCodec;
     private final InvestigationRunSqlMapper sqlMapper;
+    private final JdbcInvestigationRunReader reader;
     private final InvestigationEventLedger eventLedger;
     private final InvestigationReplayVerifier replayVerifier;
 
@@ -45,6 +45,7 @@ public final class JdbcInvestigationRunStore implements InvestigationRunStore {
         this.transactions = new TransactionTemplate(transactionManager);
         this.jsonCodec = jsonCodec;
         this.sqlMapper = sqlMapper;
+        this.reader = new JdbcInvestigationRunReader(jdbcTemplate, sqlMapper);
         this.eventLedger = eventLedger;
         this.replayVerifier = replayVerifier;
     }
@@ -103,20 +104,23 @@ public final class JdbcInvestigationRunStore implements InvestigationRunStore {
 
     @Override
     public InvestigationStateMachine.State require(UUID organizationId, UUID actorId, UUID runId) {
-        return execute(organizationId, actorId, () -> {
-            try {
-                return jdbcTemplate.queryForObject(
-                    "SELECT " + InvestigationRunSqlMapper.STATE_COLUMNS + " FROM investigation_runs "
-                        + "WHERE organization_id = ? AND run_id = ?",
-                    sqlMapper::mapState,
-                    organizationId,
-                    runId
-                );
-            }
-            catch (EmptyResultDataAccessException exception) {
-                throw notFound();
-            }
-        });
+        return execute(organizationId, actorId, () -> reader.require(
+            "WHERE organization_id = ? AND run_id = ?", organizationId, runId
+        ));
+    }
+
+    @Override
+    public InvestigationStateMachine.State requireScoped(
+        UUID organizationId,
+        UUID projectId,
+        UUID incidentId,
+        UUID actorId,
+        UUID runId
+    ) {
+        return execute(organizationId, actorId, () -> reader.require(
+            "WHERE organization_id = ? AND project_id = ? AND incident_id = ? AND run_id = ?",
+            organizationId, projectId, incidentId, runId
+        ));
     }
 
     private <T> T execute(UUID organizationId, UUID actorId, Work<T> work) {
@@ -157,12 +161,6 @@ public final class JdbcInvestigationRunStore implements InvestigationRunStore {
         return new PlatformProblemException(
             HttpStatus.CONFLICT, "investigation.run-conflict",
             "The investigation run changed before it could be persisted.", cause
-        );
-    }
-
-    private PlatformProblemException notFound() {
-        return new PlatformProblemException(
-            HttpStatus.NOT_FOUND, "investigation.run-not-found", "The investigation run was not found."
         );
     }
 

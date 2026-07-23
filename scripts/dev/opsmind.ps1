@@ -16,6 +16,9 @@ foreach ($name in @(
     'OPS_CACHE_ROOT', 'OPS_ARTIFACT_ROOT', 'OPS_DATA_ROOT', 'OPS_MODEL_ROOT',
     'OPS_MIN_C_FREE_GB', 'OPS_MIN_D_FREE_GB', 'OPS_MIN_WORKSPACE_FREE_GB',
     'OPERATOR_WEB_PORT', 'PLATFORM_API_PORT', 'OPSMIND_MAX_JSON_BODY_BYTES',
+    'OPSMIND_DEPLOYMENT_ENVIRONMENT',
+    'OPSMIND_OPERATOR_AUTH_MODE', 'OPSMIND_PLATFORM_API_URL',
+    'OPSMIND_PLATFORM_API_TIMEOUT_MS', 'OPSMIND_PLATFORM_API_ALLOW_LOOPBACK_CLEARTEXT',
     'OPSMIND_AI_RUNTIME_CLIENT_ENABLED', 'OPSMIND_AI_RUNTIME_ENDPOINT',
     'OPSMIND_AI_RUNTIME_ALLOW_LOCAL_CLEARTEXT', 'OPSMIND_AI_RUNTIME_CONNECT_TIMEOUT',
     'OPSMIND_AI_RUNTIME_REQUEST_TIMEOUT', 'OPSMIND_AI_RUNTIME_MAX_RESPONSE_BODY_BYTES',
@@ -30,7 +33,10 @@ foreach ($name in @(
     'OPSMIND_DB_CONNECTION_TIMEOUT_MS', 'MINIO_ROOT_USER', 'MINIO_IMAGE',
     'OIDC_ISSUER_URL', 'OIDC_AUDIENCE', 'OIDC_REQUIRED_AMR',
     'OIDC_MAX_TOKEN_LIFETIME', 'OIDC_CLOCK_SKEW', 'OIDC_JWKS_REFRESH_MINIMUM_INTERVAL',
-    'DEEPSEEK_API_BASE_URL', 'AI_PROVIDER_ALLOWED_HOSTS',
+    'AI_PROVIDER', 'AI_FIXTURE_PROVIDER_ENABLED', 'DEEPSEEK_MODEL',
+    'DEEPSEEK_API_BASE_URL', 'AI_PROVIDER_ALLOWED_HOSTS', 'AI_ALLOWED_DATA_CLASSES',
+    'AI_PROVIDER_REGION', 'AI_EGRESS_POLICY_FILE', 'AI_EGRESS_POLICY_HOST_PATH',
+    'AI_INPUT_COST_USD_PER_MILLION', 'AI_OUTPUT_COST_USD_PER_MILLION',
     'AI_RUNTIME_STATE_BACKEND', 'AI_RUNTIME_DATABASE_HOST',
     'AI_RUNTIME_DATABASE_PORT', 'AI_RUNTIME_DATABASE_NAME', 'AI_RUNTIME_DATABASE_USER',
     'AI_RUNTIME_DB_POOL_MIN', 'AI_RUNTIME_DB_POOL_MAX',
@@ -319,6 +325,7 @@ function Initialize-BoundedProcessEnvironment {
     $env:TEMP = $processTempRoot
     $env:TMP = $processTempRoot
     $env:TMPDIR = $processTempRoot
+    $env:PLAYWRIGHT_BROWSERS_PATH = Join-Path $cacheRoot 'playwright'
     if ([string]::IsNullOrWhiteSpace($env:NODE_OPTIONS)) {
         $env:NODE_OPTIONS = '--max-old-space-size=1536'
     }
@@ -505,6 +512,11 @@ switch ($CommandName) {
         Invoke-Checked node @('.\scripts\dev\install-pinned-actionlint.mjs', '--cache-root', $cacheRoot)
         Invoke-Checked corepack @('pnpm', '--config.ci=true', "--config.store-dir=$pnpmStore", 'install', '--frozen-lockfile')
         Invoke-CapacityGuard
+        Invoke-Checked corepack @(
+            'pnpm', "--config.store-dir=$pnpmStore", '--filter', '@opsmind/operator-web',
+            'exec', 'playwright', 'install', 'chromium'
+        )
+        Invoke-CapacityGuard
         if (-not (Test-Path -LiteralPath $uvToolPython)) {
             Invoke-Checked $pythonBootstrap.Executable ($pythonBootstrap.Arguments + @('-m', 'venv', $uvToolEnvironment))
         }
@@ -549,6 +561,10 @@ switch ($CommandName) {
         Invoke-CapacityGuard
         Invoke-RepositoryLayoutValidation
         Invoke-Checked corepack @('pnpm', "--config.store-dir=$pnpmStore", '--filter', '@opsmind/operator-web', 'test')
+        Invoke-CapacityGuard
+        Invoke-Checked corepack @('pnpm', "--config.store-dir=$pnpmStore", '--filter', '@opsmind/operator-web', 'build')
+        Invoke-Checked corepack @('pnpm', "--config.store-dir=$pnpmStore", '--filter', '@opsmind/operator-web', 'test:e2e:production')
+        Invoke-Checked corepack @('pnpm', "--config.store-dir=$pnpmStore", '--filter', '@opsmind/operator-web', 'test:e2e')
         Invoke-CapacityGuard
         Invoke-Checked mvn ($mavenCommon + @('-f', $platformPom, 'test'))
         Invoke-CapacityGuard

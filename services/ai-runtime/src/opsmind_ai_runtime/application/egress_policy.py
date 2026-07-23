@@ -66,10 +66,17 @@ def evaluate_egress(
         raise EgressDenied("provider egress is disabled or unavailable")
     if any(pattern.search(request.prompt) for pattern in _BLOCKED_SECRET_PATTERNS):
         raise EgressDenied("prompt contains prohibited credential material")
-    if request.data_classifications - {
+    eligible_data_classes = {
         DataClassification.REDACTED_METRICS,
         DataClassification.REDACTED_LOG_SUMMARY,
-    }:
+    }
+    # The fixture provider is an explicitly local, non-production target. It
+    # may receive the already-redacted incident snapshot needed to exercise
+    # the same Platform request shape without widening external DeepSeek
+    # egress policy.
+    if settings.provider == "fixture":
+        eligible_data_classes.add(DataClassification.REDACTED_INCIDENT_SUMMARY)
+    if request.data_classifications - eligible_data_classes:
         raise EgressDenied("requested data class is not eligible for external egress")
     source_classifications = {
         {

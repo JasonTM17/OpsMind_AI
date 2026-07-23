@@ -94,8 +94,8 @@ public final class AuthorizedInvestigationAiRuntimeClient implements Investigati
             incident, records, selectors, request
         );
         StartIncidentAnalysisRequest analysisRequest = new StartIncidentAnalysisRequest(
-            request.runId(), "investigate", "incident_investigation", request.remainingTokens(),
-            request.remainingToolCalls(), roundDeadline(request.deadlineAt())
+            request.runId(), "investigate", "incident_investigation", request.totalTokenBudget(),
+            request.totalToolBudget(), roundDeadline(request.deadlineAt())
         );
         PreparedAnalysisRequest prepared = canonicalizer.prepare(
             request.initialIncident().organizationId(), request.initialIncident().incidentId(),

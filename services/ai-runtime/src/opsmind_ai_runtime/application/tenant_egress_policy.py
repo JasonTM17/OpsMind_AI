@@ -37,6 +37,7 @@ class TenantEgressRule:
     provider: str
     region: str
     data_classes: frozenset[DataClassification]
+    allow_incident_summary: bool = False
 
     def __post_init__(self) -> None:
         if self.purpose not in _PURPOSES:
@@ -45,7 +46,12 @@ class TenantEgressRule:
             raise EgressPolicyError("egress rule provider is invalid")
         if _REGION_PATTERN.fullmatch(self.region) is None:
             raise EgressPolicyError("egress rule region is invalid")
-        if not self.data_classes or not self.data_classes.issubset(_EGRESS_DATA_CLASSES):
+        eligible = _EGRESS_DATA_CLASSES | (
+            {DataClassification.REDACTED_INCIDENT_SUMMARY}
+            if self.allow_incident_summary
+            else set()
+        )
+        if not self.data_classes or not self.data_classes.issubset(eligible):
             raise EgressPolicyError("egress rule contains an ineligible data class")
 
 
@@ -66,7 +72,9 @@ class TenantEgressPolicy:
         self._rules = indexed
 
     @classmethod
-    def from_file(cls, path: str | Path) -> TenantEgressPolicy:
+    def from_file(
+        cls, path: str | Path, *, allow_incident_summary: bool = False
+    ) -> TenantEgressPolicy:
         """Load a bounded strict JSON policy from an operator-mounted file."""
 
         policy_path = Path(path)
@@ -78,7 +86,7 @@ class TenantEgressPolicy:
             document = json.loads(payload, object_pairs_hook=_strict_object)
         except (UnicodeDecodeError, json.JSONDecodeError) as exc:
             raise EgressPolicyError("egress policy is not valid JSON") from exc
-        return cls(_parse_document(document))
+        return cls(_parse_document(document, allow_incident_summary=allow_incident_summary))
 
     def authorizes(
         self,
@@ -102,7 +110,9 @@ def _strict_object(pairs: list[tuple[str, Any]]) -> dict[str, Any]:
     return result
 
 
-def _parse_document(document: object) -> tuple[TenantEgressRule, ...]:
+def _parse_document(
+    document: object, *, allow_incident_summary: bool = False
+) -> tuple[TenantEgressRule, ...]:
     if not isinstance(document, dict) or set(document) != {"version", "rules"}:
         raise EgressPolicyError("egress policy envelope is invalid")
     if document["version"] != "egress-policy-v1":
@@ -110,10 +120,15 @@ def _parse_document(document: object) -> tuple[TenantEgressRule, ...]:
     raw_rules = document["rules"]
     if not isinstance(raw_rules, list) or not 1 <= len(raw_rules) <= _MAX_RULES:
         raise EgressPolicyError("egress policy rules are invalid")
-    return tuple(_parse_rule(rule) for rule in raw_rules)
+    return tuple(
+        _parse_rule(rule, allow_incident_summary=allow_incident_summary)
+        for rule in raw_rules
+    )
 
 
-def _parse_rule(raw: object) -> TenantEgressRule:
+def _parse_rule(
+    raw: object, *, allow_incident_summary: bool = False
+) -> TenantEgressRule:
     required = {"tenant_id", "purpose", "provider", "region", "data_classes"}
     if not isinstance(raw, dict) or set(raw) != required:
         raise EgressPolicyError("egress policy rule fields are invalid")
@@ -132,6 +147,7 @@ def _parse_rule(raw: object) -> TenantEgressRule:
             provider=_required_string(raw["provider"], "provider"),
             region=_required_string(raw["region"], "region"),
             data_classes=frozenset(DataClassification(value) for value in data_classes),
+            allow_incident_summary=allow_incident_summary,
         )
     except (ValueError, TypeError) as exc:
         if isinstance(exc, EgressPolicyError):

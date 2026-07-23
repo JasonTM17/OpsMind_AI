@@ -7,7 +7,9 @@ operating envelope before frontend expansion.
 
 ## Files
 
-- cross-service runner/workflow and revision-bound artifact scripts
+- `scripts/validation/cross-service/run-investigation-slice.mjs`
+  benchmark/trace runner and `fixture-provider.py` DeepSeek-compatible local
+  provider
 - CI/Compose wiring and observability configuration
 - progress, architecture, testing, security, and deployment documentation
 
@@ -31,9 +33,17 @@ operating envelope before frontend expansion.
 7. Measure warm p50/p95, bounded memory/body sizes, token/cost use, and DB pool
    behavior. Record limitations; do not claim production SLO from CI alone.
 
+The checked-in fixture provider is explicitly loopback-only and can be enabled
+only with `AI_PROVIDER=fixture` plus `AI_FIXTURE_PROVIDER_ENABLED=true`.
+External DeepSeek remains on the narrower approved egress data-class policy;
+the fixture-only policy extension is limited to already-redacted incident
+summary material needed to exercise the production request shape.
+
 ## Acceptance
 
-- [ ] One revision-bound run proves the entire cited read-only path.
+- [ ] One revision-bound run proves the entire cited read-only path. The
+  runner and local provider are implemented; the revision-bound report still
+  requires a disposable Compose/IdP execution.
 - [ ] Failure paths are visible, sanitized, bounded, and leave no partial state.
 - [ ] Trace/correlation evidence joins every service boundary.
 - [ ] Secret/history/dependency/static/full-suite/Compose gates pass.

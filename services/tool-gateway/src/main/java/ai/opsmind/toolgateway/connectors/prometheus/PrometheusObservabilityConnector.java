@@ -73,7 +73,10 @@ public final class PrometheusObservabilityConnector implements ToolConnector {
         return new ConnectorEvidence(
             "prometheus",
             request.resource(),
-            clock.instant(),
+            // Keep the envelope internally ordered. The query window is
+            // second-truncated before the HTTP call, so using a later clock
+            // instant here can make observed_at fall outside window_end.
+            windowEnd,
             windowStart,
             windowEnd,
             CONNECTOR_VERSION,

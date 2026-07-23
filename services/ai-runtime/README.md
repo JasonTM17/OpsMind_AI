@@ -6,6 +6,14 @@ The AI Runtime is a separate FastAPI trust boundary for bounded, provider-neutra
 
 `AI_PROVIDER=disabled` and `OPS_ENABLE_DEEPSEEK_EGRESS=false` are the checked-in defaults. A DeepSeek key alone never enables traffic. Until the G0.5 provider/data-processing decision and synthetic conformance gate pass, use only the offline fixture tests.
 
+The Phase 7 cross-service gate can use `AI_PROVIDER=fixture` only with
+`AI_FIXTURE_PROVIDER_ENABLED=true`, a loopback
+`http://127.0.0.1:<port>/v1` target, and an explicit synthetic egress policy.
+This mode speaks the same DeepSeek-compatible HTTP contract and startup probe,
+but never contacts an external provider. It may carry the already-redacted
+incident snapshot required by the Platform request shape; normal `deepseek`
+egress does not gain that data class.
+
 Copy the service example only into an untracked local environment and inject the key through the process environment or approved secret manager:
 
 ```powershell

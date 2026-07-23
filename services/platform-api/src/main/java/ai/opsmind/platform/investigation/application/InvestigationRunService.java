@@ -77,17 +77,12 @@ public final class InvestigationRunService {
         UUID incidentId,
         UUID runId
     ) {
-        AuthorizedIncidentAnalysisEvidence authorized = authorizer.requireEvidence(
+        UUID actorId = authorizer.requireReadAccess(
             principal, organizationId, projectId, incidentId
         );
-        InvestigationStateMachine.State state = store.require(
-            organizationId, authorized.actorId(), runId
+        InvestigationStateMachine.State state = store.requireScoped(
+            organizationId, projectId, incidentId, actorId, runId
         );
-        if (!projectId.equals(state.projectId()) || !incidentId.equals(state.incidentId())) {
-            throw new PlatformProblemException(
-                HttpStatus.NOT_FOUND, "investigation.run-not-found", "The investigation run was not found."
-            );
-        }
         return projections.assemble(state);
     }
 }

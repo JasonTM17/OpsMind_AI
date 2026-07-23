@@ -1,5 +1,6 @@
 import fs from "node:fs";
 import path from "node:path";
+import { execFileSync } from "node:child_process";
 import { fileURLToPath } from "node:url";
 
 import {
@@ -77,7 +78,8 @@ if (view) {
   }
 }
 
-const openApi = access.readSafeFile(path.join(contractsRoot, "openapi", "opsmind-v1.yaml"));
+const openApiPath = path.join(contractsRoot, "openapi", "opsmind-v1.yaml");
+const openApi = access.readSafeFile(openApiPath);
 for (const marker of [
   "operationId: startInvestigation",
   "operationId: getInvestigation",
@@ -318,22 +320,314 @@ if (!livePrometheusPresent) {
   errors.push("bounded live Prometheus connector contract is incomplete");
 }
 
+const operatorRoot = path.join(repositoryRoot, "apps", "operator-web");
+const operatorRoutePath = path.join(
+  operatorRoot, "app", "organizations", "[organizationId]", "projects", "[projectId]",
+  "incidents", "[incidentId]", "investigations", "[runId]", "page.tsx",
+);
+const operatorSessionPath = path.join(
+  operatorRoot, "lib", "platform-api", "operator-session.ts",
+);
+const operatorTransportPath = path.join(
+  operatorRoot, "lib", "platform-api", "bounded-platform-fetch.ts",
+);
+const platformOperatorProjectionPath = path.join(
+  repositoryRoot, "services", "platform-api", "src", "main", "java",
+  "ai", "opsmind", "platform", "common", "api", "OperatorProjection.java",
+);
+const platformDisplayRedactorPath = path.join(
+  repositoryRoot, "services", "platform-api", "src", "main", "java",
+  "ai", "opsmind", "platform", "common", "api", "OperatorDisplayRedactor.java",
+);
+const incidentOperatorProjectionPath = path.join(
+  repositoryRoot, "services", "platform-api", "src", "main", "java",
+  "ai", "opsmind", "platform", "incident", "OperatorIncidentProjection.java",
+);
+const investigationOperatorProjectionPath = path.join(
+  sourceRoot, "projection", "OperatorInvestigationProjection.java",
+);
+const investigationReadServicePath = path.join(
+  sourceRoot, "application", "InvestigationRunService.java",
+);
+const investigationRunReaderPath = path.join(
+  sourceRoot, "application", "JdbcInvestigationRunReader.java",
+);
+const investigationOperatorHttpTestPath = path.join(
+  repositoryRoot, "services", "platform-api", "src", "test", "java",
+  "ai", "opsmind", "platform", "investigation", "api",
+  "InvestigationRunControllerHttpTest.java",
+);
+const operatorLoaderPath = path.join(
+  operatorRoot, "lib", "platform-api", "load-investigation-workspace.ts",
+);
+const operatorParserPath = path.join(
+  operatorRoot, "features", "investigation", "parse-investigation.ts",
+);
+const operatorWorkspacePath = path.join(
+  operatorRoot, "features", "investigation", "investigation-workspace.tsx",
+);
+const evidenceSpinePath = path.join(
+  operatorRoot, "features", "investigation", "evidence-spine.tsx",
+);
+const browserTestPath = path.join(
+  operatorRoot, "tests", "e2e", "investigation-workspace.spec.ts",
+);
+const browserBoundaryTestPath = path.join(
+  operatorRoot, "tests", "e2e", "investigation-boundaries.spec.ts",
+);
+const operatorManifestPath = path.join(operatorRoot, "package.json");
+const productionBrowserConfigPath = path.join(
+  operatorRoot, "playwright.production.config.ts",
+);
+const productionBrowserTestPath = path.join(
+  operatorRoot, "tests", "e2e-production", "fail-closed-production.spec.ts",
+);
+const productionLauncherPath = path.join(
+  operatorRoot, "tests", "support", "start-production-smoke-stack.mjs",
+);
+const stitchReferencePath = path.join(
+  repositoryRoot, "plans", "260723-0021-phase-07-capability-backed-investigation",
+  "stitch", "operator-investigation-workspace-v2", "design.html",
+);
+const crossServiceRunnerPath = path.join(
+  repositoryRoot, "scripts", "validation", "cross-service",
+  "run-investigation-slice.mjs",
+);
+const fixtureProviderPath = path.join(
+  repositoryRoot, "scripts", "validation", "cross-service",
+  "fixture-provider.py",
+);
+const crossServiceHarnessPath = path.join(
+  repositoryRoot, "scripts", "validation", "cross-service",
+  "run-cross-service-verification.ps1",
+);
+const crossServiceSupportPath = path.join(
+  repositoryRoot, "scripts", "validation", "cross-service",
+  "cross-service-harness-support.ps1",
+);
+const crossServiceCleanupPath = path.join(
+  repositoryRoot, "scripts", "validation", "cross-service",
+  "cleanup-cross-service-run.ps1",
+);
+const crossServiceFinalizePath = path.join(
+  repositoryRoot, "scripts", "validation", "cross-service",
+  "finalize-cross-service-report.mjs",
+);
+const fixtureIdentityPath = path.join(
+  repositoryRoot, "scripts", "validation", "cross-service",
+  "fixture-identity.mjs",
+);
+const fixturePrometheusPath = path.join(
+  repositoryRoot, "scripts", "validation", "cross-service",
+  "fixture-prometheus.mjs",
+);
+const aiRuntimeLauncherPath = path.join(
+  repositoryRoot, "scripts", "validation", "cross-service",
+  "run-ai-runtime.py",
+);
+const operatorFiles = [
+  operatorRoutePath,
+  operatorSessionPath,
+  operatorTransportPath,
+  platformOperatorProjectionPath,
+  platformDisplayRedactorPath,
+  incidentOperatorProjectionPath,
+  investigationOperatorProjectionPath,
+  investigationReadServicePath,
+  investigationRunReaderPath,
+  investigationOperatorHttpTestPath,
+  operatorLoaderPath,
+  operatorParserPath,
+  operatorWorkspacePath,
+  evidenceSpinePath,
+  browserTestPath,
+  browserBoundaryTestPath,
+  operatorManifestPath,
+  productionBrowserConfigPath,
+  productionBrowserTestPath,
+  productionLauncherPath,
+  stitchReferencePath,
+  crossServiceRunnerPath,
+  fixtureProviderPath,
+  crossServiceHarnessPath,
+  crossServiceSupportPath,
+  crossServiceCleanupPath,
+  crossServiceFinalizePath,
+  fixtureIdentityPath,
+  fixturePrometheusPath,
+  aiRuntimeLauncherPath,
+];
+const operatorMarkers = [
+  [operatorRoutePath, "loadInvestigationWorkspace(await params)"],
+  [operatorSessionPath, "process.env.NODE_ENV === \"production\""],
+  [operatorTransportPath, "MAXIMUM_RESPONSE_BYTES"],
+  [operatorTransportPath, "redirect: \"error\""],
+  [operatorTransportPath, "application/vnd.opsmind.operator-projection.v1+json"],
+  [operatorTransportPath, "operator-browser-safe-v1"],
+  [operatorTransportPath, "display-redaction-v1"],
+  [platformOperatorProjectionPath, "application/vnd.opsmind.operator-projection.v1+json"],
+  [platformOperatorProjectionPath, "X-OpsMind-Redaction-Count"],
+  [platformOperatorProjectionPath, "vendorQuality >= jsonQuality"],
+  [platformDisplayRedactorPath, "Normalizer.Form.NFKC"],
+  [platformDisplayRedactorPath, "[REDACTED_EXECUTABLE_TEXT]"],
+  [incidentOperatorProjectionPath, "OperatorDisplayRedactor"],
+  [investigationOperatorProjectionPath, "Model-authored explanation withheld"],
+  [investigationOperatorProjectionPath, "Investigation tool intent is not display-approved."],
+  [investigationReadServicePath, "authorizer.requireReadAccess("],
+  [investigationReadServicePath, "store.requireScoped("],
+  [durableStorePath, "AND project_id = ? AND incident_id = ? AND run_id = ?"],
+  [investigationOperatorHttpTestPath, "vendorRepresentationWithholdsModelProseAndEmitsAssurance"],
+  [openApiPath, "application/vnd.opsmind.operator-projection.v1+json"],
+  [operatorLoaderPath, "verifyIdentity(identity, incident, investigation)"],
+  [operatorLoaderPath, "requestGroup.abort()"],
+  [operatorLoaderPath, "projectionSafety"],
+  [operatorParserPath, "completed analysis cites unpersisted evidence"],
+  [operatorWorkspacePath, "<EvidenceSpine investigation={investigation} />"],
+  [evidenceSpinePath, "investigation.pendingToolCalls.map"],
+  [evidenceSpinePath, "Reviewed catalog label; executable arguments remain server-side."],
+  [browserTestPath, "new AxeBuilder({ page })"],
+  [browserTestPath, "width: 375"],
+  [browserTestPath, "rejects an analysis projection containing raw reasoning fields"],
+  [browserBoundaryTestPath, "missing browser-safe classification"],
+  [browserBoundaryTestPath, "unknown catalog operation"],
+  [operatorManifestPath, "\"test:e2e:production\""],
+  [productionBrowserConfigPath, "testDir: \"./tests/e2e-production\""],
+  [productionBrowserConfigPath, "start-production-smoke-stack.mjs"],
+  [productionBrowserTestPath, "Secure operator session unavailable"],
+  [productionLauncherPath, "\".next\", \"standalone\""],
+  [productionLauncherPath, "\"server.js\""],
+  [workflowPath, "playwright install --with-deps chromium"],
+  [workflowPath, "pnpm --filter @opsmind/operator-web test:e2e:production"],
+  [workflowPath, "pnpm --filter @opsmind/operator-web test:e2e"],
+  [crossServiceRunnerPath, "CrossServiceTrace=PASS"],
+  [crossServiceRunnerPath, "OPSMIND_WARM_RUNS"],
+  [fixtureProviderPath, "opsmind_probe"],
+  [fixtureProviderPath, "Synthetic Prometheus evidence"],
+  [crossServiceHarnessPath, "CrossServiceVerification=PASS"],
+  [crossServiceHarnessPath, "RemoveRunDirectory"],
+  [crossServiceSupportPath, "Get-CrossServiceAvailablePorts"],
+  [crossServiceCleanupPath, "CrossServiceRunCleanup=PASS"],
+  [crossServiceCleanupPath, "tagPattern"],
+  [crossServiceFinalizePath, "CrossServiceDurableState=PASS"],
+  [fixtureIdentityPath, "cross-service-identity-v1"],
+  [fixturePrometheusPath, "expectedQuery"],
+  [aiRuntimeLauncherPath, "AI Runtime"],
+];
+const missingOperatorFiles = operatorFiles.filter((file) => !fs.existsSync(file));
+const missingOperatorMarkers = operatorMarkers.filter(([file, marker]) =>
+  !access.readSafeFile(file).includes(marker));
+const operatorWorkspacePresent =
+  missingOperatorFiles.length === 0 && missingOperatorMarkers.length === 0;
+if (!operatorWorkspacePresent) {
+  errors.push("CK/Stitch operator investigation workspace contract is incomplete");
+  errors.push(...missingOperatorFiles.map((file) =>
+    `operator workspace file is missing: ${access.relativeName(file)}`));
+  errors.push(...missingOperatorMarkers.map(([file, marker]) =>
+    `operator workspace marker is missing: ${access.relativeName(file)} :: ${marker}`));
+}
+
+const crossServiceReportPath = path.join(
+  repositoryRoot, ".opsmind", "reports", "cross-service-trace.json",
+);
+function validateCrossServiceReport() {
+  if (!fs.existsSync(crossServiceReportPath)) {
+    return ["cross-service trace report is missing"];
+  }
+  let report;
+  try {
+    report = JSON.parse(fs.readFileSync(crossServiceReportPath, "utf8"));
+  } catch {
+    return ["cross-service trace report is not valid JSON"];
+  }
+  const reportErrors = [];
+  const warmRuns = report.warmRuns;
+  if (report.schema !== "opsmind-cross-service-trace-v1") {
+    reportErrors.push("cross-service report schema is invalid");
+  }
+  if (!Number.isInteger(warmRuns) || warmRuns < 100) {
+    reportErrors.push("cross-service report must contain at least 100 warm runs");
+  }
+  if (report.terminalStatus !== "PASS") {
+    reportErrors.push("cross-service report is not terminal PASS");
+  }
+  const latency = report.latencyMs ?? {};
+  if (
+    !Number.isFinite(latency.p95)
+    || !Number.isFinite(latency.threshold)
+    || latency.thresholdPass !== true
+    || latency.p95 > latency.threshold
+  ) {
+    reportErrors.push("cross-service p95 evidence is missing or exceeds its threshold");
+  }
+  const provider = report.fixtureObservations?.provider ?? {};
+  const prometheus = report.fixtureObservations?.prometheus ?? {};
+  if (
+    provider.probe_requests !== 1
+    || provider.analysis_requests !== warmRuns * 2
+    || prometheus.query_requests !== warmRuns
+  ) {
+    reportErrors.push("cross-service fixture observations do not match warm runs");
+  }
+  const durable = report.durableState ?? {};
+  if (
+    durable.investigationRuns !== warmRuns
+    || durable.evidenceRecords !== warmRuns
+    || durable.analysisInvocations !== warmRuns * 2
+    || durable.toolReceipts !== warmRuns
+    || durable.toolAuditEvents < warmRuns
+  ) {
+    reportErrors.push("cross-service durable counts do not match warm runs");
+  }
+  if (
+    !Array.isArray(report.runs)
+    || report.runs.length !== warmRuns
+    || report.runs.some((run) => run?.status !== "COMPLETED")
+  ) {
+    reportErrors.push("cross-service run samples are incomplete or non-terminal");
+  }
+  let currentHead = "";
+  try {
+    currentHead = execFileSync("git", ["rev-parse", "HEAD"], {
+      cwd: repositoryRoot,
+      encoding: "utf8",
+    }).trim();
+  } catch {
+    reportErrors.push("unable to resolve current git revision for cross-service evidence");
+  }
+  if (
+    report.source?.workingTreeClean !== true
+    || !currentHead
+    || report.source?.gitHead !== currentHead
+  ) {
+    reportErrors.push("cross-service report is not bound to the clean current revision");
+  }
+  return reportErrors;
+}
+const crossServiceReportErrors = validateCrossServiceReport();
 const blockers = [
-  "CK/Stitch operator investigation UI and browser E2E proof are absent",
-  "cross-service trace and p95 benchmark evidence are absent",
+  ...(!operatorWorkspacePresent
+    ? ["CK/Stitch operator investigation UI and browser E2E proof are absent"]
+    : []),
+  ...(crossServiceReportErrors.length > 0
+    ? crossServiceReportErrors
+    : []),
 ];
 const lines = [
   "OpsMind Phase 7 investigation slice validation",
-  "ValidationScope=DURABLE_GATEWAY_PROMETHEUS_CHECKPOINT",
+  "ValidationScope=OPERATOR_WORKSPACE_CHECKPOINT",
   `JsonSchemasParsed=${schemaFiles.length}`,
   `JsonFixturesParsed=${fixtureFiles.length}`,
   `LocalReferencesResolved=${referenceCount}`,
   `SourceFilesChecked=${sourceFiles.length}`,
+  `OperatorWorkspace=${operatorWorkspacePresent ? "PASS" : "BLOCK"}`,
+  `CrossServiceReport=${crossServiceReportErrors.length === 0 ? "PASS" : "BLOCK"}`,
+  `CrossServiceReportErrors=${crossServiceReportErrors.length}`,
   `Errors=${errors.length}`,
   `CheckpointResult=${errors.length === 0 ? "PASS" : "BLOCK"}`,
   "PhaseExit=BLOCK",
   ...blockers.map((blocker) => `PhaseExitBlocker=${blocker}`),
+  ...crossServiceReportErrors.slice(0, 50).map((error) => `CrossServiceReportError=${error}`),
   ...errors.slice(0, 50).map((error) => `Error=${error}`),
 ];
 process.stdout.write(`${lines.join("\n")}\n`);
-process.exit(errors.length === 0 ? 0 : 1);
+process.exit(errors.length === 0 && crossServiceReportErrors.length === 0 ? 0 : 1);

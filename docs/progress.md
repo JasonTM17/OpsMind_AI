@@ -435,6 +435,40 @@ B-006/B-008/B-012.
    floors, but prefer CI for heavy Docker work while C remains close to its
    minimum reserve.
 
+## 2026-07-23 â€” Operator projection safety and CK/Stitch workspace
+
+Implemented:
+
+- Versioned `application/vnd.opsmind.operator-projection.v1+json` responses
+  for incident and investigation detail reads, with `Accept` negotiation,
+  `no-store`, `Vary: Accept`, and mandatory projection/redaction assurance
+  headers.
+- Structural Platform projections that withhold model-authored prose,
+  rationale, citation claims, counter/missing-evidence text, and non-catalog
+  operations from browser output; deterministic Unicode/control/secret/query
+  redaction counts changed emitted leaves.
+- Read authorization through `incident:read` and organization/project/
+  incident/run-scoped JDBC lookup.
+- CK/Stitch operator workspace with server-only bounded transport, safe-media
+  validation, explicit degraded states, accessibility/responsive/reduced-motion
+  coverage, and production standalone smoke.
+
+Verified:
+
+- Targeted Platform projection/controller/auth tests: 31 passed; full Platform
+  Maven suite passed.
+- Operator Web unit tests: 10 passed; lint, typecheck, production build,
+  production standalone smoke, and Playwright Chromium flow: 28 passed.
+- Phase validator: `CheckpointResult=PASS`; `PhaseExit=BLOCK` only for the
+  still-missing cross-service trace and p95 benchmark evidence.
+
+Remaining:
+
+- A real capability-backed Platform â†’ AI Runtime â†’ Tool Gateway â†’
+  Prometheus trace with 100 warm runs and p95 evidence.
+- Incident-timeline linkage, production BFF/session proof, and final reviewed
+  screenshot/GIF media manifest.
+
 ## Unresolved Questions
 
 No current implementation decision is being silently deferred. Production IdP,

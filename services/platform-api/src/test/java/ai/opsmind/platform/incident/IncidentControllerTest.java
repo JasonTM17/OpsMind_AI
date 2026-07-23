@@ -98,7 +98,7 @@ class IncidentControllerTest {
     }
 
     @Test
-    void detailReturnsCurrentEtagAndUnsupportedAuthenticationFailsClosed() {
+    void detailReturnsCurrentEtagAndUnsupportedAuthenticationFailsClosed() throws Exception {
         IncidentResponse body = response(7);
         when(queries.detail(
             org.mockito.ArgumentMatchers.any(),
@@ -108,11 +108,13 @@ class IncidentControllerTest {
         )).thenReturn(new IncidentDetailResult(body, "\"7\""));
 
         var response = controller.detail(
-            authentication(Set.of("incident:read")), ORGANIZATION_ID, PROJECT_ID, INCIDENT_ID
+            authentication(Set.of("incident:read")), ORGANIZATION_ID, PROJECT_ID, INCIDENT_ID, null
         );
         assertThat(response.getBody()).isEqualTo(body);
         assertThat(response.getHeaders().getFirst(HttpHeaders.ETAG)).isEqualTo("\"7\"");
-        assertThatThrownBy(() -> controller.detail(null, ORGANIZATION_ID, PROJECT_ID, INCIDENT_ID))
+        assertThatThrownBy(() ->
+            controller.detail(null, ORGANIZATION_ID, PROJECT_ID, INCIDENT_ID, null)
+        )
             .isInstanceOfSatisfying(PlatformProblemException.class, exception ->
                 assertThat(exception.status()).isEqualTo(HttpStatus.UNAUTHORIZED));
     }

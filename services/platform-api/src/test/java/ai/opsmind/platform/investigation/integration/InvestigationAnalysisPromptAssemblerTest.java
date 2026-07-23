@@ -88,7 +88,8 @@ class InvestigationAnalysisPromptAssemblerTest {
                 URI.create("https://idp.example.test/opsmind"), "operator", null, null,
                 Set.of("incident:analyze")
             ),
-            incident, RUN_ID, Set.of(), 1, 3, 1_000, toolBudget,
+            incident, RUN_ID, Set.of(), 1, 3,
+            1_000, 900, 2, toolBudget,
             Instant.parse("2030-01-01T00:02:00Z")
         );
     }

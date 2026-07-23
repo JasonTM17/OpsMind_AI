@@ -78,6 +78,9 @@ $genericCredentialPath = Join-Path $isolatedRepository "credential-canary-$suffi
 $benignTokenSourcePath = Join-Path $isolatedRepository "benign-token-source-$suffix.txt"
 $historyCanaryPath = Join-Path $isolatedRepository "history-canary-$suffix.txt"
 $binaryCanaryPath = Join-Path $isolatedRepository "binary-canary-$suffix.bin"
+$reviewedMediaDirectory = Join-Path $isolatedRepository 'docs\media'
+$reviewedMediaPath = Join-Path $reviewedMediaDirectory 'reviewed-test-media.png'
+$reviewedMediaManifestPath = Join-Path $reviewedMediaDirectory 'media-manifest.json'
 $stagedCanaryPath = Join-Path $isolatedRepository "staged-canary-$suffix.txt"
 $historicalSensitivePath = Join-Path $isolatedRepository '.env'
 $excludedToolingPath = Join-Path $isolatedRepository '.agents\fixture'
@@ -106,6 +109,38 @@ try {
 
     Invoke-SecretScan -ScannerPath $scannerPath -RepositoryRoot $isolatedRepository `
         -EvidencePath (Join-Path $isolatedEvidenceRoot 'baseline.txt') `
+        -ExpectedExitCode 0
+
+    [void](New-Item -ItemType Directory -Path $reviewedMediaDirectory -Force)
+    $reviewedPngBytes = [Convert]::FromBase64String(
+        'iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mNk+A8AAQUBAScY42YAAAAASUVORK5CYII='
+    )
+    [IO.File]::WriteAllBytes($reviewedMediaPath, $reviewedPngBytes)
+    $reviewedMediaHash = (Get-FileHash -LiteralPath $reviewedMediaPath -Algorithm SHA256).Hash.ToLowerInvariant()
+    $reviewedMediaManifest = [ordered]@{
+        schemaVersion = 1
+        media = @([ordered]@{
+            path = 'docs/media/reviewed-test-media.png'
+            sha256 = $reviewedMediaHash
+            byteSize = $reviewedPngBytes.Length
+            mediaType = 'image/png'
+            width = 1
+            height = 1
+            frames = 1
+            source = 'Secret scanner test fixture'
+            review = 'Known one-pixel PNG with an exact digest.'
+        })
+    } | ConvertTo-Json -Depth 5
+    [IO.File]::WriteAllText($reviewedMediaManifestPath, $reviewedMediaManifest, $encoding)
+    Invoke-SecretScan -ScannerPath $scannerPath -RepositoryRoot $isolatedRepository `
+        -EvidencePath (Join-Path $isolatedEvidenceRoot 'reviewed-media-working-tree.txt') `
+        -ExpectedExitCode 0
+    & git -C $isolatedRepository add -- 'docs/media'
+    if ($LASTEXITCODE -ne 0) { throw 'Unable to stage reviewed media fixtures.' }
+    & git -C $isolatedRepository commit --quiet -m 'test reviewed repository media'
+    if ($LASTEXITCODE -ne 0) { throw 'Unable to commit reviewed media fixtures.' }
+    Invoke-SecretScan -ScannerPath $scannerPath -RepositoryRoot $isolatedRepository `
+        -EvidencePath (Join-Path $isolatedEvidenceRoot 'reviewed-media-history.txt') `
         -ExpectedExitCode 0
 
     [void](New-Item -ItemType Directory -Path $nestedDependencyTarget -Force)
@@ -283,7 +318,7 @@ try {
         -EvidencePath (Join-Path $isolatedEvidenceRoot 'binary-history.txt') `
         -ExpectedExitCode 7 -ExpectedRule 'binary-history-unscanned'
 
-    Write-Output 'Project secret-scan tests: PASS (14/14)'
+    Write-Output 'Project secret-scan tests: PASS (16/16)'
 }
 finally {
     $env:OPS_ARTIFACT_ROOT = $previousArtifactRoot

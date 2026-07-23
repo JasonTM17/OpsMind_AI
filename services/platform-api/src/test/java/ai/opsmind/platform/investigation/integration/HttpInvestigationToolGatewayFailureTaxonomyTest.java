@@ -40,6 +40,14 @@ class HttpInvestigationToolGatewayFailureTaxonomyTest {
     @Test
     void acceptsOnlyExactSecurityProblemContract() throws Exception {
         assertProblemFailure(
+            401,
+            "{\"type\":\"urn:opsmind:problem:caller.unauthenticated\","
+                + "\"title\":\"authentication required\",\"status\":401,"
+                + "\"code\":\"caller.unauthenticated\","
+                + "\"instance\":\"urn:opsmind:error:11111111-1111-4111-8111-111111111111\"}",
+            "dependency.tool-gateway-workload-unauthenticated"
+        );
+        assertProblemFailure(
             403,
             "{\"type\":\"urn:opsmind:problem:capability.invalid\","
                 + "\"title\":\"denied\",\"status\":403,\"code\":\"capability.invalid\","

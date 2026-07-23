@@ -2,6 +2,22 @@
 
 OpsMind AI is an evidence-first AI SRE/DevSecOps platform. It is designed to help operators investigate incidents, explain hypotheses with traceable evidence, and execute narrowly approved remediation without granting an AI model direct infrastructure authority.
 
+## Operator Experience
+
+![OpsMind evidence-backed investigation workspace](./docs/media/operator-investigation-workspace.png)
+
+The operator workspace exposes a deliberately constrained projection: cited
+durable evidence remains visible, while raw prompts, provider reasoning,
+credentials, and unreviewed model-authored prose stay behind the server-side
+trust boundary.
+
+![OpsMind operator investigation walkthrough](./docs/media/operator-investigation-workspace-walkthrough.gif)
+
+Both repository media files are review-gated by
+[`docs/media/media-manifest.json`](./docs/media/media-manifest.json). The
+secret scanner verifies their exact path, SHA-256 digest, byte size, media
+signature, and dimensions; every other binary continues to fail closed.
+
 Phase 1 governance is complete; Phases 2-7 are advancing through evidence gates.
 The repository now contains a pinned polyglot workspace, cross-platform CI,
 fail-closed OIDC and tenant/RLS foundations, an incident timeline/audit ledger,
