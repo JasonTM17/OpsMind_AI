@@ -506,6 +506,7 @@ const operatorMarkers = [
   [crossServiceHarnessPath, "CrossServiceVerification=PASS"],
   [crossServiceHarnessPath, "RemoveRunDirectory"],
   [crossServiceSupportPath, "Get-CrossServiceAvailablePorts"],
+  [crossServiceSupportPath, "Wait-CrossServiceHttps"],
   [crossServiceCleanupPath, "CrossServiceRunCleanup=PASS"],
   [crossServiceCleanupPath, "tagPattern"],
   [crossServiceFinalizePath, "CrossServiceDurableState=PASS"],
