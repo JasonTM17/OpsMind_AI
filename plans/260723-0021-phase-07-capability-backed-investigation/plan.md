@@ -23,7 +23,7 @@ request.
 | 1 | [Contract and identity boundary](./phase-01-contract-and-identity-boundary.md) | Completed | Checkpoint 4B |
 | 2 | [Investigation AI adapter](./phase-02-investigation-ai-adapter.md) | Completed | 1 |
 | 3 | [Platform Tool Gateway client](./phase-03-platform-tool-gateway-client.md) | Completed | 1 |
-| 4 | [Durable Gateway and Prometheus connector](./phase-04-durable-gateway-prometheus.md) | Pending | 3 |
+| 4 | [Durable Gateway and Prometheus connector](./phase-04-durable-gateway-prometheus.md) | In progress; local gates pass, CI pending | 3 |
 | 5 | [Cross-service verification](./phase-05-cross-service-verification.md) | Pending | 2, 4 |
 
 ## Locked Decisions

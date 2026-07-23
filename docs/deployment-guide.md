@@ -67,6 +67,15 @@ release secrets or short-lived workload identities and never checked in.
   Enabling the workload adapter requires a same-origin issuer/token endpoint,
   exact `tool.execute` scope, bounded timeouts/body size, and an externally
   injected secret. Incomplete or partial configuration fails before network I/O.
+- Tool Gateway persistence uses fixed `opsmind_tool_gateway_migrator` and
+  `opsmind_tool_gateway` roles with distinct passwords. They must also differ
+  from Platform migration, application, dispatcher, and AI Runtime passwords.
+  The one-shot database provisioner upgrades fresh or existing local volumes;
+  runtime startup waits for both provision and the Tool Gateway migration.
+- The local `prometheus` service is digest pinned, synthetic, loopback exposed,
+  and ephemeral. Tool Gateway accepts its explicit internal HTTP origin only
+  when `TOOL_GATEWAY_PROMETHEUS_ALLOW_INTERNAL_CLEARTEXT=true`; staging and
+  production connectors require an HTTPS origin and server-owned query catalog.
 - Key rotation and revocation procedures are exercised before production release.
 - Checked-in Platform API, Compose, and environment defaults cap access-token
   lifetime at `PT5M`. Per-request platform-user deprovisioning is immediate;
@@ -112,6 +121,14 @@ A failed gate cannot be converted to a warning solely to meet a schedule.
   its distinct password through the approved secret channel. Fresh local
   databases obtain the same role through the bootstrap script. Migration aborts
   if the role is absent or has broader attributes.
+- Before applying Tool Gateway V001, the provisioner creates the exact dedicated
+  migration and runtime logins plus the `tool_gateway` schema owned by the
+  migration login. Flyway must run as that owner. The runtime login has no
+  schema ownership and no read/update/delete/truncate access to audit history.
+- Tool Gateway receipt leases use PostgreSQL transaction time. Connector I/O
+  occurs between the claim and finalization transactions; successful audit and
+  receipt completion commit together. Rollback preserves the reclaimable lease
+  and never publishes an unaudited success.
 - Schema compatibility covers the rolling window used by deployment.
 - Destructive transformations use expand/migrate/contract and verified backup/restore evidence.
 - Temporal workflows use version/build routing; golden histories replay before worker promotion.
@@ -202,6 +219,12 @@ The Phase 5 static checkpoint also passes locally; Python reports 149 passed
 with five PostgreSQL-gated skips, Ruff and mypy are clean, and the full Maven
 suite passes. This does not replace the blocked Phase 5 exit gate or authorize
 provider traffic.
+
+The durable Tool Gateway and Prometheus implementation has local unit,
+configuration, contract, Compose-config, and syntax proof. PostgreSQL role,
+lease, rollback, append-only, and real Prometheus service checks run in the
+revision-bound GitHub workflow; no live/staging completion is claimed until that
+workflow succeeds for the exact commit.
 
 ## Remaining Deployment Decisions
 

@@ -186,14 +186,13 @@ if (!platformIssuerConformant) {
 }
 
 const blockers = [
-  "durable atomic nonce/receipt/audit/artifact adapters are absent",
-  "three fixture connector families are absent",
-  "selected live non-production read-only connector proof is absent",
-  "provider-specific cancellation and tenant bulkhead proof is absent",
+  "durable oversized-evidence artifact adapter is absent",
+  "remaining bounded logs and traces connector families are absent",
+  "tenant-scoped connector bulkhead proof is absent",
 ];
 const lines = [
   "OpsMind Phase 6 Tool Gateway validation",
-  "ValidationScope=DETERMINISTIC_CHECKPOINT_CONTRACT_AND_ABUSE_CHECKS",
+  "ValidationScope=DURABLE_PROMETHEUS_CONNECTOR_CHECKPOINT",
   `JsonSchemasParsed=${schemaFiles.length}`,
   `JsonFixturesParsed=${fixtureFiles.length}`,
   `LocalReferencesResolved=${referenceCount}`,

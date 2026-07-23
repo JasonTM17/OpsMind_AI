@@ -1,0 +1,22 @@
+spring:
+  autoconfigure:
+    exclude: []
+  datasource:
+    url: ${TOOL_GATEWAY_DATABASE_URL:jdbc:postgresql://127.0.0.1:5432/opsmind}
+    username: ${TOOL_GATEWAY_DATABASE_USER:opsmind_tool_gateway}
+    password: ${TOOL_GATEWAY_DATABASE_PASSWORD:}
+    hikari:
+      maximum-pool-size: ${TOOL_GATEWAY_DB_POOL_MAX:8}
+      connection-timeout: ${TOOL_GATEWAY_DB_CONNECTION_TIMEOUT_MS:3000}
+  flyway:
+    enabled: ${TOOL_GATEWAY_FLYWAY_ENABLED:false}
+    locations: classpath:db/migration
+    default-schema: tool_gateway
+    schemas: tool_gateway
+    table: flyway_schema_history
+    baseline-on-migrate: false
+
+management:
+  health:
+    db:
+      enabled: true

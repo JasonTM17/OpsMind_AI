@@ -110,8 +110,8 @@ if (rootComposeFiles[0] === "compose.yaml") {
   const publishedPorts = [...compose.matchAll(/^\s*-\s*"([^"\r\n]+:\d+)"\s*$/gm)].map(
     (match) => match[1],
   );
-  if (publishedPorts.length !== 8 || publishedPorts.some((port) => !port.startsWith("127.0.0.1:"))) {
-    errors.push("all eight local Compose port bindings must be explicitly loopback-only");
+  if (publishedPorts.length !== 9 || publishedPorts.some((port) => !port.startsWith("127.0.0.1:"))) {
+    errors.push("all nine local Compose port bindings must be explicitly loopback-only");
   }
   const activeImages = [...compose.matchAll(/^\s*image:\s*([^\r\n]+)$/gm)]
     .map((match) => match[1].trim())

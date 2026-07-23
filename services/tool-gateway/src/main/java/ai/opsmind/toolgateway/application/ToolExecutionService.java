@@ -20,11 +20,10 @@ public final class ToolExecutionService {
     private final DelegatedCapabilityVerifier capabilityVerifier;
     private final ToolManifestRegistry manifestRegistry;
     private final PolicyEvaluator policyEvaluator;
-    private final ExecutionReceiptStore receiptStore;
     private final EvidenceNormalizer evidenceNormalizer;
-    private final ToolAuditWriter auditWriter;
     private final RequestDigester requestDigester;
     private final BoundedConnectorExecutor connectorExecutor;
+    private final DurableToolExecutionCoordinator durability;
     private final ToolExecutionResponseFactory responseFactory;
     private final Map<String, ToolConnector> connectors;
 
@@ -37,16 +36,18 @@ public final class ToolExecutionService {
         ToolAuditWriter auditWriter,
         RequestDigester requestDigester,
         BoundedConnectorExecutor connectorExecutor,
+        ToolExecutionTransactionRunner transactionRunner,
         Collection<ToolConnector> connectors
     ) {
         this.capabilityVerifier = capabilityVerifier;
         this.manifestRegistry = manifestRegistry;
         this.policyEvaluator = policyEvaluator;
-        this.receiptStore = receiptStore;
         this.evidenceNormalizer = evidenceNormalizer;
-        this.auditWriter = auditWriter;
         this.requestDigester = requestDigester;
         this.connectorExecutor = connectorExecutor;
+        this.durability = new DurableToolExecutionCoordinator(
+            receiptStore, auditWriter, transactionRunner
+        );
         this.responseFactory = new ToolExecutionResponseFactory(auditWriter);
         this.connectors = connectors.stream().collect(Collectors.toUnmodifiableMap(
             ToolConnector::id,
@@ -64,7 +65,7 @@ public final class ToolExecutionService {
         String capabilityId = null;
         String policyVersion = null;
         String manifestVersion = null;
-        boolean claimed = false;
+        ExecutionReceiptStore.Lease lease = null;
         try {
             VerifiedCapability capability = capabilityVerifier.verify(capabilityToken, request);
             capabilityId = capability.capabilityId();
@@ -72,22 +73,16 @@ public final class ToolExecutionService {
             ToolManifest manifest = manifestRegistry.require(request);
             manifestVersion = manifest.manifestVersion();
             policyEvaluator.evaluate(request, manifest, capability);
-            if (!auditWriter.available()) {
+            if (!durability.auditAvailable()) {
                 throw denied(DenialCode.AUDIT_UNAVAILABLE, "Durable tool audit storage is unavailable.");
             }
 
-            ExecutionReceiptStore.Claim claim = receiptStore.claim(executionId, requestDigest);
+            ExecutionReceiptStore.Claim claim = durability.claim(request, requestDigest);
             switch (claim.status()) {
                 case REPLAY -> {
-                    UUID auditId = auditWriter.record(
-                        executionId,
-                        ToolOutcome.DUPLICATE,
-                        requestDigest,
-                        capabilityId,
-                        manifestVersion,
-                        responseFactory.evidenceDigest(claim.response()),
-                        policyVersion,
-                        null
+                    UUID auditId = durability.recordReplay(
+                        executionId, requestDigest, capabilityId, manifestVersion,
+                        responseFactory.evidenceDigest(claim.response()), policyVersion
                     );
                     return claim.response().asDuplicate(auditId);
                 }
@@ -103,7 +98,12 @@ public final class ToolExecutionService {
                     DenialCode.EXECUTION_STORE_UNAVAILABLE,
                     "Durable execution receipt storage is unavailable."
                 );
-                case CLAIMED -> claimed = true;
+                case CLAIMED -> {
+                    lease = claim.lease();
+                    if (lease == null) {
+                        throw new IllegalStateException("Execution receipt lease is missing.");
+                    }
+                }
             }
 
             ToolConnector connector = connectors.get(manifest.connectorId());
@@ -115,31 +115,10 @@ public final class ToolExecutionService {
                 request,
                 manifest
             );
-            UUID auditId = auditWriter.record(
-                executionId,
-                ToolOutcome.SUCCEEDED,
-                requestDigest,
-                capabilityId,
-                manifestVersion,
-                evidence.contentDigest(),
-                policyVersion,
-                null
+            ToolExecutionResponse response = durability.finalizeSuccess(
+                lease, evidence, capabilityId, manifestVersion, policyVersion
             );
-            ToolExecutionResponse response = new ToolExecutionResponse(
-                executionId,
-                ToolOutcome.SUCCEEDED,
-                java.util.List.of(evidence),
-                null,
-                auditId,
-                requestDigest,
-                manifestVersion,
-                evidence.source() + "/" + evidence.connectorVersion(),
-                evidence.redactedFields(),
-                evidence.truncated(),
-                false
-            );
-            receiptStore.complete(executionId, requestDigest, response);
-            claimed = false;
+            lease = null;
             return response;
         }
         catch (ToolDeniedException exception) {
@@ -163,7 +142,7 @@ public final class ToolExecutionService {
             );
         }
         finally {
-            if (claimed && executionId != null) receiptStore.abandon(executionId, requestDigest);
+            durability.abandon(lease);
         }
     }
 

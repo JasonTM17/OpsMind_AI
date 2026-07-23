@@ -41,6 +41,7 @@ public final class GatewayReadiness {
             && receiptStore.available()
             && auditWriter.available()
             && manifests.hasEnabledActions()
-            && !connectors.isEmpty();
+            && !connectors.isEmpty()
+            && connectors.stream().allMatch(ToolConnector::available);
     }
 }

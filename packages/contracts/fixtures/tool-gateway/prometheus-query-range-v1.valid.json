@@ -1,0 +1,19 @@
+{
+  "status": "success",
+  "data": {
+    "resultType": "matrix",
+    "result": [
+      {
+        "metric": {
+          "__name__": "opsmind:http_request_duration_seconds:synthetic",
+          "service": "opsmind-api"
+        },
+        "values": [
+          [1893456000, "0.10"],
+          [1893456060, "0.42"],
+          [1893456120, "0.31"]
+        ]
+      }
+    ]
+  }
+}

@@ -230,15 +230,101 @@ if (!capabilityBackedToolPresent) {
   errors.push("dual-credential investigation Tool Gateway client contract is incomplete");
 }
 
+const gatewayRoot = path.join(
+  repositoryRoot, "services", "tool-gateway", "src", "main",
+);
+const gatewaySourceRoot = path.join(gatewayRoot, "java", "ai", "opsmind", "toolgateway");
+const gatewayMigrationPath = path.join(
+  gatewayRoot, "resources", "db", "migration", "V001__durable_tool_gateway_state.sql",
+);
+const receiptStorePath = path.join(
+  gatewaySourceRoot, "persistence", "JdbcExecutionReceiptStore.java",
+);
+const transactionRunnerPath = path.join(
+  gatewaySourceRoot, "persistence", "JdbcToolExecutionTransactionRunner.java",
+);
+const gatewayPersistenceFiles = [
+  gatewayMigrationPath,
+  receiptStorePath,
+  transactionRunnerPath,
+  path.join(gatewaySourceRoot, "persistence", "JdbcNonceReplayStore.java"),
+  path.join(gatewaySourceRoot, "persistence", "JdbcToolAuditWriter.java"),
+];
+const durableGatewayMarkers = [
+  [gatewayMigrationPath, "CREATE TABLE tool_gateway.capability_nonce_claims"],
+  [gatewayMigrationPath, "CREATE TABLE tool_gateway.execution_receipts"],
+  [gatewayMigrationPath, "tool_audit_events_reject_truncate"],
+  [receiptStorePath, "lease_token = ?"],
+  [receiptStorePath, "validateCompletedResponse("],
+  [transactionRunnerPath, "transactions.execute("],
+];
+const durableGatewayPresent = gatewayPersistenceFiles.every(fs.existsSync)
+  && durableGatewayMarkers.every(([file, marker]) =>
+    access.readSafeFile(file).includes(marker));
+if (!durableGatewayPresent) {
+  errors.push("durable Tool Gateway persistence contract is incomplete");
+}
+
+const prometheusRoot = path.join(
+  gatewaySourceRoot, "connectors", "prometheus",
+);
+const prometheusConnectorPath = path.join(
+  prometheusRoot, "PrometheusObservabilityConnector.java",
+);
+const prometheusExchangePath = path.join(
+  prometheusRoot, "PrometheusHttpExchange.java",
+);
+const prometheusHttpFactoryPath = path.join(
+  prometheusRoot, "PrometheusHttpClientFactory.java",
+);
+const prometheusParserPath = path.join(
+  prometheusRoot, "PrometheusResponseParser.java",
+);
+const prometheusQueryPath = path.join(
+  prometheusRoot, "PrometheusQueryCatalog.java",
+);
+const composePath = path.join(repositoryRoot, "compose.yaml");
+const workflowPath = path.join(repositoryRoot, ".github", "workflows", "pr-quality.yml");
+const prometheusFiles = [
+  prometheusConnectorPath,
+  prometheusExchangePath,
+  prometheusHttpFactoryPath,
+  prometheusParserPath,
+  prometheusQueryPath,
+  path.join(
+    gatewayRoot, "resources", "tool-manifests",
+    "observability-metrics-query-prometheus-v1.json",
+  ),
+  path.join(repositoryRoot, "deploy", "prometheus", "prometheus.yml"),
+  path.join(repositoryRoot, "deploy", "prometheus", "opsmind-recording-rules.yml"),
+  path.join(
+    repositoryRoot, "scripts", "validation",
+    "validate-live-prometheus-response.mjs",
+  ),
+];
+const prometheusMarkers = [
+  [prometheusConnectorPath, "\"source-attested\""],
+  [prometheusExchangePath, "sendAsync("],
+  [prometheusHttpFactoryPath, "HttpClient.Redirect.NEVER"],
+  [prometheusParserPath, "\"matrix\".equals("],
+  [prometheusQueryPath, "opsmind:http_request_duration_seconds:synthetic"],
+  [composePath, "prom/prometheus:v3.12.0-distroless@sha256:"],
+  [workflowPath, "validate-live-prometheus-response.mjs"],
+];
+const livePrometheusPresent = prometheusFiles.every(fs.existsSync)
+  && prometheusMarkers.every(([file, marker]) =>
+    access.readSafeFile(file).includes(marker));
+if (!livePrometheusPresent) {
+  errors.push("bounded live Prometheus connector contract is incomplete");
+}
+
 const blockers = [
-  "durable Tool Gateway nonce, execution-receipt, and audit stores are absent",
-  "selected live non-production read-only connector evidence is absent",
   "CK/Stitch operator investigation UI and browser E2E proof are absent",
   "cross-service trace and p95 benchmark evidence are absent",
 ];
 const lines = [
   "OpsMind Phase 7 investigation slice validation",
-  "ValidationScope=DUAL_CREDENTIAL_TOOL_CLIENT_CHECKPOINT",
+  "ValidationScope=DURABLE_GATEWAY_PROMETHEUS_CHECKPOINT",
   `JsonSchemasParsed=${schemaFiles.length}`,
   `JsonFixturesParsed=${fixtureFiles.length}`,
   `LocalReferencesResolved=${referenceCount}`,

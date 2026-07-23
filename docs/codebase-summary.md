@@ -31,8 +31,8 @@ documentation. Source code and canonical contracts take precedence.
 | Phase 3 | In progress; identity, tenant/RLS, persistence, and messaging substrate exists. Production-authorized IdP conformance remains open. |
 | Phase 4 | In progress; checkpoint 4A incident write ledger is locally complete. Full Phase 4 and G2/G3 are not complete. |
 | Phase 5 | In progress; provider-neutral analysis, DeepSeek adapter, egress guards, durable PostgreSQL state, V005 append-only probe audit, Platform API integration, and stream assembly exist. Static checkpoint passes; exit remains blocked by B-004 and missing rotated-key synthetic smoke. |
-| Phase 6 | In progress; fail-closed Tool Gateway checkpoint passes. Durable/live exit remains blocked. |
-| Phase 7 | In progress; deterministic reducer, bounded fixture runner, contracts, feature-flagged API, and V006 PostgreSQL run snapshot/event/audit persistence exist. Durable workflow/live/UI exit remains blocked. |
+| Phase 6 | In progress; fail-closed gateway plus durable PostgreSQL and live Prometheus implementation checkpoints pass locally. Revision-bound durable/live proof and broader connector exit remain blocked. |
+| Phase 7 | In progress; deterministic reducer, bounded service adapters, durable evidence persistence, Gateway receipts/audit, and exact Prometheus connector exist. Cross-service trace/live CI/UI exit remains blocked. |
 | Later phases | Durable workflow, RAG, remediation, complete operator UX, evaluation, and production-hardening outcomes remain pending. |
 
 Historical Phase 3/4 workstation transcripts remain local/reference evidence
@@ -47,7 +47,7 @@ claimed.
 | `apps/operator-web/` | Next.js foundation page and `/api/health`; incident workflows are not implemented in the web app. |
 | `services/platform-api/` | Spring Boot control plane for OIDC identity, tenant/project access, persistence, messaging primitives, checkpoint 4A incidents, and the Phase 7 deterministic plus PostgreSQL persistence checkpoint. |
 | `services/ai-runtime/` | FastAPI bounded analysis runtime with provider-neutral contracts, DeepSeek adapter, shared PostgreSQL replay/accounting, startup/periodic capability probe, `/health` liveness, and `/ready` readiness; live egress remains disabled. |
-| `services/tool-gateway/` | Spring Boot fail-closed Tool Gateway checkpoint: RS256/JWKS delegated capabilities, dedicated workload-token boundary, typed fixture observability action, validated manifest loader, bounded connector execution, recursive DLP, deterministic receipts/audit adapters, `/internal/v1/tools/execute`, and `/ready`. Durable/live exit remains blocked. |
+| `services/tool-gateway/` | Spring Boot fail-closed Tool Gateway: separated workload/delegated JWT trust, manifest registry, bounded DLP execution, dedicated PostgreSQL nonce/receipt/audit state, and exact read-only Prometheus query-range connector. Default profiles remain fail closed; durable/live revision proof remains pending. |
 | `packages/contracts/` | Canonical OpenAPI, JSON Schema, and synthetic fixtures. |
 | `scripts/dev/` | Shared command dispatcher and PowerShell/portable launchers. |
 | `scripts/storage/` | Capacity and storage-root preflight guards. |
@@ -78,11 +78,12 @@ fail-closed evaluator requires exact source and package coverage and blocks
 known CVSS severity at 7 or greater. Jackson Databind is pinned to patched
 3.1.5 in both Java services.
 
-`compose.yaml` defines PostgreSQL, optional Redis, a disabled object-storage
-review profile, migration and least-privilege Platform/AI runtime roles, AI Runtime, Tool
-Gateway, and Operator Web. Model egress, write actions, and the external
-dispatcher remain disabled by default. The long-running Platform API uses the
-non-owner application role; Flyway runs through the separate migration service.
+`compose.yaml` defines PostgreSQL, an idempotent role provisioner, optional
+Redis, digest-pinned synthetic Prometheus, a disabled object-storage review
+profile, separate Platform/AI/Tool Gateway migration and runtime roles, AI
+Runtime, Tool Gateway, and Operator Web. Model egress, write actions, and the
+external dispatcher remain disabled by default. Long-running services use
+non-owner roles; Flyway runs through separate migration services.
 
 ## Implemented Platform API Boundaries
 
@@ -211,8 +212,8 @@ See [Security Model](./security-model.md) for the complete threat model and
 | Phase 5 quality checks | Ruff and mypy clean | Local verification |
 | Platform API Maven suite | Pass | Local verification, including pgJDBC `42.7.13` and V005 migration contracts |
 | `scripts/validation/validate-phase-05-ai-runtime.mjs` | Static checkpoint PASS | Exit gate remains BLOCK: active B-004 plus absent passing rotated-key synthetic smoke |
-| `scripts/validation/validate-phase-06-tool-gateway.mjs` | Checkpoint PASS; 4 schemas, 5 fixtures, digest recomputation, manifest/OpenAPI/source abuse checks; 24 Maven tests pass | Phase exit BLOCK: no durable adapters, Platform issuer conformance, three families, live target, or provider-specific cancellation proof |
-| `scripts/validation/validate-phase-07-investigation-slice.mjs` | Durable persistence checkpoint PASS; 2 schemas, 2 fixtures, 1 reference, and 21 Java source files checked | Phase exit BLOCK: no real clients/live connector/UI/trace-p95 proof; the current workflow does not invoke this static validator |
+| `scripts/validation/validate-phase-06-tool-gateway.mjs` | Durable Prometheus connector checkpoint PASS with schemas, canonical fixtures, digest/manifest/OpenAPI/source abuse checks | Phase exit BLOCK: artifact adapter, remaining connector families, tenant bulkhead, and provider-specific cancellation proof |
+| `scripts/validation/validate-phase-07-investigation-slice.mjs` | Durable Gateway/Prometheus implementation checkpoint PASS | Phase exit BLOCK: CK/Stitch UI/browser E2E and cross-service trace/p95 proof |
 
 | Evidence | Verified result | Scope limitation |
 |---|---|---|

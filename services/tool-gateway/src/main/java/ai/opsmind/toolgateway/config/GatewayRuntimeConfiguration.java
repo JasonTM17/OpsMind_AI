@@ -5,6 +5,7 @@ import java.util.List;
 
 import ai.opsmind.toolgateway.application.BoundedConnectorExecutor;
 import ai.opsmind.toolgateway.application.DelegatedCapabilityVerifier;
+import ai.opsmind.toolgateway.application.DirectToolExecutionTransactionRunner;
 import ai.opsmind.toolgateway.application.EvidenceNormalizer;
 import ai.opsmind.toolgateway.application.ExecutionReceiptStore;
 import ai.opsmind.toolgateway.application.FailClosedCapabilityVerifier;
@@ -17,6 +18,7 @@ import ai.opsmind.toolgateway.application.PolicyEvaluator;
 import ai.opsmind.toolgateway.application.RequestDigester;
 import ai.opsmind.toolgateway.application.Rs256JwksDelegatedCapabilityVerifier;
 import ai.opsmind.toolgateway.application.ToolExecutionService;
+import ai.opsmind.toolgateway.application.ToolExecutionTransactionRunner;
 import ai.opsmind.toolgateway.application.ToolManifestRegistry;
 import ai.opsmind.toolgateway.application.ToolManifestResourceLoader;
 import ai.opsmind.toolgateway.api.GatewayProblemWriter;
@@ -64,12 +66,14 @@ public class GatewayRuntimeConfiguration {
     }
 
     @Bean
+    @Profile("!persistence")
     NonceReplayStore nonceReplayStore(Environment environment, Clock gatewayClock) {
         if (environment.matchesProfiles("fixture")) return new FixtureNonceReplayStore(gatewayClock);
         return new FailClosedNonceReplayStore();
     }
 
     @Bean
+    @Profile("!persistence")
     ExecutionReceiptStore executionReceiptStore(Environment environment) {
         if (environment.matchesProfiles("fixture")) return new FixtureExecutionReceiptStore();
         return new FailClosedExecutionReceiptStore();
@@ -97,6 +101,7 @@ public class GatewayRuntimeConfiguration {
     }
 
     @Bean
+    @Profile("!prometheus")
     ToolManifestRegistry toolManifestRegistry(Environment environment, ObjectMapper objectMapper) {
         if (environment.matchesProfiles("fixture")) {
             return new ToolManifestResourceLoader(objectMapper).loadFixtureRegistry();
@@ -131,6 +136,13 @@ public class GatewayRuntimeConfiguration {
     }
 
     @Bean
+    @Profile("!persistence")
+    ToolExecutionTransactionRunner toolExecutionTransactionRunner() {
+        return new DirectToolExecutionTransactionRunner();
+    }
+
+    @Bean
+    @Profile("!persistence")
     ToolAuditWriter toolAuditWriter(Environment environment) {
         if (environment.matchesProfiles("fixture")) return new DeterministicToolAuditWriter();
         return new FailClosedToolAuditWriter();
@@ -173,6 +185,7 @@ public class GatewayRuntimeConfiguration {
         ToolAuditWriter auditWriter,
         RequestDigester requestDigester,
         BoundedConnectorExecutor connectorExecutor,
+        ToolExecutionTransactionRunner transactionRunner,
         List<ToolConnector> connectors
     ) {
         return new ToolExecutionService(
@@ -184,6 +197,7 @@ public class GatewayRuntimeConfiguration {
             auditWriter,
             requestDigester,
             connectorExecutor,
+            transactionRunner,
             connectors
         );
     }

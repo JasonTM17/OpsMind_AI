@@ -20,10 +20,11 @@ foreach ($name in @(
     'OPSMIND_AI_RUNTIME_ALLOW_LOCAL_CLEARTEXT', 'OPSMIND_AI_RUNTIME_CONNECT_TIMEOUT',
     'OPSMIND_AI_RUNTIME_REQUEST_TIMEOUT', 'OPSMIND_AI_RUNTIME_MAX_RESPONSE_BODY_BYTES',
     'AI_RUNTIME_MAX_JSON_BODY_BYTES', 'AI_RUNTIME_BODY_RECEIVE_TIMEOUT_SECONDS',
-    'AI_RUNTIME_PORT', 'TOOL_GATEWAY_PORT',
+    'AI_RUNTIME_PORT', 'TOOL_GATEWAY_PORT', 'PROMETHEUS_PORT',
     'POSTGRES_PORT', 'REDIS_PORT', 'MINIO_API_PORT', 'MINIO_CONSOLE_PORT',
     'POSTGRES_DB', 'POSTGRES_USER', 'POSTGRES_APP_USER', 'POSTGRES_DISPATCHER_USER',
-    'POSTGRES_AI_RUNTIME_USER',
+    'POSTGRES_AI_RUNTIME_USER', 'POSTGRES_TOOL_GATEWAY_MIGRATOR_USER',
+    'POSTGRES_TOOL_GATEWAY_USER',
     'SPRING_PROFILES_ACTIVE', 'SPRING_DATASOURCE_URL',
     'SPRING_DATASOURCE_USERNAME', 'OPSMIND_FLYWAY_ENABLED', 'OPSMIND_DB_POOL_MAX',
     'OPSMIND_DB_CONNECTION_TIMEOUT_MS', 'MINIO_ROOT_USER', 'MINIO_IMAGE',
@@ -35,6 +36,16 @@ foreach ($name in @(
     'AI_RUNTIME_DB_POOL_MIN', 'AI_RUNTIME_DB_POOL_MAX',
     'AI_RUNTIME_DB_POOL_TIMEOUT_SECONDS', 'AI_RUNTIME_RESERVATION_LEASE_SECONDS',
     'AI_RUNTIME_INVOCATION_RETENTION_DAYS',
+    'TOOL_GATEWAY_DATABASE_URL', 'TOOL_GATEWAY_DATABASE_USER',
+    'TOOL_GATEWAY_PERSISTENCE_ENABLED', 'TOOL_GATEWAY_FLYWAY_ENABLED',
+    'TOOL_GATEWAY_DB_POOL_MAX', 'TOOL_GATEWAY_DB_CONNECTION_TIMEOUT_MS',
+    'TOOL_GATEWAY_EXECUTION_LEASE_DURATION',
+    'TOOL_GATEWAY_PROMETHEUS_ENABLED', 'TOOL_GATEWAY_PROMETHEUS_BASE_URI',
+    'TOOL_GATEWAY_PROMETHEUS_ALLOW_INTERNAL_CLEARTEXT',
+    'TOOL_GATEWAY_PROMETHEUS_CONNECT_TIMEOUT', 'TOOL_GATEWAY_PROMETHEUS_REQUEST_TIMEOUT',
+    'TOOL_GATEWAY_PROMETHEUS_MAX_RESPONSE_BYTES', 'TOOL_GATEWAY_PROMETHEUS_MAX_SERIES',
+    'TOOL_GATEWAY_PROMETHEUS_MAX_POINTS', 'TOOL_GATEWAY_PROMETHEUS_QUERY_WINDOW',
+    'TOOL_GATEWAY_PROMETHEUS_QUERY_STEP',
     'OPSMIND_AI_CAPABILITY_ISSUANCE_ENABLED', 'OPSMIND_AI_CAPABILITY_ISSUER',
     'OPSMIND_AI_CAPABILITY_AUDIENCE', 'OPSMIND_AI_CAPABILITY_KEY_ID',
     'OPSMIND_AI_CAPABILITY_PRIVATE_KEY_FILE', 'OPSMIND_AI_CAPABILITY_JWKS_FILE',
@@ -45,7 +56,9 @@ foreach ($name in @(
 )) { [void]$safeEnvironmentNames.Add($name) }
 $runtimeSecretNames = @(
     'POSTGRES_PASSWORD', 'POSTGRES_APP_PASSWORD', 'POSTGRES_DISPATCHER_PASSWORD',
-    'POSTGRES_AI_RUNTIME_PASSWORD', 'AI_RUNTIME_DATABASE_PASSWORD',
+    'POSTGRES_AI_RUNTIME_PASSWORD', 'POSTGRES_TOOL_GATEWAY_MIGRATOR_PASSWORD',
+    'POSTGRES_TOOL_GATEWAY_PASSWORD', 'TOOL_GATEWAY_DATABASE_PASSWORD',
+    'AI_RUNTIME_DATABASE_PASSWORD',
     'SPRING_DATASOURCE_PASSWORD', 'MINIO_ROOT_PASSWORD', 'DEEPSEEK_API_KEY'
 )
 
@@ -236,11 +249,19 @@ function Assert-ApplicationComposeConfiguration {
     if ([string]::IsNullOrWhiteSpace($env:POSTGRES_AI_RUNTIME_PASSWORD)) {
         throw 'POSTGRES_AI_RUNTIME_PASSWORD must be supplied through the process environment or an approved secret manager.'
     }
+    if ([string]::IsNullOrWhiteSpace($env:POSTGRES_TOOL_GATEWAY_MIGRATOR_PASSWORD)) {
+        throw 'POSTGRES_TOOL_GATEWAY_MIGRATOR_PASSWORD must be supplied through the process environment or an approved secret manager.'
+    }
+    if ([string]::IsNullOrWhiteSpace($env:POSTGRES_TOOL_GATEWAY_PASSWORD)) {
+        throw 'POSTGRES_TOOL_GATEWAY_PASSWORD must be supplied through the process environment or an approved secret manager.'
+    }
     $databasePasswords = @(
         $env:POSTGRES_PASSWORD,
         $env:POSTGRES_APP_PASSWORD,
         $env:POSTGRES_DISPATCHER_PASSWORD,
-        $env:POSTGRES_AI_RUNTIME_PASSWORD
+        $env:POSTGRES_AI_RUNTIME_PASSWORD,
+        $env:POSTGRES_TOOL_GATEWAY_MIGRATOR_PASSWORD,
+        $env:POSTGRES_TOOL_GATEWAY_PASSWORD
     )
     if (($databasePasswords | Select-Object -Unique).Count -ne $databasePasswords.Count) {
         throw 'Migration and runtime-role passwords must be pairwise different.'
@@ -253,6 +274,12 @@ function Assert-ApplicationComposeConfiguration {
     }
     if (-not [string]::IsNullOrWhiteSpace($env:POSTGRES_AI_RUNTIME_USER) -and $env:POSTGRES_AI_RUNTIME_USER -cne 'opsmind_ai_runtime') {
         throw 'POSTGRES_AI_RUNTIME_USER must remain opsmind_ai_runtime; migration grants are intentionally explicit.'
+    }
+    if (-not [string]::IsNullOrWhiteSpace($env:POSTGRES_TOOL_GATEWAY_MIGRATOR_USER) -and $env:POSTGRES_TOOL_GATEWAY_MIGRATOR_USER -cne 'opsmind_tool_gateway_migrator') {
+        throw 'POSTGRES_TOOL_GATEWAY_MIGRATOR_USER must remain opsmind_tool_gateway_migrator; schema ownership is intentionally explicit.'
+    }
+    if (-not [string]::IsNullOrWhiteSpace($env:POSTGRES_TOOL_GATEWAY_USER) -and $env:POSTGRES_TOOL_GATEWAY_USER -cne 'opsmind_tool_gateway') {
+        throw 'POSTGRES_TOOL_GATEWAY_USER must remain opsmind_tool_gateway; migration grants are intentionally explicit.'
     }
     if ($env:OPS_DOCKER_STORAGE_VERIFIED -cne 'true') {
         throw 'OPS_DOCKER_STORAGE_VERIFIED=true is required after verifying Docker daemon/build storage is on an approved monitored volume.'

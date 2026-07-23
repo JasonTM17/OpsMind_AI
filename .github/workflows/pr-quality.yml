@@ -507,7 +507,7 @@ jobs:
           if-no-files-found: error
 
   postgres-contract:
-    name: Phase 3 PostgreSQL trust contract
+    name: PostgreSQL trust contracts
     needs: [foundation, clean-bootstrap]
     runs-on: ubuntu-latest
     timeout-minutes: 35
@@ -535,6 +535,10 @@ jobs:
       POSTGRES_DISPATCHER_PASSWORD: placeholder-ci-dispatcher
       POSTGRES_AI_RUNTIME_USER: opsmind_ai_runtime
       POSTGRES_AI_RUNTIME_PASSWORD: placeholder-ci-ai-runtime
+      POSTGRES_TOOL_GATEWAY_MIGRATOR_USER: opsmind_tool_gateway_migrator
+      POSTGRES_TOOL_GATEWAY_MIGRATOR_PASSWORD: placeholder-ci-tool-migration
+      POSTGRES_TOOL_GATEWAY_USER: opsmind_tool_gateway
+      POSTGRES_TOOL_GATEWAY_PASSWORD: placeholder-ci-tool-runtime
       PGHOST: 127.0.0.1
       PGPORT: "5432"
       PGDATABASE: opsmind
@@ -566,45 +570,11 @@ jobs:
             sleep 1
           done
           exit 1
-      - name: Provision non-owner runtime role
+      - name: Provision separated database roles
         shell: bash
         run: |
           set -euo pipefail
-          PGPASSWORD="$POSTGRES_PASSWORD" psql --no-password \
-            --host "$PGHOST" --port "$PGPORT" --username "$POSTGRES_USER" --dbname "$POSTGRES_DB" <<'SQL'
-          \set ON_ERROR_STOP on
-          DO $$
-          BEGIN
-              IF NOT EXISTS (SELECT 1 FROM pg_roles WHERE rolname = 'opsmind_app') THEN
-                  CREATE ROLE opsmind_app LOGIN NOSUPERUSER NOCREATEDB NOCREATEROLE NOINHERIT NOREPLICATION NOBYPASSRLS;
-              END IF;
-              IF NOT EXISTS (SELECT 1 FROM pg_roles WHERE rolname = 'opsmind_context_resolver') THEN
-                  CREATE ROLE opsmind_context_resolver NOLOGIN NOSUPERUSER NOCREATEDB NOCREATEROLE NOINHERIT NOREPLICATION NOBYPASSRLS;
-              END IF;
-              IF NOT EXISTS (SELECT 1 FROM pg_roles WHERE rolname = 'opsmind_dispatcher') THEN
-                  CREATE ROLE opsmind_dispatcher LOGIN NOSUPERUSER NOCREATEDB NOCREATEROLE NOINHERIT NOREPLICATION NOBYPASSRLS;
-              END IF;
-              IF NOT EXISTS (SELECT 1 FROM pg_roles WHERE rolname = 'opsmind_dispatch_resolver') THEN
-                  CREATE ROLE opsmind_dispatch_resolver NOLOGIN NOSUPERUSER NOCREATEDB NOCREATEROLE NOINHERIT NOREPLICATION NOBYPASSRLS;
-              END IF;
-              IF NOT EXISTS (SELECT 1 FROM pg_roles WHERE rolname = 'opsmind_ai_runtime') THEN
-                  CREATE ROLE opsmind_ai_runtime LOGIN NOSUPERUSER NOCREATEDB NOCREATEROLE NOINHERIT NOREPLICATION NOBYPASSRLS;
-              END IF;
-          END
-          $$;
-          SQL
-          PGPASSWORD="$POSTGRES_PASSWORD" psql --no-password \
-            --host "$PGHOST" --port "$PGPORT" --username "$POSTGRES_USER" --dbname "$POSTGRES_DB" <<EOF
-          \password opsmind_app
-          $POSTGRES_APP_PASSWORD
-          $POSTGRES_APP_PASSWORD
-          \password opsmind_dispatcher
-          $POSTGRES_DISPATCHER_PASSWORD
-          $POSTGRES_DISPATCHER_PASSWORD
-          \password opsmind_ai_runtime
-          $POSTGRES_AI_RUNTIME_PASSWORD
-          $POSTGRES_AI_RUNTIME_PASSWORD
-          EOF
+          bash services/platform-api/src/main/resources/db/bootstrap/001-create-runtime-role.sh
       - name: Build and apply migration as owner
         shell: bash
         run: |
@@ -620,6 +590,34 @@ jobs:
           java -jar services/platform-api/target/platform-api.jar \
             --spring.main.web-application-type=none \
             --opsmind.persistence.enabled=false
+      - name: Build and apply Tool Gateway migration
+        shell: bash
+        run: |
+          set -euo pipefail
+          mvn --batch-mode --no-transfer-progress \
+            -Dmaven.repo.local="$OPS_CACHE_ROOT/maven" \
+            -f services/tool-gateway/pom.xml -DskipTests package
+          SPRING_PROFILES_ACTIVE=persistence \
+          TOOL_GATEWAY_DATABASE_URL="jdbc:postgresql://${PGHOST}:${PGPORT}/${PGDATABASE}" \
+          TOOL_GATEWAY_DATABASE_USER="$POSTGRES_TOOL_GATEWAY_MIGRATOR_USER" \
+          TOOL_GATEWAY_DATABASE_PASSWORD="$POSTGRES_TOOL_GATEWAY_MIGRATOR_PASSWORD" \
+          TOOL_GATEWAY_PERSISTENCE_ENABLED=true \
+          TOOL_GATEWAY_FLYWAY_ENABLED=true \
+            java -jar services/tool-gateway/target/tool-gateway.jar \
+              --spring.main.web-application-type=none
+      - name: Prove durable Tool Gateway state and isolation
+        shell: bash
+        env:
+          OPSMIND_TOOL_GATEWAY_DB_INTEGRATION: "true"
+          TOOL_GATEWAY_DATABASE_URL: jdbc:postgresql://127.0.0.1:5432/opsmind
+        run: |
+          set -euo pipefail
+          mkdir -p artifacts/verification/phase-07
+          mvn --batch-mode --no-transfer-progress \
+            -Dmaven.repo.local="$OPS_CACHE_ROOT/maven" \
+            -Dtest=ToolGatewayPersistenceIntegrationTest,ToolGatewayPersistenceBoundaryIntegrationTest \
+            -f services/tool-gateway/pom.xml test \
+            2>&1 | tee artifacts/verification/phase-07/tool-gateway-persistence.txt
       - name: Prove V006 to V007 evidence migration upgrade
         shell: bash
         env:
@@ -656,10 +654,11 @@ jobs:
       - uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
         if: always()
         with:
-          name: phase-03-postgres-contract
+          name: postgres-trust-contracts
           path: |
             artifacts/verification/phase-03/
             artifacts/verification/phase-04/evidence-migration-upgrade.txt
+            artifacts/verification/phase-07/tool-gateway-persistence.txt
           if-no-files-found: error
 
   identity-conformance:
@@ -719,6 +718,8 @@ jobs:
       POSTGRES_APP_PASSWORD: placeholder-ci-runtime
       POSTGRES_DISPATCHER_PASSWORD: placeholder-ci-dispatcher
       POSTGRES_AI_RUNTIME_PASSWORD: placeholder-ci-ai-runtime
+      POSTGRES_TOOL_GATEWAY_MIGRATOR_PASSWORD: placeholder-ci-tool-migration
+      POSTGRES_TOOL_GATEWAY_PASSWORD: placeholder-ci-tool-runtime
       OPS_MIN_DOCKER_FREE_GB: "5"
     steps:
       - uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0 # v7.0.0
@@ -763,6 +764,23 @@ jobs:
           if [ "$status" -eq 0 ]; then result=PASS; else result=BLOCK; fi
           echo "Result=$result" | tee -a "$evidence"
           exit "$status"
+      - name: Validate pinned Prometheus configuration
+        shell: bash
+        run: |
+          set -euo pipefail
+          evidence="artifacts/verification/phase-02/prometheus-config.txt"
+          docker run --rm \
+            --network none \
+            --read-only \
+            --cap-drop ALL \
+            --security-opt no-new-privileges \
+            --user 65532:65532 \
+            --entrypoint /bin/promtool \
+            --mount type=bind,source="$PWD/deploy/prometheus/prometheus.yml",target=/etc/prometheus/prometheus.yml,readonly \
+            --mount type=bind,source="$PWD/deploy/prometheus/opsmind-recording-rules.yml",target=/etc/prometheus/opsmind-recording-rules.yml,readonly \
+            prom/prometheus:v3.12.0-distroless@sha256:f39df5334dee301b885f77e0ff1159f5d8a43bf9db518f885544594799a1e3c2 \
+            check config /etc/prometheus/prometheus.yml \
+            2>&1 | tee "$evidence"
       - name: Build, start, and probe all application services
         shell: bash
         run: |
@@ -781,6 +799,26 @@ jobs:
             echo
             curl --fail --show-error --silent http://127.0.0.1:3000/api/health
             echo
+            prometheus_evidence="artifacts/verification/phase-02/prometheus-live-query.json"
+            prometheus_verified=false
+            for attempt in $(seq 1 20); do
+              end="$(date +%s)"
+              start=$((end - 120))
+              if curl --fail --show-error --silent --get \
+                --data-urlencode 'query=opsmind:http_request_duration_seconds:synthetic{service="opsmind-api"}' \
+                --data-urlencode "start=$start" \
+                --data-urlencode "end=$end" \
+                --data-urlencode "step=60" \
+                http://127.0.0.1:9090/api/v1/query_range \
+                --output "$prometheus_evidence" \
+                && node scripts/validation/validate-live-prometheus-response.mjs \
+                  "$prometheus_evidence"; then
+                prometheus_verified=true
+                break
+              fi
+              sleep 2
+            done
+            test "$prometheus_verified" = true
             docker compose --profile application ps
             sh scripts/storage/check-capacity.sh
           )
