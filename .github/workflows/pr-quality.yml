@@ -816,6 +816,7 @@ jobs:
                 prometheus_verified=true
                 break
               fi
+              echo "Prometheus query is not ready (attempt ${attempt}/20)." >&2
               sleep 2
             done
             test "$prometheus_verified" = true
