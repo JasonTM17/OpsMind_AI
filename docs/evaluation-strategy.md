@@ -36,7 +36,10 @@ Cases are separated by incident family and time to reduce leakage between develo
 
 ### Deterministic smoke
 
-Three small cases validate harness determinism, schema handling, evidence citation, and result recording. They are run frequently and make no population-level quality claim.
+The Phase 8 target is three small cases. Phase 8A currently implements only
+Scenario A; the abstention and conflicting-evidence cases remain pending. These
+smoke cases validate harness determinism, schema handling, evidence citation,
+and result recording, and make no population-level quality claim.
 
 ### Scenario-family regression
 
@@ -101,7 +104,12 @@ Each report records code/model/prompt/evaluator/dataset/scenario versions, envir
 
 ## Verification Evidence
 
-Phase 8 creates the executable harness and baseline. Phases 13–14 add dataset/model lineage. Phase 16 runs final held-out, human, safety, performance, cost, and restore-linked evaluation.
+Phase 8A now creates the executable contract/scorer baseline and one
+deterministic Scenario A. Its `INCOMPLETE` verdict is a deliberate guard when
+raw operator projection or tool-receipt references are absent. Follow-on Phase
+8 work must add abstention/conflict scenarios and timeline/tool harvesting
+before the phase can close. Later dataset/model lineage and final held-out, human,
+safety, performance, cost, and restore-linked evaluation remain required.
 
 ## Remaining Evaluation Decisions
 

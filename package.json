@@ -25,6 +25,7 @@
     "validate:layout": "node scripts/validation/validate-repository-layout.mjs",
     "validate:phase4b": "node scripts/validation/validate-phase-04b-evidence-records.mjs",
     "validate:phase6": "node scripts/validation/validate-phase-06-tool-gateway.mjs",
-    "validate:phase7": "node scripts/validation/validate-phase-07-investigation-slice.mjs"
+    "validate:phase7": "node scripts/validation/validate-phase-07-investigation-slice.mjs",
+    "validate:phase8": "node scripts/validation/validate-phase-08-evaluation-foundation.mjs"
   }
 }

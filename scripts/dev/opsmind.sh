@@ -134,7 +134,8 @@ load_environment() {
             OPSMIND_AI_CAPABILITY_PRIVATE_KEY_FILE|OPSMIND_AI_CAPABILITY_JWKS_FILE|\
             OPSMIND_AI_CAPABILITY_MAX_LIFETIME|OPSMIND_CAPABILITY_MAX_LIFETIME_SECONDS|\
             OPS_ENABLE_DEEPSEEK_EGRESS|OPS_ENABLE_WRITE_ACTIONS|\
-            OPSMIND_SECURITY_MODE|OPSMIND_DISPATCHER_ENABLED|OPS_DOCKER_STORAGE_VERIFIED) ;;
+            OPSMIND_SECURITY_MODE|OPSMIND_DISPATCHER_ENABLED|OPS_DOCKER_STORAGE_VERIFIED|\
+            OPSMIND_EVALUATION_TRACE_PATH|OPSMIND_EVALUATION_OUTPUT_PATH) ;;
             *)
                 printf '%s\n' "Unsupported .env key: $key. Only the documented non-secret allowlist is accepted." >&2
                 return 2
@@ -429,7 +430,7 @@ case "$command_name" in
     down) command_plan='stop the application Compose profile without a capacity gate' ;;
     migrate) command_plan='package the Platform API and apply its Flyway migrations with the migration role' ;;
     seed) command_plan='unavailable until Phase 3 owns deterministic seed data' ;;
-    evaluate) command_plan='unavailable until Phase 8 owns the evaluation harness' ;;
+    evaluate) command_plan='score the Phase 8 deterministic smoke scenario against a fresh Phase 7 trace' ;;
     security|security-scan) command_plan='run repository secret and ecosystem dependency scans' ;;
     doctor) command_plan='run preflight and report required tool availability' ;;
     *) command_plan='show command help' ;;
@@ -495,7 +496,7 @@ if [ "$command_name" = doctor ]; then
     exit 0
 fi
 case "$command_name" in
-    seed|evaluate) printf '%s\n' "CommandUnavailable=$command_plan" >&2; exit 3 ;;
+    seed) printf '%s\n' "CommandUnavailable=$command_plan" >&2; exit 3 ;;
     security-scan) command_name=security ;;
 esac
 
@@ -557,6 +558,8 @@ case "$command_name" in
         capacity_guard
         run_checked mvn -q "-Dmaven.repo.local=$maven_repository" -f "$gateway_pom" test
         run_checked "$venv_python" -m pytest services/ai-runtime/tests
+        run_checked node --test evaluation/runner/score-phase-07-trace.test.mjs
+        run_checked node scripts/validation/validate-phase-08-evaluation-foundation.mjs
         capacity_guard
         ;;
     lint)
@@ -581,6 +584,10 @@ case "$command_name" in
         run_checked mvn -q "-Dmaven.repo.local=$maven_repository" -f "$gateway_pom" -DskipTests package
         run_checked "$venv_python" -m compileall -q services/ai-runtime/src
         capacity_guard
+        ;;
+    evaluate)
+        run_checked node scripts/validation/validate-phase-08-evaluation-foundation.mjs
+        run_checked node evaluation/runner/score-phase-07-trace.mjs
         ;;
     security)
         require_command pwsh

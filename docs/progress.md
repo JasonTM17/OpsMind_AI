@@ -8,6 +8,44 @@
 - Record blockers explicitly and leave downstream phases pending.
 - Do not include secrets, raw credentials, or sensitive evidence.
 
+## 2026-07-26 — Phase 8A evaluation contract foundation
+
+Implemented:
+
+- Versioned `scenario-ground-truth-v1`, `benchmark-result-v1`, and
+  `benchmark-manifest-v1` schemas with strict additional-property rejection.
+- Secret-free deployment-latency Scenario A fixture with SHA-256 digest binding,
+  tenant/data-class context, read-only tool policy, budgets, model/prompt/schema
+  versions, and explicit training ineligibility.
+- Ten-family SIM registry with only `SIM-01` implemented; `SIM-02` through
+  `SIM-10` remain visibly pending/reserved.
+- Deterministic scorer for structured output, RCA label/confidence, citation
+  binding, read-only safety, tool receipt linkage, latency, and cost. Missing
+  raw projection/receipt artifacts return `INCOMPLETE`, never a false PASS.
+- `evaluate` launcher wiring and D-backed evidence publication through the
+  existing safe artifact-root helper. The CLI also rejects traces not bound to
+  the current Git revision and clean-worktree state.
+
+Verified:
+
+- `node --test evaluation/runner/score-phase-07-trace.test.mjs`: 17/17 passed,
+  including tenant/run identity, budget, selector, and semantic-RCA fail-closed
+  cases.
+- `node scripts/validation/validate-phase-08-evaluation-foundation.mjs`:
+  `Errors=0`, 3 schemas, 10 families, 3 negative cases; checkpoint PASS,
+  PhaseExit BLOCK.
+- PowerShell command surface: 25/25; portable shell command surface: 24/24.
+- The existing pre-change Phase 7 trace is intentionally rejected as stale
+  before scoring; a fresh current-revision trace is required.
+
+Not completed:
+
+- No claim of Phase 8/G4 completion, held-out quality, 99% validity, population
+  p95, calibration, human benefit, Scenario B/C, live DeepSeek, or production
+  connector conformance.
+- Docker/Java/provider runs were not repeated while C: remained below the
+  documented 10 GiB floor and the local Docker daemon returned HTTP 500.
+
 ## 2026-07-19 — Architecture and A–Z plan
 
 Completed:

@@ -31,7 +31,7 @@ The detailed executable plan is [plans/260719-1747-opsmind-ai-production-platfor
 | 5 | DeepSeek AI runtime and provider gateway | G3 | In progress; static checkpoint passed, exit gate blocked |
 | 6 | Safe Tool Gateway and read-only connectors | G3 | In progress; durable Prometheus checkpoint PASS, PhaseExitGate BLOCK |
 | 7 | Evidence-backed incident vertical slice | G3 | In progress; phases 1–4 complete, cross-service/UI exit BLOCK |
-| 8 | Simulator and evaluation baseline | G3/G7 | Pending |
+| 8 | Simulator and evaluation baseline | G3/G7 | In progress; Phase 8A contract/scorer checkpoint PASS, exit BLOCK |
 | 9 | Durable Temporal investigation workflow | G4 | Pending |
 | 10 | Permission-aware RAG and knowledge lifecycle | G5 | Pending |
 | 11 | Exact-action approval and reversible remediation | G6 | Pending |
@@ -118,11 +118,14 @@ threshold. CK/Stitch UI/browser E2E also passes. G3 still requires a named live
 non-production connector, provider/legal conformance, incident-timeline
 linkage, and BFF/session proof.
 
-The local CK/Stitch operator workspace now also has unit, lint, typecheck,
-production-build, accessibility, responsive, keyboard, reduced-motion, and
-Chromium E2E proof against a versioned redacted operator projection.
-Incident-timeline linkage, BFF/session proof, and live-provider conformance
-remain open.
+Phase 8A now owns a versioned, secret-free Scenario A ground truth, a ten-family
+registry, strict benchmark-result/scenario/manifest schemas, deterministic scorer, raw
+artifact references, fixture digest checks, and `evaluate` wiring. The
+canonical contract and negative-case validator pass, and missing operator
+projection/tool-receipt artifacts correctly produce `INCOMPLETE`. This is an
+additive checkpoint only: Scenario B/C, held-out corpus, human baseline,
+provider conformance, timeline harvesting, and the Phase 8/G4 exit gate remain
+blocked.
 
 ## Staffing Scenarios
 

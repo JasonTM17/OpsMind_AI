@@ -58,7 +58,8 @@ foreach ($name in @(
     'OPSMIND_AI_CAPABILITY_MAX_LIFETIME', 'OPSMIND_CAPABILITY_MAX_LIFETIME_SECONDS',
     'OPS_ENABLE_DEEPSEEK_EGRESS', 'OPS_ENABLE_WRITE_ACTIONS', 'OPSMIND_SECURITY_MODE',
     'OPSMIND_DISPATCHER_ENABLED',
-    'OPS_DOCKER_STORAGE_VERIFIED'
+    'OPS_DOCKER_STORAGE_VERIFIED',
+    'OPSMIND_EVALUATION_TRACE_PATH', 'OPSMIND_EVALUATION_OUTPUT_PATH'
 )) { [void]$safeEnvironmentNames.Add($name) }
 $runtimeSecretNames = @(
     'POSTGRES_PASSWORD', 'POSTGRES_APP_PASSWORD', 'POSTGRES_DISPATCHER_PASSWORD',
@@ -429,7 +430,7 @@ $commandPlan = @{
     down = 'stop the application Compose profile without a capacity gate'
     migrate = 'package the Platform API and apply its Flyway migrations with the migration role'
     seed = 'unavailable until Phase 3 owns deterministic seed data'
-    evaluate = 'unavailable until Phase 8 owns the evaluation harness'
+    evaluate = 'score the Phase 8 deterministic smoke scenario against a fresh Phase 7 trace'
     security = 'run repository secret and ecosystem dependency scans'
     'security-scan' = 'alias for security'
     doctor = 'run preflight and report required tool availability'
@@ -493,7 +494,7 @@ if ($CommandName -eq 'doctor') {
     Write-Output 'Doctor=PASS'
     Exit-OpsMind -Code 0
 }
-if (@('seed', 'evaluate') -contains $CommandName) {
+if ($CommandName -eq 'seed') {
     [Console]::Error.WriteLine("CommandUnavailable=$($commandPlan[$CommandName])")
     Exit-OpsMind -Code 3
 }
@@ -570,6 +571,8 @@ switch ($CommandName) {
         Invoke-CapacityGuard
         Invoke-Checked mvn ($mavenCommon + @('-f', $gatewayPom, 'test'))
         Invoke-Checked $pythonExecutable @('-m', 'pytest', 'services\ai-runtime\tests')
+        Invoke-Checked node @('--test', '.\evaluation\runner\score-phase-07-trace.test.mjs')
+        Invoke-Checked node @('.\scripts\validation\validate-phase-08-evaluation-foundation.mjs')
         Invoke-CapacityGuard
     }
     'lint' {
@@ -593,6 +596,10 @@ switch ($CommandName) {
         Invoke-Checked mvn ($mavenCommon + @('-f', $gatewayPom, '-DskipTests', 'package'))
         Invoke-Checked $pythonExecutable @('-m', 'compileall', '-q', 'services\ai-runtime\src')
         Invoke-CapacityGuard
+    }
+    'evaluate' {
+        Invoke-Checked node @('.\scripts\validation\validate-phase-08-evaluation-foundation.mjs')
+        Invoke-Checked node @('.\evaluation\runner\score-phase-07-trace.mjs')
     }
     'security' {
         Invoke-Checked powershell.exe @('-NoProfile', '-ExecutionPolicy', 'Bypass', '-File', '.\scripts\governance\scan-project-secrets.ps1')

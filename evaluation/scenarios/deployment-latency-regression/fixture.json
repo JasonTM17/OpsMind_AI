@@ -1,0 +1,26 @@
+{
+  "schema_version": "opsmind-synthetic-observability-fixture-v1",
+  "scenario_id": "deployment-latency-regression",
+  "seed": 73001,
+  "clock": {
+    "incident_started_at": "2030-01-01T00:00:00Z",
+    "deployment_marker_at": "2030-01-01T00:02:00Z",
+    "observation_ended_at": "2030-01-01T00:05:00Z"
+  },
+  "prometheus": {
+    "query": "opsmind:http_request_duration_seconds:synthetic{service=\"opsmind-api\"}",
+    "service": "opsmind-api",
+    "metric": "opsmind:http_request_duration_seconds:synthetic",
+    "values": [
+      [1893456000, "0.42"],
+      [1893456120, "0.87"],
+      [1893456300, "1.31"]
+    ]
+  },
+  "deployment": {
+    "id": "deploy-20300101-001",
+    "service": "opsmind-api",
+    "revision": "synthetic-regression-r1",
+    "status": "SUCCEEDED"
+  }
+}

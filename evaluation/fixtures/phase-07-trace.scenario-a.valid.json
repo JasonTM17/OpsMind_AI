@@ -1,0 +1,155 @@
+{
+  "schema": "opsmind-cross-service-trace-v1",
+  "generatedAt": "2030-01-01T00:06:00Z",
+  "environment": "local-disposable-cross-service",
+  "warmRuns": 1,
+  "terminalStatus": "PASS",
+  "latencyMs": {
+    "p50": 250,
+    "p95": 300,
+    "max": 300,
+    "startP95": 240,
+    "projectionReadP95": 60,
+    "threshold": 5000,
+    "thresholdPass": true
+  },
+  "runs": [
+    {
+      "runId": "10000000-0000-4000-8000-000000000811",
+      "organizationId": "10000000-0000-4000-8000-000000000801",
+      "projectId": "10000000-0000-4000-8000-000000000802",
+      "incidentId": "10000000-0000-4000-8000-000000000814",
+      "correlationId": "10000000-0000-4000-8000-000000000812",
+      "evidenceIds": [
+        "10000000-0000-4000-8000-000000000813"
+      ],
+      "status": "COMPLETED",
+      "totalMs": 300,
+      "operatorProjection": {
+        "runId": "10000000-0000-4000-8000-000000000811",
+        "organizationId": "10000000-0000-4000-8000-000000000801",
+        "projectId": "10000000-0000-4000-8000-000000000802",
+        "incidentId": "10000000-0000-4000-8000-000000000814",
+        "status": "COMPLETED",
+        "budget": {
+          "maxRounds": 5,
+          "maxToolCalls": 4,
+          "maxEvidenceItems": 20,
+          "maxTokens": 4000
+        },
+        "rounds": 2,
+        "toolCalls": 1,
+        "totalTokens": 64,
+        "evidenceIds": [
+          "10000000-0000-4000-8000-000000000813"
+        ],
+        "pendingToolCalls": [],
+        "analysis": {
+          "status": "complete",
+          "run_id": "10000000-0000-4000-8000-000000000811",
+          "model_id": "platform-analysis-adapter",
+          "prompt_version": "prompt-incident-investigation-v1",
+          "schema_version": "analysis-v1",
+          "hypotheses": [
+            {
+              "title": "Evidence-backed hypothesis 1",
+              "explanation": "Synthetic latency increased after the deployment marker.",
+              "confidence": 0.82,
+              "citations": [
+                {
+                  "evidence_id": "10000000-0000-4000-8000-000000000813",
+                  "digest": "sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+                  "claim": "Synthetic evidence supports the regression."
+                }
+              ]
+            }
+          ],
+          "counter_evidence": [],
+          "missing_evidence": [],
+          "citations": [
+            {
+              "evidence_id": "10000000-0000-4000-8000-000000000813",
+              "digest": "sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+              "claim": "Synthetic evidence supports the regression."
+            }
+          ],
+          "confidence": 0.82,
+          "usage": {
+            "prompt_tokens": 32,
+            "completion_tokens": 32,
+            "total_tokens": 64
+          },
+          "cost_estimate": {
+            "currency": "USD",
+            "amount": 0
+          },
+          "requested_tool_calls": []
+        },
+        "terminalReason": null,
+        "startedAt": "2030-01-01T00:00:00Z",
+        "deadlineAt": "2030-01-01T00:02:00Z",
+        "endedAt": "2030-01-01T00:00:05Z"
+      },
+      "rawAnalysisReference": "repository://evaluation/fixtures/phase-07-trace.scenario-a.valid.json#/runs/0/rawAnalysis",
+      "rawAnalysisDigest": "sha256:37fec0a4f8bb42f12fc337ac66b375c0cce86d1236721f2cf69e3025a2fe515f",
+      "rawAnalysis": {
+        "status": "complete",
+        "run_id": "10000000-0000-4000-8000-000000000811",
+          "model_id": "deepseek-v4-flash",
+        "prompt_version": "prompt-incident-investigation-v1",
+        "schema_version": "analysis-v1",
+        "hypotheses": [
+          {
+            "title": "Synthetic latency regression",
+            "explanation": "Synthetic latency increased after the deployment marker.",
+            "confidence": 0.82,
+            "citations": [
+              {
+                "evidence_id": "10000000-0000-4000-8000-000000000813",
+                "digest": "sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+                "claim": "Synthetic evidence supports the regression."
+              }
+            ]
+          }
+        ],
+        "counter_evidence": [],
+        "missing_evidence": [],
+        "citations": [
+          {
+            "evidence_id": "10000000-0000-4000-8000-000000000813",
+            "digest": "sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+            "claim": "Synthetic evidence supports the regression."
+          }
+        ],
+        "confidence": 0.82,
+        "usage": {
+          "prompt_tokens": 32,
+          "completion_tokens": 32,
+          "total_tokens": 64
+        },
+        "cost_estimate": {
+          "currency": "USD",
+          "amount": 0
+        },
+        "requested_tool_calls": []
+      },
+      "toolExecutions": [
+        {
+          "executionId": "10000000-0000-4000-8000-000000000815",
+          "status": "SUCCEEDED",
+          "connector": "observability",
+          "operation": "metrics.query",
+          "riskClass": "read-only",
+          "manifestVersion": "observability.metrics.query@1",
+          "evidenceDigests": [
+            "sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+          ]
+        }
+      ]
+    }
+  ],
+  "source": {
+    "gitHead": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+    "workingTreeClean": true
+  }
+}

@@ -1,7 +1,7 @@
 ---
 phase: 8
 title: "Simulator and Evaluation Baseline"
-status: pending
+status: in-progress
 priority: P1
 dependencies: [5, 6, 7]
 effort: "3-4 weeks"
@@ -12,6 +12,30 @@ effort: "3-4 weeks"
 ## Objective
 
 Build a deterministic, versioned incident simulator and benchmark harness that can replay the first investigation slice, emit machine-readable ground truth, and score structured-output validity, evidence quality, tool use, latency, and cost before broader product expansion.
+
+## Phase 8A checkpoint (2026-07-26)
+
+The first additive slice is implemented and locally verified:
+
+- `evaluation/schemas/scenario-ground-truth.schema.json`,
+  `evaluation/schemas/benchmark-result.schema.json`, and
+  `evaluation/schemas/benchmark-manifest.schema.json` are strict, versioned
+  contracts.
+- `evaluation/scenarios/deployment-latency-regression/` owns a digest-bound,
+  training-ineligible Scenario A fixture and ground truth.
+- `evaluation/benchmark-manifest.yaml` reserves ten SIM families while marking
+  only `SIM-01` implemented.
+- `evaluation/runner/score-phase-07-trace.mjs` scores the real Phase 7 trace
+  surface, binds it to the current Git revision, and fails closed to
+  `INCOMPLETE` when raw projection or tool-receipt references are missing.
+- `scripts/validation/validate-phase-08-evaluation-foundation.mjs` reports
+  `Errors=0`, `CheckpointResult=PASS`, `PhaseExit=BLOCK`.
+- `evaluate` is wired in both portable launchers, with D-backed artifact
+  publication through the existing storage guard.
+
+This does not close Phase 8. Scenario B/C, timeline and receipt harvesting,
+held-out corpus, human baseline, live provider/connector conformance, and the
+100-invocation release gate remain open.
 
 Separate deterministic smoke coverage from statistical product evidence: preregister what “verified RCA” means, create an independently held-out corpus and human comparator protocol, and report confidence intervals instead of treating three or ten authored scenarios as a percentage denominator.
 

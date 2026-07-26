@@ -1,6 +1,6 @@
 # OpsMind AI Codebase Summary
 
-Last verified: 2026-07-23
+Last verified: 2026-07-26
 
 ## Purpose and Verification Basis
 
@@ -11,7 +11,7 @@ boundaries rather than receive direct infrastructure authority.
 
 This summary is based on:
 
-- a Repomix 1.14.0 XML snapshot generated at `repomix-output.xml` from 4,181
+- a Repomix 1.14.0 XML snapshot generated at `repomix-output.xml` from 4,503
   repository files; Repomix reported no suspicious files;
 - direct inspection of the root manifests, Compose file, current service code,
   contracts, Flyway migrations, validation runners, and Phase 4 evidence;
@@ -32,8 +32,9 @@ documentation. Source code and canonical contracts take precedence.
 | Phase 4 | In progress; checkpoint 4A incident write ledger is locally complete. Full Phase 4 and G2/G3 are not complete. |
 | Phase 5 | In progress; provider-neutral analysis, DeepSeek adapter, egress guards, durable PostgreSQL state, V005 append-only probe audit, Platform API integration, and stream assembly exist. Static checkpoint passes; exit remains blocked by B-004 and missing rotated-key synthetic smoke. |
 | Phase 6 | In progress; durable PostgreSQL and synthetic Prometheus checkpoint passes revision-bound CI. Artifact/broader-connector exit remains blocked. |
-| Phase 7 | In progress; integration phases 1–4 complete. Cross-service trace, p95, CK/Stitch UI, and browser E2E exit remain blocked. |
-| Later phases | Durable workflow, RAG, remediation, complete operator UX, evaluation, and production-hardening outcomes remain pending. |
+| Phase 7 | In progress; local cross-service trace, 100-warm-run latency, CK/Stitch UI, and browser E2E checkpoints pass. G3 remains blocked by live non-production connector/provider conformance, timeline linkage, and BFF/session proof. |
+| Phase 8 | In progress; Phase 8A deterministic contract/scorer checkpoint passes. Phase exit and G4 remain blocked. |
+| Later phases | Durable workflow, RAG, remediation, complete operator UX, and production-hardening outcomes remain pending. |
 
 Phase 7's local Operator Web and fixture-backed cross-service checkpoints are
 complete for the safe projection boundary; incident-timeline linkage, live
@@ -54,6 +55,7 @@ claimed.
 | `services/platform-api/` | Spring Boot control plane for OIDC identity, tenant/project access, persistence, messaging primitives, checkpoint 4A incidents, and the Phase 7 deterministic plus PostgreSQL persistence checkpoint. |
 | `services/ai-runtime/` | FastAPI bounded analysis runtime with provider-neutral contracts, DeepSeek adapter, shared PostgreSQL replay/accounting, startup/periodic capability probe, `/health` liveness, and `/ready` readiness; live egress remains disabled. |
 | `services/tool-gateway/` | Spring Boot fail-closed Tool Gateway: separated workload/delegated JWT trust, manifest registry, bounded DLP execution, dedicated PostgreSQL nonce/receipt/audit state, and exact read-only Prometheus query-range connector. Default profiles remain fail closed; durable/live checkpoint has revision-bound CI proof. |
+| `evaluation/` | Versioned, training-ineligible deterministic-smoke contracts, one implemented Scenario A, scorer, and synthetic trace fixture. Scenario B/C and release-scale evaluation remain pending. |
 | `packages/contracts/` | Canonical OpenAPI, JSON Schema, and synthetic fixtures. |
 | `scripts/dev/` | Shared command dispatcher and PowerShell/portable launchers. |
 | `scripts/storage/` | Capacity and storage-root preflight guards. |
@@ -235,6 +237,7 @@ See [Security Model](./security-model.md) for the complete threat model and
 | `scripts/validation/validate-phase-05-ai-runtime.mjs` | Static checkpoint PASS | Exit gate remains BLOCK: active B-004 plus absent passing rotated-key synthetic smoke |
 | `scripts/validation/validate-phase-06-tool-gateway.mjs` | Durable Prometheus connector checkpoint PASS with schemas, canonical fixtures, digest/manifest/OpenAPI/source abuse checks | Phase exit BLOCK: artifact adapter, remaining connector families, tenant bulkhead, and provider-specific cancellation proof |
 | `scripts/validation/validate-phase-07-investigation-slice.mjs` | CK/Stitch/browser plus 100-warm-run revision-bound cross-service checkpoint PASS | G3 still requires live provider/connector, timeline, and BFF/session proof |
+| `scripts/validation/validate-phase-08-evaluation-foundation.mjs` | `Errors=0`, three schemas, ten registered families, one implemented family, eight metrics, and three negative cases; checkpoint PASS | Phase exit and G4 BLOCK; no live provider receipt or production claim |
 | GitHub Actions `29987371420` | PASS on commit `ace3642`: PostgreSQL trust contracts, live Prometheus Compose query, dependency security, service suites, Keycloak, and cross-platform bootstrap | CI non-production evidence; not the Phase 7 cross-service trace or staging conformance |
 
 | Evidence | Verified result | Scope limitation |
@@ -266,8 +269,9 @@ After storage preflight and explicit setup, the Windows command surface is:
 ```
 
 Portable equivalents use `./scripts/dev/opsmind.sh`. `dev`/`up` require runtime
-database secrets and Docker-storage attestation. `seed` and `evaluate` fail
-explicitly until their owning phases implement them. See
+database secrets and Docker-storage attestation. `seed` remains unavailable.
+`evaluate` validates Phase 8A and scores a fresh, clean-revision Phase 7 trace;
+missing raw artifacts or provenance fail closed. See
 [Local Development](./local-development.md) for prerequisites and failure
 semantics.
 

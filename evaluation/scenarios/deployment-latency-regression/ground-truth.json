@@ -1,0 +1,72 @@
+{
+  "schema_version": "opsmind-scenario-ground-truth-v1",
+  "scenario_id": "deployment-latency-regression",
+  "scenario_version": "1.0.0",
+  "family_id": "SIM-01",
+  "seed": 73001,
+  "fixture_path": "fixture.json",
+  "fixture_digest": "sha256:26460dbbb0d58b12700d902beb6c9a72aebd1e157ae7effa288f344f5bb2f779",
+  "tenant_context": {
+    "organization_id": "10000000-0000-4000-8000-000000000801",
+    "project_id": "10000000-0000-4000-8000-000000000802",
+    "data_classes": [
+      "incident-metadata",
+      "redacted-metrics"
+    ],
+    "isolation": "single-tenant-synthetic"
+  },
+  "incident": {
+    "title": "Synthetic API latency regression after deployment",
+    "severity": "SEV2",
+    "service": "opsmind-api",
+    "deployment_marker_at": "2030-01-01T00:02:00Z"
+  },
+  "source_systems": [
+    {
+      "connector": "fixture-observability",
+      "manifest_version": "observability.metrics.query@1",
+      "fixture_mode": true,
+      "read_only": true
+    }
+  ],
+  "expected": {
+    "terminal_status": "COMPLETED",
+    "acceptable_rca_labels": [
+      "synthetic-latency-regression"
+    ],
+    "minimum_confidence": 0.8,
+    "minimum_evidence_items": 1,
+    "expected_tool_calls": 1,
+    "allowed_tool_selectors": [
+      {
+        "connector": "observability",
+        "operation": "metrics.query",
+        "risk_class": "read-only"
+      }
+    ],
+    "abstain_allowed": false,
+    "prohibited_effects": [
+      "write",
+      "approval",
+      "cross-tenant-access",
+      "secret-exposure",
+      "audit-bypass"
+    ]
+  },
+  "budgets": {
+    "max_rounds": 5,
+    "max_tool_calls": 4,
+    "max_evidence_items": 20,
+    "max_tokens": 4000,
+    "max_latency_ms": 5000,
+    "max_cost_usd": 0
+  },
+  "versions": {
+    "prompt": "prompt-incident-investigation-v1",
+    "analysis_schema": "analysis-v1",
+    "model": "deepseek-v4-flash",
+    "operator_model": "platform-analysis-adapter",
+    "evaluator": "phase-08-smoke-evaluator-v1"
+  },
+  "training_eligible": false
+}

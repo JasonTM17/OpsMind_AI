@@ -1,0 +1,245 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://contracts.opsmind.invalid/evaluation/v1/benchmark-result.schema.json",
+  "title": "OpsMindBenchmarkResultV1",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "schema_version",
+    "benchmark_id",
+    "generated_at",
+    "evidence_level",
+    "scenario",
+    "source",
+    "versions",
+    "sample_count",
+    "metrics",
+    "raw_artifact_references",
+    "warnings",
+    "verdict"
+  ],
+  "properties": {
+    "schema_version": {
+      "const": "opsmind-benchmark-result-v1"
+    },
+    "benchmark_id": {
+      "type": "string",
+      "pattern": "^[a-z0-9]+(?:-[a-z0-9]+)*$",
+      "maxLength": 128
+    },
+    "generated_at": {
+      "type": "string",
+      "format": "date-time"
+    },
+    "evidence_level": {
+      "const": "deterministic-smoke"
+    },
+    "scenario": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["id", "version", "family_id", "seed", "fixture_digest"],
+      "properties": {
+        "id": {
+          "type": "string",
+          "pattern": "^[a-z0-9]+(?:-[a-z0-9]+)*$"
+        },
+        "version": {
+          "type": "string",
+          "pattern": "^[0-9]+\\.[0-9]+\\.[0-9]+$"
+        },
+        "family_id": {
+          "type": "string",
+          "pattern": "^SIM-[0-9]{2}$"
+        },
+        "seed": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "fixture_digest": {
+          "type": "string",
+          "pattern": "^sha256:[a-f0-9]{64}$"
+        }
+      }
+    },
+    "source": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "trace_schema",
+        "trace_reference",
+        "environment",
+        "git_head",
+        "working_tree_clean"
+      ],
+      "properties": {
+        "trace_schema": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 128
+        },
+        "trace_reference": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 1024
+        },
+        "environment": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 128
+        },
+        "git_head": {
+          "type": "string",
+          "pattern": "^[a-f0-9]{40}$"
+        },
+        "working_tree_clean": {
+          "type": "boolean"
+        }
+      }
+    },
+    "versions": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["prompt", "analysis_schema", "model", "operator_model", "evaluator"],
+      "properties": {
+        "prompt": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 128
+        },
+        "analysis_schema": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 128
+        },
+        "model": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 128
+        },
+        "operator_model": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 128
+        },
+        "evaluator": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 128
+        }
+      }
+    },
+    "sample_count": {
+      "type": "integer",
+      "minimum": 1,
+      "maximum": 1000
+    },
+    "metrics": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "structured_output",
+        "root_cause",
+        "root_cause_semantic",
+        "evidence_grounding",
+        "tool_selection",
+        "safety",
+        "latency",
+        "cost"
+      ],
+      "properties": {
+        "structured_output": {
+          "$ref": "#/$defs/metric"
+        },
+        "root_cause": {
+          "$ref": "#/$defs/metric"
+        },
+        "root_cause_semantic": {
+          "$ref": "#/$defs/metric"
+        },
+        "evidence_grounding": {
+          "$ref": "#/$defs/metric"
+        },
+        "tool_selection": {
+          "$ref": "#/$defs/metric"
+        },
+        "safety": {
+          "$ref": "#/$defs/metric"
+        },
+        "latency": {
+          "$ref": "#/$defs/metric"
+        },
+        "cost": {
+          "$ref": "#/$defs/metric"
+        }
+      }
+    },
+    "raw_artifact_references": {
+      "type": "array",
+      "minItems": 1,
+      "maxItems": 4000,
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["kind", "reference"],
+        "properties": {
+          "kind": {
+            "enum": [
+              "cross-service-trace",
+              "operator-projection",
+              "final-rca",
+              "evidence",
+              "tool-execution"
+            ]
+          },
+          "reference": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 2048
+          }
+        }
+      }
+    },
+    "warnings": {
+      "type": "array",
+      "maxItems": 64,
+      "uniqueItems": true,
+      "items": {
+        "type": "string",
+        "minLength": 1,
+        "maxLength": 512
+      }
+    },
+    "verdict": {
+      "enum": ["PASS", "FAIL", "INCOMPLETE"]
+    }
+  },
+  "$defs": {
+    "metric": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["status", "numerator", "denominator", "value", "details"],
+      "properties": {
+        "status": {
+          "enum": ["PASS", "FAIL", "UNAVAILABLE"]
+        },
+        "numerator": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "denominator": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "value": {
+          "type": ["number", "null"],
+          "minimum": 0
+        },
+        "details": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 1024
+        }
+      }
+    }
+  }
+}
