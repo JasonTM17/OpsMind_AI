@@ -280,7 +280,7 @@ class InvestigationPersistenceIntegrityIntegrationTest {
             .isEqualTo(InvestigationStateMachine.Status.ABSTAINED);
         assertThat(count("investigation_run_events", runId)).isEqualTo(3);
         assertThat(admin.queryForObject(
-            "SELECT payload -> 'details' ? 'response' "
+            "SELECT jsonb_exists(payload -> 'details', 'response') "
                 + "FROM investigation_run_events WHERE organization_id = ? AND event_id = ?",
             Boolean.class, TENANT_A, acceptedEventId
         )).isFalse();

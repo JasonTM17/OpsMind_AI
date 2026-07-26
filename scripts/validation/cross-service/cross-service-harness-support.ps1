@@ -118,24 +118,82 @@ function Invoke-CrossServiceProcess {
         [Parameter(Mandatory = $true)][hashtable]$Environment
     )
 
-    $process = Invoke-WithProcessEnvironment -Variables $Environment -Action {
-        $startArguments = @{
-            FilePath = $Executable
-            ArgumentList = $Arguments
-            WorkingDirectory = $WorkingDirectory
-            PassThru = $true
-            Wait = $true
-            RedirectStandardOutput = $StdoutPath
-            RedirectStandardError = $StderrPath
+    $operation = [IO.Path]::GetFileNameWithoutExtension($StderrPath)
+    try {
+        foreach ($logPath in @($StdoutPath, $StderrPath)) {
+            $logParent = [IO.Path]::GetDirectoryName(
+                [IO.Path]::GetFullPath($logPath)
+            )
+            if (-not [IO.Directory]::Exists($logParent)) {
+                throw [IO.DirectoryNotFoundException]::new(
+                    'Cross-service process log parent does not exist.'
+                )
+            }
+            $logProbe = [IO.File]::Open(
+                $logPath,
+                [IO.FileMode]::Create,
+                [IO.FileAccess]::Write,
+                [IO.FileShare]::Read
+            )
+            $logProbe.Dispose()
         }
         if (Test-CrossServiceWindows) {
-            $startArguments.WindowStyle = 'Hidden'
+            $process = Invoke-WithProcessEnvironment -Variables $Environment -Action {
+                Start-Process -FilePath $Executable -ArgumentList $Arguments `
+                    -WorkingDirectory $WorkingDirectory -PassThru -Wait `
+                    -RedirectStandardOutput $StdoutPath `
+                    -RedirectStandardError $StderrPath -WindowStyle Hidden
+            }
+            $exitCode = [int]$process.ExitCode
         }
-        Start-Process @startArguments
+        else {
+            $exitCode = Invoke-WithProcessEnvironment -Variables $Environment -Action {
+                Push-Location -LiteralPath $WorkingDirectory
+                $previousErrorActionPreference = $ErrorActionPreference
+                $nativeErrorPreference = Get-Variable `
+                    -Name PSNativeCommandUseErrorActionPreference `
+                    -ErrorAction SilentlyContinue
+                $previousNativeErrorPreference = if ($null -ne $nativeErrorPreference) {
+                    $nativeErrorPreference.Value
+                }
+                else {
+                    $null
+                }
+                $ErrorActionPreference = 'Stop'
+                $PSNativeCommandUseErrorActionPreference = $false
+                try {
+                    $LASTEXITCODE = $null
+                    & $Executable @Arguments 1> $StdoutPath 2> $StderrPath
+                    if ($null -eq $LASTEXITCODE) {
+                        throw 'Native process completed without reporting an exit code.'
+                    }
+                    return [int]$LASTEXITCODE
+                }
+                finally {
+                    $ErrorActionPreference = $previousErrorActionPreference
+                    if ($null -ne $nativeErrorPreference) {
+                        $PSNativeCommandUseErrorActionPreference = `
+                            $previousNativeErrorPreference
+                    }
+                    else {
+                        Remove-Variable `
+                            -Name PSNativeCommandUseErrorActionPreference `
+                            -ErrorAction SilentlyContinue
+                    }
+                    Pop-Location
+                }
+            }
+        }
     }
-    if ($process.ExitCode -ne 0) {
-        $operation = [IO.Path]::GetFileNameWithoutExtension($StderrPath)
-        throw "Cross-service command '$operation' failed with exit code $($process.ExitCode)."
+    catch {
+        $failureType = $_.Exception.GetType().Name
+        throw (
+            "Cross-service command '$operation' failed before native exit code " +
+            "capture ($failureType)."
+        )
+    }
+    if ($exitCode -ne 0) {
+        throw "Cross-service command '$operation' failed with exit code $exitCode."
     }
 }
 
