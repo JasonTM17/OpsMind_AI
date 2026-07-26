@@ -130,8 +130,9 @@
       }
     },
     "sample_count": {
+      "description": "Runs described by this result. Zero is permitted so a trace carrying no run is reported as an INCOMPLETE verdict rather than as a malformed artifact.",
       "type": "integer",
-      "minimum": 1,
+      "minimum": 0,
       "maximum": 1000
     },
     "sampling": {
