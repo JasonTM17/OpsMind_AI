@@ -62,11 +62,13 @@ phase file so the inventory stops reading as outstanding work.
 
 - Consumes the Phase 8B checkpoint in
   `plans/260726-1004-phase-08b-production-path-evaluation/`, which is delivered
-  apart from its blocking review.
+  with its blocking review passed.
 - Reuses `evaluation/schemas/`, the scorer, and the cross-service harness. No
   new service, migration, or HTTP endpoint.
-- Phase 9 depends on this plan only for the thresholds it freezes; it does not
-  wait for human-baseline data.
+- Phase 9 infrastructure may proceed using provisional test-only values. The
+  parent Phase 8 rule remains authoritative for evidence-dependent behavior:
+  no-progress/budget thresholds cannot be frozen and Phase 9 cannot exit until
+  the reviewed human pilot is available.
 
 ## Acceptance Boundary
 
@@ -89,17 +91,23 @@ phase file so the inventory stops reading as outstanding work.
   with three implemented and seven reserved, and is already schema-validated by
   the Phase 8 validator. The ten-family specification gate is therefore met and
   is out of scope here.
-- Fact checked: `evaluation/scenarios/` holds three ground truths.
-  `evaluation/held-out/`, `evaluation/human-baseline-protocol.md`, and
-  `evaluation/statistical-analysis-plan.md` do not exist.
-- Fact checked: no module reads a held-out corpus; the only occurrences of the
-  term are prose in `docs/evaluation-strategy.md`, `evaluation/README.md`, and
-  the scorer warning that disclaims held-out quality.
+- Current implementation: `evaluation/held-out/manifest.yaml`,
+  `evaluation/human-baseline-protocol.md`, and
+  `evaluation/statistical-analysis-plan.md` exist with strict resolver/tests.
+  Payloads and reviewer records remain external to Git.
+- Current validator: six schemas; ten families/three implemented; held-out
+  `UNAVAILABLE` with zero cases because no case is registered; human baseline
+  `UNAVAILABLE` with zero cases because
+  `OPS_EVALUATION_HUMAN_BASELINE_ROOT` is not configured; three canonical
+  results, eight metrics, four negative cases, zero errors, checkpoint `PASS`,
+  and phase exit `BLOCK`. Evaluation tests pass 52/52.
 - Fact checked: `services/` contains `ai-runtime`, `platform-api`, and
   `tool-gateway` only; no simulator service was ever created.
-- Fact checked: run `30200584275` on `134d63c` scores A at 100 samples and B/C
-  at 1 sample each, so the current denominator is authored scenarios, not
-  independent cases.
+- Current evidence: run `30209209999` on
+  `df4620313a3f39721ef1bb521a9cf7ddcac5929c` scores A at 100 samples and B/C at
+  1 sample each. Run `30200584275` on `134d63c` is retained as the historical
+  first green run. Both denominators are authored scenarios, not independent
+  held-out cases.
 - Constraint: local heavy execution stays blocked by the storage floors, so
   every gate in this plan must be provable by unit tests, validators, and CI.
 
@@ -116,3 +124,9 @@ phase file so the inventory stops reading as outstanding work.
 - Reject re-specifying the ten families. They already exist and are validated;
   rewriting them would be churn, and the seven reserved ones belong to Phase 16
   where an implementer can state the discriminating behaviour against real code.
+
+## Unresolved Questions
+
+None within this engineering-completion plan. External held-out payloads and
+qualified human records/adjudication remain unavailable inputs, not an
+implementation-sequencing ambiguity.

@@ -11,12 +11,14 @@ Cleanup, credential rotation, production deployment, external writes, and other 
 | ID | Scope stopped | Condition | Accountable role | Unblock evidence | State |
 |---|---|---|---|---|---|
 | B-004 | Live DeepSeek data | Approved redacted allowlist cannot be used until provider region, processing terms, retention behavior, and redaction controls are verified | Privacy + security + product | Provider-egress conformance evidence | Active |
-| B-005 | G3 | Approved Prometheus synthetic read-only connector is not implemented or proven | SRE/product owner | Connector contract, policy, and live non-production evidence | Active |
+| B-005 | G3 | Synthetic Prometheus checkpoint passes, but no named live non-production connector is authorized/proven | SRE/product owner | Named connector contract, policy, credentials boundary, and live non-production evidence | Active |
 | B-006 | Evidence release | Approved S3-compatible/KMS boundary lacks lifecycle and restore implementation evidence | Platform + security owner | Encryption, lifecycle, authorization, and restore drill evidence | Active |
 | B-007 | Release criteria | Approved load and service objectives have not been measured against the G3 system | Product + operations owner | Reproducible load/SLO/RTO/RPO measurement report | Active |
 | B-008 | Data/RAG/model release | Approved retention, deletion, residency, and opt-in policy lacks enforceable runtime controls and purge receipts | Privacy/data owner | Lifecycle conformance, deletion, and lineage evidence | Active |
 | B-011 | Phase 16 production promotion | Approved 120-minute service RTO is shorter than the approved four-hour artifact restore target | Product + operations + platform owners | Timed tiered-restore proof within 120 minutes, or an explicitly approved contract/ADR change | Active |
 | B-012 | Production-readiness claim | Approved local MinIO adapter now has an archived upstream repository and no ongoing upstream maintenance commitment | Platform + security owners | Supported replacement/supply-chain decision or bounded local-only exception with pinned provenance and exit plan | Active |
+| B-013 | Phase 8 exit | No held-out payloads are registered and no qualified human reviewer records/adjudication exist; calibration and human comparison are unavailable | Product + evaluation owners | Governed held-out case evidence plus qualified paired-review/adjudication report | Active |
+| B-015 | Dependency security | GitHub Dependabot reports one unresolved high finding | Security + owning maintainer | Fix/upgrade evidence or explicit risk disposition under repository policy | Active |
 
 ## Capacity Guard
 
@@ -53,11 +55,14 @@ command rather than moved to this section.
 
 B-003 resolution is deliberately narrow. Phase 3/G2 remains in progress:
 production IdP selection/conformance, federation, break-glass, state/nonce
-assurance, browser/BFF session ownership, remote CI/Compose evidence, and the
+assurance, browser/BFF session ownership, and the
 other Phase 3 exit criteria are not resolved by the local transcript.
 
 ## Unresolved Questions
 
 No blocker remains for starting Phase 2. Local/reference IdP conformance is no
 longer open; production identity and later-phase conformance/release gates
-remain. An approved policy is not treated as proof of its implementation.
+remain. Phase 9 infrastructure may proceed with provisional test-only values,
+but no-progress/budget thresholds cannot be frozen and Phase 9 cannot exit
+until the reviewed human pilot is available. An approved policy is not treated
+as proof of its implementation.

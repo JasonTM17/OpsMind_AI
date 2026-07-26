@@ -45,9 +45,10 @@ The three small Phase 8 smoke contracts are implemented:
 | C — conflicting evidence | Two read-only evidence results oppose one another; completion requires both citations, a digest-bound counter-evidence note, and confidence between `0.3` and `0.6`. |
 
 These smoke cases validate deterministic contracts, abstention/conflict safety,
-schema handling, evidence linkage, and result recording. They make no
-population-level quality or percentile claim. Their authored fixtures are
-regression snapshots, not production-path execution evidence.
+schema handling, evidence linkage, and result recording. Authored fixtures alone
+are regression snapshots; current CI also executes A/B/C through the real
+service path. Neither form makes a population-level quality, percentile,
+calibration, or human-benefit claim.
 
 ### Scenario-family regression
 
@@ -165,27 +166,32 @@ failure, and refuses unsafe recursive removal.
 
 ## Verification Evidence
 
-The independent earlier tester recorded 28/28 Node tests. The current
-remediation rerun passes 33/33 Node tests, 40/40 targeted Python tests, 50
-shuffled semantic-order trials, and the junction-path safety test. The Phase 8
-validator reports
-`Implemented=3`, `CanonicalResults=3`, `Errors=0`,
-`CheckpointResult=PASS`, and `PhaseExit=BLOCK`; repository layout, actionlint,
-and the project secret scan pass. This proves local contract implementation,
-not the fresh production-path integration.
+The current evaluation suite passes 52/52. The Phase 8 validator reports six
+schemas, ten families with three implemented, three canonical results, eight
+metrics, four negative cases, zero errors, checkpoint `PASS`, and phase exit
+`BLOCK`. Held-out corpus and human baseline both report `UNAVAILABLE`, zero
+cases, and explicit reasons: no held-out cases are registered and the human
+baseline root is not configured.
 
-The new `Cross-service evaluation` workflow builds exact service artifacts,
-records source/executable digests, runs fresh disposable A/B/C, scores the
-result, verifies transient-export cleanup, and uploads
-`phase-08b-cross-service-evaluation`. Until that workflow is pushed and reaches
-terminal green for the exact revision, Docker/PostgreSQL execution,
-attestation, and revision-bound artifacts remain pending. Later
-dataset/model lineage, independently held-out, human, safety, performance,
-cost, and restore-linked evaluation also remain required.
+PR-quality run `30209210001` and cross-service run `30209209999` are terminal
+green for revision `df4620313a3f39721ef1bb521a9cf7ddcac5929c`.
+Fresh disposable A/B/C score `PASS` on all eight metrics with samples
+`100/1/1` and `GitTree=0`. Artifact `8634029083` is 221,461 bytes,
+created 2026-07-26T16:01:34Z, and expires 2026-10-24T15:54:25Z. The preceding
+executable revision `5dfbc00` also passed runs `30208691371`/`30208691365`; its
+artifact `8633891153` has independently recomputed ZIP SHA-256
+`78d0f930e4cbcc55f6c2afd7e46fb5624642d485f62b579668e40eeefe903834`.
+Run `30200584275` on `134d63c` is retained as the historical first green run.
+Dataset/model lineage, independently held-out quality, human comparison,
+calibration, safety/performance at release scale, cost, and restore-linked
+evaluation remain required.
 
 ## Remaining Evaluation Decisions
 
-G0.5 approved the starting workload and provider-spend envelope. Phase 8 must
-still preregister release thresholds, corpus ownership, qualified reviewer
-pool, statistical power, and human-study constraints. Those later decisions
-must not alter the approved policy silently.
+G0.5 approved the starting workload and provider-spend envelope. The statistical
+plan, held-out manifest, and human protocol now exist, but external case payloads
+and qualified reviewer records/adjudication do not. Phase 9 infrastructure may
+start with provisional test-only values, but its no-progress/budget thresholds
+cannot be frozen and Phase 9 cannot exit until the reviewed human pilot is
+available. This preserves the parent Phase 8 evidence gate without blocking
+preparatory workflow engineering.

@@ -8,7 +8,7 @@
 - Record blockers explicitly and leave downstream phases pending.
 - Do not include secrets, raw credentials, or sensitive evidence.
 
-## 2026-07-26 — Phase 8B production-path evaluation implementation
+## 2026-07-26 — Phase 8B production-path evaluation delivered
 
 Implemented:
 
@@ -46,27 +46,30 @@ Implemented:
   executable/source attestation, fresh A/B/C scoring, cleanup verification, and
   artifact upload.
 
-Verified locally:
+Verified:
 
-- Independent earlier tester: 28/28 Node tests passed. Current remediation
-  rerun: 33/33 Node tests and 40/40 targeted Python tests passed.
-- Scenario C semantic-order test passed 50 shuffled evidence orders; managed
-  path test proved junction/reparse rejection.
+- Current evaluation tests pass 52/52.
 - `node scripts/validation/validate-phase-08-evaluation-foundation.mjs`:
-  `Implemented=3`, `CanonicalResults=3`, `Errors=0`,
-  `CheckpointResult=PASS`, `PhaseExit=BLOCK`.
-- Repository layout, actionlint, PowerShell/Bash syntax, diff whitespace, and
-  the working-tree/history project secret scan pass.
+  six schemas, ten families/three implemented, held-out `UNAVAILABLE` zero
+  cases, human baseline `UNAVAILABLE` zero cases, three canonical results,
+  eight metrics, four negative cases, zero errors, checkpoint `PASS`, phase
+  exit `BLOCK`.
+- PR-quality run `30209210001` and cross-service run `30209209999` pass for
+  revision `df4620313a3f39721ef1bb521a9cf7ddcac5929c`.
+- Cross-service A/B/C score `PASS` with samples `100/1/1`, all eight metrics
+  passing, and `GitTree=0`.
+- Artifact `8634029083` is 221,461 bytes, created
+  2026-07-26T16:01:34Z, and expires 2026-10-24T15:54:25Z.
+- Two independent process-supervision reviews pass after fixes.
 
-Pending:
+Still open outside Phase 8B:
 
-- Fresh Docker/PostgreSQL A/B/C has not run in this dirty local worktree.
-- Executable attestation, uploaded `phase-08b-cross-service-evaluation`
-  artifact, exact pushed revision, independent blocking-review closure, and
-  terminal-green workflow evidence remain pending.
-- No Phase 8B PASS, Phase 8/A-Z G4 completion, held-out accuracy, population
+- No Phase 8/A-Z G4 completion, held-out accuracy, population
   p95, calibration, human benefit, live DeepSeek, or production connector
   conformance is claimed.
+- External held-out payloads and qualified human records/adjudication remain
+  unavailable. Phase 9 infrastructure may start, but threshold freeze and exit
+  wait for the reviewed human pilot.
 
 ## 2026-07-26 — Historical Phase 8A evaluation contract foundation
 
@@ -598,9 +601,9 @@ non-production connector, provider/legal conformance, incident-timeline
 linkage, production BFF/session proof, and release-scale evaluation remain
 explicit blockers.
 
-## Phase 8B production-path evaluation
+## Historical first-green Phase 8B production-path evaluation
 
-Revision-bound run `30200584275` on commit `134d63c` is the first terminal-green
+Revision-bound run `30200584275` on commit `134d63c` was the first terminal-green
 execution of the deterministic evaluation contracts against the real service
 path rather than authored fixtures. It provisions a disposable
 Docker/PostgreSQL stack per scenario and runs each one through Platform, AI
@@ -628,13 +631,20 @@ floating point and no longer equalled the `numeric(20, 8)` column it was stored
 in, breaking the invocation binding. The artifact reference named the transient
 working path instead of the published trace, leaving the raw analysis untrusted.
 
-This is deterministic smoke evidence on three authored scenarios. It is not a
+This historical run is superseded by executable confirmation in runs
+`30208691371` and `30208691365` on `5dfbc00`, then revision-bound confirmation in
+`30209210001` and `30209209999`. Artifact `8633891153` from the `5dfbc00` run
+has independently recomputed ZIP SHA-256
+`78d0f930e4cbcc55f6c2afd7e46fb5624642d485f62b579668e40eeefe903834`.
+The historical first-green run remains deterministic smoke
+evidence on three authored scenarios. It is not a
 held-out quality, calibration, or human-benefit claim, and Phase 8 exit remains
 BLOCK.
 
 ## Unresolved Questions
 
-No current implementation decision is being silently deferred. Production IdP,
-external publisher/runtime, provider/legal, live connector, UI, performance,
-DR, and release conformance remain explicit gates; see
-[Blockers](./blockers.md).
+Production IdP, provider/legal, named live connector, evidence-object lifecycle,
+RAG, remediation, Temporal, staging/production, DR, and release conformance
+remain explicit gates. Phase 9 infrastructure may start with provisional
+test-only thresholds, but threshold freeze and Phase 9 exit require reviewed
+human pilot data; see [Blockers](./blockers.md).

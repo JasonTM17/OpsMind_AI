@@ -81,7 +81,7 @@ idempotency, concurrency, timeline, database-computed audit chaining, and
 outbox atomicity against real PostgreSQL. Evidence-object lifecycle remains
 blocked by B-006/B-008/B-012, so neither Phase 4 nor G2 is claimed complete.
 
-Phase 5 is in progress. Its static checkpoint passes; Python reports 149
+Phase 5 is in progress. Its static checkpoint passes; Python reports 159
 passed with five PostgreSQL-gated skips, Ruff/mypy are clean, and the full Maven
 suite passes. The PhaseExitGate remains blocked by active B-004 (provider
 region, terms, retention, and redaction verification) and by absent passing

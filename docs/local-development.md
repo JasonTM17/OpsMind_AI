@@ -10,11 +10,12 @@ fail-closed by default; its OIDC, tenant/RLS, migration, and outbox contracts
 are implemented locally. A disposable PostgreSQL 18 harness now proves the
 RLS, pooled-connection, user-deprovisioning, and messaging crash-window
 boundaries. It also proves API/dispatcher database-role separation and
-tenant-safe scheduling. A live local Windows Keycloak 26.7 reference profile
-passes, while production IdP selection/conformance and remote CI/Compose
-evidence remain open; no external publish loop is enabled.
-Incident, DeepSeek, connector, and remediation behavior remain later phase
-work.
+tenant-safe scheduling. Local Windows and current Linux CI Keycloak 26.7
+reference profiles pass; production IdP selection/conformance remains open and
+no external publish loop is enabled. Incident control, bounded Tool Gateway/
+synthetic Prometheus, and the Operator workspace are delivered checkpoints.
+Live DeepSeek, a named live non-production connector, evidence-object lifecycle,
+RAG, remediation, Temporal, and production behavior remain later work.
 Compose publishes local service ports on `127.0.0.1` only; it does not expose
 the unauthenticated Phase 2 health scaffolds to the workstation LAN.
 
@@ -189,12 +190,12 @@ unsafe recursive removal. Scenario A uses one read-only evidence result; B retur
 requires counter-evidence plus cautious confidence. Scenario C identifies
 metric roles from canonical metric content, never evidence row or UUID order.
 
-The local unit/static gates pass: 33/33 Node tests, 40/40 targeted Python
-tests, 50 shuffled semantic-order trials, and the junction-path safety test.
-Fresh Docker/PostgreSQL A/B/C, executable attestation, exact-revision artifact
-upload, and terminal-green
-`.github/workflows/cross-service-evaluation.yml` remain pending. Do not treat
-`evaluate` against an authored fixture or stale trace as Phase 8B evidence.
+The local evaluation suite passes 52/52. Revision-bound cross-service run
+`30209209999` executes fresh Docker/PostgreSQL A/B/C, scores every metric
+`PASS` with samples `100/1/1`, records `GitTree=0`, and uploads artifact
+`8634029083`. Do not treat `evaluate` against an authored fixture or stale trace
+as equivalent evidence. Held-out and human inputs remain `UNAVAILABLE`, so no
+quality, calibration, or human-benefit claim follows.
 
 The first Java dependency scan can take substantially longer while it builds
 the NVD database. Its data remains in the D-backed cache. The disabled
@@ -337,7 +338,7 @@ The ignored transcript also records revision/dirty state, schema and scenario
 versions, runtime versions, configuration digest, command, and timestamps. Its
 `CodeRevision=UNBORN` and `WorkspaceDirty=YES` fields make it reproducible local
 evidence, not immutable release evidence. The Linux `identity-conformance` job
-is configured in `.github/workflows/pr-quality.yml`; it has not run remotely.
+passes in revision-bound PR-quality run `30209210001`.
 This reference does not authorize a production IdP or prove federation,
 break-glass, state/nonce assurance, browser/BFF session ownership, general
 bearer replay prevention, delegated capabilities, or immediate access-token
@@ -431,14 +432,15 @@ toolchain; do not weaken a version file to match an incidental host runtime.
 - `OPS_ARTIFACT_ROOT/verification/phase-02/repository-layout.txt`
 - `OPS_ARTIFACT_ROOT/verification/phase-03/identity-delegation.txt` (local/reference only)
 - `OPS_ARTIFACT_ROOT/verification/phase-03/identity-delegation-failure.txt` (failure diagnostics only)
-- `OPS_ARTIFACT_ROOT/verification/phase-08b/` (CI production-path transcripts and executable attestation; pending)
+- `OPS_ARTIFACT_ROOT/verification/phase-08b/` (CI production-path transcripts and executable attestation; revision `df462031` artifact `8634029083`)
 - `OPS_ARTIFACT_ROOT/evaluation/phase-08/` (local scorer output; reference only)
 - Phase 2 Windows and portable command-surface test results
 - dependency-check reports under each Java service's ignored `target/` tree
 
 ## Unresolved Questions
 
-CI defines clean-bootstrap lanes for both hosted Linux and Windows runners;
-their remote execution evidence is still required before the Phase 2 gate can
-claim clean-clone parity. The local object-store implementation remains blocked
-by B-012 pending a supported backend decision.
+Revision-bound PR-quality run `30209210001` passes clean-bootstrap lanes on hosted
+Linux and Windows runners. The local object-store implementation remains
+blocked by B-012 pending a supported backend decision. GitHub Dependabot still
+reports one high finding; dependency/security success in this run does not
+silently close that separate alert.

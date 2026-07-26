@@ -23,7 +23,7 @@ scripts/
 compose.yaml
 ```
 
-These paths are created in later phases. Competing API definitions, duplicate Compose roots, or cross-service migration ownership are prohibited.
+These paths exist and are the current ownership boundaries. Competing API definitions, duplicate Compose roots, or cross-service migration ownership are prohibited.
 
 ## Naming
 
@@ -152,6 +152,10 @@ Prefer guard clauses over deep nesting. Keep public interfaces small and typed. 
 - Bound the drain and fail closed when it expires instead of waiting forever.
 - Give requested environment variables to the child only. Do not write them into
   the parent process environment while the child runs.
+- Supervise the whole tree: use a Windows Job Object or Linux
+  `setsid`/subreaper/pidfd, authenticated terminal status, an EOF ownership
+  lease, and fail-closed `/proc` identity verification. A detached descendant
+  or killed controller must not leak a child or manufacture success.
 
 ## Logging and Telemetry
 
@@ -187,8 +191,16 @@ Prefer guard clauses over deep nesting. Keep public interfaces small and typed. 
 
 ## Verification Evidence
 
-Later phases add language-specific lint, formatting, type, build, unit, contract, integration, security, and architecture-boundary checks. Phase 1 verifies storage scripts, document links, decision schema, and secret-free defaults. Phase 3 has local PostgreSQL and Keycloak reference evidence; the identity transcript is explicitly non-production and not immutable because its recorded revision is unborn/dirty and the configured CI job has not run remotely.
+Revision-bound PR-quality run `30209210001` on `df462031` exercises Linux/Windows bootstrap,
+secret scan, actionlint, frontend, Python, Java, dependency security,
+PostgreSQL, Keycloak reference conformance, and Compose health. Cross-service
+run `30209209999` exercises A/B/C and the reviewed supervision boundary. Local
+identity transcripts remain non-production reference evidence even when their
+equivalent CI job passes.
 
 ## Unresolved Questions
 
-Exact formatter, linter, build-tool, test-runner, coverage, dependency-policy, and CI version pins are selected during Phase 2 without changing the architecture ownership defined here.
+Tool/version pins and the CI matrix are implemented. Coverage thresholds and
+environment-specific release responsibility remain later evidence-gated
+decisions. One high Dependabot finding remains open and is not waived by a green
+current CI run.

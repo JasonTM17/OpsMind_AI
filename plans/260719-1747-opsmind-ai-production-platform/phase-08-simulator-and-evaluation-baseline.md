@@ -38,15 +38,19 @@ The Phase 8A contract/scorer baseline is retained and Phase 8B now implements:
   executable/source attestation, fresh A/B/C scoring, cleanup proof, and
   artifact upload.
 
-The independent earlier tester recorded 28/28 Node tests; the current
-remediation rerun passes 33/33 Node tests, 40/40 targeted Python tests, 50
-shuffled semantic-order trials, and the junction-path safety test. The Phase 8
-validator reports
-`Implemented=3 CanonicalResults=3 Errors=0 CheckpointResult=PASS
-PhaseExit=BLOCK`; layout, actionlint, and the project secret scan pass. Fresh
-Docker/PostgreSQL A/B/C, executable attestation, independent review, exact
-pushed revision, uploaded CI artifact, and terminal-green workflow remain
-pending. This is not a Phase 8B PASS and does not close Phase 8/A-Z G4.
+The current evaluation suite passes 52/52. The Phase 8 validator reports six
+schemas, ten families/three implemented, held-out `UNAVAILABLE` with zero cases,
+human baseline `UNAVAILABLE` with zero cases, three canonical results, eight
+metrics, four negative cases, zero errors, checkpoint `PASS`, and phase exit
+`BLOCK`. PR-quality run `30209210001` and cross-service run `30209209999` pass
+for revision `df4620313a3f39721ef1bb521a9cf7ddcac5929c`.
+Fresh A/B/C score `PASS` with samples `100/1/1` and `GitTree=0`. The current
+artifact attests executable/source hashes; tracked-source hashes independently
+match, and the preceding `5dfbc00` artifact ZIP hash was independently
+recomputed. Two independent process-supervision reviews pass.
+Phase 8B is complete, but parent Phase 8/A-Z G4 remains `BLOCK` because no
+held-out case payloads, qualified human records/adjudication, calibration, or
+human comparison exist.
 
 Separate deterministic smoke coverage from statistical product evidence: preregister what “verified RCA” means, create an independently held-out corpus and human comparator protocol, and report confidence intervals instead of treating three or ten authored scenarios as a percentage denominator.
 
@@ -135,9 +139,10 @@ now would duplicate scenario definition, fixture emission, and reset logic that
 the harness and `evaluation/scenarios/` already own, and would create a second
 place where a scenario can drift from the contract it is scored against.
 
-`evaluation/held-out/manifest.yaml` is delivered as reference-only governance.
-The human protocol and statistical plan remain unimplemented and are tracked in
-`plans/260726-1200-phase-08-evaluation-baseline-completion/`.
+`evaluation/held-out/manifest.yaml`, the human protocol, statistical plan, and
+strict ingestion/validation contracts are delivered. They report
+`UNAVAILABLE` rather than manufacturing evidence when external held-out cases
+or qualified reviewer records are absent.
 
 ### CREATE
 
@@ -266,5 +271,11 @@ The human protocol and statistical plan remain unimplemented and are tracked in
 ## Unresolved Decisions
 
 - Whether MLflow or another external experiment store is required in the baseline, or whether versioned local artifacts are sufficient until production graduation.
-- Resolved minimum: three deterministic families plus reviewed human/statistical pilot before Phase 9; all ten implemented plus powered held-out corpus before Phase 16 release claim.
+- Phase 9 infrastructure may proceed using provisional test-only values, but
+  its no-progress/budget thresholds cannot be frozen and Phase 9 cannot exit
+  until the reviewed human pilot is available. This preserves this phase's
+  evidence gate without blocking preparatory workflow engineering.
+- Resolved minimum outside that sequencing conflict: three deterministic
+  families are delivered; all ten implemented plus powered held-out corpus
+  remain required before the Phase 16 release claim.
 - Whether optional live staging evaluation is required before Phase 8 completion, or whether fixture-backed determinism is the only hard gate here.

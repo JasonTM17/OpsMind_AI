@@ -201,7 +201,7 @@ Smoke scenarios prove deterministic mechanics only. Release claims require an in
 The implemented checkpoint has a provider-neutral FastAPI runtime, DeepSeek
 adapter, strict delegated-capability and redaction checks, durable PostgreSQL
 replay/accounting, and an append-only V005 synthetic capability-probe audit.
-The Python suite reports 149 passed and five PostgreSQL-gated skips; Ruff and
+The current Python suite reports 159 passed and five PostgreSQL-gated skips; Ruff and
 mypy are clean; the full Maven suite passes; and the static checkpoint passes.
 The pgJDBC dependency is pinned to `42.7.13`.
 

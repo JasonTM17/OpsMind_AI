@@ -1,7 +1,7 @@
 ---
 phase: 2
 title: "Cross-Service Artifact Harvesting"
-status: in-progress
+status: completed
 priority: P1
 dependencies: [1]
 effort: "0.5-1 day"
@@ -40,8 +40,12 @@ the enriched trace.
 The evaluator roles/views, allowlist registration and cross-tenant proof,
 bounded SQL export, managed-path utility, projector invocation, finalizer
 checks, and success/failure cleanup are wired. Local projector/security tests
-pass. Fresh harness execution is still pending, so no production-path export
-or Phase 7 100-run compatibility claim is made from this worktree.
+pass. Cross-service run `30209209999` executes the fresh harness and preserves
+the Phase 7 100-warm-run Scenario A contract while B/C run once each. All three
+exports score `PASS` with `GitTree=0`; artifact `8634029083` is 221,461
+bytes. The preceding `5dfbc00` artifact `8633891153` has independently audited
+ZIP SHA-256
+`78d0f930e4cbcc55f6c2afd7e46fb5624642d485f62b579668e40eeefe903834`.
 
 `-ReportPath` must be a descendant of `.opsmind/reports`; the default is
 `.opsmind/reports/cross-service-trace.json`. The CI matrix uses that path for A
@@ -98,11 +102,11 @@ whole run directory is removed only after success.
 
 ## Success Criteria
 
-- [ ] A fresh cross-service run contains trusted normalized analysis, timeline,
+- [x] A fresh cross-service run contains trusted normalized analysis, timeline,
       evidence and receipt projections for every completed run.
 - [x] Local projection tests reject raw connector response, prompt, provider
       reasoning, credential, and unsafe-value fields.
-- [ ] Existing Phase 7 100-run latency/count contract remains intact.
+- [x] Existing Phase 7 100-run latency/count contract remains intact.
 - [x] Missing harvesting makes Phase 8 scoring `INCOMPLETE`, never PASS.
 
 ## Risk Assessment

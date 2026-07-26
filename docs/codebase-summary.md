@@ -11,8 +11,6 @@ boundaries rather than receive direct infrastructure authority.
 
 This summary is based on:
 
-- a fresh Repomix 1.14.0 XML snapshot of 4,541 repository files; Repomix
-  reported no suspicious files;
 - direct inspection of the root manifests, Compose file, current service code,
   contracts, Flyway migrations, validation runners, and Phase 4 evidence;
 - cross-checks against [System Architecture](./system-architecture.md),
@@ -21,19 +19,22 @@ This summary is based on:
 
 Generated local artifacts are evidence inputs, not source-of-truth
 documentation. Source code and canonical contracts take precedence.
+A Repomix refresh was intentionally not run because `D:` was below the
+repository's 20 GiB safety floor; direct verified files and revision-bound CI
+evidence are the authority for this update.
 
 ## Delivery State
 
 | Area | Verified state |
 |---|---|
 | Phase 1 | Complete; operating-envelope and governance gates passed. |
-| Phase 2 | In progress; pinned polyglot workspace, launchers, Compose, and cross-platform quality-gate foundation exist. |
+| Phase 2 | In progress; pinned polyglot workspace, launchers, Compose, and cross-platform quality-gate checkpoint pass current CI. |
 | Phase 3 | In progress; identity, tenant/RLS, persistence, and messaging substrate exists. Production-authorized IdP conformance remains open. |
 | Phase 4 | In progress; checkpoint 4A incident write ledger is locally complete. Full Phase 4 and G2/G3 are not complete. |
 | Phase 5 | In progress; provider-neutral analysis, DeepSeek adapter, egress guards, durable PostgreSQL state, V005 append-only probe audit, Platform API integration, and stream assembly exist. Static checkpoint passes; exit remains blocked by B-004 and missing rotated-key synthetic smoke. |
 | Phase 6 | In progress; durable PostgreSQL and synthetic Prometheus checkpoint passes revision-bound CI. Artifact/broader-connector exit remains blocked. |
 | Phase 7 | In progress; local cross-service trace, 100-warm-run latency, CK/Stitch UI, and browser E2E checkpoints pass. G3 remains blocked by live non-production connector/provider conformance, timeline linkage, and BFF/session proof. |
-| Phase 8 | In progress; Phase 8B A/B/C contracts, V008 binding, bounded projection, and local contract gates are implemented. Fresh production-path CI and the A-Z G4 exit remain blocked. |
+| Phase 8 | In progress; Phase 8B contracts, V008 binding, bounded projection, production-path A/B/C, artifact attestation, and blocking review pass. Parent exit remains blocked by unavailable held-out/human/calibration evidence. |
 | Later phases | Durable workflow, RAG, remediation, complete operator UX, and production-hardening outcomes remain pending. |
 
 Phase 7's local Operator Web and fixture-backed cross-service checkpoints are
@@ -55,7 +56,7 @@ claimed.
 | `services/platform-api/` | Spring Boot control plane for OIDC identity, tenant/project access, persistence, messaging primitives, checkpoint 4A incidents, and the Phase 7 deterministic plus PostgreSQL persistence checkpoint. |
 | `services/ai-runtime/` | FastAPI bounded analysis runtime with provider-neutral contracts, DeepSeek adapter, shared PostgreSQL replay/accounting, startup/periodic capability probe, `/health` liveness, and `/ready` readiness; live egress remains disabled. |
 | `services/tool-gateway/` | Spring Boot fail-closed Tool Gateway: separated workload/delegated JWT trust, manifest registry, bounded DLP execution, dedicated PostgreSQL nonce/receipt/audit state, and exact read-only Prometheus query-range connector. Default profiles remain fail closed; durable/live checkpoint has revision-bound CI proof. |
-| `evaluation/` | Versioned, training-ineligible deterministic-smoke contracts for A latency regression, B no-tool abstention, and C conflicting evidence; strict export/projector, scorer, schemas, and synthetic trace fixtures. Fresh production-path CI and release-scale evaluation remain pending. |
+| `evaluation/` | Versioned, training-ineligible A/B/C smoke contracts; strict export/projector, scorer, held-out and human-input validators, schemas, and regression fixtures. Production-path smoke passes; release-scale held-out/human evidence is unavailable. |
 | `packages/contracts/` | Canonical OpenAPI, JSON Schema, and synthetic fixtures. |
 | `scripts/dev/` | Shared command dispatcher and PowerShell/portable launchers. |
 | `scripts/storage/` | Capacity and storage-root preflight guards. |
@@ -93,12 +94,12 @@ Runtime, Tool Gateway, and Operator Web. Model egress, write actions, and the
 external dispatcher remain disabled by default. Long-running services use
 non-owner roles; Flyway runs through separate migration services.
 
-The Phase 7 cross-service harness is under
+The Phase 7/8 cross-service harness is under
 `scripts/validation/cross-service/`: a loopback-only DeepSeek-compatible
 fixture provider and a 100-warm-run Platform benchmark that emits p50/p95,
 correlation IDs, evidence IDs, and bounded terminal-state proof without
-persisting credentials or raw prompts. The report is intentionally ignored
-until a disposable Compose/IdP execution produces it.
+persisting credentials or raw prompts. Local reports remain ignored; CI uploads
+revision-bound artifacts after disposable execution and cleanup verification.
 
 ## Implemented Platform API Boundaries
 
@@ -247,15 +248,15 @@ and semantic JSON carry separate typed, domain-separated SHA-256 digests.
 Reparse ancestors are rejected before writes; cleanup deletes credentials and
 raw exports first and aggregates failures.
 
-The independent earlier tester recorded 28/28 Node tests. The current
-remediation rerun passes 33/33 Node tests, 40/40 targeted Python tests, 50
-shuffled semantic-order trials, and the junction-path safety test. The Phase 8
-validator reports
-`Implemented=3 CanonicalResults=3 Errors=0 CheckpointResult=PASS
-PhaseExit=BLOCK`; layout, actionlint, and project secret gates pass. Fresh
-Docker/PostgreSQL A/B/C, exact executable/source attestation, independent
-review closure, a pushed revision, uploaded artifact, and terminal-green
-`.github/workflows/cross-service-evaluation.yml` remain pending.
+The current evaluation suite passes 52/52. The Phase 8 validator reports six
+schemas, ten families/three implemented, held-out `UNAVAILABLE` with zero cases,
+human baseline `UNAVAILABLE` with zero cases, three canonical results, eight
+metrics, four negative cases, zero errors, checkpoint `PASS`, and phase exit
+`BLOCK`. Revision-bound PR-quality run `30209210001` and cross-service run
+`30209209999` are terminal green on
+`df4620313a3f39721ef1bb521a9cf7ddcac5929c`; A/B/C pass with samples `100/1/1`
+and `GitTree=0`. Artifact `8634029083` is evidence bound to that revision.
+Two independent process-supervision reviews pass.
 
 ## Security and Failure Posture
 
@@ -280,14 +281,15 @@ See [Security Model](./security-model.md) for the complete threat model and
 
 | Evidence | Current result | Scope limit |
 |---|---|---|
-| Phase 5 Python suite | 149 passed; five PostgreSQL-gated skipped | Offline/default local verification; no provider call |
+| AI Runtime Python suite | 159 passed; five PostgreSQL-gated skipped in revision-bound CI | Offline/default verification; no provider call |
 | Phase 5 quality checks | Ruff and mypy clean | Local verification |
 | Platform API Maven suite | Pass | Local verification, including pgJDBC `42.7.13` and V005 migration contracts |
 | `scripts/validation/validate-phase-05-ai-runtime.mjs` | Static checkpoint PASS | Exit gate remains BLOCK: active B-004 plus absent passing rotated-key synthetic smoke |
 | `scripts/validation/validate-phase-06-tool-gateway.mjs` | Durable Prometheus connector checkpoint PASS with schemas, canonical fixtures, digest/manifest/OpenAPI/source abuse checks | Phase exit BLOCK: artifact adapter, remaining connector families, tenant bulkhead, and provider-specific cancellation proof |
 | `scripts/validation/validate-phase-07-investigation-slice.mjs` | CK/Stitch/browser plus 100-warm-run revision-bound cross-service checkpoint PASS | G3 still requires live provider/connector, timeline, and BFF/session proof |
-| `scripts/validation/validate-phase-08-evaluation-foundation.mjs` | `Implemented=3`, `CanonicalResults=3`, `Errors=0`, checkpoint PASS | Phase exit and A-Z G4 BLOCK; fresh A/B/C production-path CI and exact-revision artifact pending |
-| GitHub Actions `29987371420` | PASS on commit `ace3642`: PostgreSQL trust contracts, live Prometheus Compose query, dependency security, service suites, Keycloak, and cross-platform bootstrap | CI non-production evidence; not the Phase 7 cross-service trace or staging conformance |
+| `scripts/validation/validate-phase-08-evaluation-foundation.mjs` | Six schemas, ten families/three implemented, three results/eight metrics/four negative cases, zero errors, checkpoint PASS | Phase exit BLOCK; held-out and human inputs unavailable |
+| GitHub Actions `30209210001` | PASS on revision `df462031`: bootstrap, secrets, actionlint, service/UI suites, dependency security, PostgreSQL, Keycloak, Compose | CI non-production evidence; not staging/production conformance |
+| GitHub Actions `30209209999` | PASS on revision `df462031`: A/B/C samples `100/1/1`, all metrics PASS, `GitTree=0`, artifact `8634029083` | Deterministic authored smoke; not held-out quality, calibration, or human benefit |
 
 | Evidence | Verified result | Scope limitation |
 |---|---|---|
@@ -329,9 +331,10 @@ semantics.
 
 - Full Phase 4: incident list/patch/assignment, postmortems, and governed
   evidence upload/read/tombstone/restore/purge/reconciliation.
-- Operator incident UI, live provider egress, live connectors, the real
-  Platform-to-Tool-Gateway execution path, Temporal workflows, RAG,
-  remediation, and production object storage.
+- Live provider egress, a named live non-production connector, Temporal
+  workflows, RAG, remediation, and production object storage/lifecycle. The
+  bounded Operator workspace and real Platform-to-Tool-Gateway read-only path
+  are implemented checkpoints, not remaining gaps.
 - Production IdP/federation/session/break-glass conformance.
 - Measured load/SLO proof, DR proof, or a production release.
 

@@ -1,7 +1,7 @@
 ---
 phase: 1
 title: Evaluation Evidence Contract
-status: in-progress
+status: completed
 priority: P1
 dependencies: []
 effort: 0.5-1 day
@@ -57,12 +57,14 @@ V008/V002, the strict export schema, projection modules, raw-analysis
 discriminator, scenario-aware scorer, and negative tests are implemented. The
 projector now binds invocation accounting, sums all accepted invocation cost,
 and exact-binds audit result, receipt evidence, and persisted evidence digests.
-The independent earlier tester recorded 28/28 Node tests; the current
-remediation rerun passes 33/33 Node tests and 40/40 targeted Python tests. The
-Phase 8 validator reports three implemented/canonical results with zero errors.
-Fresh migration application and accepted-response/invocation/tool-proof
-matching inside the disposable Docker/PostgreSQL A/B/C harness remain pending
-CI evidence; this phase stays in progress.
+Historical local remediation passed 33/33 Node tests and 40/40 targeted Python
+tests. The expanded evaluation suite now passes 52/52, and the Phase 8 validator
+reports three implemented/canonical results with zero errors.
+Cross-service run `30209209999` proves fresh migration application and exact
+accepted-response/invocation/tool-proof matching for A/B/C on revision
+`df4620313a3f39721ef1bb521a9cf7ddcac5929c`; all scenarios and all eight
+metrics pass. This contract phase is
+complete; broader statistical and human evidence remains outside its boundary.
 
 ## Related Code Files
 
@@ -126,7 +128,7 @@ CI evidence; this phase stays in progress.
 - [x] Secret/reasoning/raw-content keys or unsafe values fail local projection tests.
 - [x] V008 and local migration/domain contracts bind every response-aware
       accepted event while retaining legacy-writer compatibility.
-- [ ] Fresh disposable PostgreSQL proves V008 application and accepted-response
+- [x] Fresh disposable PostgreSQL proves V008 application and accepted-response
       matching in all A/B/C production-path runs.
 - [x] Local canonical projections emit exact fragments with typed digests.
 
