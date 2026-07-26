@@ -75,7 +75,10 @@ const upgradeRunner = requireMarkers(
     "OPSMIND_EPHEMERAL_DB=true",
     'migrate_to 6',
     'migrate_to 7',
+    'migrate_to 8',
     "to_regclass('public.evidence_records')",
+    "LegacyPayloadDigestStable=%s",
+    "RollingLegacyWriteCount=%s",
     "UpgradeResult=PASS",
     "CleanupResult=PASS",
   ],
@@ -83,7 +86,6 @@ const upgradeRunner = requireMarkers(
 const workflow = requireMarkers(
   ".github/workflows/pr-quality.yml",
   [
-    "Prove V006 to V007 evidence migration upgrade",
     "scripts/validation/run-phase-04b-migration-upgrade.sh",
     "evidence-migration-upgrade.txt",
   ],

@@ -105,7 +105,7 @@ jobs:
       - name: Execute and score fresh Scenario A/B/C
         shell: bash
         run: |
-          set -uo pipefail
+          set -euo pipefail
           evidence_root="artifacts/verification/phase-08b"
           report_root="$PWD/.opsmind/reports"
           overall=0
@@ -122,30 +122,52 @@ jobs:
             transcript="$evidence_root/cross-service.scenario-${lower}.txt"
             mkdir -p "$evidence_root" "$report_root"
 
+            set +e
             pwsh -NoProfile -File \
               scripts/validation/cross-service/run-cross-service-verification.ps1 \
               -Scenario "$scenario" \
               -WarmRuns "$warm_runs" \
               -P95ThresholdMs 5000 \
               -ReportPath "$report" 2>&1 | tee "$transcript"
-            harness_status=${PIPESTATUS[0]}
-            if [ "$harness_status" -ne 0 ]; then
-              printf 'HarnessExit=%s\nResult=BLOCK\n' "$harness_status" | tee -a "$transcript"
+            harness_pipeline_status=("${PIPESTATUS[@]}")
+            set -e
+            harness_status="${harness_pipeline_status[0]:-1}"
+            harness_transcript_status="${harness_pipeline_status[1]:-1}"
+            if [ "$harness_status" -ne 0 ] || [ "$harness_transcript_status" -ne 0 ]; then
+              if [ "$harness_transcript_status" -eq 0 ]; then
+                if ! printf 'HarnessExit=%s\nHarnessTranscriptExit=%s\nResult=BLOCK\n' \
+                  "$harness_status" "$harness_transcript_status" | tee -a "$transcript"; then
+                  printf '%s\n' 'TranscriptAppend=BLOCK'
+                fi
+              else
+                printf 'HarnessExit=%s\nHarnessTranscriptExit=%s\nResult=BLOCK\n' \
+                  "$harness_status" "$harness_transcript_status"
+              fi
               overall=1
               continue
             fi
 
+            set +e
             OPSMIND_EVALUATION_TRACE_PATH="$report" \
             OPSMIND_EVALUATION_OUTPUT_PATH="$result" \
               node evaluation/runner/score-phase-07-trace.mjs 2>&1 | tee -a "$transcript"
-            scorer_status=${PIPESTATUS[0]}
-            if [ "$scorer_status" -ne 0 ]; then
+            scorer_pipeline_status=("${PIPESTATUS[@]}")
+            set -e
+            scorer_status="${scorer_pipeline_status[0]:-1}"
+            scorer_transcript_status="${scorer_pipeline_status[1]:-1}"
+            if [ "$scorer_status" -ne 0 ] || [ "$scorer_transcript_status" -ne 0 ]; then
               overall=1
             fi
-            printf 'HarnessExit=%s\nScorerExit=%s\nResult=%s\n' \
-              "$harness_status" "$scorer_status" \
-              "$([ "$scorer_status" -eq 0 ] && printf PASS || printf BLOCK)" \
-              | tee -a "$transcript"
+            result_status=PASS
+            if [ "$scorer_status" -ne 0 ] || [ "$scorer_transcript_status" -ne 0 ]; then
+              result_status=BLOCK
+            fi
+            if ! printf 'HarnessExit=%s\nHarnessTranscriptExit=%s\nScorerExit=%s\nScorerTranscriptExit=%s\nResult=%s\n' \
+              "$harness_status" "$harness_transcript_status" \
+              "$scorer_status" "$scorer_transcript_status" "$result_status" \
+              | tee -a "$transcript"; then
+              overall=1
+            fi
           done
           exit "$overall"
       - name: Preserve the Phase 7 production-path contract

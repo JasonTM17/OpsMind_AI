@@ -210,6 +210,13 @@ for (const [relativePath, markers] of Object.entries({
   ],
   "scripts/validation/cross-service/run-cross-service-verification.ps1": [
     "project-cross-service-evaluation-export.mjs", "connectorManifestByteDigest", "Scenario",
+    "Test-CrossServiceWindows", "check-capacity.ps1", "assert-storage-roots.ps1",
+    "check-capacity.sh", "assert-storage-roots.sh", "--create-missing",
+  ],
+  ".github/workflows/cross-service-evaluation.yml": [
+    "set +e", 'harness_pipeline_status=("${PIPESTATUS[@]}")',
+    'scorer_pipeline_status=("${PIPESTATUS[@]}")', "HarnessTranscriptExit",
+    "ScorerTranscriptExit", "overall=1", 'exit "$overall"',
   ],
   "services/platform-api/src/main/resources/db/migration/V008__accepted_analysis_event_binding.sql": [
     "opsmind_valid_accepted_analysis_response", "'response'", "run_row.final_response",

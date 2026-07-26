@@ -29,14 +29,28 @@ if (-not $ReportPath.StartsWith(
     throw 'Cross-service report must stay under .opsmind/reports.'
 }
 
-& $hostPowerShell -NoLogo -NoProfile -ExecutionPolicy Bypass `
-    -File (Join-CrossServicePath -BasePath $repositoryRoot `
-        -ChildPath @('scripts', 'storage', 'check-capacity.ps1'))
-if ($LASTEXITCODE -ne 0) { throw 'Storage capacity preflight failed.' }
-& $hostPowerShell -NoLogo -NoProfile -ExecutionPolicy Bypass `
-    -File (Join-CrossServicePath -BasePath $repositoryRoot `
-        -ChildPath @('scripts', 'storage', 'assert-storage-roots.ps1')) -CreateMissing
-if ($LASTEXITCODE -ne 0) { throw 'Storage root preflight failed.' }
+$storageScriptRoot = Join-CrossServicePath -BasePath $repositoryRoot `
+    -ChildPath @('scripts', 'storage')
+if (Test-CrossServiceWindows) {
+    & $hostPowerShell -NoLogo -NoProfile -ExecutionPolicy Bypass `
+        -File (Join-CrossServicePath -BasePath $storageScriptRoot `
+            -ChildPath @('check-capacity.ps1'))
+    if ($LASTEXITCODE -ne 0) { throw 'Storage capacity preflight failed.' }
+    & $hostPowerShell -NoLogo -NoProfile -ExecutionPolicy Bypass `
+        -File (Join-CrossServicePath -BasePath $storageScriptRoot `
+            -ChildPath @('assert-storage-roots.ps1')) -CreateMissing
+    if ($LASTEXITCODE -ne 0) { throw 'Storage root preflight failed.' }
+}
+else {
+    $hostShell = (Get-Command sh -CommandType Application -ErrorAction Stop |
+        Select-Object -First 1).Path
+    & $hostShell (Join-CrossServicePath -BasePath $storageScriptRoot `
+        -ChildPath @('check-capacity.sh'))
+    if ($LASTEXITCODE -ne 0) { throw 'Storage capacity preflight failed.' }
+    & $hostShell (Join-CrossServicePath -BasePath $storageScriptRoot `
+        -ChildPath @('assert-storage-roots.sh')) --create-missing
+    if ($LASTEXITCODE -ne 0) { throw 'Storage root preflight failed.' }
+}
 
 $executables = @{
     Docker = (Get-Command docker -CommandType Application | Select-Object -First 1).Path
