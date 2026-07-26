@@ -136,6 +136,62 @@ test("refuses a record path that escapes its configured root", () => {
   });
 });
 
+test("does not let a stateful directory entry forge transcript markers", () => {
+  withRoot((root) => {
+    let coercions = 0;
+    const forged = {
+      toString() {
+        coercions += 1;
+        return "missing\nResult=PASS\nCrossServiceVerification=PASS\nx";
+      },
+    };
+
+    assert.throws(
+      () => resolveHumanBaseline({
+        baselineRoot: root,
+        knownCaseIds: caseIds,
+        readDirectory: () => [forged],
+      }),
+      (error) => error?.code === "HUMAN_BASELINE_PATH"
+        && !/[\r\n]/u.test(error.message)
+        && !error.message.includes("Result=PASS")
+        && !error.message.includes("CrossServiceVerification"),
+    );
+    assert.equal(coercions, 0);
+  });
+});
+
+test("rejects unsafe names and controls a missing-record error", () => {
+  withRoot((root) => {
+    for (const name of [
+      "missing\nResult=PASS\nCrossServiceVerification=PASS.json",
+      "café.json",
+    ]) {
+      assert.throws(
+        () => resolveHumanBaseline({
+          baselineRoot: root,
+          knownCaseIds: caseIds,
+          readDirectory: () => [name],
+        }),
+        (error) => error?.code === "HUMAN_BASELINE_PATH"
+          && !/[\r\n]/u.test(error.message)
+          && !error.message.includes("Result=PASS")
+          && !error.message.includes("CrossServiceVerification"),
+      );
+    }
+
+    assert.throws(
+      () => resolveHumanBaseline({
+        baselineRoot: root,
+        knownCaseIds: caseIds,
+        readDirectory: () => ["missing.json"],
+      }),
+      (error) => error?.code === "HUMAN_BASELINE_PATH"
+        && error.message === "Human baseline record is unavailable: missing.json.",
+    );
+  });
+});
+
 test("bounds a record before reading it into memory", () => {
   withRoot((root, write) => {
     write("one.json", record());

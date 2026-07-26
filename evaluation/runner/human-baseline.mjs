@@ -52,12 +52,23 @@ export function resolveHumanBaseline({
     : fs.readdirSync(resolvedRoot, { withFileTypes: true })
       .filter((entry) => entry.isFile() && entry.name.endsWith(".json"))
       .map((entry) => entry.name);
+  if (!Array.isArray(listing)) {
+    contractFailure("HUMAN_BASELINE_PATH", "Human baseline directory listing is invalid.");
+  }
   if (listing.length === 0) {
     return unavailable("no reviewer sessions have been recorded");
   }
   if (listing.length > MAX_RECORDS) {
     contractFailure("HUMAN_BASELINE_RECORD", "Human baseline record count is unbounded.");
   }
+  const recordNames = listing.map((rawName) => {
+    if (typeof rawName !== "string"
+      || !rawName.endsWith(".json")
+      || safeIdentifier(rawName) !== rawName) {
+      contractFailure("HUMAN_BASELINE_PATH", "Human baseline record name is invalid.");
+    }
+    return rawName;
+  });
 
   // The protocol promises a submission cannot carry incident narrative or
   // reviewer commentary, and that promise is only real if the schema is
@@ -66,19 +77,19 @@ export function resolveHumanBaseline({
   const validate = createEvaluationContractValidator(repositoryRoot);
 
   const byCase = new Map();
-  for (const rawName of listing.slice().sort()) {
-    const name = safeIdentifier(rawName);
-    const recordPath = path.resolve(resolvedRoot, String(rawName));
+  for (const name of recordNames.sort()) {
+    const recordPath = path.resolve(resolvedRoot, name);
     if (!isWithin(recordPath, resolvedRoot)) {
       contractFailure("HUMAN_BASELINE_PATH", `Human baseline record escapes its root: ${name}.`);
     }
-    if (fs.lstatSync(recordPath).isSymbolicLink()) {
+    const statistics = safeRecordStatistics(recordPath, name);
+    if (statistics.isSymbolicLink()) {
       contractFailure("HUMAN_BASELINE_PATH", `Human baseline record is a link: ${name}.`);
     }
-    if (fs.lstatSync(recordPath).size > MAX_RECORD_BYTES) {
+    if (statistics.size > MAX_RECORD_BYTES) {
       contractFailure("HUMAN_BASELINE_RECORD", `Human baseline record exceeds its bound: ${name}.`);
     }
-    const record = parseUntrustedJsonExport(fs.readFileSync(recordPath)).document;
+    const record = parseUntrustedJsonExport(safeReadRecord(recordPath, name)).document;
     const findings = validate(record, "human-baseline-record.schema.json");
     if (findings.length > 0) {
       contractFailure("HUMAN_BASELINE_RECORD", `Human baseline record violates its contract: ${name}.`);
@@ -138,6 +149,24 @@ export function resolveHumanBaseline({
     cases: complete.sort((left, right) => left.caseId.localeCompare(right.caseId)),
     recordCount: listing.length,
   };
+}
+
+function safeRecordStatistics(recordPath, name) {
+  try {
+    return fs.lstatSync(recordPath);
+  }
+  catch {
+    contractFailure("HUMAN_BASELINE_PATH", `Human baseline record is unavailable: ${name}.`);
+  }
+}
+
+function safeReadRecord(recordPath, name) {
+  try {
+    return fs.readFileSync(recordPath);
+  }
+  catch {
+    contractFailure("HUMAN_BASELINE_PATH", `Human baseline record is unreadable: ${name}.`);
+  }
 }
 
 function median(values) {
