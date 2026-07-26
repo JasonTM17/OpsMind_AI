@@ -4,6 +4,8 @@ function Test-CrossServiceWindows {
     return [Environment]::OSVersion.Platform -eq [PlatformID]::Win32NT
 }
 
+. (Join-Path $PSScriptRoot 'cross-service-windows-job-control.ps1')
+
 function Get-CrossServicePathComparison {
     if (Test-CrossServiceWindows) {
         return [StringComparison]::OrdinalIgnoreCase
@@ -218,6 +220,207 @@ function Get-CrossServiceRedactedLogTail {
     return '[log] ' + $safeContent
 }
 
+function Resolve-CrossServiceApplicationPath {
+    param([Parameter(Mandatory = $true)][string]$Executable)
+
+    return @(
+        Get-Command $Executable -CommandType Application -ErrorAction Stop
+    )[0].Path
+}
+
+function Stop-CrossServiceOwnedProcessTree {
+    param(
+        [Parameter(Mandatory = $true)][Diagnostics.Process]$Process,
+        $WindowsJob
+    )
+
+    $terminationFailures = New-Object `
+        'System.Collections.Generic.List[Exception]'
+    if ($null -ne $WindowsJob) {
+        try {
+            $WindowsJob.Dispose()
+        }
+        catch {
+            $terminationFailures.Add($_.Exception)
+        }
+    }
+    if (Test-CrossServiceWindows) {
+        try {
+            if (-not $Process.HasExited) {
+                $Process.Kill($true)
+            }
+        }
+        catch {
+            $terminationFailures.Add($_.Exception)
+        }
+    }
+    if (-not $Process.HasExited -and -not $Process.WaitForExit(5000)) {
+        $terminationFailures.Add([TimeoutException]::new(
+            'Cross-service native process termination exceeded its bound.'
+        ))
+        try {
+            $Process.Kill($true)
+            if (-not $Process.WaitForExit(5000)) {
+                $terminationFailures.Add([TimeoutException]::new(
+                    'Cross-service forced process termination exceeded its bound.'
+                ))
+            }
+        }
+        catch {
+            $terminationFailures.Add($_.Exception)
+        }
+    }
+    if ($terminationFailures.Count -gt 0) {
+        throw [AggregateException]::new(
+            'Cross-service native process termination failed.',
+            $terminationFailures.ToArray()
+        )
+    }
+}
+
+function Test-CrossServiceSupervisorReservedEnvironment {
+    param([Parameter(Mandatory = $true)][string]$Name)
+
+    return $Name -match (
+        '^(?i:LD_.*|DYLD_.*|GCONV_PATH|DOTNET_STARTUP_HOOKS|' +
+            'DOTNET_ADDITIONAL_DEPS|DOTNET_SHARED_STORE|COREHOST_TRACEFILE|' +
+            'COMPlus_.*)$'
+    )
+}
+
+function Write-CrossServiceAtomicControlFile {
+    param(
+        [Parameter(Mandatory = $true)][string]$Path,
+        [Parameter(Mandatory = $true)][string]$Value
+    )
+
+    $temporaryPath = "$Path.$PID.tmp"
+    try {
+        [IO.File]::WriteAllText(
+            $temporaryPath,
+            $Value,
+            [Text.UTF8Encoding]::new($false)
+        )
+        [IO.File]::Move($temporaryPath, $Path)
+    }
+    finally {
+        if (Test-Path -LiteralPath $temporaryPath -PathType Leaf) {
+            Remove-Item -LiteralPath $temporaryPath -Force
+        }
+    }
+}
+
+function Get-CrossServiceControlDirectory {
+    param(
+        [string]$ConfiguredPath,
+        [Parameter(Mandatory = $true)][string]$WorkingDirectory
+    )
+
+    $candidate = $ConfiguredPath
+    if ([string]::IsNullOrWhiteSpace($candidate)) {
+        $candidate = $env:OPS_CACHE_ROOT
+    }
+    if ([string]::IsNullOrWhiteSpace($candidate)) {
+        $candidate = [IO.Path]::GetTempPath()
+    }
+    if (-not [IO.Path]::IsPathRooted($candidate)) {
+        $candidate = Join-Path $WorkingDirectory $candidate
+    }
+    $resolved = [IO.Path]::GetFullPath($candidate)
+    if (-not (Test-Path -LiteralPath $resolved -PathType Container)) {
+        throw [IO.DirectoryNotFoundException]::new(
+            'Cross-service process control directory does not exist.'
+        )
+    }
+    $currentPath = $resolved
+    while (-not [string]::IsNullOrWhiteSpace($currentPath)) {
+        if (Test-Path -LiteralPath $currentPath) {
+            $item = Get-Item -LiteralPath $currentPath -Force
+            if (($item.Attributes -band [IO.FileAttributes]::ReparsePoint) -ne
+                0) {
+                throw [IO.IOException]::new(
+                    'Cross-service process control path contains a reparse point.'
+                )
+            }
+        }
+        $parentPath = [IO.Path]::GetDirectoryName($currentPath)
+        if ([string]::IsNullOrWhiteSpace($parentPath) -or
+            $parentPath -eq $currentPath) {
+            break
+        }
+        $currentPath = $parentPath
+    }
+    return $resolved
+}
+
+function Read-CrossServiceSupervisorStatus {
+    param(
+        [Parameter(Mandatory = $true)][string]$Path,
+        [Parameter(Mandatory = $true)][string]$ControlNonce,
+        [Parameter(Mandatory = $true)][string]$GateNonce
+    )
+
+    $status = [IO.File]::ReadAllText($Path).Trim()
+    if ($status -match '^exit:(-?\d{1,10}):([a-f0-9]{32})$') {
+        if ($Matches[2] -cne $ControlNonce) {
+            throw [FormatException]::new(
+                'Cross-service supervisor exit status is unauthenticated.'
+            )
+        }
+        $exitCode = 0
+        if (-not [int]::TryParse($Matches[1], [ref]$exitCode)) {
+            throw [FormatException]::new(
+                'Cross-service supervisor exit status is invalid.'
+            )
+        }
+        return [pscustomobject]@{
+            ExitCode = $exitCode
+            FailureType = $null
+            CleanupFailureTypes = @()
+        }
+    }
+    if ($status -match
+        '^failure:([A-Za-z][A-Za-z0-9]{0,63}):(None|[A-Za-z][A-Za-z0-9]{0,63}(?:,[A-Za-z][A-Za-z0-9]{0,63}){0,3}):([a-f0-9]{32})$') {
+        $primaryFailureType = $Matches[1]
+        $cleanupFailureText = $Matches[2]
+        $statusNonce = $Matches[3]
+        if ($statusNonce -cne $ControlNonce -and
+            $statusNonce -cne $GateNonce) {
+            throw [FormatException]::new(
+                'Cross-service supervisor failure status is unauthenticated.'
+            )
+        }
+        return [pscustomobject]@{
+            ExitCode = $null
+            FailureType = $primaryFailureType
+            CleanupFailureTypes = if ($cleanupFailureText -ceq 'None') {
+                @()
+            }
+            else {
+                @($cleanupFailureText -split ',')
+            }
+        }
+    }
+    throw [FormatException]::new(
+        'Cross-service supervisor status is invalid.'
+    )
+}
+
+function Add-CrossServiceSupervisorCleanupFailures {
+    param(
+        [Parameter(Mandatory = $true)]$Status,
+        [Parameter(Mandatory = $true)][AllowEmptyCollection()]
+        [System.Collections.Generic.List[Exception]]$CleanupFailures
+    )
+
+    foreach ($failureType in @($Status.CleanupFailureTypes)) {
+        $CleanupFailures.Add([InvalidOperationException]::new(
+            'Cross-service process supervisor reported a late cleanup ' +
+                "failure: $failureType."
+        ))
+    }
+}
+
 function Invoke-CrossServiceNativeCapture {
     param(
         [Parameter(Mandatory = $true)][string]$Executable,
@@ -227,82 +430,546 @@ function Invoke-CrossServiceNativeCapture {
         [Parameter(Mandatory = $true)][IO.Stream]$StandardOutput,
         [Parameter(Mandatory = $true)][IO.Stream]$StandardError,
         $StandardInputText = $null,
-        [ValidateRange(1, 600)][int]$DrainTimeoutSeconds = 30
+        [ValidateRange(1, 600)][int]$DrainTimeoutSeconds = 30,
+        [ValidateRange(1, 5400)][int]$ExecutionTimeoutSeconds = 900,
+        [string]$ControlDirectory
     )
 
-    # The exit status is read from the process handle rather than inferred from
-    # ambient shell state, so redirection, preference variables, and pipeline
-    # context cannot drop or coerce it on any platform.
+    $resolvedExecutable = Resolve-CrossServiceApplicationPath `
+        -Executable $Executable
+    $resolvedWorkingDirectory = [IO.Path]::GetFullPath($WorkingDirectory)
+    if (-not (Test-Path -LiteralPath $resolvedWorkingDirectory `
+        -PathType Container)) {
+        throw [IO.DirectoryNotFoundException]::new(
+            'Cross-service process working directory does not exist.'
+        )
+    }
+    $controlRoot = Get-CrossServiceControlDirectory `
+        -ConfiguredPath $ControlDirectory `
+        -WorkingDirectory $resolvedWorkingDirectory
+    $controlId = [guid]::NewGuid().ToString('N')
+    $descriptorPath = Join-Path $controlRoot "process-$controlId.json"
+    $gatePath = Join-Path $controlRoot "process-$controlId.gate"
+    $startedPath = Join-Path $controlRoot "process-$controlId.started"
+    $statusPath = Join-Path $controlRoot "process-$controlId.status"
+    $supervisorPath = Join-Path $PSScriptRoot `
+        'cross-service-native-process-supervisor.ps1'
+    $sessionPath = Join-Path $PSScriptRoot `
+        'cross-service-native-process-session.sh'
+    foreach ($requiredPath in @($supervisorPath, $sessionPath)) {
+        if (-not (Test-Path -LiteralPath $requiredPath -PathType Leaf)) {
+            throw [IO.FileNotFoundException]::new(
+                'Cross-service process supervisor is unavailable.'
+            )
+        }
+    }
+    $pwshExecutable = [Environment]::ProcessPath
+    if ([string]::IsNullOrWhiteSpace($pwshExecutable) -or
+        -not (Test-Path -LiteralPath $pwshExecutable -PathType Leaf)) {
+        throw [IO.FileNotFoundException]::new(
+            'Cross-service PowerShell host is unavailable.'
+        )
+    }
+
+    $gateNonce = [guid]::NewGuid().ToString('N')
+    $controlNonce = [guid]::NewGuid().ToString('N')
+    $descriptor = [ordered]@{
+        executable = $resolvedExecutable
+        workingDirectory = $resolvedWorkingDirectory
+        arguments = @($Arguments | ForEach-Object { [string]$_ })
+        gateNonce = $gateNonce
+    } | ConvertTo-Json -Depth 4 -Compress
+    $environmentEntries = @(
+        $Environment.Keys |
+            Sort-Object |
+            ForEach-Object {
+                $name = [string]$_
+                if ([string]::IsNullOrWhiteSpace($name) -or
+                    $name -match '[=\x00]') {
+                    throw [ArgumentException]::new(
+                        'Cross-service target environment name is invalid.'
+                    )
+                }
+                $value = if ($null -eq $Environment[$_]) {
+                    $null
+                }
+                else {
+                    [string]$Environment[$_]
+                }
+                if ($null -ne $value -and $value.Length -gt 32768) {
+                    throw [ArgumentException]::new(
+                        'Cross-service target environment value is invalid.'
+                    )
+                }
+                [ordered]@{
+                    name = $name
+                    value = $value
+                }
+            }
+    )
+    $transportPayload = [ordered]@{
+        controlNonce = $controlNonce
+        environment = $environmentEntries
+        standardInput = if ($null -eq $StandardInputText) {
+            $null
+        }
+        else {
+            [string]$StandardInputText
+        }
+    } | ConvertTo-Json -Depth 5 -Compress
+    $transportBytes = [Text.UTF8Encoding]::new(
+        $false,
+        $true
+    ).GetBytes($transportPayload)
+    if ($transportBytes.Length -gt 16777216) {
+        throw [ArgumentException]::new(
+            'Cross-service supervisor transport exceeds its size bound.'
+        )
+    }
+    $transportFrame = New-Object byte[] ($transportBytes.Length + 4)
+    $transportFrame[0] = [byte](
+        ($transportBytes.Length -shr 24) -band 0xff
+    )
+    $transportFrame[1] = [byte](
+        ($transportBytes.Length -shr 16) -band 0xff
+    )
+    $transportFrame[2] = [byte](
+        ($transportBytes.Length -shr 8) -band 0xff
+    )
+    $transportFrame[3] = [byte]($transportBytes.Length -band 0xff)
+    [Array]::Copy(
+        $transportBytes,
+        0,
+        $transportFrame,
+        4,
+        $transportBytes.Length
+    )
+    $supervisorArguments = @(
+        '-NoLogo',
+        '-NoProfile',
+        '-NonInteractive',
+        '-ExecutionPolicy',
+        'Bypass',
+        '-File',
+        $supervisorPath,
+        '-DescriptorPath',
+        $descriptorPath,
+        '-GatePath',
+        $gatePath,
+        '-StartedPath',
+        $startedPath,
+        '-StatusPath',
+        $statusPath,
+        '-DrainTimeoutSeconds',
+        "$DrainTimeoutSeconds"
+    )
+
+    $setsidExecutable = $null
+    $shExecutable = $null
+    $killExecutable = $null
+    $sleepExecutable = $null
+    if (-not (Test-CrossServiceWindows)) {
+        $setsidExecutable = Resolve-CrossServiceApplicationPath `
+            -Executable 'setsid'
+        $shExecutable = Resolve-CrossServiceApplicationPath `
+            -Executable 'sh'
+        $killExecutable = Resolve-CrossServiceApplicationPath `
+            -Executable 'kill'
+        $sleepExecutable = Resolve-CrossServiceApplicationPath `
+            -Executable 'sleep'
+    }
     $startInfo = [Diagnostics.ProcessStartInfo]::new()
-    $startInfo.FileName = $Executable
-    $startInfo.WorkingDirectory = $WorkingDirectory
+    $startInfo.FileName = if ($null -eq $setsidExecutable) {
+        $pwshExecutable
+    }
+    else {
+        $setsidExecutable
+    }
+    $startInfo.WorkingDirectory = $resolvedWorkingDirectory
     $startInfo.UseShellExecute = $false
     $startInfo.CreateNoWindow = $true
+    $startInfo.RedirectStandardInput = $true
     $startInfo.RedirectStandardOutput = $true
     $startInfo.RedirectStandardError = $true
-    if ($null -ne $StandardInputText) {
-        $startInfo.RedirectStandardInput = $true
-        $startInfo.StandardInputEncoding = [Text.UTF8Encoding]::new($false)
+    if ($null -ne $setsidExecutable) {
+        [void]$startInfo.ArgumentList.Add('--wait')
+        [void]$startInfo.ArgumentList.Add('--')
+        [void]$startInfo.ArgumentList.Add($shExecutable)
+        [void]$startInfo.ArgumentList.Add($sessionPath)
+        [void]$startInfo.ArgumentList.Add($killExecutable)
+        [void]$startInfo.ArgumentList.Add($sleepExecutable)
+        [void]$startInfo.ArgumentList.Add($pwshExecutable)
     }
-    foreach ($argument in $Arguments) {
+    foreach ($argument in $supervisorArguments) {
         [void]$startInfo.ArgumentList.Add([string]$argument)
+    }
+    foreach ($inheritedName in @($startInfo.Environment.Keys)) {
+        if (Test-CrossServiceSupervisorReservedEnvironment `
+            -Name ([string]$inheritedName)) {
+            [void]$startInfo.Environment.Remove([string]$inheritedName)
+        }
     }
     foreach ($name in $Environment.Keys) {
         $variableName = [string]$name
-        if ($null -eq $Environment[$name]) {
-            [void]$startInfo.Environment.Remove($variableName)
-        }
-        else {
-            $startInfo.Environment[$variableName] = [string]$Environment[$name]
+        if (Test-CrossServiceSupervisorReservedEnvironment `
+            -Name $variableName) {
+            throw [InvalidOperationException]::new(
+                'Cross-service target environment contains a ' +
+                    'supervisor-reserved variable.'
+            )
         }
     }
 
     $process = [Diagnostics.Process]::new()
     $process.StartInfo = $startInfo
     $started = $false
+    $windowsJob = $null
+    $copyTasks = $null
+    $inputTask = $null
+    $inputDelivered = $false
+    $inputClosed = $false
+    $inputCleanupWaited = $false
+    $inputCleanupDisposeRequired = $false
+    $statusConsumed = $false
+    $supervisorStopped = $false
+    $operationFailure = $null
+    $resultCode = $null
+    $cleanupFailures = New-Object `
+        'System.Collections.Generic.List[Exception]'
     try {
+        Write-CrossServiceAtomicControlFile -Path $descriptorPath `
+            -Value $descriptor
+        $windowsJob = New-CrossServiceWindowsJob
         if (-not $process.Start()) {
             throw [InvalidOperationException]::new(
-                'Cross-service native process did not start.'
+                'Cross-service process supervisor did not start.'
             )
         }
         $started = $true
-        $drain = [Threading.Tasks.Task]::WhenAll(
-            [Threading.Tasks.Task[]]@(
-                $process.StandardOutput.BaseStream.CopyToAsync($StandardOutput),
+        if ($null -ne $windowsJob) {
+            $windowsJob.Assign($process.Handle)
+        }
+        $copyTaskList = New-Object `
+            'System.Collections.Generic.List[Threading.Tasks.Task]'
+        try {
+            $copyTaskList.Add(
+                $process.StandardOutput.BaseStream.CopyToAsync($StandardOutput)
+            )
+            $copyTaskList.Add(
                 $process.StandardError.BaseStream.CopyToAsync($StandardError)
             )
-        )
-        if ($null -ne $StandardInputText) {
-            # Written after the drain starts so a chatty child cannot fill its
-            # output pipe while this side is still feeding standard input.
-            $process.StandardInput.Write([string]$StandardInputText)
-            $process.StandardInput.Close()
         }
-        [void]$process.WaitForExit([int]::MaxValue)
-        if (-not $drain.Wait($DrainTimeoutSeconds * 1000)) {
-            throw [TimeoutException]::new(
-                'Cross-service native output drain exceeded its bound.'
+        catch {
+            $copyTasks = $copyTaskList.ToArray()
+            throw [IO.IOException]::new(
+                'Cross-service native output capture failed to start.',
+                $_.Exception
             )
         }
-        $StandardOutput.Flush()
-        $StandardError.Flush()
-        return [int]$process.ExitCode
+        $copyTasks = $copyTaskList.ToArray()
+        Write-CrossServiceAtomicControlFile -Path $gatePath `
+            -Value $gateNonce
+        $inputTask = $process.StandardInput.BaseStream.WriteAsync(
+            $transportFrame,
+            0,
+            $transportFrame.Length
+        )
+        $startupDeadline = [DateTime]::UtcNow.AddSeconds(30)
+        $targetStarted = $false
+        $executionDeadline = $null
+        while ($true) {
+            if ($null -ne $inputTask -and -not $inputDelivered -and
+                $inputTask.IsCompleted) {
+                [void]$inputTask.GetAwaiter().GetResult()
+                $inputDelivered = $true
+            }
+
+            foreach ($copyTask in $copyTasks) {
+                if ($copyTask.IsFaulted) {
+                    throw [IO.IOException]::new(
+                        'Cross-service native output capture failed.',
+                        $copyTask.Exception.GetBaseException()
+                    )
+                }
+                if ($copyTask.IsCanceled) {
+                    throw [IO.IOException]::new(
+                        'Cross-service native output capture was canceled.'
+                    )
+                }
+            }
+
+            if (-not $targetStarted -and
+                (Test-Path -LiteralPath $startedPath -PathType Leaf)) {
+                if ([IO.File]::ReadAllText($startedPath) -ne $controlNonce) {
+                    throw [InvalidOperationException]::new(
+                        'Cross-service process supervisor start marker is invalid.'
+                    )
+                }
+                $targetStarted = $true
+                $executionDeadline = [DateTime]::UtcNow.AddSeconds(
+                    $ExecutionTimeoutSeconds
+                )
+            }
+            if (Test-Path -LiteralPath $statusPath -PathType Leaf) {
+                $status = Read-CrossServiceSupervisorStatus -Path $statusPath `
+                    -ControlNonce $controlNonce -GateNonce $gateNonce
+                $statusConsumed = $true
+                if ($null -ne $status.FailureType) {
+                    $cleanupFailureTypes = @($status.CleanupFailureTypes)
+                    $failureMessage = if (
+                        $status.FailureType -cne 'None' -and
+                        $cleanupFailureTypes.Count -eq 0
+                    ) {
+                        'Cross-service process supervisor reported a bounded ' +
+                            "$($status.FailureType) failure."
+                    }
+                    elseif ($status.FailureType -ceq 'None') {
+                        'Cross-service process supervisor reported bounded ' +
+                            'cleanup failures: ' +
+                            ($cleanupFailureTypes -join ', ') + '.'
+                    }
+                    else {
+                        'Cross-service process supervisor reported a bounded ' +
+                            "$($status.FailureType) failure with cleanup " +
+                            'failures: ' +
+                            ($cleanupFailureTypes -join ', ') + '.'
+                    }
+                    throw [InvalidOperationException]::new($failureMessage)
+                }
+                $resultCode = [int]$status.ExitCode
+                break
+            }
+            if ($process.HasExited) {
+                throw [IO.IOException]::new(
+                    'Cross-service process supervisor exited before status publication.'
+                )
+            }
+            if (-not $targetStarted -and
+                [DateTime]::UtcNow -ge $startupDeadline) {
+                throw [TimeoutException]::new(
+                    'Cross-service process supervisor exceeded its startup bound.'
+                )
+            }
+            if ($targetStarted -and
+                [DateTime]::UtcNow -ge $executionDeadline) {
+                throw [TimeoutException]::new(
+                    'Cross-service native process exceeded its execution bound.'
+                )
+            }
+
+            Start-Sleep -Milliseconds 20
+        }
+    }
+    catch {
+        $operationFailure = $_.Exception
     }
     finally {
-        if ($started) {
+        $drainMilliseconds = [Math]::Min(
+            [int]::MaxValue,
+            $DrainTimeoutSeconds * 1000
+        )
+        $inputCleanupMilliseconds = [Math]::Min(
+            $drainMilliseconds,
+            5000
+        )
+        if ($started -and $null -ne $inputTask -and
+            -not $inputTask.IsCompleted) {
             try {
-                if (-not $process.HasExited) {
-                    $process.Kill($true)
-                    [void]$process.WaitForExit(5000)
+                Stop-CrossServiceOwnedProcessTree -Process $process `
+                    -WindowsJob $windowsJob
+                $supervisorStopped = $true
+            }
+            catch {
+                $cleanupFailures.Add($_.Exception)
+            }
+            finally {
+                $windowsJob = $null
+            }
+        }
+        if ($started -and -not $inputClosed) {
+            try {
+                if ($null -ne $inputTask -and -not $inputTask.IsCompleted -and
+                    -not $inputTask.Wait($inputCleanupMilliseconds)) {
+                    $inputCleanupWaited = $true
+                    $inputCleanupDisposeRequired = $true
+                    $cleanupFailures.Add([TimeoutException]::new(
+                        'Cross-service input cleanup exceeded its bound.'
+                    ))
+                }
+                elseif ($null -ne $inputTask -and
+                    -not $inputTask.IsCompleted) {
+                    $inputCleanupWaited = $true
+                }
+                if ($null -eq $inputTask -or $inputTask.IsCompleted) {
+                    $process.StandardInput.Close()
+                    $inputClosed = $true
                 }
             }
             catch {
-                # A process that already exited cannot be terminated again.
+                $inputCleanupWaited = $true
+                $inputCleanupDisposeRequired = $true
+                $cleanupFailures.Add($_.Exception)
             }
         }
-        $process.Dispose()
+        if ($started -and -not $supervisorStopped) {
+            try {
+                Stop-CrossServiceOwnedProcessTree -Process $process `
+                    -WindowsJob $windowsJob
+                $supervisorStopped = $true
+            }
+            catch {
+                $cleanupFailures.Add($_.Exception)
+            }
+            finally {
+                $windowsJob = $null
+            }
+        }
+        elseif ($null -ne $windowsJob) {
+            try {
+                $windowsJob.Dispose()
+            }
+            catch {
+                $cleanupFailures.Add($_.Exception)
+            }
+            finally {
+                $windowsJob = $null
+            }
+        }
+        if (-not $statusConsumed -and
+            (Test-Path -LiteralPath $statusPath -PathType Leaf)) {
+            try {
+                $lateStatus = Read-CrossServiceSupervisorStatus `
+                    -Path $statusPath -ControlNonce $controlNonce `
+                    -GateNonce $gateNonce
+                $statusConsumed = $true
+                Add-CrossServiceSupervisorCleanupFailures `
+                    -Status $lateStatus -CleanupFailures $cleanupFailures
+            }
+            catch {
+                $cleanupFailures.Add($_.Exception)
+            }
+        }
+        if ($null -ne $inputTask) {
+            try {
+                if (-not $inputTask.IsCompleted -and
+                    -not $inputCleanupWaited -and
+                    -not $inputTask.Wait($inputCleanupMilliseconds)) {
+                    $inputCleanupWaited = $true
+                    $inputCleanupDisposeRequired = $true
+                    $cleanupFailures.Add([TimeoutException]::new(
+                        'Cross-service input cleanup exceeded its bound.'
+                    ))
+                }
+                elseif ($inputTask.IsCompleted) {
+                    [void]$inputTask.GetAwaiter().GetResult()
+                }
+            }
+            catch {
+                $inputFailure = $_.Exception.GetBaseException()
+                $inputCleanupDisposeRequired = $true
+                $operationBaseFailure = if ($null -eq $operationFailure) {
+                    $null
+                }
+                else {
+                    $operationFailure.GetBaseException()
+                }
+                if ($null -eq $operationBaseFailure -or
+                    -not [object]::ReferenceEquals(
+                        $inputFailure,
+                        $operationBaseFailure
+                    )) {
+                    $cleanupFailures.Add($inputFailure)
+                }
+            }
+        }
+        if ($inputCleanupDisposeRequired -and -not $inputClosed) {
+            try {
+                $process.StandardInput.BaseStream.Dispose()
+                $inputClosed = $true
+            }
+            catch {
+                $cleanupFailures.Add($_.Exception)
+            }
+        }
+        if ($null -ne $copyTasks) {
+            try {
+                $remainingDrain = [Threading.Tasks.Task]::WhenAll($copyTasks)
+                if (-not $remainingDrain.Wait($drainMilliseconds)) {
+                    $cleanupFailures.Add([TimeoutException]::new(
+                        'Cross-service output cleanup exceeded its bound.'
+                    ))
+                }
+            }
+            catch {
+                $copyFailure = $_.Exception.GetBaseException()
+                $operationBaseFailure = if ($null -eq $operationFailure) {
+                    $null
+                }
+                else {
+                    $operationFailure.GetBaseException()
+                }
+                if ($null -eq $operationBaseFailure -or
+                    -not [object]::ReferenceEquals(
+                        $copyFailure,
+                        $operationBaseFailure
+                    )) {
+                    $cleanupFailures.Add($copyFailure)
+                }
+            }
+        }
+        try {
+            $process.Dispose()
+        }
+        catch {
+            $cleanupFailures.Add($_.Exception)
+        }
+        foreach ($controlPath in @(
+            $descriptorPath,
+            $gatePath,
+            $startedPath,
+            $statusPath
+        )) {
+            try {
+                if (Test-Path -LiteralPath $controlPath -PathType Leaf) {
+                    Remove-Item -LiteralPath $controlPath -Force
+                }
+            }
+            catch {
+                $cleanupFailures.Add($_.Exception)
+            }
+        }
+        if ($null -eq $operationFailure -and $cleanupFailures.Count -eq 0) {
+            try {
+                $StandardOutput.Flush()
+                $StandardError.Flush()
+            }
+            catch {
+                $cleanupFailures.Add($_.Exception)
+            }
+        }
     }
+
+    if ($null -ne $operationFailure) {
+        if ($cleanupFailures.Count -gt 0) {
+            $failures = New-Object 'System.Collections.Generic.List[Exception]'
+            $failures.Add($operationFailure)
+            foreach ($cleanupFailure in $cleanupFailures) {
+                $failures.Add($cleanupFailure)
+            }
+            throw [AggregateException]::new(
+                'Cross-service native process and cleanup both failed.',
+                $failures.ToArray()
+            )
+        }
+        throw $operationFailure
+    }
+    if ($cleanupFailures.Count -gt 0) {
+        throw [AggregateException]::new(
+            'Cross-service native process cleanup failed.',
+            $cleanupFailures.ToArray()
+        )
+    }
+    return $resultCode
 }
 
 function Invoke-CrossServiceProcess {
@@ -342,10 +1009,14 @@ function Invoke-CrossServiceProcess {
                 [IO.FileAccess]::Write,
                 [IO.FileShare]::Read
             )
+            $controlDirectory = [IO.Path]::GetDirectoryName(
+                [IO.Path]::GetFullPath($StderrPath)
+            )
             $exitCode = Invoke-CrossServiceNativeCapture -Executable $Executable `
                 -Arguments $Arguments -WorkingDirectory $WorkingDirectory `
                 -Environment $Environment -StandardOutput $stdoutStream `
-                -StandardError $stderrStream
+                -StandardError $stderrStream `
+                -ControlDirectory $controlDirectory
         }
         finally {
             if ($null -ne $stderrStream) {
