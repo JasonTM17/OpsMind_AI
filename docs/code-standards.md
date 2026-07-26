@@ -138,6 +138,21 @@ Prefer guard clauses over deep nesting. Keep public interfaces small and typed. 
 - Reconcile ambiguous timeouts before retrying a write.
 - Bind approval to the normalized action and target version.
 
+## Verification Script Process Control
+
+- Read a child exit status from the process handle. Never infer it from
+  `$LASTEXITCODE` or another ambient shell value, which redirection, preference
+  variables, and pipeline context can drop or coerce.
+- Pass arguments as an explicit list. In PowerShell the comma builds the array
+  before `+` appends, so a concatenated argument must be grouped in parentheses;
+  ungrouped, it silently becomes an extra operand and the child sees a different
+  command.
+- Drain standard output and error concurrently and start the drain before waiting
+  on the child. A sequential read deadlocks once the child fills a pipe buffer.
+- Bound the drain and fail closed when it expires instead of waiting forever.
+- Give requested environment variables to the child only. Do not write them into
+  the parent process environment while the child runs.
+
 ## Logging and Telemetry
 
 - Emit structured logs with trace and domain correlation identifiers.
