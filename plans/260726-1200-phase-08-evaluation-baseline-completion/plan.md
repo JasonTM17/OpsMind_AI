@@ -4,7 +4,7 @@ description: >-
   Close the Phase 8 exit gates that remain after production-path A/B/C evidence:
   held-out corpus governance, the ten-family specification, a preregistered
   statistical protocol with interval reporting, and a human-baseline protocol.
-status: in-progress
+status: completed
 priority: P1
 branch: main
 tags:
@@ -56,7 +56,7 @@ phase file so the inventory stops reading as outstanding work.
 |-------|------|--------|
 | 1 | [Held-out corpus governance](./phase-01-held-out-corpus-and-family-specification.md) | Completed |
 | 2 | [Statistical protocol and reporting](./phase-02-statistical-protocol-and-reporting.md) | Completed |
-| 3 | [Human baseline protocol and delivery](./phase-03-human-baseline-protocol-and-delivery.md) | In Progress |
+| 3 | [Human baseline protocol and delivery](./phase-03-human-baseline-protocol-and-delivery.md) | Completed |
 
 ## Dependencies
 
