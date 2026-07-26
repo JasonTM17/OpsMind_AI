@@ -121,6 +121,13 @@ test("renders the empty operator entry without exposing a fixture selector", asy
   await expect(page.getByText("No credential fallback")).toBeVisible();
   await expect(page.getByText("Session not asserted", { exact: true })).toBeVisible();
   expect(await page.locator("body").innerText()).not.toContain(completedRunId);
+
+  // Every investigation state is scanned, but the entry route is the first
+  // thing an operator reaches and was the only rendered page without a check.
+  const accessibility = await new AxeBuilder({ page })
+    .withTags(["wcag2a", "wcag2aa", "wcag21a", "wcag21aa"])
+    .analyze();
+  expect(accessibility.violations).toEqual([]);
 });
 
 test("rejects an analysis projection containing raw reasoning fields", async ({ page }) => {
