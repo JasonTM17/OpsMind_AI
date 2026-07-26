@@ -180,21 +180,43 @@
       "items": {
         "type": "object",
         "additionalProperties": false,
-        "required": ["kind", "reference"],
+        "required": [
+          "kind",
+          "reference",
+          "digest_type",
+          "digest_domain",
+          "digest"
+        ],
         "properties": {
           "kind": {
             "enum": [
               "cross-service-trace",
               "operator-projection",
+              "evaluation-projection",
+              "timeline-event",
+              "accepted-analysis",
               "final-rca",
               "evidence",
-              "tool-execution"
+              "tool-execution",
+              "tool-receipt"
             ]
           },
           "reference": {
             "type": "string",
             "minLength": 1,
             "maxLength": 2048
+          },
+          "digest_type": {
+            "enum": ["raw-bytes", "canonical-json"]
+          },
+          "digest_domain": {
+            "type": "string",
+            "pattern": "^opsmind\\.[a-z0-9.-]+/v[1-9][0-9]*$",
+            "maxLength": 160
+          },
+          "digest": {
+            "type": "string",
+            "pattern": "^sha256:[a-f0-9]{64}$"
           }
         }
       }

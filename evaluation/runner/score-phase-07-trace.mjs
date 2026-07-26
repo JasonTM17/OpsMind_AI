@@ -65,11 +65,22 @@ function digest(filePath) {
 }
 
 function main() {
+  const trace = readJson(safeTracePath(), "cross-service trace");
+  const scenario = trace.document.scenario ?? "A";
+  const scenarioDirectories = {
+    A: "deployment-latency-regression",
+    B: "insufficient-evidence-abstain",
+    C: "conflicting-evidence-regression",
+  };
+  const scenarioDirectory = scenarioDirectories[scenario];
+  if (!scenarioDirectory) {
+    throw new Error("cross-service trace scenario must be A, B, or C");
+  }
   const groundTruthPath = path.join(
     repositoryRoot,
     "evaluation",
     "scenarios",
-    "deployment-latency-regression",
+    scenarioDirectory,
     "ground-truth.json",
   );
   const truth = readJson(groundTruthPath, "scenario ground truth").document;
@@ -77,6 +88,9 @@ function main() {
   const truthFindings = validate(truth, "scenario-ground-truth.schema.json");
   if (truthFindings.length > 0) {
     throw new Error(`Scenario contract is invalid: ${truthFindings.join("; ")}`);
+  }
+  if (truth.scenario_id !== scenarioDirectory) {
+    throw new Error("trace scenario and ground-truth identity differ");
   }
   const fixturePath = path.resolve(path.dirname(groundTruthPath), truth.fixture_path);
   if (!isWithin(fixturePath, path.dirname(groundTruthPath)) || containsLink(fixturePath)) {
@@ -86,7 +100,6 @@ function main() {
     throw new Error("Scenario fixture digest does not match ground truth");
   }
 
-  const trace = readJson(safeTracePath(), "cross-service trace");
   if (
     trace.document.schema !== "opsmind-cross-service-trace-v1"
     || !Array.isArray(trace.document.runs)

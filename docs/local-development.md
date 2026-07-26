@@ -157,7 +157,44 @@ Use either launcher consistently:
 | `down` | Stop the profile; remains available when capacity is below threshold. |
 | `migrate` | Applies the Phase 3 Flyway schema using the supplied migration-role datasource; it does not start the web server. |
 | `seed` | Exit 3 until deterministic seed data has an owning phase. |
-| `evaluate` | Validate and score the Phase 8A deterministic Scenario A against a fresh Phase 7 trace; exits non-zero when raw artifacts, revision binding, or storage policy are incomplete. |
+| `evaluate` | Run evaluation tests/contracts, then score an existing managed Phase 7 trace for Scenario A, B, or C; it does not generate a trace and exits non-zero when projection, revision binding, or storage policy is incomplete. |
+
+### Phase 8 evaluation
+
+`seed` remains unavailable. `evaluate` is implemented, but it consumes the
+trace selected by `OPSMIND_EVALUATION_TRACE_PATH` (default
+`.opsmind/reports/cross-service-trace.json`). Generate a production-path trace
+separately with the heavy cross-service harness only after capacity, storage
+roots, service artifacts, AI Runtime virtual environment, Docker, and
+PostgreSQL prerequisites are ready.
+
+`run-cross-service-verification.ps1 -ReportPath` accepts only descendants of
+`.opsmind/reports`; its default is
+`.opsmind/reports/cross-service-trace.json`. The CI A/B/C matrix uses:
+
+```text
+.opsmind/reports/cross-service-trace.json
+.opsmind/reports/cross-service-trace.scenario-b.json
+.opsmind/reports/cross-service-trace.scenario-c.json
+```
+
+Per-run SQL exports and the enriched working file are restricted to
+`.opsmind/cross-service/<run-id>/`. The harness publishes only after strict
+projection validation and archives an existing report below
+`.opsmind/reports/archive/` before writing the replacement. It rejects
+reparse-point ancestors before writes. Cleanup deletes credentials and raw
+exports before process/container cleanup, aggregates failures, and refuses
+unsafe recursive removal. Scenario A uses one read-only evidence result; B returns
+`ABSTAINED` without tools; C uses two opposing read-only evidence results and
+requires counter-evidence plus cautious confidence. Scenario C identifies
+metric roles from canonical metric content, never evidence row or UUID order.
+
+The local unit/static gates pass: 33/33 Node tests, 40/40 targeted Python
+tests, 50 shuffled semantic-order trials, and the junction-path safety test.
+Fresh Docker/PostgreSQL A/B/C, executable attestation, exact-revision artifact
+upload, and terminal-green
+`.github/workflows/cross-service-evaluation.yml` remain pending. Do not treat
+`evaluate` against an authored fixture or stale trace as Phase 8B evidence.
 
 The first Java dependency scan can take substantially longer while it builds
 the NVD database. Its data remains in the D-backed cache. The disabled
@@ -394,6 +431,8 @@ toolchain; do not weaken a version file to match an incidental host runtime.
 - `OPS_ARTIFACT_ROOT/verification/phase-02/repository-layout.txt`
 - `OPS_ARTIFACT_ROOT/verification/phase-03/identity-delegation.txt` (local/reference only)
 - `OPS_ARTIFACT_ROOT/verification/phase-03/identity-delegation-failure.txt` (failure diagnostics only)
+- `OPS_ARTIFACT_ROOT/verification/phase-08b/` (CI production-path transcripts and executable attestation; pending)
+- `OPS_ARTIFACT_ROOT/evaluation/phase-08/` (local scorer output; reference only)
 - Phase 2 Windows and portable command-surface test results
 - dependency-check reports under each Java service's ignored `target/` tree
 

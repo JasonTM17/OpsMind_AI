@@ -44,6 +44,19 @@ evidence. G3 is still not claimed: a named live non-production connector,
 approved provider/legal conformance, incident-timeline linkage, BFF/session
 proof, and release-scale evidence remain open.
 
+Phase 8B now implements three deterministic, training-ineligible evaluation
+contracts: A detects a deployment-correlated latency regression, B terminates
+`ABSTAINED` without tools when evidence is insufficient, and C performs two
+opposing read-only evidence collections and requires counter-evidence plus
+cautious confidence. Tool executions are reconstructed from immutable intent,
+receipt, audit, and evidence records; connector provenance is the digest of the
+manifest bytes selected by the Tool Gateway runtime. Platform V008 is an
+expand migration: rolling legacy writers remain accepted, while response-aware
+writes are strictly bound and only those runs are evaluation-eligible. Local Node, Python,
+semantic-order, path-safety, and static gates pass. Fresh disposable
+Docker/PostgreSQL A/B/C execution, executable attestation, and an artifact bound
+to the exact pushed revision remain pending CI evidence; Phase 8 stays blocked.
+
 DeepSeek egress and all production credentials remain disabled by default.
 Production identity/provider/legal conformance, evidence-object lifecycle,
 RAG, remediation, DR, and release gates remain later work.
@@ -156,7 +169,8 @@ cp .env.example .env
 | `dev`, `up`, `down` | Starts/stops the `application` Compose profile; `dev`/`up` require process-scoped migration and runtime database passwords plus explicit Docker-storage attestation. |
 | `security`, `security-scan` | Scans repository secrets and Node, Python, and Java dependencies; Java CVSS 7+ fails the command. |
 | `migrate` | Packages the Platform API and applies the current Flyway migrations with the explicitly supplied migration-role datasource. |
-| `seed`, `evaluate` | Fails explicitly with exit code 3 until their owning phases implement deterministic seed data and evaluation contracts. |
+| `seed` | Remains unavailable and exits 3; no deterministic seed-data owner has landed. |
+| `evaluate` | Runs evaluation unit/contract validation, then scores an existing managed Phase 7 trace. It does not generate the trace; missing, stale, dirty-revision, or incomplete trace evidence fails closed. |
 
 Heavy commands are mutually exclusive per checkout. `doctor` validates the
 declared toolchain and exits 6 on a version mismatch. Compose build/start is
@@ -239,6 +253,7 @@ artifacts are authoritative for the checked commit. The main gates are:
 .\scripts\dev\opsmind.ps1 build
 .\scripts\dev\opsmind.ps1 security
 node .\scripts\validation\validate-phase-07-investigation-slice.mjs
+node .\scripts\validation\validate-phase-08-evaluation-foundation.mjs
 ```
 
 | Checkpoint | Current evidence | Scope limit |
@@ -250,6 +265,7 @@ node .\scripts\validation\validate-phase-07-investigation-slice.mjs
 | AI Runtime | 149 offline tests plus PostgreSQL state gate pass; DeepSeek adapter defaults to `deepseek-v4-flash` | No live provider call or legal/residency approval |
 | Tool Gateway | Static contract, Platform issuer conformance, workload OAuth boundary, and dual-credential Platform execution client pass | Durable stores and live connector pending |
 | Investigation | Bounded-record checkpoint 4B, capability-backed AI rounds, exact-bound Tool Gateway client, CK/Stitch browser proof, and 100-warm-run trace pass | G3 still requires a named live non-production connector, provider/legal approval, timeline linkage, and BFF/session proof |
+| Evaluation | Three A/B/C contracts and strict projection pass; current evidence is 33/33 Node tests, 40/40 targeted Python tests, 50 shuffled semantic-order trials, and a junction-path safety test | Fresh disposable A/B/C, executable attestation, exact-revision CI artifact, held-out corpus, and human baseline remain pending; Phase 8 exit is BLOCK |
 | Compose | All application images build, start, and pass health smoke in CI | Not staging/production deployment evidence |
 
 Historical local evidence marked `REFERENCE_CONFORMANCE_NOT_PRODUCTION` stays

@@ -8,6 +8,7 @@ import java.time.Instant;
 import java.util.List;
 import java.util.UUID;
 
+import ai.opsmind.toolgateway.audit.ToolExecutionProvenance;
 import ai.opsmind.toolgateway.domain.ToolOutcome;
 
 import org.junit.jupiter.api.BeforeEach;
@@ -33,6 +34,11 @@ class ToolGatewayPersistenceBoundaryIntegrationTest {
         assertThat(database.migratorJdbc().queryForObject(
             "SELECT count(*) FROM tool_gateway.flyway_schema_history "
                 + "WHERE script = 'V001__durable_tool_gateway_state.sql' AND success",
+            Integer.class
+        )).isEqualTo(1);
+        assertThat(database.migratorJdbc().queryForObject(
+            "SELECT count(*) FROM tool_gateway.flyway_schema_history "
+                + "WHERE script = 'V002__durable_tool_execution_provenance.sql' AND success",
             Integer.class
         )).isEqualTo(1);
         assertThat(database.migratorJdbc().queryForObject(
@@ -102,7 +108,21 @@ class ToolGatewayPersistenceBoundaryIntegrationTest {
         String digest = ToolGatewayPostgresTestContext.digest(UUID.randomUUID().toString());
         UUID auditId = database.auditWriter().record(
             UUID.randomUUID(), ToolOutcome.SUCCEEDED, digest,
-            "capability-test", "manifest-v1", digest, "policy-v1", null
+            "capability-test", "manifest-v1",
+            new ToolExecutionProvenance(
+                "observability", "metrics.query", "read-only",
+                "prometheus-read-only", "prometheus", "sha256:" + "a".repeat(64)
+            ),
+            digest, "policy-v1", null
+        );
+        assertThat(database.migratorJdbc().queryForObject(
+            "SELECT connector_id || ':' || connector_profile || ':' || "
+                + "connector_manifest_byte_digest "
+                + "FROM tool_gateway.tool_audit_events WHERE audit_event_id = ?",
+            String.class,
+            auditId
+        )).isEqualTo(
+            "prometheus-read-only:prometheus:sha256:" + "a".repeat(64)
         );
 
         assertThatThrownBy(() -> database.migratorJdbc().update(
@@ -112,6 +132,36 @@ class ToolGatewayPersistenceBoundaryIntegrationTest {
         )).isInstanceOf(RuntimeException.class);
         assertThatThrownBy(() -> database.migratorJdbc().execute(
             "TRUNCATE tool_gateway.tool_audit_events"
+        )).isInstanceOf(RuntimeException.class);
+    }
+
+    @Test
+    void legacyAuditShapeRemainsWritableDuringV002ExpansionWindow() {
+        UUID auditId = UUID.randomUUID();
+        int inserted = database.runtimeJdbc().update(
+            "INSERT INTO tool_gateway.tool_audit_events "
+                + "(audit_event_id, execution_id, outcome, request_digest, denial_code) "
+                + "VALUES (?, ?, 'DENIED', ?, 'action-disabled')",
+            auditId,
+            UUID.randomUUID(),
+            ToolGatewayPostgresTestContext.digest(UUID.randomUUID().toString())
+        );
+
+        assertThat(inserted).isEqualTo(1);
+        assertThat(database.migratorJdbc().queryForObject(
+            "SELECT num_nonnulls(tool, action, risk_class, connector_id, "
+                + "connector_profile, connector_manifest_byte_digest) "
+                + "FROM tool_gateway.tool_audit_events WHERE audit_event_id = ?",
+            Integer.class,
+            auditId
+        )).isZero();
+        assertThatThrownBy(() -> database.runtimeJdbc().update(
+            "INSERT INTO tool_gateway.tool_audit_events "
+                + "(audit_event_id, execution_id, outcome, request_digest, denial_code, tool) "
+                + "VALUES (?, ?, 'DENIED', ?, 'action-disabled', 'observability')",
+            UUID.randomUUID(),
+            UUID.randomUUID(),
+            ToolGatewayPostgresTestContext.digest(UUID.randomUUID().toString())
         )).isInstanceOf(RuntimeException.class);
     }
 }

@@ -18,8 +18,22 @@ public sealed interface InvestigationEvent
     record RunStarted(UUID runId, UUID incidentId, InvestigationCommand.Budget budget, Instant occurredAt)
         implements InvestigationEvent { }
 
-    record AnalysisAccepted(UUID runId, String status, int round, int totalTokens, Instant occurredAt)
-        implements InvestigationEvent { }
+    record AnalysisAccepted(
+        UUID runId,
+        String status,
+        int round,
+        int totalTokens,
+        AnalysisRuntimeResponse response,
+        Instant occurredAt
+    ) implements InvestigationEvent {
+        public AnalysisAccepted {
+            if (runId == null || response == null || !runId.equals(response.runId())
+                || !response.status().equals(status) || round < 1 || totalTokens < 0
+                || occurredAt == null) {
+                throw new IllegalArgumentException("Accepted analysis event is invalid.");
+            }
+        }
+    }
 
     record ToolRequested(UUID runId, List<AnalysisRuntimeResponse.ToolIntent> intents, Instant occurredAt)
         implements InvestigationEvent {

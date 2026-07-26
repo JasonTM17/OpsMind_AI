@@ -1,0 +1,14 @@
+{
+  "schema_version": "opsmind-synthetic-abstention-fixture-v1",
+  "evidence_classification": "REGRESSION_SNAPSHOT_NOT_PRODUCTION_PATH",
+  "scenario_id": "insufficient-evidence-abstain",
+  "seed": 73002,
+  "clock": {
+    "incident_started_at": "2030-01-02T00:00:00Z",
+    "observation_ended_at": "2030-01-02T00:01:00Z"
+  },
+  "available_sources": [],
+  "missing_sources": [
+    "service-latency-metrics"
+  ]
+}

@@ -71,11 +71,40 @@
           {"required": ["requested_tool_calls"], "properties": {"requested_tool_calls": {"minItems": 1}}}
         ]
       }
+    },
+    {
+      "if": {"required": ["status"], "properties": {"status": {"const": "abstain"}}},
+      "then": {
+        "required": ["hypotheses", "missing_evidence", "citations", "requested_tool_calls"],
+        "properties": {
+          "hypotheses": {"maxItems": 0},
+          "missing_evidence": {"minItems": 1},
+          "citations": {"maxItems": 0},
+          "requested_tool_calls": {"maxItems": 0}
+        }
+      }
+    },
+    {
+      "if": {
+        "required": ["status"],
+        "properties": {
+          "status": {"enum": ["provider_unavailable", "budget_exceeded"]}
+        }
+      },
+      "then": {
+        "required": ["hypotheses", "citations", "requested_tool_calls"],
+        "properties": {
+          "hypotheses": {"maxItems": 0},
+          "citations": {"maxItems": 0},
+          "requested_tool_calls": {"maxItems": 0}
+        }
+      }
     }
   ],
   "x-semantic-invariants": [
     "usage.total_tokens equals usage.prompt_tokens plus usage.completion_tokens",
-    "every complete hypothesis citation also appears in top-level citations"
+    "every complete hypothesis citation also appears in top-level citations",
+    "abstain identifies missing evidence without hypotheses, citations, or tool intents"
   ],
   "$defs": {
     "citation": {

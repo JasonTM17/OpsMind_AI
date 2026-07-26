@@ -127,6 +127,7 @@ def _response(request: AnalysisRequestV1) -> AnalysisResponseV1:
         model_id="deepseek-v4-flash",
         prompt_version=request.prompt_version,
         schema_version=request.schema_version,
+        missing_evidence=("No authorized evidence was available.",),
         usage={"prompt_tokens": 1, "completion_tokens": 1, "total_tokens": 2},
         cost_estimate={"amount": 0.000003},
     )

@@ -30,21 +30,43 @@ Testing proves behavior at the boundary where a defect would matter. Passing hap
 | Security | Threat scenarios, secret exposure, dependency/container/IaC and authorization tests |
 | Reliability | Crash/restart, duplicate, reorder, timeout, partition, saturation, ENOSPC, restore |
 
-### Phase 8A deterministic evaluation checkpoint
+### Phase 8B deterministic evaluation checkpoint
 
-The first evaluation slice is fixture-only and additive. The canonical
-Scenario A contract is validated with strict JSON Schema subset checks, fixture
-SHA-256 binding, ten-family registry checks, and negative cases for unknown
-fields, missing raw artifacts, citation drift, RCA drift, and tool receipt
-digest drift. The scorer compares semantic fields and evidence linkage, not
-provider prose. A trace without operator projection or immutable tool receipt
-references is `INCOMPLETE`, not a passing evaluation.
+The additive evaluation slice implements three strict, training-ineligible
+contracts. Scenario A completes after one read-only latency result. Scenario B
+is `ABSTAINED` with no tools, citations, or hypotheses. Scenario C uses two
+opposing read-only evidence results and requires digest-bound counter-evidence
+plus cautious confidence. Strict schema and fixture-digest checks cover the
+three implemented families while seven families remain reserved.
 
-The checkpoint is not a held-out or human study and cannot support production
-accuracy, calibration, population latency, or benefit claims. Scenario B/C,
-timeline/tool-receipt harvesting from the disposable database, independently
-held-out cases, confidence intervals, qualified-reviewer protocol, and live
-provider/connector conformance remain required before Phase 8 closes.
+Platform V008 is a rolling-compatible expand migration: it accepts both the
+legacy V007 event shape and strictly validated response-bearing writes. The
+V007-to-V008 upgrade proof checks that a historical accepted event remains
+byte-stable and that a legacy writer can still append after V008; evaluator
+exports still require response-bearing events. Tool Gateway V002
+persists the observed tool/action/risk, connector ID/profile, and digest of the
+manifest bytes selected at runtime. The disposable exporter uses a non-login
+least-privilege view owner and a separate non-inheriting evaluator; exact
+transaction-local organization/project/incident/run/actor scope is enforced by
+every security-barrier view. SQL and Node bounds reject extra rows, ambiguous
+invocations, foreign identities, unsafe values, or exports above 4 MiB. The
+projection contains accepted normalized analysis and metadata/digests only—no
+prompts, provider reasoning, credentials, raw connector bodies, or evidence
+content—and distinguishes raw-byte from canonical JSON digests. It derives tool
+executions from durable intent/receipt/audit/evidence bindings, requires the
+three durable evidence digests to agree, and sums all accepted invocation cost.
+Malformed UTF-8 and duplicate evidence digests fail closed.
+
+The independent earlier tester recorded 28/28 Node tests. The current
+remediation rerun passes 33/33 Node tests, 40/40 targeted Python tests, 50
+shuffled semantic-order trials, and the junction-path safety test. The Phase 8
+validator reports three implemented families, three canonical results, zero
+errors, checkpoint PASS, and PhaseExit BLOCK. Repository layout, actionlint,
+and the project secret scan pass. Fresh Docker/PostgreSQL A/B/C, same-job
+executable attestation, exact-revision CI artifact, and independent review
+remain pending. This checkpoint is not a held-out or human study and cannot
+support production accuracy, calibration, population latency, p95, or benefit
+claims.
 
 ## Critical Scenario Families
 
@@ -107,10 +129,10 @@ None of these tests authorize live DeepSeek egress.
 
 ## Evaluation Suites
 
-Phase 8A currently implements one deterministic smoke case; the Phase 8 target
-remains three, including abstention and conflicting-evidence cases. Ten working
-scenario families ensure breadth by final verification. Neither set alone
-supports p95/p99, percentage-safety, calibration, or human-benefit claims.
+Phase 8 implements the three deterministic smoke contracts described above.
+Ten working scenario families remain required by final verification. Neither
+three authored cases nor ten authored families alone support p95/p99,
+percentage-safety, calibration, or human-benefit claims.
 
 Release evaluation uses a separately governed, independently held-out corpus with preregistered metrics, justified sample size, uncertainty intervals, incident-family/temporal separation, and a qualified human baseline. See [Evaluation Strategy](./evaluation-strategy.md).
 

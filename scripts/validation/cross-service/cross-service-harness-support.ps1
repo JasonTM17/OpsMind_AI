@@ -1,5 +1,29 @@
 Set-StrictMode -Version Latest
 
+function Test-CrossServiceWindows {
+    return [Environment]::OSVersion.Platform -eq [PlatformID]::Win32NT
+}
+
+function Get-CrossServicePathComparison {
+    if (Test-CrossServiceWindows) {
+        return [StringComparison]::OrdinalIgnoreCase
+    }
+    return [StringComparison]::Ordinal
+}
+
+function Join-CrossServicePath {
+    param(
+        [Parameter(Mandatory = $true)][string]$BasePath,
+        [Parameter(Mandatory = $true)][string[]]$ChildPath
+    )
+
+    $resolved = $BasePath
+    foreach ($child in $ChildPath) {
+        $resolved = Join-Path $resolved $child
+    }
+    return $resolved
+}
+
 function New-CrossServiceSecret {
     $bytes = New-Object byte[] 32
     $random = [Security.Cryptography.RandomNumberGenerator]::Create()
@@ -69,9 +93,18 @@ function Start-CrossServiceProcess {
     )
 
     return Invoke-WithProcessEnvironment -Variables $Environment -Action {
-        Start-Process -FilePath $Executable -ArgumentList $Arguments `
-            -WorkingDirectory $WorkingDirectory -WindowStyle Hidden -PassThru `
-            -RedirectStandardOutput $StdoutPath -RedirectStandardError $StderrPath
+        $startArguments = @{
+            FilePath = $Executable
+            ArgumentList = $Arguments
+            WorkingDirectory = $WorkingDirectory
+            PassThru = $true
+            RedirectStandardOutput = $StdoutPath
+            RedirectStandardError = $StderrPath
+        }
+        if (Test-CrossServiceWindows) {
+            $startArguments.WindowStyle = 'Hidden'
+        }
+        Start-Process @startArguments
     }
 }
 
@@ -86,9 +119,19 @@ function Invoke-CrossServiceProcess {
     )
 
     $process = Invoke-WithProcessEnvironment -Variables $Environment -Action {
-        Start-Process -FilePath $Executable -ArgumentList $Arguments `
-            -WorkingDirectory $WorkingDirectory -WindowStyle Hidden -PassThru -Wait `
-            -RedirectStandardOutput $StdoutPath -RedirectStandardError $StderrPath
+        $startArguments = @{
+            FilePath = $Executable
+            ArgumentList = $Arguments
+            WorkingDirectory = $WorkingDirectory
+            PassThru = $true
+            Wait = $true
+            RedirectStandardOutput = $StdoutPath
+            RedirectStandardError = $StderrPath
+        }
+        if (Test-CrossServiceWindows) {
+            $startArguments.WindowStyle = 'Hidden'
+        }
+        Start-Process @startArguments
     }
     if ($process.ExitCode -ne 0) {
         throw "Cross-service command failed with exit code $($process.ExitCode)."
@@ -181,4 +224,112 @@ function Invoke-CrossServiceSql {
         throw 'Cross-service SQL command failed.'
     }
     return @($output)
+}
+
+function Invoke-CrossServiceSqlFile {
+    param(
+        [Parameter(Mandatory = $true)][string]$DockerPath,
+        [Parameter(Mandatory = $true)][string]$ContainerName,
+        [Parameter(Mandatory = $true)][string]$DatabaseUser,
+        [Parameter(Mandatory = $true)][string]$SqlPath,
+        [Parameter(Mandatory = $true)][string]$StdoutPath,
+        [Parameter(Mandatory = $true)][string]$StderrPath,
+        [hashtable]$Variables = @{}
+    )
+
+    if (-not (Test-Path -LiteralPath $SqlPath -PathType Leaf)) {
+        throw "Cross-service SQL file is missing: $SqlPath"
+    }
+    if ($DatabaseUser -notmatch '^opsmind_[a-z_]+$') {
+        throw 'Cross-service SQL database user is invalid.'
+    }
+
+    $arguments = New-Object 'System.Collections.Generic.List[string]'
+    foreach ($value in @(
+        'exec', '-i', $ContainerName, 'psql', '--no-password',
+        '--set=ON_ERROR_STOP=1', '--quiet', '--username', $DatabaseUser,
+        '--dbname', 'opsmind', '--file=-'
+    )) {
+        $arguments.Add($value)
+    }
+    foreach ($name in @($Variables.Keys | Sort-Object)) {
+        $value = [string]$Variables[$name]
+        if ($name -notmatch '^[a-z][a-z0-9_]{0,63}$' -or
+            $value -notmatch '^[A-Za-z0-9][A-Za-z0-9_.:/@-]{0,511}$') {
+            throw 'Cross-service SQL variable is invalid.'
+        }
+        $arguments.Add("--set=$name=$value")
+    }
+
+    $startArguments = @{
+        FilePath = $DockerPath
+        ArgumentList = $arguments.ToArray()
+        PassThru = $true
+        Wait = $true
+        RedirectStandardInput = $SqlPath
+        RedirectStandardOutput = $StdoutPath
+        RedirectStandardError = $StderrPath
+    }
+    if (Test-CrossServiceWindows) {
+        $startArguments.WindowStyle = 'Hidden'
+    }
+    $process = Start-Process @startArguments
+    if ($process.ExitCode -ne 0) {
+        throw "Cross-service SQL file failed as $DatabaseUser."
+    }
+}
+
+function Assert-CrossServiceManagedPath {
+    param(
+        [Parameter(Mandatory = $true)][string]$NodePath,
+        [Parameter(Mandatory = $true)][string]$RepositoryRoot,
+        [Parameter(Mandatory = $true)][string]$ManagedRoot,
+        [Parameter(Mandatory = $true)][string]$Path,
+        [Parameter(Mandatory = $true)][string]$StdoutPath,
+        [Parameter(Mandatory = $true)][string]$StderrPath
+    )
+
+    Invoke-CrossServiceProcess -Executable $NodePath -Arguments @(
+        (Join-CrossServicePath -BasePath $RepositoryRoot -ChildPath @(
+            'scripts', 'validation', 'cross-service', 'manage-evaluation-files.mjs'
+        )),
+        'prepare',
+        '--managed-root', $ManagedRoot,
+        '--path', $Path
+    ) -WorkingDirectory $RepositoryRoot -StdoutPath $StdoutPath `
+        -StderrPath $StderrPath -Environment @{}
+}
+
+function Assert-CrossServiceNoReparseAncestors {
+    param(
+        [Parameter(Mandatory = $true)][string]$RepositoryRoot,
+        [Parameter(Mandatory = $true)][string]$CandidatePath
+    )
+
+    $comparison = Get-CrossServicePathComparison
+    $repository = [IO.Path]::GetFullPath($RepositoryRoot)
+    $candidate = [IO.Path]::GetFullPath($CandidatePath)
+    if (-not $candidate.Equals($repository, $comparison) -and
+        -not $candidate.StartsWith(
+            $repository + [IO.Path]::DirectorySeparatorChar,
+            $comparison
+        )) {
+        throw 'Cross-service managed path is outside the repository.'
+    }
+
+    $current = $candidate
+    while (-not [string]::IsNullOrWhiteSpace($current)) {
+        if (Test-Path -LiteralPath $current) {
+            $item = Get-Item -LiteralPath $current -Force
+            if (($item.Attributes -band [IO.FileAttributes]::ReparsePoint) -ne 0) {
+                throw "Cross-service managed path contains a reparse ancestor: $current"
+            }
+        }
+        $parent = [IO.Path]::GetDirectoryName($current)
+        if ([string]::IsNullOrWhiteSpace($parent) -or
+            $parent.Equals($current, $comparison)) {
+            break
+        }
+        $current = $parent
+    }
 }

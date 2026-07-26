@@ -1,8 +1,8 @@
 package ai.opsmind.toolgateway.application;
 
-import java.time.Duration;
 import java.net.URI;
 import java.net.URISyntaxException;
+import java.time.Duration;
 import java.util.Set;
 
 public record ToolManifest(
@@ -11,6 +11,8 @@ public record ToolManifest(
     String schemaVersion,
     String manifestVersion,
     String connectorId,
+    String connectorProfile,
+    String manifestByteDigest,
     boolean enabled,
     boolean readOnly,
     String requestSchemaId,
@@ -30,7 +32,10 @@ public record ToolManifest(
         allowedArgumentNames = Set.copyOf(allowedArgumentNames);
         egressTargets = Set.copyOf(egressTargets);
         if (blank(tool) || blank(action) || blank(schemaVersion) || blank(manifestVersion)
-            || blank(connectorId) || blank(requiredRole) || blank(resourcePrefix)
+            || blank(connectorId) || blank(connectorProfile)
+            || manifestByteDigest == null
+            || !manifestByteDigest.matches("^sha256:[a-f0-9]{64}$")
+            || blank(requiredRole) || blank(resourcePrefix)
             || blank(credentialProfile) || blank(auditClass) || blank(requestSchemaId) || !readOnly
             || !requestSchemaId.startsWith("https://contracts.opsmind.invalid/tool-gateway/")
             || !"read-only".equals(riskClass)

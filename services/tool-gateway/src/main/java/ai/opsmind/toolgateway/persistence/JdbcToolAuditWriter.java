@@ -3,6 +3,7 @@ package ai.opsmind.toolgateway.persistence;
 import java.util.UUID;
 
 import ai.opsmind.toolgateway.audit.ToolAuditWriter;
+import ai.opsmind.toolgateway.audit.ToolExecutionProvenance;
 import ai.opsmind.toolgateway.domain.DenialCode;
 import ai.opsmind.toolgateway.domain.ToolOutcome;
 
@@ -39,6 +40,7 @@ public final class JdbcToolAuditWriter implements ToolAuditWriter {
         String requestDigest,
         String capabilityId,
         String manifestVersion,
+        ToolExecutionProvenance provenance,
         String resultDigest,
         String policyVersion,
         DenialCode denialCode
@@ -47,10 +49,19 @@ public final class JdbcToolAuditWriter implements ToolAuditWriter {
         int inserted = jdbc.update(
             "INSERT INTO tool_gateway.tool_audit_events "
                 + "(audit_event_id, execution_id, outcome, request_digest, capability_id, "
-                + "manifest_version, result_digest, policy_version, denial_code) "
-                + "VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)",
+                + "manifest_version, tool, action, risk_class, connector_id, "
+                + "connector_profile, connector_manifest_byte_digest, result_digest, "
+                + "policy_version, denial_code) "
+                + "VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)",
             auditId, executionId, outcome.name(), requestDigest, capabilityId,
-            manifestVersion, resultDigest, policyVersion,
+            manifestVersion,
+            provenance == null ? null : provenance.tool(),
+            provenance == null ? null : provenance.action(),
+            provenance == null ? null : provenance.riskClass(),
+            provenance == null ? null : provenance.connectorId(),
+            provenance == null ? null : provenance.connectorProfile(),
+            provenance == null ? null : provenance.connectorManifestByteDigest(),
+            resultDigest, policyVersion,
             denialCode == null ? null : denialCode.value()
         );
         if (inserted != 1) throw new IllegalStateException("Tool audit append failed.");

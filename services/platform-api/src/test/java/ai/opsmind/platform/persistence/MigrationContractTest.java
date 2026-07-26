@@ -148,6 +148,32 @@ class MigrationContractTest {
     }
 
     @Test
+    void acceptedAnalysisMigrationExpandsForRollingWritersWithoutRewritingHistory()
+        throws IOException {
+        String migration = readMigration("V008__accepted_analysis_event_binding.sql");
+
+        assertThat(migration)
+            .contains("CREATE OR REPLACE FUNCTION opsmind_valid_accepted_analysis_response")
+            .contains("'status', 'run_id', 'model_id', 'prompt_version', 'schema_version'")
+            .contains("'hypotheses', 'counter_evidence', 'missing_evidence', 'citations'")
+            .contains("'confidence', 'usage', 'cost_estimate', 'requested_tool_calls'")
+            .contains("ARRAY['runId', 'status', 'round', 'totalTokens', 'occurredAt']")
+            .contains("'response', 'occurredAt'")
+            .contains("details -> 'response', NEW.run_id, details ->> 'status'")
+            .contains("run_row.status <> 'COMPLETED'")
+            .contains("OR details -> 'response' = run_row.final_response")
+            .contains("legacy V007 shape remains writable during rolling deploy")
+            .doesNotContain(
+                "UPDATE investigation_run_events",
+                "DELETE FROM investigation_run_events",
+                "raw_prompt",
+                "chain_of_thought",
+                "api_key",
+                "credential_ref"
+            );
+    }
+
+    @Test
     void predecessorMigrationsRemainByteForByteStable()
         throws IOException, NoSuchAlgorithmException {
         assertThat(sha256("V001__identity_tenant_foundation.sql")).isEqualTo(V001_SHA256);

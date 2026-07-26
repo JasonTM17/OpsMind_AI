@@ -69,6 +69,7 @@ class RecordingExecutor:
             model_id="deepseek-v4-flash",
             prompt_version=request.prompt_version,
             schema_version="analysis-v1",
+            missing_evidence=("No authorized evidence was available.",),
             usage={"prompt_tokens": 1, "completion_tokens": 1, "total_tokens": 2},
             cost_estimate={"amount": 0},
         )

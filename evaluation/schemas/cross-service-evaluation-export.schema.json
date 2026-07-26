@@ -1,0 +1,374 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://contracts.opsmind.invalid/evaluation/v1/cross-service-evaluation-export.schema.json",
+  "title": "OpsMindCrossServiceEvaluationExportV1",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "schema_version",
+    "evidence_classification",
+    "query_manifest",
+    "scope",
+    "run",
+    "events",
+    "evidence_records",
+    "analysis_invocations",
+    "tool_receipts"
+  ],
+  "properties": {
+    "schema_version": {
+      "const": "opsmind-cross-service-evaluation-export-v1"
+    },
+    "evidence_classification": {
+      "enum": [
+        "REGRESSION_SNAPSHOT_NOT_PRODUCTION_PATH",
+        "TRANSIENT_SYNTHETIC_CROSS_SERVICE_EXPORT"
+      ]
+    },
+    "query_manifest": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["reference", "byte_digest"],
+      "properties": {
+        "reference": {
+          "type": "string",
+          "pattern": "^repository://scripts/validation/cross-service/[a-z0-9-]+\\.sql$",
+          "maxLength": 1024
+        },
+        "byte_digest": {
+          "$ref": "#/$defs/digest"
+        }
+      }
+    },
+    "scope": {
+      "$ref": "#/$defs/scope"
+    },
+    "run": {
+      "$ref": "#/$defs/run"
+    },
+    "events": {
+      "type": "array",
+      "minItems": 2,
+      "maxItems": 500,
+      "items": {
+        "$ref": "#/$defs/event"
+      }
+    },
+    "evidence_records": {
+      "type": "array",
+      "maxItems": 200,
+      "items": {
+        "$ref": "#/$defs/evidence"
+      }
+    },
+    "analysis_invocations": {
+      "type": "array",
+      "minItems": 1,
+      "maxItems": 20,
+      "items": {
+        "$ref": "#/$defs/invocation"
+      }
+    },
+    "tool_receipts": {
+      "type": "array",
+      "maxItems": 20,
+      "items": {
+        "$ref": "#/$defs/receipt"
+      }
+    }
+  },
+  "$defs": {
+    "uuid": {
+      "type": "string",
+      "format": "uuid"
+    },
+    "digest": {
+      "type": "string",
+      "pattern": "^sha256:[a-f0-9]{64}$"
+    },
+    "dateTime": {
+      "type": "string",
+      "format": "date-time"
+    },
+    "scope": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "organization_id",
+        "project_id",
+        "incident_id",
+        "run_id",
+        "actor_id"
+      ],
+      "properties": {
+        "organization_id": { "$ref": "#/$defs/uuid" },
+        "project_id": { "$ref": "#/$defs/uuid" },
+        "incident_id": { "$ref": "#/$defs/uuid" },
+        "run_id": { "$ref": "#/$defs/uuid" },
+        "actor_id": { "$ref": "#/$defs/uuid" }
+      }
+    },
+    "run": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "run_id",
+        "organization_id",
+        "project_id",
+        "incident_id",
+        "actor_id",
+        "status",
+        "rounds",
+        "tool_calls",
+        "total_tokens",
+        "event_count",
+        "evidence_ids",
+        "pending_intents",
+        "terminal_reason",
+        "started_at",
+        "deadline_at",
+        "ended_at"
+      ],
+      "properties": {
+        "run_id": { "$ref": "#/$defs/uuid" },
+        "organization_id": { "$ref": "#/$defs/uuid" },
+        "project_id": { "$ref": "#/$defs/uuid" },
+        "incident_id": { "$ref": "#/$defs/uuid" },
+        "actor_id": { "$ref": "#/$defs/uuid" },
+        "status": { "enum": ["COMPLETED", "ABSTAINED"] },
+        "rounds": { "type": "integer", "minimum": 1, "maximum": 20 },
+        "tool_calls": { "type": "integer", "minimum": 0, "maximum": 20 },
+        "total_tokens": { "type": "integer", "minimum": 0, "maximum": 1000000 },
+        "event_count": { "type": "integer", "minimum": 2, "maximum": 500 },
+        "evidence_ids": {
+          "type": "array",
+          "maxItems": 200,
+          "uniqueItems": true,
+          "items": { "$ref": "#/$defs/uuid" }
+        },
+        "pending_intents": {
+          "type": "array",
+          "maxItems": 0
+        },
+        "terminal_reason": {
+          "type": ["string", "null"],
+          "maxLength": 2000
+        },
+        "started_at": { "$ref": "#/$defs/dateTime" },
+        "deadline_at": { "$ref": "#/$defs/dateTime" },
+        "ended_at": { "$ref": "#/$defs/dateTime" }
+      }
+    },
+    "event": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "event_id",
+        "sequence_no",
+        "event_type",
+        "occurred_at",
+        "accepted_analysis"
+      ],
+      "properties": {
+        "event_id": { "$ref": "#/$defs/uuid" },
+        "sequence_no": { "type": "integer", "minimum": 1, "maximum": 500 },
+        "event_type": {
+          "enum": [
+            "RUN_STARTED",
+            "ANALYSIS_ACCEPTED",
+            "TOOL_REQUESTED",
+            "EVIDENCE_APPENDED",
+            "COMPLETED",
+            "ABSTAINED",
+            "BUDGET_EXCEEDED",
+            "NO_PROGRESS",
+            "FAILED"
+          ]
+        },
+        "occurred_at": { "$ref": "#/$defs/dateTime" },
+        "accepted_analysis": {
+          "oneOf": [
+            { "type": "null" },
+            { "$ref": "normalized-analysis.schema.json" }
+          ]
+        }
+      }
+    },
+    "invocation": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "invocation_id",
+        "organization_id",
+        "incident_id",
+        "run_id",
+        "state",
+        "response_status",
+        "response_payload",
+        "provider",
+        "model_id",
+        "prompt_version",
+        "schema_version",
+        "actual_tokens",
+        "actual_tools",
+        "actual_cost_usd",
+        "started_at",
+        "finished_at"
+      ],
+      "properties": {
+        "invocation_id": { "$ref": "#/$defs/uuid" },
+        "organization_id": { "$ref": "#/$defs/uuid" },
+        "incident_id": { "$ref": "#/$defs/uuid" },
+        "run_id": { "$ref": "#/$defs/uuid" },
+        "state": { "const": "succeeded" },
+        "response_status": {
+          "enum": [
+            "complete",
+            "need_more_evidence",
+            "abstain",
+            "provider_unavailable",
+            "budget_exceeded"
+          ]
+        },
+        "response_payload": {
+          "$ref": "normalized-analysis.schema.json"
+        },
+        "provider": { "type": "string", "minLength": 1, "maxLength": 64 },
+        "model_id": { "type": "string", "minLength": 1, "maxLength": 160 },
+        "prompt_version": { "type": "string", "minLength": 1, "maxLength": 128 },
+        "schema_version": { "type": "string", "minLength": 1, "maxLength": 128 },
+        "actual_tokens": { "type": "integer", "minimum": 0, "maximum": 1000000 },
+        "actual_tools": { "type": "integer", "minimum": 0, "maximum": 20 },
+        "actual_cost_usd": { "type": "number", "minimum": 0, "maximum": 1000 },
+        "started_at": { "$ref": "#/$defs/dateTime" },
+        "finished_at": { "$ref": "#/$defs/dateTime" }
+      }
+    },
+    "evidence": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "evidence_id",
+        "organization_id",
+        "project_id",
+        "incident_id",
+        "run_id",
+        "actor_id",
+        "intent_id",
+        "execution_id",
+        "investigation_event_id",
+        "gateway_audit_event_id",
+        "gateway_request_digest",
+        "source_type",
+        "source_identity",
+        "target_identity",
+        "observed_at",
+        "window_start",
+        "window_end",
+        "connector_version",
+        "manifest_version",
+        "policy_version",
+        "source_provenance",
+        "trust_class",
+        "content_digest",
+        "redacted_fields",
+        "truncated",
+        "gateway_duplicate",
+        "created_at"
+      ],
+      "properties": {
+        "evidence_id": { "$ref": "#/$defs/uuid" },
+        "organization_id": { "$ref": "#/$defs/uuid" },
+        "project_id": { "$ref": "#/$defs/uuid" },
+        "incident_id": { "$ref": "#/$defs/uuid" },
+        "run_id": { "$ref": "#/$defs/uuid" },
+        "actor_id": { "$ref": "#/$defs/uuid" },
+        "intent_id": { "$ref": "#/$defs/uuid" },
+        "execution_id": { "$ref": "#/$defs/uuid" },
+        "investigation_event_id": { "$ref": "#/$defs/uuid" },
+        "gateway_audit_event_id": { "$ref": "#/$defs/uuid" },
+        "gateway_request_digest": { "$ref": "#/$defs/digest" },
+        "source_type": {
+          "enum": ["metric", "log_summary", "trace", "change", "runbook"]
+        },
+        "source_identity": { "type": "string", "minLength": 1, "maxLength": 128 },
+        "target_identity": { "type": "string", "minLength": 1, "maxLength": 256 },
+        "observed_at": { "$ref": "#/$defs/dateTime" },
+        "window_start": { "$ref": "#/$defs/dateTime" },
+        "window_end": { "$ref": "#/$defs/dateTime" },
+        "connector_version": { "type": "string", "minLength": 1, "maxLength": 128 },
+        "manifest_version": { "type": "string", "minLength": 1, "maxLength": 128 },
+        "policy_version": { "type": "string", "minLength": 1, "maxLength": 128 },
+        "source_provenance": { "type": "string", "minLength": 1, "maxLength": 256 },
+        "trust_class": { "enum": ["synthetic", "source-attested", "derived"] },
+        "content_digest": { "$ref": "#/$defs/digest" },
+        "redacted_fields": { "type": "integer", "minimum": 0, "maximum": 10000 },
+        "truncated": { "type": "boolean" },
+        "gateway_duplicate": { "type": "boolean" },
+        "created_at": { "$ref": "#/$defs/dateTime" }
+      }
+    },
+    "receipt": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "execution_id",
+        "tenant_id",
+        "project_id",
+        "incident_id",
+        "run_id",
+        "request_digest",
+        "status",
+        "completed_at",
+        "audit_event_id",
+        "audit_outcome",
+        "audit_request_digest",
+        "result_digest",
+        "manifest_version",
+        "policy_version",
+        "denial_code",
+        "connector",
+        "operation",
+        "risk_class",
+        "connector_id",
+        "connector_profile",
+        "connector_manifest_byte_digest",
+        "evidence_digests"
+      ],
+      "properties": {
+        "execution_id": { "$ref": "#/$defs/uuid" },
+        "tenant_id": { "$ref": "#/$defs/uuid" },
+        "project_id": { "$ref": "#/$defs/uuid" },
+        "incident_id": { "$ref": "#/$defs/uuid" },
+        "run_id": { "$ref": "#/$defs/uuid" },
+        "request_digest": { "$ref": "#/$defs/digest" },
+        "status": { "const": "COMPLETED" },
+        "completed_at": { "$ref": "#/$defs/dateTime" },
+        "audit_event_id": { "$ref": "#/$defs/uuid" },
+        "audit_outcome": { "enum": ["SUCCEEDED", "DUPLICATE"] },
+        "audit_request_digest": { "$ref": "#/$defs/digest" },
+        "result_digest": { "$ref": "#/$defs/digest" },
+        "manifest_version": { "type": "string", "minLength": 1, "maxLength": 128 },
+        "policy_version": { "type": "string", "minLength": 1, "maxLength": 128 },
+        "denial_code": { "type": "null" },
+        "connector": { "const": "observability" },
+        "operation": { "const": "metrics.query" },
+        "risk_class": { "const": "read-only" },
+        "connector_id": {
+          "enum": ["fixture-observability", "prometheus-read-only"]
+        },
+        "connector_profile": {
+          "enum": ["fixture", "prometheus"]
+        },
+        "connector_manifest_byte_digest": { "$ref": "#/$defs/digest" },
+        "evidence_digests": {
+          "type": "array",
+          "minItems": 1,
+          "maxItems": 200,
+          "uniqueItems": true,
+          "items": { "$ref": "#/$defs/digest" }
+        }
+      }
+    }
+  }
+}

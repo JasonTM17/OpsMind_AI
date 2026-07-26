@@ -3,6 +3,13 @@ import {
   projectionChecks,
   toolChecks,
 } from "./score-phase-07-projection.mjs";
+import { canonicalDigest } from "./cross-service-evaluation-digests.mjs";
+import { evaluationProjectionIntegrityChecks } from "./cross-service-evaluation-projection-verifier.mjs";
+
+function artifactReference(kind, reference, fragment, domain) {
+  const digest = canonicalDigest(fragment, domain);
+  return { kind, reference, ...digest };
+}
 function aggregate(checks, unavailable, details, value = null) {
   const denominator = checks.length;
   const numerator = checks.filter(Boolean).length;
@@ -36,10 +43,12 @@ export function scorePhase07Trace({
     safety: 0,
     cost: 0,
   };
-  const rawReferences = [{
-    kind: "cross-service-trace",
-    reference: traceReference,
-  }];
+  const rawReferences = [artifactReference(
+    "cross-service-trace",
+    traceReference,
+    trace,
+    "opsmind.cross-service-trace-fragment/v1",
+  )];
   const costValues = [];
   for (let index = 0; index < runs.length; index += 1) {
     const run = runs[index];
@@ -59,6 +68,13 @@ export function scorePhase07Trace({
       continue;
     }
     checks.structured.push(...projection.structured);
+    const integrity = run.evaluationProjection
+      ? evaluationProjectionIntegrityChecks(run)
+      : trace?.evidenceClassification === "REGRESSION_SNAPSHOT_NOT_PRODUCTION_PATH"
+        ? [true]
+        : null;
+    if (integrity) checks.structured.push(...integrity);
+    else unavailable.structured += 1;
     checks.rootCause.push(...projection.rootCause);
     if (
       projection.semanticRootCause.length > 0
@@ -68,31 +84,62 @@ export function scorePhase07Trace({
       )
     ) {
       checks.semanticRootCause.push(...projection.semanticRootCause);
-      rawReferences.push({
-        kind: "final-rca",
-        reference: run.rawAnalysisReference,
-      });
+      rawReferences.push(artifactReference(
+        "final-rca",
+        run.rawAnalysisReference,
+        run.rawAnalysis,
+        "opsmind.final-rca-fragment/v1",
+      ));
     } else {
       unavailable.semanticRootCause += 1;
     }
     checks.evidence.push(...projection.evidence);
     checks.safety.push(...projection.safety);
-    rawReferences.push({
-      kind: "operator-projection",
-      reference: `${traceReference}#/runs/${index}/operatorProjection`,
-    });
+    rawReferences.push(artifactReference(
+      "operator-projection",
+      `${traceReference}#/runs/${index}/operatorProjection`,
+      run.operatorProjection,
+      "opsmind.operator-projection-fragment/v1",
+    ));
+    const exported = run.evaluationProjection;
+    if (exported) {
+      rawReferences.push(artifactReference(
+        "evaluation-projection",
+        `${traceReference}#/runs/${index}/evaluationProjection`,
+        exported,
+        "opsmind.evaluation-projection-fragment/v1",
+      ));
+      for (const [collection, kind] of [
+        ["timeline", "timeline-event"],
+        ["acceptedAnalyses", "accepted-analysis"],
+        ["evidenceRecords", "evidence"],
+        ["toolReceipts", "tool-receipt"],
+      ]) {
+        exported[collection].forEach((fragment, fragmentIndex) => {
+          rawReferences.push({
+            kind,
+            reference: `${traceReference}#/runs/${index}/evaluationProjection/${collection}/${fragmentIndex}`,
+            ...fragment.fragmentDigest,
+          });
+        });
+      }
+    }
     const observedToolChecks = toolChecks(run, groundTruth, projection.citations);
     if (observedToolChecks) {
       checks.tool.push(...observedToolChecks);
       run.toolExecutions.forEach((_, executionIndex) => {
-        rawReferences.push({
-          kind: "tool-execution",
-          reference: `${traceReference}#/runs/${index}/toolExecutions/${executionIndex}`,
-        });
-        rawReferences.push({
-          kind: "evidence",
-          reference: `${traceReference}#/runs/${index}/toolExecutions/${executionIndex}/evidenceDigests`,
-        });
+        rawReferences.push(artifactReference(
+          "tool-execution",
+          `${traceReference}#/runs/${index}/toolExecutions/${executionIndex}`,
+          run.toolExecutions[executionIndex],
+          "opsmind.tool-execution-fragment/v1",
+        ));
+        rawReferences.push(artifactReference(
+          "evidence",
+          `${traceReference}#/runs/${index}/toolExecutions/${executionIndex}/evidenceDigests`,
+          run.toolExecutions[executionIndex].evidenceDigests,
+          "opsmind.evidence-digest-list-fragment/v1",
+        ));
       });
     } else {
       unavailable.tool += 1;
@@ -169,7 +216,7 @@ export function scorePhase07Trace({
     && trace.latencyMs.p95 >= 0
     && Number.isInteger(trace?.warmRuns)
     && trace.warmRuns === runs.length
-    && runs.every((run) => run?.status === "COMPLETED");
+    && runs.every((run) => run?.status === groundTruth.expected.terminal_status);
   const statuses = Object.values(metrics).map((metric) => metric.status);
   const verdict = statuses.includes("FAIL")
     ? "FAIL"

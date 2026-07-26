@@ -39,6 +39,7 @@ class FakeAdapter:
             model_id=context.model_id,
             prompt_version=context.prompt_version,
             schema_version="analysis-v1",
+            missing_evidence=("No authorized evidence was available.",),
             usage={"prompt_tokens": 1, "completion_tokens": 1, "total_tokens": 2},
             cost_estimate={"amount": 0.0},
         )
@@ -119,6 +120,7 @@ class RecordingUsageAdapter(FakeAdapter):
             model_id=context.model_id,
             prompt_version=context.prompt_version,
             schema_version="analysis-v1",
+            missing_evidence=("No authorized evidence was available.",),
             usage={"prompt_tokens": 30, "completion_tokens": 30, "total_tokens": 60},
             cost_estimate={"amount": 0.0},
         )

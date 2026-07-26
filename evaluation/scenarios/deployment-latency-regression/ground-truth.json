@@ -5,7 +5,7 @@
   "family_id": "SIM-01",
   "seed": 73001,
   "fixture_path": "fixture.json",
-  "fixture_digest": "sha256:26460dbbb0d58b12700d902beb6c9a72aebd1e157ae7effa288f344f5bb2f779",
+  "fixture_digest": "sha256:d99cc839505ff5ad11a4aac9cfad91f4338643ea24da41d18fd451c23629474b",
   "tenant_context": {
     "organization_id": "10000000-0000-4000-8000-000000000801",
     "project_id": "10000000-0000-4000-8000-000000000802",
@@ -25,6 +25,9 @@
     {
       "connector": "fixture-observability",
       "manifest_version": "observability.metrics.query@1",
+      "connector_id": "prometheus-read-only",
+      "connector_profile": "prometheus",
+      "connector_manifest_byte_digest": "sha256:2954739ada4a59714b4a06f9329bac2548cb47a1551f09f0453a6f8151884dc2",
       "fixture_mode": true,
       "read_only": true
     }
@@ -35,7 +38,11 @@
       "synthetic-latency-regression"
     ],
     "minimum_confidence": 0.8,
+    "maximum_confidence": 0.9,
     "minimum_evidence_items": 1,
+    "minimum_missing_evidence_items": 0,
+    "minimum_counter_evidence_items": 0,
+    "counter_evidence_bindings": [],
     "expected_tool_calls": 1,
     "allowed_tool_selectors": [
       {

@@ -6,8 +6,10 @@ import static ai.opsmind.platform.testing.PostgresTenantFixtures.TENANT_B;
 import static ai.opsmind.platform.testing.PostgresTenantFixtures.USER_A;
 import static ai.opsmind.platform.testing.PostgresTenantFixtures.USER_B;
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.assertThatCode;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
+import java.math.BigDecimal;
 import java.sql.Timestamp;
 import java.time.Clock;
 import java.time.Instant;
@@ -15,6 +17,7 @@ import java.time.ZoneOffset;
 import java.util.List;
 import java.util.UUID;
 
+import ai.opsmind.platform.analysis.AnalysisRuntimeResponse;
 import ai.opsmind.platform.common.api.PlatformProblemException;
 import ai.opsmind.platform.investigation.domain.InvestigationCommand;
 import ai.opsmind.platform.investigation.domain.InvestigationStateMachine;
@@ -49,6 +52,9 @@ class InvestigationPersistenceIntegrationTest {
 
     @Autowired
     private InvestigationRunStore store;
+
+    @Autowired
+    private InvestigationPersistenceJsonCodec jsonCodec;
 
     @MockitoBean
     private InvestigationAiRuntimeClient aiRuntimeClient;
@@ -113,6 +119,24 @@ class InvestigationPersistenceIntegrationTest {
                 + "AND resource_id = ? AND schema_version = 'investigation-audit-v1'",
             runId.toString()
         )).isEqualTo(6);
+        assertThat(count(
+            "SELECT count(*) FROM investigation_run_events WHERE organization_id = ? "
+                + "AND run_id = ? AND event_type = 'ANALYSIS_ACCEPTED' "
+                + "AND payload -> 'details' -> 'response' ->> 'status' "
+                + "= payload -> 'details' ->> 'status'",
+            TENANT_A, runId
+        )).isEqualTo(2);
+        assertThat(count(
+            "SELECT count(*) FROM investigation_run_events accepted "
+                + "JOIN investigation_runs run "
+                + "ON run.organization_id = accepted.organization_id "
+                + "AND run.run_id = accepted.run_id "
+                + "WHERE accepted.organization_id = ? AND accepted.run_id = ? "
+                + "AND accepted.event_type = 'ANALYSIS_ACCEPTED' "
+                + "AND accepted.payload -> 'details' ->> 'status' = 'complete' "
+                + "AND accepted.payload -> 'details' -> 'response' = run.final_response",
+            TENANT_A, runId
+        )).isEqualTo(1);
         assertThatThrownBy(() -> store.require(TENANT_B, USER_B, runId))
             .isInstanceOf(PlatformProblemException.class)
             .satisfies(error -> assertThat(((PlatformProblemException) error).code())
@@ -127,6 +151,45 @@ class InvestigationPersistenceIntegrationTest {
         )).isInstanceOf(PlatformProblemException.class)
             .satisfies(error -> assertThat(((PlatformProblemException) error).code())
                 .isEqualTo("investigation.run-not-found"));
+    }
+
+    @Test
+    void abstainedAcceptedResponseReplaysOnlyWhenItsExactPayloadMatches() {
+        UUID runId = UUID.randomUUID();
+        InvestigationStateMachine.Step initial = InvestigationStateMachine.start(start(runId));
+        store.create(initial);
+        AnalysisRuntimeResponse accepted = abstain(runId, "Deployment change record");
+        InvestigationStateMachine.Step abstained = InvestigationStateMachine.apply(
+            initial.state(), new InvestigationCommand.AnalysisReceived(accepted), NOW.plusSeconds(1)
+        );
+
+        store.save(initial.state(), abstained);
+
+        String persisted = admin.queryForObject(
+            "SELECT (payload -> 'details' -> 'response')::text FROM investigation_run_events "
+                + "WHERE organization_id = ? AND run_id = ? AND event_type = 'ANALYSIS_ACCEPTED'",
+            String.class, TENANT_A, runId
+        );
+        assertThat(jsonCodec.readFinalResponse(persisted)).isEqualTo(accepted);
+        int events = count(
+            "SELECT count(*) FROM investigation_run_events WHERE organization_id = ? AND run_id = ?",
+            TENANT_A, runId
+        );
+        assertThatCode(() -> store.save(initial.state(), abstained)).doesNotThrowAnyException();
+        assertThat(count(
+            "SELECT count(*) FROM investigation_run_events WHERE organization_id = ? AND run_id = ?",
+            TENANT_A, runId
+        )).isEqualTo(events);
+
+        InvestigationStateMachine.Step drifted = InvestigationStateMachine.apply(
+            initial.state(),
+            new InvestigationCommand.AnalysisReceived(abstain(runId, "Different evidence gap")),
+            NOW.plusSeconds(1)
+        );
+        assertThatThrownBy(() -> store.save(initial.state(), drifted))
+            .isInstanceOfSatisfying(PlatformProblemException.class, exception ->
+                assertThat(exception.code()).isEqualTo("investigation.run-conflict")
+            );
     }
 
     @Test
@@ -163,6 +226,15 @@ class InvestigationPersistenceIntegrationTest {
         return new InvestigationCommand.Start(
             runId, TENANT_A, PROJECT_A, incidentId, USER_A,
             new InvestigationCommand.Budget(4, 4, 20, 8_000), NOW, NOW.plusSeconds(120)
+        );
+    }
+
+    private AnalysisRuntimeResponse abstain(UUID runId, String evidenceGap) {
+        return new AnalysisRuntimeResponse(
+            "abstain", runId, "deepseek-v4-flash", "prompt-incident-investigation-v1",
+            "analysis-v1", List.of(), List.of(), List.of(evidenceGap), List.of(), 0.0,
+            new AnalysisRuntimeResponse.Usage(10, 5, 15),
+            new AnalysisRuntimeResponse.CostEstimate("USD", BigDecimal.ZERO), List.of()
         );
     }
 

@@ -3,6 +3,7 @@ package ai.opsmind.toolgateway.application;
 import java.util.UUID;
 
 import ai.opsmind.toolgateway.audit.ToolAuditWriter;
+import ai.opsmind.toolgateway.audit.ToolExecutionProvenance;
 import ai.opsmind.toolgateway.domain.DenialCode;
 import ai.opsmind.toolgateway.domain.EvidenceEnvelope;
 import ai.opsmind.toolgateway.domain.ToolDeniedException;
@@ -52,13 +53,14 @@ final class DurableToolExecutionCoordinator {
         String requestDigest,
         String capabilityId,
         String manifestVersion,
+        ToolExecutionProvenance provenance,
         String resultDigest,
         String policyVersion
     ) {
         try {
             return auditWriter.record(
                 executionId, ToolOutcome.DUPLICATE, requestDigest, capabilityId,
-                manifestVersion, resultDigest, policyVersion, null
+                manifestVersion, provenance, resultDigest, policyVersion, null
             );
         }
         catch (RuntimeException exception) {
@@ -75,11 +77,12 @@ final class DurableToolExecutionCoordinator {
         EvidenceEnvelope evidence,
         String capabilityId,
         String manifestVersion,
+        ToolExecutionProvenance provenance,
         String policyVersion
     ) {
         try {
             return transactionRunner.required(() -> finalizeInTransaction(
-                lease, evidence, capabilityId, manifestVersion, policyVersion
+                lease, evidence, capabilityId, manifestVersion, provenance, policyVersion
             ));
         }
         catch (ToolDeniedException exception) {
@@ -109,10 +112,11 @@ final class DurableToolExecutionCoordinator {
         EvidenceEnvelope evidence,
         String capabilityId,
         String manifestVersion,
+        ToolExecutionProvenance provenance,
         String policyVersion
     ) {
         UUID auditId = recordSuccessAudit(
-            lease, evidence, capabilityId, manifestVersion, policyVersion
+            lease, evidence, capabilityId, manifestVersion, provenance, policyVersion
         );
         ToolExecutionResponse response = new ToolExecutionResponse(
             lease.executionId(), ToolOutcome.SUCCEEDED, java.util.List.of(evidence), null,
@@ -138,12 +142,13 @@ final class DurableToolExecutionCoordinator {
         EvidenceEnvelope evidence,
         String capabilityId,
         String manifestVersion,
+        ToolExecutionProvenance provenance,
         String policyVersion
     ) {
         try {
             return auditWriter.record(
                 lease.executionId(), ToolOutcome.SUCCEEDED, lease.requestDigest(), capabilityId,
-                manifestVersion, evidence.contentDigest(), policyVersion, null
+                manifestVersion, provenance, evidence.contentDigest(), policyVersion, null
             );
         }
         catch (RuntimeException exception) {

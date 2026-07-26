@@ -52,6 +52,39 @@ class AnalysisRuntimeResponseContractTest {
             .hasMessageContaining("citations");
     }
 
+    @Test
+    void rejectsAbstentionWithoutAnEvidenceGap() {
+        assertThatThrownBy(() -> response("abstain", List.of(), List.of(), List.of()))
+            .isInstanceOf(IllegalArgumentException.class)
+            .hasMessageContaining("abstention");
+    }
+
+    @Test
+    void rejectsFailureStatusThatAssertsACause() {
+        AnalysisRuntimeResponse.Citation citation = citation("unsupported");
+        AnalysisRuntimeResponse.Hypothesis hypothesis = new AnalysisRuntimeResponse.Hypothesis(
+            "Unsupported cause", "The provider did not supply evidence.", 0.1, List.of(citation)
+        );
+        assertThatThrownBy(() -> response(
+            "provider_unavailable", List.of(hypothesis), List.of(), List.of(citation)
+        )).isInstanceOf(IllegalArgumentException.class)
+            .hasMessageContaining("failure response");
+    }
+
+    private AnalysisRuntimeResponse response(
+        String status,
+        List<AnalysisRuntimeResponse.Hypothesis> hypotheses,
+        List<String> missingEvidence,
+        List<AnalysisRuntimeResponse.Citation> citations
+    ) {
+        return new AnalysisRuntimeResponse(
+            status, RUN_ID, "deepseek-v4-flash", "prompt-incident-v1", "analysis-v1",
+            hypotheses, List.of(), missingEvidence, citations, 0.0,
+            new AnalysisRuntimeResponse.Usage(1, 1, 2),
+            new AnalysisRuntimeResponse.CostEstimate("USD", BigDecimal.ZERO), List.of()
+        );
+    }
+
     private AnalysisRuntimeResponse.Citation citation(String claim) {
         return new AnalysisRuntimeResponse.Citation(EVIDENCE_ID, DIGEST, claim);
     }

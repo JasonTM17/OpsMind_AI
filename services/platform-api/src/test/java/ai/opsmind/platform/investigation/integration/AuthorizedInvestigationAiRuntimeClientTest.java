@@ -291,11 +291,11 @@ class AuthorizedInvestigationAiRuntimeClientTest {
             UUID.randomUUID(), "sha256:" + "6".repeat(64), "Unsupported claim."
         );
         when(runtimeClient.analyze(any(), any(), any())).thenReturn(new AnalysisRuntimeResponse(
-            "abstain", RUN_ID, "deepseek-v4-flash",
+            "need_more_evidence", RUN_ID, "deepseek-v4-flash",
             InvestigationAnalysisPromptAssembler.PROMPT_VERSION, "analysis-v1",
             List.of(new AnalysisRuntimeResponse.Hypothesis(
                 "Unsupported", "Must not cross the boundary.", 0.1, List.of(foreign)
-            )), List.of(), List.of(), List.of(), 0.0,
+            )), List.of(), List.of("Additional evidence is required."), List.of(), 0.0,
             new AnalysisRuntimeResponse.Usage(10, 5, 15),
             new AnalysisRuntimeResponse.CostEstimate("USD", BigDecimal.ZERO), List.of()
         ));
@@ -366,7 +366,7 @@ class AuthorizedInvestigationAiRuntimeClientTest {
         return new AnalysisRuntimeResponse(
             "abstain", RUN_ID, "deepseek-v4-flash",
             InvestigationAnalysisPromptAssembler.PROMPT_VERSION, "analysis-v1", List.of(),
-            List.of(), List.of(), List.of(), 0.0,
+            List.of(), List.of("No authorized evidence was available."), List.of(), 0.0,
             new AnalysisRuntimeResponse.Usage(10, 5, 15),
             new AnalysisRuntimeResponse.CostEstimate("USD", BigDecimal.ZERO), List.of()
         );

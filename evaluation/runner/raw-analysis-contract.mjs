@@ -75,7 +75,31 @@ function validCost(value) {
     && value.amount <= MAX_COST_USD;
 }
 
-export function rawAnalysisShapeValid(analysis) {
+function statusShapeValid(analysis) {
+  if (analysis.status === "complete") {
+    return analysis.hypotheses.length > 0
+      && analysis.citations.length > 0
+      && analysis.hypotheses.every((hypothesis) => (
+        Array.isArray(hypothesis.citations) && hypothesis.citations.length > 0
+      ))
+      && analysis.requested_tool_calls.length === 0;
+  }
+  if (analysis.status === "abstain") {
+    return analysis.hypotheses.length === 0
+      && analysis.citations.length === 0
+      && analysis.requested_tool_calls.length === 0
+      && analysis.missing_evidence.length > 0;
+  }
+  if (analysis.status === "need_more_evidence") {
+    return analysis.requested_tool_calls.length > 0 || analysis.missing_evidence.length > 0;
+  }
+  return ["provider_unavailable", "budget_exceeded"].includes(analysis.status)
+    && analysis.hypotheses.length === 0
+    && analysis.citations.length === 0
+    && analysis.requested_tool_calls.length === 0;
+}
+
+export function rawAnalysisShapeValid(analysis, allowedStatuses = null) {
   const required = [
     "status",
     "run_id",
@@ -92,18 +116,16 @@ export function rawAnalysisShapeValid(analysis) {
     "requested_tool_calls",
   ];
   if (!exactKeys(analysis, required)
-    || analysis.status !== "complete"
+    || !["complete", "need_more_evidence", "abstain", "provider_unavailable", "budget_exceeded"]
+      .includes(analysis.status)
+    || (allowedStatuses && !allowedStatuses.includes(analysis.status))
     || !UUID_PATTERN.test(analysis.run_id)
     || !boundedString(analysis.model_id, 256)
     || !boundedString(analysis.prompt_version, 256)
     || analysis.schema_version !== "analysis-v1"
     || !Array.isArray(analysis.hypotheses)
-    || analysis.hypotheses.length === 0
     || analysis.hypotheses.length > 20
     || !analysis.hypotheses.every(validHypothesis)
-    || !analysis.hypotheses.every((hypothesis) => (
-      Array.isArray(hypothesis.citations) && hypothesis.citations.length > 0
-    ))
     || !Array.isArray(analysis.counter_evidence)
     || analysis.counter_evidence.length > 100
     || !analysis.counter_evidence.every((item) => boundedString(item, 1024))
@@ -111,7 +133,6 @@ export function rawAnalysisShapeValid(analysis) {
     || analysis.missing_evidence.length > 100
     || !analysis.missing_evidence.every((item) => boundedString(item, 1024))
     || !Array.isArray(analysis.citations)
-    || analysis.citations.length === 0
     || analysis.citations.length > 100
     || !analysis.citations.every(validCitation)
     || !boundedConfidence(analysis.confidence)
@@ -119,7 +140,8 @@ export function rawAnalysisShapeValid(analysis) {
     || !validCost(analysis.cost_estimate)
     || !Array.isArray(analysis.requested_tool_calls)
     || analysis.requested_tool_calls.length > 20
-    || !analysis.requested_tool_calls.every(validToolIntent)) {
+    || !analysis.requested_tool_calls.every(validToolIntent)
+    || !statusShapeValid(analysis)) {
     return false;
   }
   const topLevelCitations = new Set(

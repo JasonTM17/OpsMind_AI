@@ -18,6 +18,7 @@ public interface ToolAuditWriter {
         String requestDigest,
         String capabilityId,
         String manifestVersion,
+        ToolExecutionProvenance provenance,
         String resultDigest,
         String policyVersion,
         DenialCode denialCode

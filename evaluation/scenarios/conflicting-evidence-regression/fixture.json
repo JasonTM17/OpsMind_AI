@@ -1,0 +1,20 @@
+{
+  "schema_version": "opsmind-synthetic-conflict-fixture-v1",
+  "evidence_classification": "REGRESSION_SNAPSHOT_NOT_PRODUCTION_PATH",
+  "scenario_id": "conflicting-evidence-regression",
+  "seed": 73003,
+  "clock": {
+    "incident_started_at": "2030-01-03T00:00:00Z",
+    "observation_ended_at": "2030-01-03T00:05:00Z"
+  },
+  "signals": [
+    {
+      "label": "deployment-correlated-latency",
+      "direction": "supports"
+    },
+    {
+      "label": "flat-http-error-counts",
+      "direction": "opposes"
+    }
+  ]
+}

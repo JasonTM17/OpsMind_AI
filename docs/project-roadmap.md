@@ -31,7 +31,7 @@ The detailed executable plan is [plans/260719-1747-opsmind-ai-production-platfor
 | 5 | DeepSeek AI runtime and provider gateway | G3 | In progress; static checkpoint passed, exit gate blocked |
 | 6 | Safe Tool Gateway and read-only connectors | G3 | In progress; durable Prometheus checkpoint PASS, PhaseExitGate BLOCK |
 | 7 | Evidence-backed incident vertical slice | G3 | In progress; phases 1–4 complete, cross-service/UI exit BLOCK |
-| 8 | Simulator and evaluation baseline | G3/G7 | In progress; Phase 8A contract/scorer checkpoint PASS, exit BLOCK |
+| 8 | Simulator and evaluation baseline | A-Z G4 / roadmap G7 | In progress; Phase 8B implementation and local contracts present, production-path CI pending, exit BLOCK |
 | 9 | Durable Temporal investigation workflow | G4 | Pending |
 | 10 | Permission-aware RAG and knowledge lifecycle | G5 | Pending |
 | 11 | Exact-action approval and reversible remediation | G6 | Pending |
@@ -118,14 +118,26 @@ threshold. CK/Stitch UI/browser E2E also passes. G3 still requires a named live
 non-production connector, provider/legal conformance, incident-timeline
 linkage, and BFF/session proof.
 
-Phase 8A now owns a versioned, secret-free Scenario A ground truth, a ten-family
-registry, strict benchmark-result/scenario/manifest schemas, deterministic scorer, raw
-artifact references, fixture digest checks, and `evaluate` wiring. The
-canonical contract and negative-case validator pass, and missing operator
-projection/tool-receipt artifacts correctly produce `INCOMPLETE`. This is an
-additive checkpoint only: Scenario B/C, held-out corpus, human baseline,
-provider conformance, timeline harvesting, and the Phase 8/G4 exit gate remain
-blocked.
+Phase 8B now implements three secret-free, training-ineligible contracts:
+Scenario A detects a deployment-correlated latency regression, Scenario B is
+`ABSTAINED` without tools when evidence is insufficient, and Scenario C binds
+two opposing read-only evidence results to counter-evidence and cautious
+confidence. V008 persists accepted normalized responses; least-privilege
+security-barrier views and a strict bounded projector harvest only scoped
+analysis/timeline/evidence/receipt metadata with typed byte/canonical digests
+and derive trusted tool executions from durable observed connector provenance.
+V008 is explicitly the rolling expand step: legacy writers remain temporarily
+writable, response-aware writes are strict, and only the latter are
+evaluation-eligible; contract enforcement waits for old-writer drain.
+Every accepted invocation contributes to run cost; durable audit/receipt/
+evidence digests are exact-bound. Scenario C is independent of evidence
+row/UUID order. Reparse-safe managed paths and cleanup-first secret/export
+deletion protect failure paths. Local Node, Python, semantic-order, path-safety,
+Phase 8, layout, actionlint, and secret gates pass. Fresh Docker/PostgreSQL
+A/B/C, executable attestation, blocking re-review, exact-revision artifact
+upload, and terminal-green `.github/workflows/cross-service-evaluation.yml`
+remain pending. This is not a Phase 8B PASS; parent Phase 8 and its A-Z G4 exit
+remain BLOCK.
 
 ## Staffing Scenarios
 
@@ -162,3 +174,8 @@ questions are the supported local S3 adapter after MinIO's upstream archive,
 reconciliation of the 120-minute service RTO with a four-hour artifact restore
 target, production-authorized enterprise-IdP conformance, and provider
 processing terms.
+
+Gate labels also drift between documents: the parent A-Z plan names Phase 8
+exit `G4`, while this roadmap's gate summary names durable workflow `G4` and
+product/evaluation `G7`. The parent A-Z `G4` remains canonical for Phase 8 until
+the roadmap taxonomy is explicitly reconciled.

@@ -465,6 +465,70 @@ and Chromium browser proof against the safe projection boundary. Durable Tool
 Gateway and synthetic Prometheus evidence establish the local integration
 checkpoint but do not by themselves establish G3 or production readiness.
 
+## Evaluation Projection Boundary (Phase 8B)
+
+Platform Flyway V008 is the expand step for a rolling deployment. It accepts
+the exact response-less V007 event shape from legacy writers and the exact
+response-bearing shape from new writers. When `response` is present, the event
+trigger enforces status/run identity, bounded values, citation/tool-intent
+shape, token totals, and terminal snapshot parity. Historical V006/V007 events
+remain readable; the V007-to-V008 upgrade proof checks a historical accepted
+payload remains byte-stable and proves a legacy append still succeeds after
+V008. The evaluator requires response-bearing events. A later contract
+migration may remove the legacy branch only after every old instance is drained;
+rollback during the expand window does not require a destructive schema change.
+
+Tool Gateway Flyway V002 is also an expand migration. New writers add durable
+observed provenance to every execution that reaches manifest resolution: tool,
+action, risk class, connector ID, connector profile, and the SHA-256 digest of
+the exact manifest resource bytes loaded by the runtime. Exact V001 writers may
+temporarily leave the complete tuple null during rolling deployment. Evaluation
+requires the complete tuple; values are written with the audit event and are not
+injected later by evaluation configuration.
+
+The disposable cross-service database creates two least-privilege roles:
+
+- `opsmind_evaluation_view_owner` is `NOLOGIN`, `NOINHERIT`, and
+  `NOBYPASSRLS`; it owns security-barrier views and receives only allowlisted
+  source columns.
+- `opsmind_evaluator` is a read-only, non-inheriting login. It cannot select
+  raw source tables or the allowlist table and can query views only after exact
+  transaction-local organization, project, incident, run, and actor scope is
+  set.
+
+The strict export admits one run, at most 128 events, 200 evidence metadata
+rows, 20 receipts, 21 invocations, and 4 MiB of JSON. Every accepted response
+must match exactly one successful AI invocation, including
+model/prompt/schema/token/tool/cost accounting and monotonic timing. Per-run
+cost is the sum across every accepted invocation. Receipt/audit identity,
+request/result digests, connector ID/profile/manifest-byte digest, and evidence
+digests must agree; the audit result, receipt evidence, and persisted evidence
+record form one exact digest binding. Trusted tool executions are reconstructed
+from accepted tool intents and durable receipt/audit/evidence bindings. Scenario
+C assigns metric semantics from canonical metric content rather than unstable
+row or UUID order. The projection includes accepted normalized analysis,
+timeline metadata, evidence metadata/provenance, invocation metadata, and
+receipt/audit bindings. It excludes prompts, provider reasoning, credentials,
+capability material, raw connector bodies, and evidence content.
+
+Raw export bytes and semantic JSON use distinct typed, domain-separated
+SHA-256 digests; events, accepted responses, evidence metadata, receipts, and
+the complete projection also carry canonical fragment digests. Scoped
+`.gitattributes` rules pin digest-bound evaluation, query, and Tool Gateway
+manifest sources to LF so fresh Windows and Linux checkouts produce identical
+raw-byte identities. Managed report paths must remain below
+`.opsmind/reports`; every existing ancestor is rejected if it is a reparse
+point. Raw exports and the enriched working file remain below
+`.opsmind/cross-service/<run-id>`. Cleanup deletes credentials and raw exports
+before process/container cleanup, aggregates failures, and refuses unsafe
+recursive removal.
+
+Scenario A proves the latency-regression contract, B requires `ABSTAINED` with
+zero tools, and C requires two opposing read-only evidence collections plus
+counter-evidence and cautious confidence. Local contracts pass, but fresh
+Docker/PostgreSQL A/B/C, executable attestation, exact-revision CI artifacts,
+and terminal-green workflow evidence remain pending. Phase 8 is still blocked.
+
 ## Evidence Artifact Port
 
 The port accepts an authorized stream plus tenant, incident, source classification, retention class, and expected digest. It returns an opaque artifact ID, content digest, byte count, encryption metadata reference, and lifecycle version. ADR-0003 originally selected MinIO locally, but that upstream is now archived; no replacement is silently treated as approved. B-006/B-008/B-012 keep the large-object path blocked until a supported backend passes the required conformance matrix. Production still requires an S3-compatible backend behind `production-kms` with Singapore residency. The implementation must support:

@@ -7,6 +7,7 @@ import java.util.function.Function;
 import java.util.stream.Collectors;
 
 import ai.opsmind.toolgateway.audit.ToolAuditWriter;
+import ai.opsmind.toolgateway.audit.ToolExecutionProvenance;
 import ai.opsmind.toolgateway.connectors.ToolConnector;
 import ai.opsmind.toolgateway.domain.DenialCode;
 import ai.opsmind.toolgateway.domain.EvidenceEnvelope;
@@ -70,6 +71,7 @@ public final class ToolExecutionService {
         String capabilityId = null;
         String policyVersion = null;
         String manifestVersion = null;
+        ToolExecutionProvenance provenance = null;
         ExecutionReceiptStore.Lease lease = null;
         String stage = "capability-verification";
         try {
@@ -79,6 +81,14 @@ public final class ToolExecutionService {
             stage = "manifest-resolution";
             ToolManifest manifest = manifestRegistry.require(request);
             manifestVersion = manifest.manifestVersion();
+            provenance = new ToolExecutionProvenance(
+                manifest.tool(),
+                manifest.action(),
+                manifest.riskClass(),
+                manifest.connectorId(),
+                manifest.connectorProfile(),
+                manifest.manifestByteDigest()
+            );
             stage = "policy-evaluation";
             policyEvaluator.evaluate(request, manifest, capability);
             stage = "audit-availability";
@@ -92,7 +102,7 @@ public final class ToolExecutionService {
                 case REPLAY -> {
                     UUID auditId = durability.recordReplay(
                         executionId, requestDigest, capabilityId, manifestVersion,
-                        responseFactory.evidenceDigest(claim.response()), policyVersion
+                        provenance, responseFactory.evidenceDigest(claim.response()), policyVersion
                     );
                     return claim.response().asDuplicate(auditId);
                 }
@@ -129,7 +139,7 @@ public final class ToolExecutionService {
             );
             stage = "success-finalization";
             ToolExecutionResponse response = durability.finalizeSuccess(
-                lease, evidence, capabilityId, manifestVersion, policyVersion
+                lease, evidence, capabilityId, manifestVersion, provenance, policyVersion
             );
             lease = null;
             return response;
@@ -145,6 +155,7 @@ public final class ToolExecutionService {
                 requestDigest,
                 capabilityId,
                 manifestVersion,
+                provenance,
                 policyVersion,
                 exception.code()
             );
@@ -160,6 +171,7 @@ public final class ToolExecutionService {
                 requestDigest,
                 capabilityId,
                 manifestVersion,
+                provenance,
                 policyVersion,
                 DenialCode.CONNECTOR_FAILED
             );

@@ -1,7 +1,7 @@
 {
   "schema_version": "opsmind-benchmark-manifest-v1",
   "benchmark_id": "phase-08-deterministic-smoke",
-  "version": "0.1.0",
+  "version": "0.2.0",
   "evidence_level": "deterministic-smoke",
   "training_eligible": false,
   "scenario_families": [
@@ -11,17 +11,23 @@
       "status": "implemented",
       "ground_truth_path": "evaluation/scenarios/deployment-latency-regression/ground-truth.json",
       "fixture_path": "evaluation/scenarios/deployment-latency-regression/fixture.json",
-      "fixture_digest": "sha256:26460dbbb0d58b12700d902beb6c9a72aebd1e157ae7effa288f344f5bb2f779"
+      "fixture_digest": "sha256:d99cc839505ff5ad11a4aac9cfad91f4338643ea24da41d18fd451c23629474b"
     },
     {
       "family_id": "SIM-02",
       "scenario_id": "insufficient-evidence-abstain",
-      "status": "pending"
+      "status": "implemented",
+      "ground_truth_path": "evaluation/scenarios/insufficient-evidence-abstain/ground-truth.json",
+      "fixture_path": "evaluation/scenarios/insufficient-evidence-abstain/fixture.json",
+      "fixture_digest": "sha256:523fdca81e8e136c55e20f2f51b6a3a87c921dbe42608d154e8a0edb0c2f01e7"
     },
     {
       "family_id": "SIM-03",
       "scenario_id": "conflicting-evidence-regression",
-      "status": "pending"
+      "status": "implemented",
+      "ground_truth_path": "evaluation/scenarios/conflicting-evidence-regression/ground-truth.json",
+      "fixture_path": "evaluation/scenarios/conflicting-evidence-regression/fixture.json",
+      "fixture_digest": "sha256:9851116bddd7b44cfee89396258a9c8f5c2b9a16023d944b649f164fe48bf6a5"
     },
     {
       "family_id": "SIM-04",
