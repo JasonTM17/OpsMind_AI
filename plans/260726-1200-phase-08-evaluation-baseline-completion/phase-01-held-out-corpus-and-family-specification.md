@@ -1,10 +1,10 @@
 ---
 phase: 1
-title: "Held-out corpus governance"
-status: pending
+title: Held-out corpus governance
+status: completed
 priority: P1
 dependencies: []
-effort: "1 day"
+effort: 1 day
 ---
 
 # Phase 1: Held-out corpus governance
@@ -83,13 +83,13 @@ containment under the configured root, and rejection of reparse-point ancestors.
 
 ## Success Criteria
 
-- [ ] The manifest validates, and an unknown field, a malformed digest, or a
+- [x] The manifest validates, and an unknown field, a malformed digest, or a
       family id absent from the benchmark manifest each fail the validator.
-- [ ] A missing, altered, or oversized payload produces a contract failure; an
+- [x] A missing, altered, or oversized payload produces a contract failure; an
       unset root produces `UNAVAILABLE` with its reason.
-- [ ] A payload reachable only through a symlink or junction is refused.
-- [ ] No payload bytes are committed; secret scan and layout validator pass.
-- [ ] The parent phase file states the simulator decision and its reason.
+- [x] A payload reachable only through a symlink or junction is refused.
+- [x] No payload bytes are committed; secret scan and layout validator pass.
+- [x] The parent phase file states the simulator decision and its reason.
 
 ## Risk Assessment
 

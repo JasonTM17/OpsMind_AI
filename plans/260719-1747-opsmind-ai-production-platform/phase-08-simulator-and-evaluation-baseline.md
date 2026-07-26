@@ -124,9 +124,20 @@ flow below still describes the broader simulator work:
 ## File Inventory
 
 This inventory records the original target. The implemented checkpoint uses the
-existing cross-service harness plus `evaluation/` JavaScript contracts/scorer;
-`services/incident-simulator/`, its Compose fragment, held-out manifest, human
-protocol, statistical plan, and Python runner remain unimplemented.
+existing cross-service harness plus `evaluation/` JavaScript contracts/scorer.
+
+`services/incident-simulator/`, its Compose fragment, and the Python runner are
+withdrawn rather than pending. Scenarios execute against the real Platform, AI
+Runtime, Tool Gateway, and PostgreSQL through
+`scripts/validation/cross-service/run-cross-service-verification.ps1`, which is
+stronger evidence than a simulator process would produce. Building the simulator
+now would duplicate scenario definition, fixture emission, and reset logic that
+the harness and `evaluation/scenarios/` already own, and would create a second
+place where a scenario can drift from the contract it is scored against.
+
+`evaluation/held-out/manifest.yaml` is delivered as reference-only governance.
+The human protocol and statistical plan remain unimplemented and are tracked in
+`plans/260726-1200-phase-08-evaluation-baseline-completion/`.
 
 ### CREATE
 

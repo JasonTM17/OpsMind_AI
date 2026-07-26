@@ -62,6 +62,8 @@ const expectedFiles = [
   "evaluation/held-out/manifest.yaml",
   "evaluation/held-out/README.md",
   "evaluation/runner/held-out-corpus.mjs",
+  "evaluation/runner/sampling-intervals.mjs",
+  "evaluation/statistical-analysis-plan.md",
   "apps/operator-web/Dockerfile",
   "apps/operator-web/package.json",
   "packages/contracts/openapi/opsmind-v1.yaml",

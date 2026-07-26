@@ -237,6 +237,21 @@ for (const [relativePath, markers] of Object.entries({
     check(source.includes(marker), `${relativePath} is missing Phase 8B marker: ${marker}`);
   }
 }
+// The preregistration fixes the unit of analysis, sample size, and interval
+// method before results are seen. Binding its digest here does not prevent an
+// edit; it makes an unaccompanied one fail rather than pass unnoticed.
+const preregistration = manifest.statistical_analysis_plan ?? {};
+const preregistrationPath = path.join(repositoryRoot, preregistration.path ?? "");
+const preregistrationBytes = Buffer.from(
+  fileAccess.readSafeFile(preregistrationPath).replaceAll("\r\n", "\n"),
+  "utf8",
+);
+const preregistrationDigest = `sha256:${createHash("sha256").update(preregistrationBytes).digest("hex")}`;
+check(
+  preregistrationDigest === preregistration.content_digest,
+  "statistical analysis plan digest is stale",
+);
+
 // The held-out corpus is the only evidence about cases the system was not built
 // against, so an empty or unconfigured corpus must report as an absence here
 // rather than being skipped and read later as coverage.
