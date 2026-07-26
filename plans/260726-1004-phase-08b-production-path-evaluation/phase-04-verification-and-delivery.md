@@ -54,12 +54,12 @@ PhaseExit=BLOCK`; repository layout, actionlint, syntax checks, and the project
 secret scan pass. The independent tester completed with concerns limited to
 unrun heavy integration and coverage depth.
 
-Revision-bound GitHub Actions run `30199870220` on commit `963ab8d` is terminal
+Revision-bound GitHub Actions run `30200584275` on commit `134d63c` is terminal
 green. It executed fresh disposable Docker/PostgreSQL Scenario A with 100 warm
 runs, Scenario B, and Scenario C through the real Platform, AI Runtime, Tool
 Gateway, and PostgreSQL path, and scored each one `EvaluationVerdict=PASS` with
 `ScorerExit=0`. All eight metrics pass in all three scenarios, including
-`root_cause_semantic`. The uploaded artifact records `GitHead=963ab8d`,
+`root_cause_semantic`. The uploaded artifact records `GitHead=134d63c`,
 `GitTree=0`, and SHA-256 digests for both service JARs, the connector manifest,
 the export SQL, and the projector.
 

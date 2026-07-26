@@ -40,10 +40,10 @@ live-provider conformance, G4, or Phase 8 completion.
 
 | Phase | Name | Status |
 |-------|------|--------|
-| 1 | [Evaluation Evidence Contract](./phase-01-evaluation-evidence-contract.md) | In Progress — implementation/local contract proof present; fresh database integration pending |
-| 2 | [Cross-Service Artifact Harvesting](./phase-02-cross-service-artifact-harvesting.md) | In Progress — least-privilege export/projector wiring present; fresh harness proof pending |
-| 3 | [Abstention and Conflict Scenarios](./phase-03-abstention-and-conflict-scenarios.md) | In Progress — A/B/C contracts and local tests present; production-path CI pending |
-| 4 | [Verification and Delivery](./phase-04-verification-and-delivery.md) | In Progress — local lightweight gates pass; blocking review and CI pending |
+| 1 | [Evaluation Evidence Contract](./phase-01-evaluation-evidence-contract.md) | Complete — contracts hold against fresh disposable-database exports in revision-bound CI |
+| 2 | [Cross-Service Artifact Harvesting](./phase-02-cross-service-artifact-harvesting.md) | Complete — least-privilege export and projection run end to end in the same job |
+| 3 | [Abstention and Conflict Scenarios](./phase-03-abstention-and-conflict-scenarios.md) | Complete — A, B, and C each score `PASS` on the production path |
+| 4 | [Verification and Delivery](./phase-04-verification-and-delivery.md) | In Progress — CI terminal green and docs synchronized; blocking review outstanding |
 
 ## Dependencies
 
@@ -82,10 +82,10 @@ live-provider conformance, G4, or Phase 8 completion.
   validator
   `Implemented=3 CanonicalResults=3 Errors=0 CheckpointResult=PASS
   PhaseExit=BLOCK`; repository layout, actionlint, and project secret scan PASS.
-- Production-path proof: revision-bound run `30199870220` on commit `963ab8d` is
+- Production-path proof: revision-bound run `30200584275` on commit `134d63c` is
   terminal green. Fresh disposable Docker/PostgreSQL Scenario A at 100 warm runs,
   B, and C each score `EvaluationVerdict=PASS` with all eight metrics passing;
-  the uploaded artifact binds `GitHead=963ab8d`, `GitTree=0`, and service JAR,
+  the uploaded artifact binds `GitHead=134d63c`, `GitTree=0`, and service JAR,
   manifest, export SQL, and projector digests.
 - Pending proof: independent blocking-review closure. Phase 8 exit stays BLOCK on
   the held-out corpus and human baseline, which this checkpoint does not claim.

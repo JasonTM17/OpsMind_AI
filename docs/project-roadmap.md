@@ -134,7 +134,7 @@ evidence digests are exact-bound. Scenario C is independent of evidence
 row/UUID order. Reparse-safe managed paths and cleanup-first secret/export
 deletion protect failure paths. Local Node, Python, semantic-order, path-safety,
 Phase 8, layout, actionlint, and secret gates pass. Revision-bound run
-`30199870220` on commit `963ab8d` is terminal green: fresh Docker/PostgreSQL
+`30200584275` on commit `134d63c` is terminal green: fresh Docker/PostgreSQL
 A/B/C execute through the real service path, every scenario scores `PASS` on all
 eight metrics with 100 warm runs for A, and the uploaded artifact binds that
 exact revision and both service JAR digests. Blocking re-review remains pending.
