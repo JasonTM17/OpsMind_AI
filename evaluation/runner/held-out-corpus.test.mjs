@@ -135,6 +135,10 @@ test("refuses paths that escape the root or arrive through a link", () => {
     const body = payload({ case: "outside" });
     writeFileSync(outside, body.bytes);
     try {
+      // The contract refuses a traversing path before any filesystem work, so
+      // this reports a manifest violation rather than a path violation. The
+      // containment check below is the second layer, exercised by a path the
+      // contract accepts.
       rejects(
         manifest([entry({
           relative_path: `../outside-${process.pid}.json`,
@@ -142,7 +146,7 @@ test("refuses paths that escape the root or arrive through a link", () => {
           byte_size: body.bytes.length,
         })]),
         root,
-        "HELD_OUT_PATH",
+        "HELD_OUT_MANIFEST",
       );
 
       const target = path.join(root, "target");
