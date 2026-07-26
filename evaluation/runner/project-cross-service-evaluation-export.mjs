@@ -104,7 +104,8 @@ if (process.argv[1] && import.meta.url === pathToFileURL(process.argv[1]).href) 
   try {
     runProjectionCli(process.argv.slice(2));
   } catch (error) {
-    console.error(error instanceof Error ? error.message : "Evaluation projection failed safely.");
+    const detail = error instanceof Error ? error.message : "unknown safe failure";
+    console.error(`Evaluation projection failed: ${detail}`);
     process.exitCode = 1;
   }
 }
