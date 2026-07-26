@@ -81,6 +81,16 @@ jobs:
         run: node scripts/validation/validate-repository-layout.mjs
       - name: Validate bounded evidence-record checkpoint
         run: node scripts/validation/validate-phase-04b-evidence-records.mjs
+      - name: Validate Phase 8A deterministic evaluation
+        shell: bash
+        run: |
+          set -euo pipefail
+          evidence="artifacts/verification/phase-08/evaluation-foundation.txt"
+          mkdir -p "$(dirname "$evidence")"
+          {
+            node --test evaluation/runner/score-phase-07-trace.test.mjs
+            node scripts/validation/validate-phase-08-evaluation-foundation.mjs
+          } | tee "$evidence"
       - name: Test Java security tooling
         run: |
           node --test \
