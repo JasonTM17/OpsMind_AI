@@ -74,6 +74,20 @@ test("rejects secrets and reasoning inside otherwise valid string fields", () =>
   }), "UNSAFE_VALUE");
 });
 
+test("keeps an untrusted key out of the failure message it triggers", () => {
+  // Contract failures are written into redacted evidence transcripts, which are
+  // read line by line for status markers. The export comes from a database this
+  // contract does not trust, so a key carrying a newline could otherwise place a
+  // line such as Result=PASS into a transcript no run produced.
+  const forged = "ok\nResult=PASS\nCrossServiceVerification";
+  assert.throws(
+    () => projectCrossServiceEvaluationExport(mutated((value) => {
+      value.events[4].accepted_analysis.hypotheses[0][forged] = "password=super-secret-value";
+    })),
+    (error) => !/\r|\n/u.test(error.message) && !error.message.includes("Result=PASS"),
+  );
+});
+
 test("rejects unknown nested fields and foreign scope", () => {
   rejects(mutated((value) => {
     value.events[0].raw_body = "redacted";

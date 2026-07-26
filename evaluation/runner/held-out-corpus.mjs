@@ -3,20 +3,15 @@ import fs from "node:fs";
 import path from "node:path";
 
 import { createEvaluationContractValidator } from "./evaluation-contract-validation.mjs";
-import { contractFailure, parseUntrustedJsonExport } from "./evaluation-value-safety.mjs";
+import {
+  contractFailure,
+  parseUntrustedJsonExport,
+  safeIdentifier,
+} from "./evaluation-value-safety.mjs";
 
 export const PAYLOAD_ROOT_ENVIRONMENT = "OPS_EVALUATION_HELDOUT_ROOT";
 const MAX_CASES = 2000;
 const MAX_PAYLOAD_BYTES = 4 * 1024 * 1024;
-const SAFE_IDENTIFIER = /^[A-Za-z0-9._-]{1,128}$/u;
-
-// A manifest identifier reaches redacted evidence transcripts through failure
-// messages. Restricting it to a printable, single line shape keeps a crafted
-// identifier from forging transcript lines.
-function safeName(value) {
-  return SAFE_IDENTIFIER.test(String(value ?? "")) ? String(value) : "[unsafe name]";
-}
-
 function isWithin(candidatePath, parentPath) {
   const relative = path.relative(parentPath, candidatePath);
   return relative !== "" && !relative.startsWith("..") && !path.isAbsolute(relative);
@@ -81,7 +76,7 @@ export function resolveHeldOutCorpus({
       if (!knownFamilyIds.has(entry?.family_id)) {
         contractFailure(
           "HELD_OUT_MANIFEST",
-          `Held-out case references an unknown family: ${safeName(entry?.case_id)}.`,
+          `Held-out case references an unknown family: ${safeIdentifier(entry?.case_id)}.`,
         );
       }
     }
@@ -107,21 +102,21 @@ export function resolveHeldOutCorpus({
   for (const entry of cases) {
     const payloadPath = path.resolve(resolvedRoot, entry.relative_path);
     if (!isWithin(payloadPath, resolvedRoot)) {
-      contractFailure("HELD_OUT_PATH", `Held-out case escapes its payload root: ${safeName(entry.case_id)}.`);
+      contractFailure("HELD_OUT_PATH", `Held-out case escapes its payload root: ${safeIdentifier(entry.case_id)}.`);
     }
     if (hasLinkedAncestor(resolvedRoot, payloadPath)) {
-      contractFailure("HELD_OUT_PATH", `Held-out case is reached through a link: ${safeName(entry.case_id)}.`);
+      contractFailure("HELD_OUT_PATH", `Held-out case is reached through a link: ${safeIdentifier(entry.case_id)}.`);
     }
     if (!fs.existsSync(payloadPath) || !fs.lstatSync(payloadPath).isFile()) {
-      contractFailure("HELD_OUT_PAYLOAD", `Held-out case payload is missing: ${safeName(entry.case_id)}.`);
+      contractFailure("HELD_OUT_PAYLOAD", `Held-out case payload is missing: ${safeIdentifier(entry.case_id)}.`);
     }
     const size = fs.lstatSync(payloadPath).size;
     if (size > MAX_PAYLOAD_BYTES || size !== entry.byte_size) {
-      contractFailure("HELD_OUT_PAYLOAD", `Held-out case size drifted: ${safeName(entry.case_id)}.`);
+      contractFailure("HELD_OUT_PAYLOAD", `Held-out case size drifted: ${safeIdentifier(entry.case_id)}.`);
     }
     const digest = `sha256:${createHash("sha256").update(fs.readFileSync(payloadPath)).digest("hex")}`;
     if (digest !== entry.content_digest) {
-      contractFailure("HELD_OUT_PAYLOAD", `Held-out case digest drifted: ${safeName(entry.case_id)}.`);
+      contractFailure("HELD_OUT_PAYLOAD", `Held-out case digest drifted: ${safeIdentifier(entry.case_id)}.`);
     }
     resolved.push({
       caseId: entry.case_id,

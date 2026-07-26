@@ -2,21 +2,16 @@ import fs from "node:fs";
 import path from "node:path";
 
 import { createEvaluationContractValidator } from "./evaluation-contract-validation.mjs";
-import { contractFailure, parseUntrustedJsonExport } from "./evaluation-value-safety.mjs";
+import {
+  contractFailure,
+  parseUntrustedJsonExport,
+  safeIdentifier,
+} from "./evaluation-value-safety.mjs";
 
 export const BASELINE_ROOT_ENVIRONMENT = "OPS_EVALUATION_HUMAN_BASELINE_ROOT";
 const MAX_RECORDS = 20000;
 const MAX_RECORD_BYTES = 64 * 1024;
 const REQUIRED_REVIEWERS_PER_CASE = 2;
-const SAFE_IDENTIFIER = /^[A-Za-z0-9._-]{1,128}$/u;
-
-// A name read from disk or from a manifest reaches redacted evidence
-// transcripts through failure messages. Restricting it to a printable, single
-// line shape keeps a crafted name from forging transcript lines.
-function safeName(value) {
-  return SAFE_IDENTIFIER.test(String(value ?? "")) ? String(value) : "[unsafe name]";
-}
-
 function isWithin(candidatePath, parentPath) {
   const relative = path.relative(parentPath, candidatePath);
   return relative !== "" && !relative.startsWith("..") && !path.isAbsolute(relative);
@@ -72,7 +67,7 @@ export function resolveHumanBaseline({
 
   const byCase = new Map();
   for (const rawName of listing.slice().sort()) {
-    const name = safeName(rawName);
+    const name = safeIdentifier(rawName);
     const recordPath = path.resolve(resolvedRoot, String(rawName));
     if (!isWithin(recordPath, resolvedRoot)) {
       contractFailure("HUMAN_BASELINE_PATH", `Human baseline record escapes its root: ${name}.`);
@@ -101,7 +96,7 @@ export function resolveHumanBaseline({
     if (reviewers.has(record.reviewer_id)) {
       contractFailure(
         "HUMAN_BASELINE_RECORD",
-        `Reviewer answered a case twice: ${safeName(record.case_id)}.`,
+        `Reviewer answered a case twice: ${safeIdentifier(record.case_id)}.`,
       );
     }
     reviewers.set(record.reviewer_id, record);
