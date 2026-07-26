@@ -129,6 +129,41 @@ def test_redaction_never_leaves_credential_residue(secret_text: str) -> None:
     assert "camel-" not in sanitized
 
 
+@pytest.mark.parametrize(
+    ("secret_text", "credential"),
+    [
+        # SCREAMING_SNAKE_CASE is how this project names its own secrets, and a
+        # word boundary before the keyword never matches there because the
+        # preceding underscore is itself a word character.
+        ("SPRING_DATASOURCE_PASSWORD=canary-db-value", "canary-db-value"),
+        ("DEEPSEEK_API_KEY=canary-provider-value", "canary-provider-value"),
+        ("OPSMIND_REFRESH_TOKEN=canary-refresh-value", "canary-refresh-value"),
+        # Connection URIs against the addresses this system actually meets. A
+        # dotted host is incidentally covered by the email pattern; a compose
+        # service name, localhost, and a bare address are not.
+        ("postgresql://opsmind:canary-uri-value@db:5432/ops", "canary-uri-value"),
+        ("postgresql://opsmind:canary-local-value@localhost:5432/ops", "canary-local-value"),
+        ("mysql://root:canary-ip-value@127.0.0.1:3306/app", "canary-ip-value"),
+        ("redis://admin:canary-cache-value@cache:6379", "canary-cache-value"),
+    ],
+)
+def test_redaction_covers_environment_and_uri_credentials(
+    secret_text: str, credential: str
+) -> None:
+    sanitized = redact_prompt(f"before\n{secret_text}\nafter")
+
+    assert credential not in sanitized
+    assert "[REDACTED_SECRET]" in sanitized
+    assert "before" in sanitized
+    assert "after" in sanitized
+
+
+def test_redaction_leaves_ordinary_prose_untouched() -> None:
+    prose = "The deployment at 14:02 preceded the latency rise on service db."
+
+    assert redact_prompt(prose) == prose
+
+
 def test_standalone_jwt_blocks_provider_egress() -> None:
     request = _request().model_copy(update={"prompt": f"inspect {JWT_CANARY}"})
 

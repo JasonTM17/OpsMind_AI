@@ -16,14 +16,24 @@ class EgressDenied(PermissionError):
 
 _SECRET_PATTERNS = (
     re.compile(r"(?i)\b(?:sk|ds)-[a-z0-9_-]{16,}\b"),
+    # The keyword is anchored with a lookbehind rather than a word boundary so
+    # that an underscore-separated identifier still matches. `\b` fails against
+    # SPRING_DATASOURCE_PASSWORD because the underscore before the keyword is a
+    # word character, which exempted the entire SCREAMING_SNAKE_CASE convention
+    # this project uses for its own secrets.
     re.compile(
-        r"(?im)(?:[\"']\s*)?\b(?:authorization|proxy[-_]?authorization|x[-_]?api[-_]?key|"
-        r"api[-_]?key|api[-_]?credential|password|passwd|access[-_]?token|refresh[-_]?token|"
+        r"(?im)(?:[\"']\s*)?(?<![A-Za-z0-9])(?:authorization|proxy[-_]?authorization|"
+        r"x[-_]?api[-_]?key|api[-_]?key|api[-_]?credential|password|passwd|"
+        r"access[-_]?token|refresh[-_]?token|"
         r"bearer[-_]?token|authorization[-_]?header|token|client[-_]?secret|"
         r"cookie|set[-_]?cookie)\b(?:\s*[\"'])?\s*[:=]\s*"
         r"(?:(?:bearer|basic|token)\s+)?"
         r"(?:\"[^\"\r\n]*\"|'[^'\r\n]*'|[^\r\n,;}]+)"
     ),
+    # Credentials embedded in a connection URI. The address forms this system
+    # actually meets are compose service names, localhost, and bare addresses,
+    # none of which the email pattern happens to cover.
+    re.compile(r"(?i)\b[a-z][a-z0-9+.-]*://[^\s:/@]+:[^\s@/]+@"),
     re.compile(r"\beyJ[A-Za-z0-9_-]{4,}\.[A-Za-z0-9_-]{4,}\.[A-Za-z0-9_-]{4,}\b"),
 )
 _BLOCKED_SECRET_PATTERNS = (
