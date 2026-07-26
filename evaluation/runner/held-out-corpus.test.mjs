@@ -173,6 +173,38 @@ test("refuses paths that escape the root or arrive through a link", () => {
   });
 });
 
+test("refuses a corpus that counts one observation more than once", () => {
+  // The statistical protocol treats a case as one observation and refuses to
+  // let correlated repeats grow the denominator. Distinct identifiers over the
+  // same content would do exactly that at the corpus level, which is the same
+  // inflation one scenario replayed a hundred times would produce.
+  const shared = payload({ case: "same" });
+  const first = entry({
+    content_digest: shared.digest,
+    byte_size: shared.bytes.length,
+  });
+  rejects(
+    manifest([first, { ...first, case_id: "case-two", relative_path: "case-two.json" }]),
+    "",
+    "HELD_OUT_MANIFEST",
+  );
+
+  const other = payload({ case: "other" });
+  rejects(
+    manifest([
+      first,
+      {
+        ...first,
+        case_id: "case-two",
+        content_digest: other.digest,
+        byte_size: other.bytes.length,
+      },
+    ]),
+    "",
+    "HELD_OUT_MANIFEST",
+  );
+});
+
 test("rejects a malformed manifest before touching the filesystem", () => {
   rejects(
     Buffer.from(JSON.stringify({

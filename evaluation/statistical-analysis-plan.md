@@ -68,6 +68,13 @@ corpus is fixed before a scoring run and every registered case is scored.
 If the corpus grows, previously reported intervals are not retroactively
 narrowed. A new corpus version produces a new report.
 
+## Distinctness
+
+Two registered cases must differ in content. The corpus refuses entries sharing
+a content digest or a payload path, because the same observation registered
+under two identifiers inflates the denominator exactly as replaying one scenario
+does. Distinct identifiers alone are not evidence of distinct cases.
+
 ## Exclusions
 
 A case tagged `quarantined` in `evaluation/held-out/manifest.yaml` is excluded

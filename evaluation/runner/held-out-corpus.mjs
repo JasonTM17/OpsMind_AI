@@ -71,6 +71,16 @@ export function resolveHeldOutCorpus({
   if (caseIds.size !== cases.length) {
     contractFailure("HELD_OUT_MANIFEST", "Held-out case identifiers are not unique.");
   }
+  // A case is an observation, so the same content registered under two
+  // identifiers would count twice and inflate the denominator the whole
+  // statistical protocol exists to protect. Distinct identifiers are not enough
+  // on their own; the content and the file behind it must differ too.
+  if (new Set(cases.map((entry) => entry?.content_digest)).size !== cases.length) {
+    contractFailure("HELD_OUT_MANIFEST", "Held-out cases share content.");
+  }
+  if (new Set(cases.map((entry) => entry?.relative_path)).size !== cases.length) {
+    contractFailure("HELD_OUT_MANIFEST", "Held-out cases share a payload path.");
+  }
   if (knownFamilyIds) {
     for (const entry of cases) {
       if (!knownFamilyIds.has(entry?.family_id)) {
