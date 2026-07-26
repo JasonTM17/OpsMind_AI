@@ -40,6 +40,20 @@ const UNSAFE_VALUE_PATTERNS = [
 export const RFC_9562_UUID =
   /^[0-9a-f]{8}-[0-9a-f]{4}-[1-8][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/iu;
 
+const SAFE_IDENTIFIER = /^[A-Za-z0-9._-]{1,128}$/u;
+
+/**
+ * Render an untrusted name for a failure message.
+ *
+ * Contract failures are written into redacted evidence transcripts, and those
+ * transcripts are read line by line for status markers. A name carrying a
+ * newline can therefore forge a line that no run produced, so anything outside
+ * a printable single-line shape is replaced rather than echoed.
+ */
+export function safeIdentifier(value) {
+  return SAFE_IDENTIFIER.test(String(value ?? "")) ? String(value) : "[unsafe name]";
+}
+
 export class EvaluationContractError extends Error {
   constructor(code, message) {
     super(message);
@@ -100,10 +114,13 @@ export function scanSafeValues(value, path = "$") {
   }
   if (!value || typeof value !== "object") return;
   for (const [key, child] of Object.entries(value)) {
+    // The key comes from the untrusted document, so it is rendered rather than
+    // echoed. Without this a crafted key reaches the transcript verbatim.
+    const rendered = safeIdentifier(key);
     if (PROHIBITED_KEYS.has(key.toLowerCase())) {
-      contractFailure("PROHIBITED_KEY", `Prohibited key at ${path}.${key}.`);
+      contractFailure("PROHIBITED_KEY", `Prohibited key at ${path}.${rendered}.`);
     }
-    scanSafeValues(child, `${path}.${key}`);
+    scanSafeValues(child, `${path}.${rendered}`);
   }
 }
 
