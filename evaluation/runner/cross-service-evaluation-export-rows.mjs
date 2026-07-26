@@ -116,16 +116,22 @@ export function validateInvocation(invocation, scope) {
   dateTime(invocation.started_at, "invocation.started_at");
   dateTime(invocation.finished_at, "invocation.finished_at");
   const response = invocation.response_payload;
-  if (invocation.model_id !== response.model_id
-    || invocation.prompt_version !== response.prompt_version
-    || invocation.schema_version !== response.schema_version
-    || invocation.actual_tokens !== response.usage.total_tokens
-    || invocation.actual_tools !== response.requested_tool_calls.length
-    || invocation.actual_cost_usd !== response.cost_estimate.amount
-    || Date.parse(invocation.finished_at) < Date.parse(invocation.started_at)) {
+  // Reported per field so a binding failure names the column that drifted.
+  // Field names come from the schema, so no exported value is disclosed.
+  const bindings = [
+    ["model_id", invocation.model_id === response.model_id],
+    ["prompt_version", invocation.prompt_version === response.prompt_version],
+    ["schema_version", invocation.schema_version === response.schema_version],
+    ["actual_tokens", invocation.actual_tokens === response.usage.total_tokens],
+    ["actual_tools", invocation.actual_tools === response.requested_tool_calls.length],
+    ["actual_cost_usd", invocation.actual_cost_usd === response.cost_estimate.amount],
+    ["finished_at", Date.parse(invocation.finished_at) >= Date.parse(invocation.started_at)],
+  ];
+  const drifted = bindings.filter(([, bound]) => !bound).map(([field]) => field);
+  if (drifted.length > 0) {
     contractFailure(
       "INVOCATION_BINDING",
-      "Invocation identity, accounting, or timestamps do not match its accepted response.",
+      "Invocation does not match its accepted response: " + drifted.join(", ") + ".",
     );
   }
 }
