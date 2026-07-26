@@ -106,7 +106,7 @@ jobs:
         shell: bash
         run: |
           set -euo pipefail
-          evidence_root="artifacts/verification/phase-08b"
+          evidence_root="$OPS_ARTIFACT_ROOT/verification/phase-08b"
           report_root="$PWD/.opsmind/reports"
           overall=0
           for specification in A:100 B:1 C:1; do
