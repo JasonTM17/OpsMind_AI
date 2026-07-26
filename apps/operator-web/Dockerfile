@@ -5,6 +5,7 @@ ENV PATH=$PNPM_HOME:$PATH
 RUN corepack enable
 WORKDIR /workspace
 COPY package.json pnpm-lock.yaml pnpm-workspace.yaml ./
+COPY patches ./patches
 COPY apps/operator-web/package.json apps/operator-web/package.json
 RUN --mount=type=cache,target=/pnpm/store \
     pnpm config set store-dir /pnpm/store && \
