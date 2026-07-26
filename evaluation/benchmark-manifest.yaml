@@ -1,0 +1,62 @@
+{
+  "schema_version": "opsmind-benchmark-manifest-v1",
+  "benchmark_id": "phase-08-deterministic-smoke",
+  "version": "0.1.0",
+  "evidence_level": "deterministic-smoke",
+  "training_eligible": false,
+  "scenario_families": [
+    {
+      "family_id": "SIM-01",
+      "scenario_id": "deployment-latency-regression",
+      "status": "implemented",
+      "ground_truth_path": "evaluation/scenarios/deployment-latency-regression/ground-truth.json",
+      "fixture_path": "evaluation/scenarios/deployment-latency-regression/fixture.json",
+      "fixture_digest": "sha256:26460dbbb0d58b12700d902beb6c9a72aebd1e157ae7effa288f344f5bb2f779"
+    },
+    {
+      "family_id": "SIM-02",
+      "scenario_id": "insufficient-evidence-abstain",
+      "status": "pending"
+    },
+    {
+      "family_id": "SIM-03",
+      "scenario_id": "conflicting-evidence-regression",
+      "status": "pending"
+    },
+    {
+      "family_id": "SIM-04",
+      "scenario_id": "dependency-saturation",
+      "status": "reserved"
+    },
+    {
+      "family_id": "SIM-05",
+      "scenario_id": "database-lock-contention",
+      "status": "reserved"
+    },
+    {
+      "family_id": "SIM-06",
+      "scenario_id": "queue-backlog-growth",
+      "status": "reserved"
+    },
+    {
+      "family_id": "SIM-07",
+      "scenario_id": "authorization-denial",
+      "status": "reserved"
+    },
+    {
+      "family_id": "SIM-08",
+      "scenario_id": "provider-schema-drift",
+      "status": "reserved"
+    },
+    {
+      "family_id": "SIM-09",
+      "scenario_id": "cross-tenant-reference-attack",
+      "status": "reserved"
+    },
+    {
+      "family_id": "SIM-10",
+      "scenario_id": "stale-remediation-target",
+      "status": "reserved"
+    }
+  ]
+}

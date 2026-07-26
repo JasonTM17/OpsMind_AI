@@ -21,6 +21,7 @@ export function prepareValidationEvidence({
   configuredArtifactRoot,
   configuredEvidencePath,
   defaultRelativePath,
+  evidenceEnvironmentName = "OPS_LAYOUT_EVIDENCE_PATH",
 }) {
   if (configuredArtifactRoot && !path.isAbsolute(configuredArtifactRoot)) {
     return { error: "OPS_ARTIFACT_ROOT must be absolute", evidencePath: null };
@@ -43,13 +44,16 @@ export function prepareValidationEvidence({
   }
 
   if (configuredEvidencePath && !path.isAbsolute(configuredEvidencePath)) {
-    return { error: "OPS_LAYOUT_EVIDENCE_PATH must be absolute", evidencePath: null };
+    return { error: `${evidenceEnvironmentName} must be absolute`, evidencePath: null };
   }
   const evidencePath = path.resolve(
     configuredEvidencePath || path.join(artifactRoot, defaultRelativePath),
   );
   if (!isPathWithin(evidencePath, artifactRoot)) {
-    return { error: "OPS_LAYOUT_EVIDENCE_PATH must remain beneath OPS_ARTIFACT_ROOT", evidencePath: null };
+    return {
+      error: `${evidenceEnvironmentName} must remain beneath OPS_ARTIFACT_ROOT`,
+      evidencePath: null,
+    };
   }
 
   const evidenceDirectory = path.dirname(evidencePath);

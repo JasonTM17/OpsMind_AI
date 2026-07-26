@@ -157,7 +157,7 @@ Use either launcher consistently:
 | `down` | Stop the profile; remains available when capacity is below threshold. |
 | `migrate` | Applies the Phase 3 Flyway schema using the supplied migration-role datasource; it does not start the web server. |
 | `seed` | Exit 3 until deterministic seed data has an owning phase. |
-| `evaluate` | Exit 3 until Phase 8 owns the benchmark harness. |
+| `evaluate` | Validate and score the Phase 8A deterministic Scenario A against a fresh Phase 7 trace; exits non-zero when raw artifacts, revision binding, or storage policy are incomplete. |
 
 The first Java dependency scan can take substantially longer while it builds
 the NVD database. Its data remains in the D-backed cache. The disabled

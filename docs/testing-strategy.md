@@ -30,6 +30,22 @@ Testing proves behavior at the boundary where a defect would matter. Passing hap
 | Security | Threat scenarios, secret exposure, dependency/container/IaC and authorization tests |
 | Reliability | Crash/restart, duplicate, reorder, timeout, partition, saturation, ENOSPC, restore |
 
+### Phase 8A deterministic evaluation checkpoint
+
+The first evaluation slice is fixture-only and additive. The canonical
+Scenario A contract is validated with strict JSON Schema subset checks, fixture
+SHA-256 binding, ten-family registry checks, and negative cases for unknown
+fields, missing raw artifacts, citation drift, RCA drift, and tool receipt
+digest drift. The scorer compares semantic fields and evidence linkage, not
+provider prose. A trace without operator projection or immutable tool receipt
+references is `INCOMPLETE`, not a passing evaluation.
+
+The checkpoint is not a held-out or human study and cannot support production
+accuracy, calibration, population latency, or benefit claims. Scenario B/C,
+timeline/tool-receipt harvesting from the disposable database, independently
+held-out cases, confidence intervals, qualified-reviewer protocol, and live
+provider/connector conformance remain required before Phase 8 closes.
+
 ## Critical Scenario Families
 
 ### Identity and tenant isolation
@@ -91,7 +107,10 @@ None of these tests authorize live DeepSeek egress.
 
 ## Evaluation Suites
 
-Three deterministic smoke cases verify harness mechanics early. Ten working scenario families ensure breadth by final verification. Neither set alone supports p95/p99, percentage-safety, calibration, or human-benefit claims.
+Phase 8A currently implements one deterministic smoke case; the Phase 8 target
+remains three, including abstention and conflicting-evidence cases. Ten working
+scenario families ensure breadth by final verification. Neither set alone
+supports p95/p99, percentage-safety, calibration, or human-benefit claims.
 
 Release evaluation uses a separately governed, independently held-out corpus with preregistered metrics, justified sample size, uncertainty intervals, incident-family/temporal separation, and a qualified human baseline. See [Evaluation Strategy](./evaluation-strategy.md).
 

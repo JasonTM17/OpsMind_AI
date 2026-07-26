@@ -168,6 +168,14 @@ async function runOne() {
     headers: { Accept: "application/vnd.opsmind.operator-projection.v1+json" },
   });
   if (read.response.status !== 200) throw new Error(`operator projection read failed with HTTP ${read.response.status}`);
+  if (
+    !read.parsed
+    || typeof read.parsed !== "object"
+    || read.parsed.runId !== runId
+    || read.parsed.status !== started.parsed.status
+  ) {
+    throw new Error("operator projection does not bind to the completed investigation");
+  }
   for (const header of [
     "x-opsmind-projection-class",
     "x-opsmind-redaction-version",
@@ -182,8 +190,12 @@ async function runOne() {
     readMs: read.elapsedMs,
     totalMs: started.elapsedMs + read.elapsedMs,
     correlationId: started.response.headers.get("x-correlation-id"),
+    organizationId: started.parsed.organizationId,
+    projectId: started.parsed.projectId,
+    incidentId: started.parsed.incidentId,
     evidenceIds: started.parsed.evidenceIds,
     status: started.parsed.status,
+    operatorProjection: read.parsed,
   };
 }
 
@@ -263,11 +275,26 @@ async function main() {
       provider: providerObservation,
       prometheus: prometheusObservation,
     },
-    runs: samples.map(({ runId, correlationId, evidenceIds, status }) => ({
+    runs: samples.map(({
       runId,
-      correlationId: correlationId ?? null,
+      correlationId,
+      organizationId,
+      projectId,
+      incidentId,
       evidenceIds,
       status,
+      totalMs,
+      operatorProjection,
+    }) => ({
+      runId,
+      correlationId: correlationId ?? null,
+      organizationId,
+      projectId,
+      incidentId,
+      evidenceIds,
+      status,
+      totalMs,
+      operatorProjection,
     })),
   };
   if (!report.latencyMs.thresholdPass) {
