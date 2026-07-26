@@ -218,6 +218,93 @@ function Get-CrossServiceRedactedLogTail {
     return '[log] ' + $safeContent
 }
 
+function Invoke-CrossServiceNativeCapture {
+    param(
+        [Parameter(Mandatory = $true)][string]$Executable,
+        [Parameter(Mandatory = $true)][string[]]$Arguments,
+        [Parameter(Mandatory = $true)][string]$WorkingDirectory,
+        [Parameter(Mandatory = $true)][hashtable]$Environment,
+        [Parameter(Mandatory = $true)][IO.Stream]$StandardOutput,
+        [Parameter(Mandatory = $true)][IO.Stream]$StandardError,
+        $StandardInputText = $null,
+        [ValidateRange(1, 600)][int]$DrainTimeoutSeconds = 30
+    )
+
+    # The exit status is read from the process handle rather than inferred from
+    # ambient shell state, so redirection, preference variables, and pipeline
+    # context cannot drop or coerce it on any platform.
+    $startInfo = [Diagnostics.ProcessStartInfo]::new()
+    $startInfo.FileName = $Executable
+    $startInfo.WorkingDirectory = $WorkingDirectory
+    $startInfo.UseShellExecute = $false
+    $startInfo.CreateNoWindow = $true
+    $startInfo.RedirectStandardOutput = $true
+    $startInfo.RedirectStandardError = $true
+    if ($null -ne $StandardInputText) {
+        $startInfo.RedirectStandardInput = $true
+        $startInfo.StandardInputEncoding = [Text.UTF8Encoding]::new($false)
+    }
+    foreach ($argument in $Arguments) {
+        [void]$startInfo.ArgumentList.Add([string]$argument)
+    }
+    foreach ($name in $Environment.Keys) {
+        $variableName = [string]$name
+        if ($null -eq $Environment[$name]) {
+            [void]$startInfo.Environment.Remove($variableName)
+        }
+        else {
+            $startInfo.Environment[$variableName] = [string]$Environment[$name]
+        }
+    }
+
+    $process = [Diagnostics.Process]::new()
+    $process.StartInfo = $startInfo
+    $started = $false
+    try {
+        if (-not $process.Start()) {
+            throw [InvalidOperationException]::new(
+                'Cross-service native process did not start.'
+            )
+        }
+        $started = $true
+        $drain = [Threading.Tasks.Task]::WhenAll(
+            [Threading.Tasks.Task[]]@(
+                $process.StandardOutput.BaseStream.CopyToAsync($StandardOutput),
+                $process.StandardError.BaseStream.CopyToAsync($StandardError)
+            )
+        )
+        if ($null -ne $StandardInputText) {
+            # Written after the drain starts so a chatty child cannot fill its
+            # output pipe while this side is still feeding standard input.
+            $process.StandardInput.Write([string]$StandardInputText)
+            $process.StandardInput.Close()
+        }
+        [void]$process.WaitForExit([int]::MaxValue)
+        if (-not $drain.Wait($DrainTimeoutSeconds * 1000)) {
+            throw [TimeoutException]::new(
+                'Cross-service native output drain exceeded its bound.'
+            )
+        }
+        $StandardOutput.Flush()
+        $StandardError.Flush()
+        return [int]$process.ExitCode
+    }
+    finally {
+        if ($started) {
+            try {
+                if (-not $process.HasExited) {
+                    $process.Kill($true)
+                    [void]$process.WaitForExit(5000)
+                }
+            }
+            catch {
+                # A process that already exited cannot be terminated again.
+            }
+        }
+        $process.Dispose()
+    }
+}
+
 function Invoke-CrossServiceProcess {
     param(
         [Parameter(Mandatory = $true)][string]$Executable,
@@ -239,67 +326,42 @@ function Invoke-CrossServiceProcess {
                     'Cross-service process log parent does not exist.'
                 )
             }
-            $logProbe = [IO.File]::Open(
-                $logPath,
+        }
+        $stdoutStream = $null
+        $stderrStream = $null
+        try {
+            $stdoutStream = [IO.File]::Open(
+                $StdoutPath,
                 [IO.FileMode]::Create,
                 [IO.FileAccess]::Write,
                 [IO.FileShare]::Read
             )
-            $logProbe.Dispose()
+            $stderrStream = [IO.File]::Open(
+                $StderrPath,
+                [IO.FileMode]::Create,
+                [IO.FileAccess]::Write,
+                [IO.FileShare]::Read
+            )
+            $exitCode = Invoke-CrossServiceNativeCapture -Executable $Executable `
+                -Arguments $Arguments -WorkingDirectory $WorkingDirectory `
+                -Environment $Environment -StandardOutput $stdoutStream `
+                -StandardError $stderrStream
         }
-        if (Test-CrossServiceWindows) {
-            $process = Invoke-WithProcessEnvironment -Variables $Environment -Action {
-                Start-Process -FilePath $Executable -ArgumentList $Arguments `
-                    -WorkingDirectory $WorkingDirectory -PassThru -Wait `
-                    -RedirectStandardOutput $StdoutPath `
-                    -RedirectStandardError $StderrPath -WindowStyle Hidden
+        finally {
+            if ($null -ne $stderrStream) {
+                $stderrStream.Dispose()
             }
-            $exitCode = [int]$process.ExitCode
-        }
-        else {
-            $exitCode = Invoke-WithProcessEnvironment -Variables $Environment -Action {
-                Push-Location -LiteralPath $WorkingDirectory
-                $previousErrorActionPreference = $ErrorActionPreference
-                $nativeErrorPreference = Get-Variable `
-                    -Name PSNativeCommandUseErrorActionPreference `
-                    -ErrorAction SilentlyContinue
-                $previousNativeErrorPreference = if ($null -ne $nativeErrorPreference) {
-                    $nativeErrorPreference.Value
-                }
-                else {
-                    $null
-                }
-                $ErrorActionPreference = 'Stop'
-                $PSNativeCommandUseErrorActionPreference = $false
-                try {
-                    $global:LASTEXITCODE = $null
-                    & $Executable @Arguments 1> $StdoutPath 2> $StderrPath
-                    if ($null -eq $global:LASTEXITCODE) {
-                        throw 'Native process completed without reporting an exit code.'
-                    }
-                    return [int]$global:LASTEXITCODE
-                }
-                finally {
-                    $ErrorActionPreference = $previousErrorActionPreference
-                    if ($null -ne $nativeErrorPreference) {
-                        $PSNativeCommandUseErrorActionPreference = `
-                            $previousNativeErrorPreference
-                    }
-                    else {
-                        Remove-Variable `
-                            -Name PSNativeCommandUseErrorActionPreference `
-                            -ErrorAction SilentlyContinue
-                    }
-                    Pop-Location
-                }
+            if ($null -ne $stdoutStream) {
+                $stdoutStream.Dispose()
             }
         }
     }
     catch {
-        $failureType = $_.Exception.GetType().Name
-        throw (
+        $failure = $_.Exception
+        throw [InvalidOperationException]::new(
             "Cross-service command '$operation' failed before native exit code " +
-            "capture ($failureType)."
+                "capture ($($failure.GetType().Name)).",
+            $failure
         )
     }
     if ($exitCode -ne 0) {
@@ -330,14 +392,14 @@ function Invoke-CrossServiceNativeQuiet {
         [Parameter(Mandatory = $true)][string]$FailureMessage
     )
 
-    $previousErrorActionPreference = $ErrorActionPreference
-    $ErrorActionPreference = 'Continue'
     try {
-        & $Executable @Arguments 2>$null | Out-Null
-        $exitCode = [int]$LASTEXITCODE
+        $exitCode = Invoke-CrossServiceNativeCapture -Executable $Executable `
+            -Arguments $Arguments -WorkingDirectory $PWD.ProviderPath `
+            -Environment @{} -StandardOutput ([IO.Stream]::Null) `
+            -StandardError ([IO.Stream]::Null)
     }
-    finally {
-        $ErrorActionPreference = $previousErrorActionPreference
+    catch {
+        throw $FailureMessage
     }
     if ($exitCode -ne 0) {
         throw $FailureMessage
@@ -403,12 +465,27 @@ function Invoke-CrossServiceSql {
         [Parameter(Mandatory = $true)][string]$Sql
     )
 
-    $output = $Sql | & $DockerPath exec -i $ContainerName `
-        psql --no-password --set=ON_ERROR_STOP=1 --username opsmind_migrator --dbname opsmind 2>&1
-    if ($LASTEXITCODE -ne 0) {
+    $capturedOutput = New-Object IO.MemoryStream
+    $capturedError = New-Object IO.MemoryStream
+    try {
+        $exitCode = Invoke-CrossServiceNativeCapture -Executable $DockerPath -Arguments @(
+            'exec', '-i', $ContainerName, 'psql', '--no-password',
+            '--set=ON_ERROR_STOP=1', '--username', 'opsmind_migrator',
+            '--dbname', 'opsmind'
+        ) -WorkingDirectory $PWD.ProviderPath -Environment @{} `
+            -StandardOutput $capturedOutput -StandardError $capturedError `
+            -StandardInputText $Sql
+        $output = [Text.Encoding]::UTF8.GetString($capturedOutput.ToArray()) +
+            [Text.Encoding]::UTF8.GetString($capturedError.ToArray())
+    }
+    finally {
+        $capturedError.Dispose()
+        $capturedOutput.Dispose()
+    }
+    if ($exitCode -ne 0) {
         throw 'Cross-service SQL command failed.'
     }
-    return @($output)
+    return @($output -split '\r?\n')
 }
 
 function Invoke-CrossServiceSqlFile {

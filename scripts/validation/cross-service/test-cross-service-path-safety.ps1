@@ -66,39 +66,117 @@ try {
                 "printf '%s\n' 'ERROR expected-stderr' >&2; exit 7"
         )
     }
-    Invoke-CrossServiceProcess -Executable $probeExecutable -Arguments $probeArguments `
-        -WorkingDirectory $repositoryRoot -StdoutPath $probeStdout `
-        -StderrPath $probeStderr -Environment @{ $probeName = $probeValue }
+    $previousLastExitCodeVariable = Get-Variable -Name LASTEXITCODE -Scope Global `
+        -ErrorAction SilentlyContinue
+    $previousLastExitCode = if ($null -ne $previousLastExitCodeVariable) {
+        $previousLastExitCodeVariable.Value
+    }
+    else {
+        $null
+    }
+    $global:LASTEXITCODE = 73
+    try {
+        Invoke-CrossServiceProcess -Executable $probeExecutable `
+            -Arguments $probeArguments -WorkingDirectory $repositoryRoot `
+            -StdoutPath $probeStdout -StderrPath $probeStderr `
+            -Environment @{ $probeName = $probeValue }
+        if ($global:LASTEXITCODE -ne 73) {
+            throw 'Cross-service capture inferred the exit status from shell state.'
+        }
+    }
+    finally {
+        if ($null -ne $previousLastExitCodeVariable) {
+            Set-Variable -Name LASTEXITCODE -Scope Global -Value $previousLastExitCode
+        }
+        else {
+            Remove-Variable -Name LASTEXITCODE -Scope Global `
+                -ErrorAction SilentlyContinue
+        }
+    }
     if ([IO.File]::ReadAllText($probeStdout).Trim() -ne $probeValue) {
         throw 'Cross-service process environment did not reach the child.'
     }
 
     $failureMessage = $null
-    $failureWarnings = New-Object 'System.Collections.Generic.List[string]'
-    $previousWarningPreference = $WarningPreference
     try {
-        $WarningPreference = 'Stop'
-        try {
-            Invoke-CrossServiceProcess -Executable $probeExecutable `
-                -Arguments $failureArguments -WorkingDirectory $repositoryRoot `
-                -StdoutPath $failureStdout -StderrPath $failureStderr -Environment @{} `
-                3>&1 | ForEach-Object { $failureWarnings.Add([string]$_) }
-        }
-        catch {
-            $failureMessage = $_.Exception.Message
-        }
+        Invoke-CrossServiceProcess -Executable $probeExecutable `
+            -Arguments $failureArguments -WorkingDirectory $repositoryRoot `
+            -StdoutPath $failureStdout -StderrPath $failureStderr -Environment @{}
     }
-    finally {
-        $WarningPreference = $previousWarningPreference
+    catch {
+        $failureMessage = $_.Exception.Message
     }
     if ($failureMessage -ne
         "Cross-service command 'phase-08-process-failure.stderr' failed with exit code 7.") {
         throw "Cross-service process failure diagnostic drifted: $failureMessage"
     }
-    $failureWarningText = $failureWarnings -join "`n"
-    if ($failureWarningText -notmatch 'ERROR expected-stdout' -or
-        $failureWarningText -notmatch 'ERROR expected-stderr') {
+    $failureDiagnostic = (
+        Get-CrossServiceRedactedLogTail -Path $failureStdout -Environment @{}
+    ) + ' ' + (
+        Get-CrossServiceRedactedLogTail -Path $failureStderr -Environment @{}
+    )
+    if ($failureDiagnostic -notmatch 'ERROR expected-stdout' -or
+        $failureDiagnostic -notmatch 'ERROR expected-stderr') {
         throw 'Cross-service process failure omitted safe diagnostic output.'
+    }
+
+    $bulkExecutable = @(
+        Get-Command node -CommandType Application -ErrorAction Stop
+    )[0].Path
+    $bulkStdout = Join-Path $testRoot 'phase-08-process-bulk.stdout.log'
+    $bulkStderr = Join-Path $testRoot 'phase-08-process-bulk.stderr.log'
+    $bulkByteCount = 262144
+    $bulkMessage = $null
+    try {
+        Invoke-CrossServiceProcess -Executable $bulkExecutable -Arguments @(
+            '-e',
+            (
+                'process.stdout.write("A".repeat(262144) + "\nERROR bulk-stdout\n");' +
+                'process.stderr.write("B".repeat(262144) + "\nERROR bulk-stderr\n");' +
+                'process.exitCode = 9;'
+            )
+        ) -WorkingDirectory $repositoryRoot -StdoutPath $bulkStdout `
+            -StderrPath $bulkStderr -Environment @{}
+    }
+    catch {
+        $bulkMessage = $_.Exception.Message
+    }
+    if ($bulkMessage -ne
+        "Cross-service command 'phase-08-process-bulk.stderr' failed with exit code 9." -or
+        (Get-Item -LiteralPath $bulkStdout).Length -lt $bulkByteCount -or
+        (Get-Item -LiteralPath $bulkStderr).Length -lt $bulkByteCount -or
+        [IO.File]::ReadAllText($bulkStdout) -notmatch 'ERROR bulk-stdout' -or
+        [IO.File]::ReadAllText($bulkStderr) -notmatch 'ERROR bulk-stderr') {
+        throw "Cross-service concurrent output capture drifted: $bulkMessage"
+    }
+
+    $stdinPayload = 'probe-' + [guid]::NewGuid().ToString('N')
+    $stdinOutput = New-Object IO.MemoryStream
+    $stdinError = New-Object IO.MemoryStream
+    try {
+        $stdinExitCode = Invoke-CrossServiceNativeCapture -Executable $bulkExecutable `
+            -Arguments @(
+                '-e',
+                (
+                    'let buffer = "";' +
+                    'process.stdin.setEncoding("utf8");' +
+                    'process.stdin.on("data", (chunk) => { buffer += chunk; });' +
+                    'process.stdin.on("end", () => {' +
+                    ' process.stdout.write(buffer);' +
+                    ' process.exitCode = buffer.length > 0 ? 0 : 3;' +
+                    '});'
+                )
+            ) -WorkingDirectory $repositoryRoot -Environment @{} `
+            -StandardOutput $stdinOutput -StandardError $stdinError `
+            -StandardInputText $stdinPayload
+        $stdinText = [Text.Encoding]::UTF8.GetString($stdinOutput.ToArray())
+    }
+    finally {
+        $stdinError.Dispose()
+        $stdinOutput.Dispose()
+    }
+    if ($stdinExitCode -ne 0 -or $stdinText -ne $stdinPayload) {
+        throw 'Cross-service standard input round trip drifted.'
     }
 
     $missingMessage = $null
@@ -225,6 +303,7 @@ try {
 
     Write-Output (
         'CrossServicePathSafety=PASS ReparseAncestor=BLOCKED ProcessLaunch=PASS ' +
+        'ExitStatusFromHandle=PASS ConcurrentCapture=PASS StandardInput=PASS ' +
         'LaunchFailure=BLOCKED RedirectionFailure=BLOCKED ' +
         'DiagnosticRedaction=PASS'
     )

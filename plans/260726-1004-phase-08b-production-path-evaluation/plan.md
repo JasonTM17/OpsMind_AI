@@ -77,7 +77,9 @@ live-provider conformance, G4, or Phase 8 completion.
   schema expansion; see `../reports/researcher-260726-phase8b-evaluation-design.md`.
 - Local proof: independent earlier tester 28/28 Node tests; current remediation
   rerun 33/33 Node and 40/40 targeted Python tests, 50 shuffled semantic-order
-  trials, and junction-path safety test; Phase 8 validator
+  trials, and the path-safety test executed under PowerShell 7 covering
+  handle-derived exit status, concurrent capture and standard input; Phase 8
+  validator
   `Implemented=3 CanonicalResults=3 Errors=0 CheckpointResult=PASS
   PhaseExit=BLOCK`; repository layout, actionlint, and project secret scan PASS.
 - Pending proof: fresh Docker/PostgreSQL A/B/C, executable attestation,
