@@ -129,6 +129,15 @@ A failed gate cannot be converted to a warning solely to meet a schedule.
   occurs between the claim and finalization transactions; successful audit and
   receipt completion commit together. Rollback preserves the reclaimable lease
   and never publishes an unaudited success.
+- Apply Platform V008 before deploying response-aware investigation writers.
+  V008 is the expand step and accepts both exact legacy and strictly validated
+  response-bearing `ANALYSIS_ACCEPTED` events. Drain every legacy writer and
+  verify mixed-version histories before a later forward-only contract migration
+  requires `response`; never deploy that contract step in the same rollout.
+- Apply Tool Gateway V002 before deploying provenance-aware gateway writers.
+  V002 permits the exact legacy null tuple during the rolling window and
+  requires all six observed-provenance fields together from new writers.
+  Evaluation-eligible runs require the complete tuple.
 - Schema compatibility covers the rolling window used by deployment.
 - Destructive transformations use expand/migrate/contract and verified backup/restore evidence.
 - Temporal workflows use version/build routing; golden histories replay before worker promotion.

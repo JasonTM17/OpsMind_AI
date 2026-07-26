@@ -227,6 +227,20 @@ class AnalysisResponseV1(BaseModel):
             self.requested_tool_calls or self.missing_evidence
         ):
             raise ValueError("need_more_evidence requires missing evidence or tool intents")
+        if self.status == AnalysisStatus.ABSTAIN and (
+            self.hypotheses
+            or self.citations
+            or self.requested_tool_calls
+            or not self.missing_evidence
+        ):
+            raise ValueError(
+                "abstain requires an evidence gap and cannot assert hypotheses or citations"
+            )
+        if self.status in {
+            AnalysisStatus.PROVIDER_UNAVAILABLE,
+            AnalysisStatus.BUDGET_EXCEEDED,
+        } and (self.hypotheses or self.citations or self.requested_tool_calls):
+            raise ValueError("failure response cannot assert hypotheses, citations, or tools")
         return self
 
 

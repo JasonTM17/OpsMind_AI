@@ -1,0 +1,214 @@
+{
+  "schema": "opsmind-cross-service-trace-v1",
+  "scenario": "C",
+  "evidenceClassification": "REGRESSION_SNAPSHOT_NOT_PRODUCTION_PATH",
+  "generatedAt": "2030-01-03T00:06:00Z",
+  "environment": "deterministic-regression-snapshot",
+  "warmRuns": 1,
+  "terminalStatus": "PASS",
+  "latencyMs": {
+    "p50": 300,
+    "p95": 360,
+    "max": 360,
+    "startP95": 240,
+    "projectionReadP95": 120,
+    "threshold": 5000,
+    "thresholdPass": true
+  },
+  "runs": [
+    {
+      "runId": "30000000-0000-4000-8000-000000000811",
+      "organizationId": "30000000-0000-4000-8000-000000000801",
+      "projectId": "30000000-0000-4000-8000-000000000802",
+      "incidentId": "30000000-0000-4000-8000-000000000814",
+      "correlationId": "30000000-0000-4000-8000-000000000812",
+      "evidenceIds": [
+        "30000000-0000-4000-8000-000000000813",
+        "30000000-0000-4000-8000-000000000820"
+      ],
+      "status": "COMPLETED",
+      "totalMs": 360,
+      "operatorProjection": {
+        "runId": "30000000-0000-4000-8000-000000000811",
+        "organizationId": "30000000-0000-4000-8000-000000000801",
+        "projectId": "30000000-0000-4000-8000-000000000802",
+        "incidentId": "30000000-0000-4000-8000-000000000814",
+        "status": "COMPLETED",
+        "budget": {
+          "maxRounds": 5,
+          "maxToolCalls": 4,
+          "maxEvidenceItems": 20,
+          "maxTokens": 4000
+        },
+        "rounds": 2,
+        "toolCalls": 2,
+        "totalTokens": 64,
+        "evidenceIds": [
+          "30000000-0000-4000-8000-000000000813",
+          "30000000-0000-4000-8000-000000000820"
+        ],
+        "pendingToolCalls": [],
+        "analysis": {
+          "status": "complete",
+          "run_id": "30000000-0000-4000-8000-000000000811",
+          "model_id": "platform-analysis-adapter",
+          "prompt_version": "prompt-incident-investigation-v1",
+          "schema_version": "analysis-v1",
+          "hypotheses": [
+            {
+              "title": "Evidence-backed hypothesis 1",
+              "explanation": "Latency rises after deployment, but flat HTTP error counts contradict a broad service-degradation signature.",
+              "confidence": 0.55,
+              "citations": [
+                {
+                  "evidence_id": "30000000-0000-4000-8000-000000000813",
+                  "digest": "sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+                  "claim": "Latency rises after the deployment marker."
+                },
+                {
+                  "evidence_id": "30000000-0000-4000-8000-000000000820",
+                  "digest": "sha256:bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
+                  "claim": "HTTP error counts stay flat, weakening a broad deployment-regression diagnosis."
+                }
+              ]
+            }
+          ],
+          "counter_evidence": [
+            "HTTP error counts remain flat while latency rises."
+          ],
+          "missing_evidence": [],
+          "citations": [
+            {
+              "evidence_id": "30000000-0000-4000-8000-000000000813",
+              "digest": "sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+              "claim": "Latency rises after the deployment marker."
+            },
+            {
+              "evidence_id": "30000000-0000-4000-8000-000000000820",
+              "digest": "sha256:bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
+              "claim": "HTTP error counts stay flat, weakening a broad deployment-regression diagnosis."
+            }
+          ],
+          "confidence": 0.55,
+          "usage": {
+            "prompt_tokens": 32,
+            "completion_tokens": 32,
+            "total_tokens": 64
+          },
+          "cost_estimate": {
+            "currency": "USD",
+            "amount": 0
+          },
+          "requested_tool_calls": []
+        },
+        "terminalReason": null,
+        "startedAt": "2030-01-03T00:00:00Z",
+        "deadlineAt": "2030-01-03T00:02:00Z",
+        "endedAt": "2030-01-03T00:00:05Z"
+      },
+      "rawAnalysisReference": "repository://evaluation/fixtures/phase-07-trace.scenario-c.valid.json#/runs/0/rawAnalysis",
+      "rawAnalysisDigest": "sha256:447e4003b31b7c145dccc3dd63b9b0043db2e7f1fc1cb474f6a05980218fedbb",
+      "rawAnalysis": {
+        "status": "complete",
+        "run_id": "30000000-0000-4000-8000-000000000811",
+        "model_id": "deepseek-v4-flash",
+        "prompt_version": "prompt-incident-investigation-v1",
+        "schema_version": "analysis-v1",
+        "hypotheses": [
+          {
+            "title": "Synthetic latency regression with flat error counter signal",
+            "explanation": "Latency rises after deployment, but flat HTTP error counts contradict a broad service-degradation signature.",
+            "confidence": 0.55,
+            "citations": [
+              {
+                "evidence_id": "30000000-0000-4000-8000-000000000813",
+                "digest": "sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+                "claim": "Latency rises after the deployment marker."
+              },
+              {
+                "evidence_id": "30000000-0000-4000-8000-000000000820",
+                "digest": "sha256:bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
+                "claim": "HTTP error counts stay flat, weakening a broad deployment-regression diagnosis."
+              }
+            ]
+          }
+        ],
+        "counter_evidence": [
+          "HTTP error counts remain flat while latency rises."
+        ],
+        "missing_evidence": [],
+        "citations": [
+          {
+            "evidence_id": "30000000-0000-4000-8000-000000000813",
+            "digest": "sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+            "claim": "Latency rises after the deployment marker."
+          },
+          {
+            "evidence_id": "30000000-0000-4000-8000-000000000820",
+            "digest": "sha256:bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
+            "claim": "HTTP error counts stay flat, weakening a broad deployment-regression diagnosis."
+          }
+        ],
+        "confidence": 0.55,
+        "usage": {
+          "prompt_tokens": 32,
+          "completion_tokens": 32,
+          "total_tokens": 64
+        },
+        "cost_estimate": {
+          "currency": "USD",
+          "amount": 0
+        },
+        "requested_tool_calls": []
+      },
+      "toolExecutions": [
+        {
+          "executionId": "30000000-0000-4000-8000-000000000815",
+          "status": "SUCCEEDED",
+          "connector": "observability",
+          "operation": "metrics.query",
+          "riskClass": "read-only",
+          "manifestVersion": "observability.metrics.query@1",
+          "connectorId": "prometheus-read-only",
+          "connectorProfile": "prometheus",
+          "connectorManifestByteDigest": "sha256:2954739ada4a59714b4a06f9329bac2548cb47a1551f09f0453a6f8151884dc2",
+          "argumentsDigest": "sha256:51ef8c2e4e2926e103ddd877490c64d604b1df593ca23cffca8d1b2fac5d8700",
+          "evidenceDigests": [
+            "sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+          ],
+          "evidenceBindings": [
+            {
+              "evidenceId": "30000000-0000-4000-8000-000000000813",
+              "digest": "sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+            }
+          ]
+        },
+        {
+          "executionId": "30000000-0000-4000-8000-000000000819",
+          "status": "SUCCEEDED",
+          "connector": "observability",
+          "operation": "metrics.query",
+          "riskClass": "read-only",
+          "manifestVersion": "observability.metrics.query@1",
+          "connectorId": "prometheus-read-only",
+          "connectorProfile": "prometheus",
+          "connectorManifestByteDigest": "sha256:2954739ada4a59714b4a06f9329bac2548cb47a1551f09f0453a6f8151884dc2",
+          "argumentsDigest": "sha256:3d2800b26ccf73b0a160a248947334aafbb08514fc8b4b2c63484ea02bd66954",
+          "evidenceDigests": [
+            "sha256:bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb"
+          ],
+          "evidenceBindings": [
+            {
+              "evidenceId": "30000000-0000-4000-8000-000000000820",
+              "digest": "sha256:bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb"
+            }
+          ]
+        }
+      ]
+    }
+  ],
+  "source": {
+    "gitHead": "cccccccccccccccccccccccccccccccccccccccc",
+    "workingTreeClean": true
+  }
+}

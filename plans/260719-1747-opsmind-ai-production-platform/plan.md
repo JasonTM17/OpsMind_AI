@@ -57,7 +57,7 @@ Accepted scope remains full A-to-Z, but delivery is gate-driven: the approved G0
 | 5 | [DeepSeek AI Runtime and Model Gateway](./phase-05-deepseek-ai-runtime-and-model-gateway.md) | In Progress — static checkpoint PASS; PhaseExitGate BLOCK |
 | 6 | [Safe Tool Gateway and Read-only Connectors](./phase-06-safe-tool-gateway-and-read-only-connectors.md) | In progress — checkpoint PASS; PhaseExitGate BLOCK |
 | 7 | [Thin Evidence-backed Incident Vertical Slice](./phase-07-thin-evidence-backed-incident-vertical-slice.md) | In progress — durable persistence checkpoint PASS; PhaseExitGate BLOCK |
-| 8 | [Simulator and Evaluation Baseline](./phase-08-simulator-and-evaluation-baseline.md) | In Progress — Phase 8A checkpoint PASS; PhaseExit BLOCK |
+| 8 | [Simulator and Evaluation Baseline](./phase-08-simulator-and-evaluation-baseline.md) ([8B production-path evaluation](../260726-1004-phase-08b-production-path-evaluation/plan.md)) | In Progress — Phase 8B implementation/local contracts present; production-path CI pending; PhaseExit BLOCK |
 | 9 | [Durable Investigation Workflow](./phase-09-durable-investigation-workflow.md) | Pending |
 | 10 | [Permission-aware RAG and Knowledge Lifecycle](./phase-10-permission-aware-rag-and-knowledge-lifecycle.md) | Pending |
 | 11 | [Exact-action Approval and Reversible Remediation](./phase-11-exact-action-approval-and-reversible-remediation.md) | Pending |
@@ -87,6 +87,16 @@ suite passes. The PhaseExitGate remains blocked by active B-004 (provider
 region, terms, retention, and redaction verification) and by absent passing
 synthetic smoke with an externally injected rotated staging key. No live
 DeepSeek or production egress is claimed.
+
+Phase 8 is in progress. Phase 8B implements all three deterministic smoke
+contracts, V008 rolling expand/response binding, observed Tool Gateway
+provenance, least-privilege bounded export, typed digest projection, and
+reparse-safe sensitive-first cleanup. Local Node, targeted Python,
+semantic-order, path-safety, Phase 8, layout, actionlint, and secret gates pass.
+Fresh Docker/PostgreSQL A/B/C, executable
+attestation, exact-revision artifact upload, independent review, and
+terminal-green `.github/workflows/cross-service-evaluation.yml` remain pending.
+No Phase 8B PASS or Phase 8/G4 completion is claimed.
 
 ## Dependencies
 
@@ -316,3 +326,7 @@ Validation decisions:
 - No G0.5 product/production question remains unresolved. Production IdP vendor
   conformance, DeepSeek provider terms, measured load/SLO evidence, and restore
   evidence remain phase-owned implementation gates rather than undecided policy.
+- Gate naming drifts between this canonical A-Z plan (`G4` for simulator and
+  evaluation) and `docs/project-roadmap.md` (`G4` durable workflow, `G7`
+  product/evaluation). This plan's `G4` remains canonical for Phase 8 until the
+  roadmap taxonomy is explicitly reconciled.

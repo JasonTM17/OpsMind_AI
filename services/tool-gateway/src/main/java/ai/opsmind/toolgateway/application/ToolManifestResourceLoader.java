@@ -1,7 +1,10 @@
 package ai.opsmind.toolgateway.application;
 
 import java.io.IOException;
+import java.security.MessageDigest;
+import java.security.NoSuchAlgorithmException;
 import java.time.Duration;
+import java.util.HexFormat;
 import java.util.List;
 import java.util.Set;
 
@@ -28,18 +31,22 @@ public final class ToolManifestResourceLoader {
     }
 
     public ToolManifestRegistry loadFixtureRegistry() {
-        ManifestDocument document = read(FIXTURE_MANIFEST);
+        LoadedManifest loaded = read(FIXTURE_MANIFEST);
+        ManifestDocument document = loaded.document();
         if (!Set.of("fixture").equals(document.enabledProfiles())
             || !FIXTURE_SCHEMA_ID.equals(document.requestSchemaId())
             || !"fixture-read-only".equals(document.credentialProfile())
             || !Set.of("fixture://observability").equals(document.egressTargets())) {
             throw new IllegalStateException("Fixture manifest profile declaration is unsafe.");
         }
-        return new ToolManifestRegistry(List.of(document.toManifest(document.egressTargets())));
+        return new ToolManifestRegistry(List.of(document.toManifest(
+            document.egressTargets(), "fixture", loaded.byteDigest()
+        )));
     }
 
     public ToolManifestRegistry loadPrometheusRegistry(String egressTarget) {
-        ManifestDocument document = read(PROMETHEUS_MANIFEST);
+        LoadedManifest loaded = read(PROMETHEUS_MANIFEST);
+        ManifestDocument document = loaded.document();
         if (!Set.of("prometheus").equals(document.enabledProfiles())
             || !FIXTURE_SCHEMA_ID.equals(document.requestSchemaId())
             || !"prometheus-read-only".equals(document.credentialProfile())
@@ -48,23 +55,28 @@ public final class ToolManifestResourceLoader {
             throw new IllegalStateException("Prometheus manifest profile declaration is unsafe.");
         }
         return new ToolManifestRegistry(List.of(
-            document.toManifest(Set.of(egressTarget))
+            document.toManifest(Set.of(egressTarget), "prometheus", loaded.byteDigest())
         ));
     }
 
-    private ManifestDocument read(String resource) {
+    private LoadedManifest read(String resource) {
         ManifestDocument document;
         try (var input = new ClassPathResource(resource).getInputStream()) {
-            document = objectMapper.readValue(input, ManifestDocument.class);
+            byte[] manifestBytes = input.readAllBytes();
+            document = objectMapper.readValue(manifestBytes, ManifestDocument.class);
+            MessageDigest sha256 = MessageDigest.getInstance("SHA-256");
+            String digest = "sha256:" + HexFormat.of().formatHex(sha256.digest(manifestBytes));
+            if (document == null) {
+                throw new IllegalStateException("Tool manifest document is empty.");
+            }
+            return new LoadedManifest(document, digest);
         }
-        catch (IOException exception) {
+        catch (IOException | NoSuchAlgorithmException exception) {
             throw new IllegalStateException("Tool manifest cannot be loaded safely.", exception);
         }
-        if (document == null) {
-            throw new IllegalStateException("Tool manifest document is empty.");
-        }
-        return document;
     }
+
+    private record LoadedManifest(ManifestDocument document, String byteDigest) {}
 
     private record ManifestDocument(
         String tool,
@@ -87,10 +99,15 @@ public final class ToolManifestResourceLoader {
         @JsonProperty("redaction_class") String redactionClass,
         @JsonProperty("audit_class") String auditClass
     ) {
-        private ToolManifest toManifest(Set<String> effectiveEgressTargets) {
+        private ToolManifest toManifest(
+            Set<String> effectiveEgressTargets,
+            String connectorProfile,
+            String manifestByteDigest
+        ) {
             return new ToolManifest(
-                tool, action, schemaVersion, manifestVersion, connectorId, true, readOnly,
-                requestSchemaId, riskClass, requiredRole, resourcePrefix, credentialProfile,
+                tool, action, schemaVersion, manifestVersion, connectorId,
+                connectorProfile, manifestByteDigest, true, readOnly, requestSchemaId,
+                riskClass, requiredRole, resourcePrefix, credentialProfile,
                 Duration.ofMillis(timeoutMilliseconds), maximumBytes, maximumItems,
                 allowedArguments, effectiveEgressTargets, redactionClass, auditClass
             );

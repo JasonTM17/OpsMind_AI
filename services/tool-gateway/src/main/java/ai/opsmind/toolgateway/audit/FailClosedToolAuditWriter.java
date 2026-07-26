@@ -19,6 +19,7 @@ public final class FailClosedToolAuditWriter implements ToolAuditWriter {
         String requestDigest,
         String capabilityId,
         String manifestVersion,
+        ToolExecutionProvenance provenance,
         String resultDigest,
         String policyVersion,
         DenialCode denialCode

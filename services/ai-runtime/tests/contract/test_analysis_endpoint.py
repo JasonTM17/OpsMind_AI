@@ -33,6 +33,7 @@ class StubAdapter:
             model_id=context.model_id,
             prompt_version=context.prompt_version,
             schema_version="analysis-v1",
+            missing_evidence=("No authorized evidence was available.",),
             usage={"prompt_tokens": 1, "completion_tokens": 0, "total_tokens": 1},
             cost_estimate={"amount": 0.0},
         )

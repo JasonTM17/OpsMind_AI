@@ -1,0 +1,9 @@
+# Raw-byte provenance and fixture digests must be identical on every checkout.
+evaluation/**/*.json text eol=lf
+evaluation/**/*.yaml text eol=lf
+evaluation/**/*.mjs text eol=lf
+services/tool-gateway/src/main/resources/tool-manifests/*.json text eol=lf
+services/**/src/main/resources/db/migration/*.sql text eol=lf
+scripts/validation/cross-service/*.mjs text eol=lf
+scripts/validation/cross-service/*.py text eol=lf
+scripts/validation/cross-service/*.sql text eol=lf

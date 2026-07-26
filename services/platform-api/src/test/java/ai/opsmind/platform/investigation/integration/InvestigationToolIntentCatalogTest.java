@@ -16,26 +16,35 @@ import tools.jackson.databind.ObjectMapper;
 
 class InvestigationToolIntentCatalogTest {
 
-    private static final String ARGUMENTS_DIGEST =
+    private static final String LATENCY_ARGUMENTS_DIGEST =
         "sha256:51ef8c2e4e2926e103ddd877490c64d604b1df593ca23cffca8d1b2fac5d8700";
+    private static final String ERROR_ARGUMENTS_DIGEST =
+        "sha256:3d2800b26ccf73b0a160a248947334aafbb08514fc8b4b2c63484ea02bd66954";
 
     @Test
     void loadsPublishedSelectorAndResolvesOnlyItsServerOwnedTemplate() {
         InvestigationToolIntentCatalog catalog =
             InvestigationToolIntentCatalogResourceLoader.load(new ObjectMapper());
         assertThat(catalog.publicSelectors()).containsExactly(
-            new InvestigationToolIntentCatalog.Selector("metrics", "query", ARGUMENTS_DIGEST)
+            new InvestigationToolIntentCatalog.Selector("metrics", "query", ERROR_ARGUMENTS_DIGEST),
+            new InvestigationToolIntentCatalog.Selector("metrics", "query", LATENCY_ARGUMENTS_DIGEST)
         );
 
-        InvestigationToolInvocation invocation = catalog.resolve(intent(ARGUMENTS_DIGEST));
-        assertThat(invocation.canonicalAction()).isEqualTo("observability:metrics.query:1.0");
-        assertThat(invocation.resource()).isEqualTo("prometheus:synthetic/opsmind-api");
-        assertThat(invocation.arguments()).containsExactlyInAnyOrderEntriesOf(Map.of(
+        InvestigationToolInvocation latency = catalog.resolve(intent(LATENCY_ARGUMENTS_DIGEST));
+        assertThat(latency.canonicalAction()).isEqualTo("observability:metrics.query:1.0");
+        assertThat(latency.resource()).isEqualTo("prometheus:synthetic/opsmind-api");
+        assertThat(latency.arguments()).containsExactlyInAnyOrderEntriesOf(Map.of(
             "service", "opsmind-api",
             "metric", "http_request_duration_seconds",
             "max_points", 3
         ));
-        assertThatThrownBy(() -> invocation.arguments().put("metric", "untrusted"))
+        InvestigationToolInvocation errors = catalog.resolve(intent(ERROR_ARGUMENTS_DIGEST));
+        assertThat(errors.arguments()).containsExactlyInAnyOrderEntriesOf(Map.of(
+            "service", "opsmind-api",
+            "metric", "http_errors_total",
+            "max_points", 3
+        ));
+        assertThatThrownBy(() -> latency.arguments().put("metric", "untrusted"))
             .isInstanceOf(UnsupportedOperationException.class);
     }
 
@@ -46,7 +55,8 @@ class InvestigationToolIntentCatalogTest {
         assertThatThrownBy(() -> catalog.resolve(intent("sha256:" + "0".repeat(64))))
             .isInstanceOf(IllegalArgumentException.class).hasMessageContaining("allowlisted");
         assertThatThrownBy(() -> catalog.resolve(new AnalysisRuntimeResponse.ToolIntent(
-            UUID.randomUUID(), "logs", "query", ARGUMENTS_DIGEST, "Untrusted selector drift."
+            UUID.randomUUID(), "logs", "query", LATENCY_ARGUMENTS_DIGEST,
+            "Untrusted selector drift."
         ))).isInstanceOf(IllegalArgumentException.class).hasMessageContaining("allowlisted");
     }
 
@@ -66,7 +76,8 @@ class InvestigationToolIntentCatalogTest {
 
     private InvestigationToolInvocation invocation(String resource) {
         return new InvestigationToolInvocation(
-            "metrics", "query", ARGUMENTS_DIGEST, "observability", "metrics.query", "1.0",
+            "metrics", "query", LATENCY_ARGUMENTS_DIGEST,
+            "observability", "metrics.query", "1.0",
             resource, Map.of("service", "opsmind-api", "metric", "latency", "max_points", 3),
             65_536, 10, Duration.ofSeconds(5), "operator:read", "policy-prometheus-read-v1",
             "observability.metrics.query@1"

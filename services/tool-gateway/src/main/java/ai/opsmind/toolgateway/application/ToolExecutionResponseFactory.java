@@ -5,6 +5,7 @@ import java.util.Set;
 import java.util.UUID;
 
 import ai.opsmind.toolgateway.audit.ToolAuditWriter;
+import ai.opsmind.toolgateway.audit.ToolExecutionProvenance;
 import ai.opsmind.toolgateway.domain.DenialCode;
 import ai.opsmind.toolgateway.domain.ToolExecutionResponse;
 import ai.opsmind.toolgateway.domain.ToolOutcome;
@@ -33,6 +34,7 @@ public final class ToolExecutionResponseFactory {
         String requestDigest,
         String capabilityId,
         String manifestVersion,
+        ToolExecutionProvenance provenance,
         String policyVersion,
         DenialCode code
     ) {
@@ -43,7 +45,7 @@ public final class ToolExecutionResponseFactory {
             if (auditWriter.available()) {
                 auditId = auditWriter.record(
                     executionId, outcome, requestDigest, capabilityId, manifestVersion,
-                    null, policyVersion, code
+                    provenance, null, policyVersion, code
                 );
             }
             else {

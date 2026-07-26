@@ -33,10 +33,11 @@ def test_response_required_fields_align_with_pydantic() -> None:
 def test_response_schema_publishes_terminal_state_and_usage_invariants() -> None:
     canonical = _canonical("analysis-response.schema.json")
 
-    assert len(canonical["allOf"]) == 3
+    assert len(canonical["allOf"]) == 5
     assert canonical["x-semantic-invariants"] == [
         "usage.total_tokens equals usage.prompt_tokens plus usage.completion_tokens",
         "every complete hypothesis citation also appears in top-level citations",
+        "abstain identifies missing evidence without hypotheses, citations, or tool intents",
     ]
 
 
@@ -79,6 +80,46 @@ def test_runtime_contract_executes_published_citation_subset_invariant() -> None
                 "citations": [
                     {"evidence_id": evidence_id, "digest": digest, "claim": "top-level"}
                 ],
+                "usage": {"prompt_tokens": 1, "completion_tokens": 1, "total_tokens": 2},
+                "cost_estimate": {"amount": 0},
+            }
+        )
+
+
+def test_runtime_contract_rejects_incoherent_abstention() -> None:
+    with pytest.raises(ValidationError, match="abstain requires an evidence gap"):
+        AnalysisResponseV1.model_validate(
+            {
+                "status": "abstain",
+                "run_id": uuid4(),
+                "model_id": "deepseek-v4-flash",
+                "prompt_version": "prompt-incident-v1",
+                "schema_version": "analysis-v1",
+                "usage": {"prompt_tokens": 1, "completion_tokens": 1, "total_tokens": 2},
+                "cost_estimate": {"amount": 0},
+            }
+        )
+
+
+def test_runtime_contract_rejects_failure_status_with_hypothesis() -> None:
+    evidence_id = uuid4()
+    digest = "sha256:" + "a" * 64
+    citation = {"evidence_id": evidence_id, "digest": digest, "claim": "unsupported"}
+    with pytest.raises(ValidationError, match="failure response cannot assert"):
+        AnalysisResponseV1.model_validate(
+            {
+                "status": "provider_unavailable",
+                "run_id": uuid4(),
+                "model_id": "deepseek-v4-flash",
+                "prompt_version": "prompt-incident-v1",
+                "schema_version": "analysis-v1",
+                "hypotheses": [{
+                    "title": "Unsupported cause",
+                    "explanation": "The provider did not supply evidence.",
+                    "confidence": 0.1,
+                    "citations": [citation],
+                }],
+                "citations": [citation],
                 "usage": {"prompt_tokens": 1, "completion_tokens": 1, "total_tokens": 2},
                 "cost_estimate": {"amount": 0},
             }

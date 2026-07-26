@@ -2,32 +2,40 @@
 param(
     [ValidateRange(1, 1000)][int]$WarmRuns = 100,
     [ValidateRange(100, 30000)][int]$P95ThresholdMs = 5000,
+    [ValidateSet('A', 'B', 'C')][string]$Scenario = 'A',
     [string]$ReportPath
 )
 
 Set-StrictMode -Version Latest
 $ErrorActionPreference = 'Stop'
 
-$repositoryRoot = [IO.Path]::GetFullPath((Join-Path $PSScriptRoot '..\..\..'))
+$repositoryRoot = [IO.Path]::GetFullPath((Join-Path $PSScriptRoot '../../..'))
 . (Join-Path $PSScriptRoot 'cross-service-harness-support.ps1')
+$pathComparison = Get-CrossServicePathComparison
+$hostPowerShell = (Get-Process -Id $PID).Path
 
 if ([string]::IsNullOrWhiteSpace($ReportPath)) {
-    $ReportPath = Join-Path $repositoryRoot '.opsmind\reports\cross-service-trace.json'
+    $ReportPath = Join-CrossServicePath -BasePath $repositoryRoot `
+        -ChildPath @('.opsmind', 'reports', 'cross-service-trace.json')
 }
 $ReportPath = [IO.Path]::GetFullPath($ReportPath)
-$reportRoot = [IO.Path]::GetFullPath((Join-Path $repositoryRoot '.opsmind\reports'))
+$reportRoot = [IO.Path]::GetFullPath(
+    (Join-CrossServicePath -BasePath $repositoryRoot -ChildPath @('.opsmind', 'reports'))
+)
 if (-not $ReportPath.StartsWith(
     $reportRoot + [IO.Path]::DirectorySeparatorChar,
-    [StringComparison]::OrdinalIgnoreCase
+    $pathComparison
 )) {
     throw 'Cross-service report must stay under .opsmind/reports.'
 }
 
-& powershell.exe -NoLogo -NoProfile -ExecutionPolicy Bypass `
-    -File (Join-Path $repositoryRoot 'scripts\storage\check-capacity.ps1')
+& $hostPowerShell -NoLogo -NoProfile -ExecutionPolicy Bypass `
+    -File (Join-CrossServicePath -BasePath $repositoryRoot `
+        -ChildPath @('scripts', 'storage', 'check-capacity.ps1'))
 if ($LASTEXITCODE -ne 0) { throw 'Storage capacity preflight failed.' }
-& powershell.exe -NoLogo -NoProfile -ExecutionPolicy Bypass `
-    -File (Join-Path $repositoryRoot 'scripts\storage\assert-storage-roots.ps1') -CreateMissing
+& $hostPowerShell -NoLogo -NoProfile -ExecutionPolicy Bypass `
+    -File (Join-CrossServicePath -BasePath $repositoryRoot `
+        -ChildPath @('scripts', 'storage', 'assert-storage-roots.ps1')) -CreateMissing
 if ($LASTEXITCODE -ne 0) { throw 'Storage root preflight failed.' }
 
 $executables = @{
@@ -37,9 +45,23 @@ $executables = @{
     Node = (Get-Command node -CommandType Application | Select-Object -First 1).Path
     OpenSsl = (Get-Command openssl -CommandType Application | Select-Object -First 1).Path
 }
-$python = Join-Path $repositoryRoot 'services\ai-runtime\.venv\Scripts\python.exe'
-$platformJar = Join-Path $repositoryRoot 'services\platform-api\target\platform-api.jar'
-$gatewayJar = Join-Path $repositoryRoot 'services\tool-gateway\target\tool-gateway.jar'
+$pythonCandidates = @(
+    (Join-CrossServicePath -BasePath $repositoryRoot `
+        -ChildPath @('services', 'ai-runtime', '.venv', 'Scripts', 'python.exe')),
+    (Join-CrossServicePath -BasePath $repositoryRoot `
+        -ChildPath @('services', 'ai-runtime', '.venv', 'bin', 'python'))
+)
+$python = @($pythonCandidates | Where-Object {
+    Test-Path -LiteralPath $_ -PathType Leaf
+} | Select-Object -First 1)
+if ($python.Count -ne 1) {
+    throw 'Required AI Runtime virtual-environment interpreter is missing.'
+}
+$python = $python[0]
+$platformJar = Join-CrossServicePath -BasePath $repositoryRoot `
+    -ChildPath @('services', 'platform-api', 'target', 'platform-api.jar')
+$gatewayJar = Join-CrossServicePath -BasePath $repositoryRoot `
+    -ChildPath @('services', 'tool-gateway', 'target', 'tool-gateway.jar')
 foreach ($requiredFile in @($python, $platformJar, $gatewayJar)) {
     if (-not (Test-Path -LiteralPath $requiredFile -PathType Leaf)) {
         throw "Required cross-service artifact is missing: $requiredFile"
@@ -47,17 +69,52 @@ foreach ($requiredFile in @($python, $platformJar, $gatewayJar)) {
 }
 
 $runId = [guid]::NewGuid().ToString('N')
-$runRoot = Join-Path $repositoryRoot ".opsmind\cross-service\$runId"
+$runRoot = Join-CrossServicePath -BasePath $repositoryRoot `
+    -ChildPath @('.opsmind', 'cross-service', $runId)
+foreach ($managedPath in @($reportRoot, $ReportPath, $runRoot)) {
+    Assert-CrossServiceNoReparseAncestors -RepositoryRoot $repositoryRoot `
+        -CandidatePath $managedPath
+}
 $containerName = "opsmind-cross-service-postgres-$($runId.Substring(0, 12))"
 $success = $false
+$primaryFailure = $null
+$cleanupFailure = $null
 $postgresStarted = $false
 $secretFiles = New-Object 'System.Collections.Generic.List[string]'
 
-$organizationId = 'aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa'
-$projectId = 'aaaaaaa1-aaaa-4aaa-8aaa-aaaaaaaaaaaa'
+$scenarioScope = @{
+    A = @{
+        OrganizationId = '10000000-0000-4000-8000-000000000801'
+        ProjectId = '10000000-0000-4000-8000-000000000802'
+        IncidentId = '10000000-0000-4000-8000-000000000814'
+    }
+    B = @{
+        OrganizationId = '20000000-0000-4000-8000-000000000801'
+        ProjectId = '20000000-0000-4000-8000-000000000802'
+        IncidentId = '20000000-0000-4000-8000-000000000814'
+    }
+    C = @{
+        OrganizationId = '30000000-0000-4000-8000-000000000801'
+        ProjectId = '30000000-0000-4000-8000-000000000802'
+        IncidentId = '30000000-0000-4000-8000-000000000814'
+    }
+}[$Scenario]
+$organizationId = $scenarioScope.OrganizationId
+$projectId = $scenarioScope.ProjectId
 $userId = '11111111-1111-4111-8111-111111111111'
-$incidentId = '70000000-0000-4000-8000-000000000001'
+$incidentId = $scenarioScope.IncidentId
 $operatorSubject = 'cross-service-operator'
+$foreignOrganizationId = 'bbbbbbbb-bbbb-4bbb-8bbb-bbbbbbbbbbbb'
+$foreignProjectId = 'bbbbbbb1-bbbb-4bbb-8bbb-bbbbbbbbbbbb'
+$foreignUserId = '22222222-2222-4222-8222-222222222222'
+$foreignIncidentId = '70000000-0000-4000-8000-000000000002'
+$postgresImage = 'pgvector/pgvector:0.8.2-pg17-trixie@sha256:' +
+    '5c97c57367a485a8e99389548db67d441ab1a878f5492c3df04989f34ecf3c75'
+$scenarioCounts = @{
+    A = @{ AnalysisPerRun = 2; EvidencePerRun = 1; ReceiptsPerRun = 1 }
+    B = @{ AnalysisPerRun = 1; EvidencePerRun = 0; ReceiptsPerRun = 0 }
+    C = @{ AnalysisPerRun = 2; EvidencePerRun = 2; ReceiptsPerRun = 2 }
+}[$Scenario]
 $reservedPorts = @(Get-CrossServiceAvailablePorts -Count 7)
 if ($reservedPorts.Count -ne 7 -or @($reservedPorts | Sort-Object -Unique).Count -ne 7) {
     throw 'Unable to reserve seven distinct cross-service ports.'
@@ -79,11 +136,22 @@ $capabilityIssuer = "https://127.0.0.1:$identityPort/opsmind-capability"
 try {
     [void](New-Item -ItemType Directory -Path $runRoot -Force)
     [void](New-Item -ItemType Directory -Path $reportRoot -Force)
+    foreach ($managedPath in @($reportRoot, $ReportPath, $runRoot)) {
+        Assert-CrossServiceNoReparseAncestors -RepositoryRoot $repositoryRoot `
+            -CandidatePath $managedPath
+    }
     if (Test-Path -LiteralPath $ReportPath -PathType Leaf) {
         $archiveRoot = Join-Path $reportRoot 'archive'
+        Assert-CrossServiceNoReparseAncestors -RepositoryRoot $repositoryRoot `
+            -CandidatePath $archiveRoot
         [void](New-Item -ItemType Directory -Path $archiveRoot -Force)
         $archiveName = 'cross-service-trace-' + [DateTime]::UtcNow.ToString('yyyyMMddTHHmmssfffZ') + '.json'
-        Move-Item -LiteralPath $ReportPath -Destination (Join-Path $archiveRoot $archiveName)
+        $archivePath = Join-Path $archiveRoot $archiveName
+        foreach ($managedPath in @($ReportPath, $archiveRoot, $archivePath)) {
+            Assert-CrossServiceNoReparseAncestors -RepositoryRoot $repositoryRoot `
+                -CandidatePath $managedPath
+        }
+        Move-Item -LiteralPath $ReportPath -Destination $archivePath
     }
 
     $tlsKey = Join-Path $runRoot 'identity-tls-private.pem'
@@ -94,6 +162,30 @@ try {
     $javaHostsFile = Join-Path $runRoot 'java-hosts.txt'
     $postgresEnvironment = Join-Path $runRoot 'postgres.env'
     $operatorTokenFile = Join-Path $runRoot 'operator-access-token.txt'
+    $connectorManifest = Join-CrossServicePath -BasePath $repositoryRoot -ChildPath @(
+        'services', 'tool-gateway', 'src', 'main', 'resources', 'tool-manifests',
+        'observability-metrics-query-prometheus-v1.json'
+    )
+    $evaluationRoleSql = Join-Path $PSScriptRoot 'create-evaluation-export-roles.sql'
+    $evaluationScopeRegistrationSql =
+        Join-Path $PSScriptRoot 'register-evaluation-export-scope.sql'
+    $evaluationExportSql = Join-Path $PSScriptRoot 'cross-service-evaluation-export.sql'
+    $evaluationScopeProofSql = Join-Path $PSScriptRoot 'prove-evaluation-export-scope.sql'
+    $projector = Join-CrossServicePath -BasePath $repositoryRoot -ChildPath @(
+        'evaluation', 'runner', 'project-cross-service-evaluation-export.mjs'
+    )
+    foreach ($requiredEvaluationFile in @(
+        $connectorManifest, $evaluationRoleSql, $evaluationScopeRegistrationSql,
+        $evaluationExportSql, $evaluationScopeProofSql, $projector
+    )) {
+        if (-not (Test-Path -LiteralPath $requiredEvaluationFile -PathType Leaf)) {
+            throw "Required cross-service evaluation file is missing: $requiredEvaluationFile"
+        }
+    }
+    $connectorManifestByteDigest = 'sha256:' +
+        (Get-FileHash -LiteralPath $connectorManifest -Algorithm SHA256).Hash.ToLowerInvariant()
+    $queryManifestByteDigest = 'sha256:' +
+        (Get-FileHash -LiteralPath $evaluationExportSql -Algorithm SHA256).Hash.ToLowerInvariant()
     foreach ($secretPath in @(
         $tlsKey, $capabilityKey, $postgresEnvironment, $operatorTokenFile
     )) {
@@ -129,7 +221,7 @@ try {
     $containerId = & $executables.Docker run --detach --rm --name $containerName `
         --env-file $postgresEnvironment `
         --tmpfs '/var/lib/postgresql/data:rw,noexec,nosuid,size=512m' `
-        --publish "127.0.0.1:${databasePort}:5432" postgres:17-alpine
+        --publish "127.0.0.1:${databasePort}:5432" $postgresImage
     if ($LASTEXITCODE -ne 0 -or [string]::IsNullOrWhiteSpace($containerId)) {
         throw 'Unable to start the disposable PostgreSQL container.'
     }
@@ -195,6 +287,12 @@ REVOKE ALL ON SCHEMA tool_gateway FROM PUBLIC;
         -StderrPath (Join-Path $runRoot 'gateway-migrate.stderr.log') `
         -Environment $gatewayMigrationEnvironment
 
+    Invoke-CrossServiceSqlFile -DockerPath $executables.Docker `
+        -ContainerName $containerName -DatabaseUser 'opsmind_migrator' `
+        -SqlPath $evaluationRoleSql `
+        -StdoutPath (Join-Path $runRoot 'evaluation-role-create.stdout.log') `
+        -StderrPath (Join-Path $runRoot 'evaluation-role-create.stderr.log')
+
     $seedSql = @"
 INSERT INTO organizations (id, slug, name)
 VALUES ('$organizationId', 'cross-service', 'Cross-service verification');
@@ -214,6 +312,25 @@ INSERT INTO incidents (
     'Checkout latency regression',
     'Checkout requests slowed immediately after the payment-router deployment.',
     'SEV2', 'OPEN', '$userId', '$userId'
+);
+INSERT INTO organizations (id, slug, name)
+VALUES ('$foreignOrganizationId', 'cross-service-foreign', 'Foreign scope proof');
+INSERT INTO platform_users (id, issuer, subject, display_name)
+VALUES ('$foreignUserId', '$issuer', 'cross-service-foreign', 'Foreign scope actor');
+INSERT INTO organization_memberships (organization_id, user_id, role)
+VALUES ('$foreignOrganizationId', '$foreignUserId', 'SRE');
+INSERT INTO projects (id, organization_id, slug, name)
+VALUES ('$foreignProjectId', '$foreignOrganizationId', 'foreign-api', 'Foreign API');
+INSERT INTO project_memberships (organization_id, project_id, user_id, role)
+VALUES ('$foreignOrganizationId', '$foreignProjectId', '$foreignUserId', 'SRE');
+INSERT INTO incidents (
+    id, organization_id, project_id, title, description, severity, status,
+    created_by, updated_by
+) VALUES (
+    '$foreignIncidentId', '$foreignOrganizationId', '$foreignProjectId',
+    'Foreign scope sentinel',
+    'Synthetic sentinel used only to prove cross-tenant evaluator isolation.',
+    'SEV4', 'OPEN', '$foreignUserId', '$foreignUserId'
 );
 "@
     [void](Invoke-CrossServiceSql -DockerPath $executables.Docker `
@@ -256,7 +373,8 @@ INSERT INTO incidents (
 
     $providerProcess = Start-CrossServiceProcess -Executable $python -Arguments @(
         (Join-Path $PSScriptRoot 'fixture-provider.py'), '--host', '127.0.0.1',
-        '--port', "$providerPort", '--opsmind-cross-service-run-id', $runId
+        '--port', "$providerPort", '--scenario', $Scenario,
+        '--opsmind-cross-service-run-id', $runId
     ) -WorkingDirectory $repositoryRoot `
         -StdoutPath (Join-Path $runRoot 'provider.stdout.log') `
         -StderrPath (Join-Path $runRoot 'provider.stderr.log') `
@@ -287,7 +405,8 @@ INSERT INTO incidents (
         [Text.UTF8Encoding]::new($false)
     )
     $aiEnvironment = @{
-        PYTHONPATH = (Join-Path $repositoryRoot 'services\ai-runtime\src')
+        PYTHONPATH = (Join-CrossServicePath -BasePath $repositoryRoot `
+            -ChildPath @('services', 'ai-runtime', 'src'))
         AI_PROVIDER = 'fixture'
         AI_FIXTURE_PROVIDER_ENABLED = 'true'
         DEEPSEEK_API_BASE_URL = "http://127.0.0.1:$providerPort/v1"
@@ -312,7 +431,8 @@ INSERT INTO incidents (
     $aiProcess = Start-CrossServiceProcess -Executable $python -Arguments @(
         (Join-Path $PSScriptRoot 'run-ai-runtime.py'),
         "--opsmind-cross-service-run-id=$runId"
-    ) -WorkingDirectory (Join-Path $repositoryRoot 'services\ai-runtime') `
+    ) -WorkingDirectory (Join-CrossServicePath -BasePath $repositoryRoot `
+        -ChildPath @('services', 'ai-runtime')) `
         -StdoutPath (Join-Path $runRoot 'ai-runtime.stdout.log') `
         -StderrPath (Join-Path $runRoot 'ai-runtime.stderr.log') `
         -Environment $aiEnvironment
@@ -438,6 +558,7 @@ INSERT INTO incidents (
         OPSMIND_PROMETHEUS_STATUS_URL = "http://127.0.0.1:$prometheusPort/__opsmind/status"
         OPSMIND_WARM_RUNS = "$WarmRuns"
         OPSMIND_P95_THRESHOLD_MS = "$P95ThresholdMs"
+        OPSMIND_CROSS_SERVICE_SCENARIO = $Scenario
         OPSMIND_ENVIRONMENT = 'local-disposable-cross-service'
         OPSMIND_TRACE_REPORT = $ReportPath
     }
@@ -448,30 +569,208 @@ INSERT INTO incidents (
         -StderrPath (Join-Path $runRoot 'runner.stderr.log') `
         -Environment $runnerEnvironment
 
-    $countSql = @"
-SELECT
-    (SELECT count(*) FROM investigation_runs)::text || '|' ||
-    (SELECT count(*) FROM evidence_records)::text || '|' ||
-    (SELECT count(*) FROM ai_runtime.analysis_invocations)::text || '|' ||
-    (SELECT count(*) FROM tool_gateway.execution_receipts)::text || '|' ||
-    (SELECT count(*) FROM tool_gateway.tool_audit_events)::text;
-"@
-    $countOutput = @(Invoke-CrossServiceSql -DockerPath $executables.Docker `
-        -ContainerName $containerName -Sql $countSql) |
-        ForEach-Object { ([string]$_).Trim() } |
-        Where-Object { $_ -match '^\d+\|\d+\|\d+\|\d+\|\d+$' } |
-        Select-Object -Last 1
-    if ([string]::IsNullOrWhiteSpace($countOutput)) {
-        throw 'Unable to read durable cross-service counts.'
+    $traceBytes = (Get-Item -LiteralPath $ReportPath).Length
+    if ($traceBytes -lt 2 -or $traceBytes -gt 67108864) {
+        throw 'Unharvested cross-service trace is empty or oversized.'
     }
-    $counts = $countOutput.Split('|')
+    $traceDocument = [IO.File]::ReadAllText($ReportPath) | ConvertFrom-Json
+    $traceRuns = @($traceDocument.runs)
+    if ($traceDocument.scenario -ne $Scenario -or
+        $traceDocument.warmRuns -ne $WarmRuns -or
+        $traceRuns.Count -ne $WarmRuns) {
+        throw 'Unharvested cross-service trace does not match the invocation.'
+    }
+
+    for ($index = 0; $index -lt $traceRuns.Count; $index++) {
+        $traceRun = $traceRuns[$index]
+        foreach ($identity in @(
+            [string]$traceRun.organizationId,
+            [string]$traceRun.projectId,
+            [string]$traceRun.incidentId,
+            [string]$traceRun.runId
+        )) {
+            if ($identity -notmatch '^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$') {
+                throw 'Cross-service trace contains an invalid scoped identifier.'
+            }
+        }
+        if ([string]$traceRun.organizationId -ne $organizationId -or
+            [string]$traceRun.projectId -ne $projectId -or
+            [string]$traceRun.incidentId -ne $incidentId) {
+            throw 'Cross-service trace contains a foreign scope.'
+        }
+        Invoke-CrossServiceSqlFile -DockerPath $executables.Docker `
+            -ContainerName $containerName -DatabaseUser 'opsmind_migrator' `
+            -SqlPath $evaluationScopeRegistrationSql `
+            -StdoutPath (Join-Path $runRoot "evaluation-scope-register-$index.stdout.log") `
+            -StderrPath (Join-Path $runRoot "evaluation-scope-register-$index.stderr.log") `
+            -Variables @{
+                scope_organization_id = [string]$traceRun.organizationId
+                scope_project_id = [string]$traceRun.projectId
+                scope_incident_id = [string]$traceRun.incidentId
+                scope_run_id = [string]$traceRun.runId
+                scope_actor_id = $userId
+            }
+    }
+
+    $firstRun = $traceRuns[0]
+    $scopeProofOutput = Join-Path $runRoot 'evaluation-scope-proof.stdout.log'
+    Invoke-CrossServiceSqlFile -DockerPath $executables.Docker `
+        -ContainerName $containerName -DatabaseUser 'opsmind_evaluator' `
+        -SqlPath $evaluationScopeProofSql -StdoutPath $scopeProofOutput `
+        -StderrPath (Join-Path $runRoot 'evaluation-scope-proof.stderr.log') `
+        -Variables @{
+            foreign_organization_id = $foreignOrganizationId
+            foreign_actor_id = $foreignUserId
+            scope_project_id = [string]$firstRun.projectId
+            scope_incident_id = [string]$firstRun.incidentId
+            scope_run_id = [string]$firstRun.runId
+        }
+    $scopeProofLines = @(
+        [IO.File]::ReadAllLines($scopeProofOutput) |
+            ForEach-Object { $_.Trim() } |
+            Where-Object { $_.Length -gt 0 }
+    )
+    if ($scopeProofLines.Count -ne 1 -or
+        $scopeProofLines[0] -ne 'CROSS_TENANT_PROOF_PASS') {
+        throw 'Disposable evaluator cross-tenant proof failed.'
+    }
+
+    $exportPaths = New-Object 'System.Collections.Generic.List[string]'
+    for ($index = 0; $index -lt $traceRuns.Count; $index++) {
+        $traceRun = $traceRuns[$index]
+        foreach ($identity in @(
+            [string]$traceRun.organizationId,
+            [string]$traceRun.projectId,
+            [string]$traceRun.incidentId,
+            [string]$traceRun.runId
+        )) {
+            if ($identity -notmatch '^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$') {
+                throw 'Cross-service trace contains an invalid scoped identifier.'
+            }
+        }
+        if ([string]$traceRun.organizationId -ne $organizationId -or
+            [string]$traceRun.projectId -ne $projectId -or
+            [string]$traceRun.incidentId -ne $incidentId) {
+            throw 'Cross-service trace contains a foreign scope.'
+        }
+
+        $exportPath = Join-Path $runRoot (
+            'evaluation-export-{0:D4}-{1}.json' -f ($index + 1), $traceRun.runId
+        )
+        Assert-CrossServiceManagedPath -NodePath $executables.Node `
+            -RepositoryRoot $repositoryRoot -ManagedRoot $runRoot -Path $exportPath `
+            -StdoutPath (Join-Path $runRoot "evaluation-path-$index.stdout.log") `
+            -StderrPath (Join-Path $runRoot "evaluation-path-$index.stderr.log")
+        Invoke-CrossServiceSqlFile -DockerPath $executables.Docker `
+            -ContainerName $containerName -DatabaseUser 'opsmind_evaluator' `
+            -SqlPath $evaluationExportSql -StdoutPath $exportPath `
+            -StderrPath (Join-Path $runRoot "evaluation-export-$index.stderr.log") `
+            -Variables @{
+                query_manifest_byte_digest = $queryManifestByteDigest
+                scope_organization_id = [string]$traceRun.organizationId
+                scope_project_id = [string]$traceRun.projectId
+                scope_incident_id = [string]$traceRun.incidentId
+                scope_run_id = [string]$traceRun.runId
+                scope_actor_id = $userId
+            }
+
+        $exportBytes = (Get-Item -LiteralPath $exportPath).Length
+        if ($exportBytes -lt 2 -or $exportBytes -gt 4194305) {
+            throw 'Bounded evaluator export is empty or oversized.'
+        }
+        $exportText = [IO.File]::ReadAllText($exportPath)
+        $exportLines = @(
+            $exportText -split '\r?\n' |
+                ForEach-Object { $_.Trim() } |
+                Where-Object { $_.Length -gt 0 }
+        )
+        if ($exportLines.Count -ne 1) {
+            throw 'Evaluator export must contain exactly one JSON document.'
+        }
+        try {
+            $exportDocument = $exportLines[0] | ConvertFrom-Json
+        }
+        catch {
+            throw 'Evaluator export is not one valid JSON object.'
+        }
+        if ($null -eq $exportDocument -or
+            $exportDocument.schema_version -ne
+                'opsmind-cross-service-evaluation-export-v1' -or
+            $exportDocument.evidence_classification -ne
+                'TRANSIENT_SYNTHETIC_CROSS_SERVICE_EXPORT') {
+            throw 'Evaluator export envelope is invalid.'
+        }
+        $exportPaths.Add($exportPath)
+    }
+
+    $enrichedTrace = Join-Path $runRoot 'evaluation-enriched-trace.json'
+    Assert-CrossServiceManagedPath -NodePath $executables.Node `
+        -RepositoryRoot $repositoryRoot -ManagedRoot $runRoot -Path $enrichedTrace `
+        -StdoutPath (Join-Path $runRoot 'evaluation-output-path.stdout.log') `
+        -StderrPath (Join-Path $runRoot 'evaluation-output-path.stderr.log')
+    $projectorArguments = New-Object 'System.Collections.Generic.List[string]'
+    foreach ($argument in @($projector, '--trace', $ReportPath, '--output', $enrichedTrace)) {
+        $projectorArguments.Add($argument)
+    }
+    foreach ($exportPath in $exportPaths) {
+        $projectorArguments.Add('--export')
+        $projectorArguments.Add($exportPath)
+    }
+    Invoke-CrossServiceProcess -Executable $executables.Node `
+        -Arguments $projectorArguments.ToArray() -WorkingDirectory $repositoryRoot `
+        -StdoutPath (Join-Path $runRoot 'evaluation-projector.stdout.log') `
+        -StderrPath (Join-Path $runRoot 'evaluation-projector.stderr.log') `
+        -Environment @{}
+
+    foreach ($managedPath in @($runRoot, $enrichedTrace, $reportRoot, $ReportPath)) {
+        Assert-CrossServiceNoReparseAncestors -RepositoryRoot $repositoryRoot `
+            -CandidatePath $managedPath
+    }
+    Invoke-CrossServiceProcess -Executable $executables.Node -Arguments @(
+        (Join-Path $PSScriptRoot 'manage-evaluation-files.mjs'),
+        'publish',
+        '--managed-root', $reportRoot,
+        '--source', $enrichedTrace,
+        '--destination', $ReportPath
+    ) -WorkingDirectory $repositoryRoot `
+        -StdoutPath (Join-Path $runRoot 'evaluation-publication.stdout.log') `
+        -StderrPath (Join-Path $runRoot 'evaluation-publication.stderr.log') `
+        -Environment @{}
+
+    foreach ($exportPath in $exportPaths) {
+        Remove-Item -LiteralPath $exportPath -Force
+    }
+    $survivingRawExports = @(
+        Get-ChildItem -LiteralPath $runRoot -File -Filter 'evaluation-export-*.json'
+    )
+    if ($survivingRawExports.Count -ne 0) {
+        throw 'Transient evaluator exports survived successful projection.'
+    }
+
     $finalizeEnvironment = @{
         OPSMIND_TRACE_REPORT = $ReportPath
-        OPSMIND_COUNT_INVESTIGATION_RUNS = $counts[0]
-        OPSMIND_COUNT_EVIDENCE_RECORDS = $counts[1]
-        OPSMIND_COUNT_ANALYSIS_INVOCATIONS = $counts[2]
-        OPSMIND_COUNT_TOOL_RECEIPTS = $counts[3]
-        OPSMIND_COUNT_TOOL_AUDIT_EVENTS = $counts[4]
+        OPSMIND_CROSS_SERVICE_SCENARIO = $Scenario
+        OPSMIND_COUNT_INVESTIGATION_RUNS = "$WarmRuns"
+        OPSMIND_COUNT_EVIDENCE_RECORDS =
+            "$($WarmRuns * $scenarioCounts.EvidencePerRun)"
+        OPSMIND_COUNT_ANALYSIS_INVOCATIONS =
+            "$($WarmRuns * $scenarioCounts.AnalysisPerRun)"
+        OPSMIND_COUNT_TOOL_RECEIPTS =
+            "$($WarmRuns * $scenarioCounts.ReceiptsPerRun)"
+        OPSMIND_COUNT_TOOL_AUDIT_EVENTS =
+            "$($WarmRuns * $scenarioCounts.ReceiptsPerRun)"
+        OPSMIND_PLATFORM_JAR = $platformJar
+        OPSMIND_GATEWAY_JAR = $gatewayJar
+        OPSMIND_JAVA_EXECUTABLE = $executables.Java
+        OPSMIND_NODE_EXECUTABLE = $executables.Node
+        OPSMIND_PYTHON_EXECUTABLE = $python
+        OPSMIND_FIXTURE_PROVIDER_SOURCE = (Join-Path $PSScriptRoot 'fixture-provider.py')
+        OPSMIND_INVESTIGATION_RUNNER_SOURCE =
+            (Join-Path $PSScriptRoot 'run-investigation-slice.mjs')
+        OPSMIND_EXPORT_QUERY_SOURCE = $evaluationExportSql
+        OPSMIND_PROJECTOR_SOURCE = $projector
+        OPSMIND_CONNECTOR_MANIFEST_SOURCE = $connectorManifest
+        OPSMIND_POSTGRES_IMAGE = $postgresImage
     }
     Invoke-CrossServiceProcess -Executable $executables.Node -Arguments @(
         (Join-Path $PSScriptRoot 'finalize-cross-service-report.mjs')
@@ -490,7 +789,13 @@ SELECT
     }
 
     $success = $true
-    Write-Output "CrossServiceVerification=PASS WarmRuns=$WarmRuns Report=$ReportPath"
+    Write-Output (
+        "CrossServiceVerification=PASS Scenario={0} WarmRuns={1} Report={2}" -f
+            $Scenario, $WarmRuns, $ReportPath
+    )
+}
+catch {
+    $primaryFailure = $_
 }
 finally {
     $cleanupArguments = @(
@@ -506,8 +811,15 @@ finally {
     if ($success) {
         $cleanupArguments += '-RemoveRunDirectory'
     }
-    & powershell.exe @cleanupArguments
-    $cleanupExitCode = $LASTEXITCODE
+    try {
+        & $hostPowerShell @cleanupArguments
+        if ($LASTEXITCODE -ne 0) {
+            throw 'Cross-service cleanup helper failed.'
+        }
+    }
+    catch {
+        $cleanupFailure = $_
+    }
     $migrationPassword = $null
     $appPassword = $null
     $dispatcherPassword = $null
@@ -517,8 +829,16 @@ finally {
     $runnerClientSecret = $null
     $workloadClientSecret = $null
     $operatorToken = $null
-    if ($cleanupExitCode -ne 0) {
-        $success = $false
-        throw 'Cross-service cleanup helper failed.'
+}
+if ($null -ne $primaryFailure) {
+    if ($null -ne $cleanupFailure) {
+        Write-Warning (
+            'Secondary cleanup failure did not replace the primary harness failure: ' +
+            $cleanupFailure.Exception.Message
+        )
     }
+    throw $primaryFailure
+}
+if ($null -ne $cleanupFailure) {
+    throw $cleanupFailure
 }

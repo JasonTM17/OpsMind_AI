@@ -28,7 +28,7 @@ final class InvestigationTransitions {
         int rounds = state.rounds() + 1;
         List<InvestigationEvent> events = new ArrayList<>();
         events.add(new InvestigationEvent.AnalysisAccepted(
-            state.runId(), response.status(), rounds, tokens, occurredAt));
+            state.runId(), response.status(), rounds, tokens, response, occurredAt));
         State analyzed = copy(
             state, state.status(), rounds, state.toolCalls(), tokens,
             state.requestedFingerprints(), state.pendingIntents(), null, null, null

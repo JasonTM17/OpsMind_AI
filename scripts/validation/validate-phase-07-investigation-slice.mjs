@@ -515,7 +515,7 @@ const operatorMarkers = [
   [crossServiceCleanupPath, "tagPattern"],
   [crossServiceFinalizePath, "CrossServiceDurableState=PASS"],
   [fixtureIdentityPath, "cross-service-identity-v1"],
-  [fixturePrometheusPath, "expectedQuery"],
+  [fixturePrometheusPath, "opsmind:http_request_duration_seconds:synthetic"],
   [aiRuntimeLauncherPath, "AI Runtime"],
   [fixtureIdentityProbePath, "FixtureIdentityProbe=PASS"],
 ];

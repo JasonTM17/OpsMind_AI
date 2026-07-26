@@ -7,8 +7,22 @@ if (!Number.isInteger(port) || port < 1024 || port > 65535) {
   throw new Error("fixture Prometheus port is invalid");
 }
 
-const expectedQuery =
-  'opsmind:http_request_duration_seconds:synthetic{service="opsmind-api"}';
+const fixtures = new Map([
+  [
+    'opsmind:http_request_duration_seconds:synthetic{service="opsmind-api"}',
+    {
+      series: "opsmind:http_request_duration_seconds:synthetic",
+      values: ["0.42", "0.87", "1.31"],
+    },
+  ],
+  [
+    'opsmind:http_errors_total:synthetic{service="opsmind-api"}',
+    {
+      series: "opsmind:http_errors_total:synthetic",
+      values: ["0", "0", "0"],
+    },
+  ],
+]);
 const stats = { query_requests: 0, ready_requests: 0 };
 
 function sendJson(response, status, document) {
@@ -44,8 +58,9 @@ const server = createServer((request, response) => {
   const start = Number(url.searchParams.get("start"));
   const end = Number(url.searchParams.get("end"));
   const step = Number(url.searchParams.get("step"));
+  const fixture = fixtures.get(url.searchParams.get("query"));
   if (
-    url.searchParams.get("query") !== expectedQuery
+    !fixture
     || !Number.isFinite(start)
     || !Number.isFinite(end)
     || !Number.isFinite(step)
@@ -63,13 +78,13 @@ const server = createServer((request, response) => {
       result: [
         {
           metric: {
-            __name__: "opsmind:http_request_duration_seconds:synthetic",
+            __name__: fixture.series,
             service: "opsmind-api",
           },
           values: [
-            [start, "0.42"],
-            [Math.min(start + step, end), "0.87"],
-            [end, "1.31"],
+            [start, fixture.values[0]],
+            [Math.min(start + step, end), fixture.values[1]],
+            [end, fixture.values[2]],
           ],
         },
       ],

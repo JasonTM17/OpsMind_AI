@@ -108,7 +108,15 @@
       "items": {
         "type": "object",
         "additionalProperties": false,
-        "required": ["connector", "manifest_version", "fixture_mode", "read_only"],
+        "required": [
+          "connector",
+          "manifest_version",
+          "connector_id",
+          "connector_profile",
+          "connector_manifest_byte_digest",
+          "fixture_mode",
+          "read_only"
+        ],
         "properties": {
           "connector": {
             "type": "string",
@@ -118,6 +126,18 @@
             "type": "string",
             "minLength": 1,
             "maxLength": 128
+          },
+          "connector_id": {
+            "type": "string",
+            "pattern": "^[a-z0-9]+(?:-[a-z0-9]+)*$"
+          },
+          "connector_profile": {
+            "type": "string",
+            "pattern": "^[a-z0-9]+(?:-[a-z0-9]+)*$"
+          },
+          "connector_manifest_byte_digest": {
+            "type": "string",
+            "pattern": "^sha256:[a-f0-9]{64}$"
           },
           "fixture_mode": {
             "const": true
@@ -135,7 +155,11 @@
         "terminal_status",
         "acceptable_rca_labels",
         "minimum_confidence",
+        "maximum_confidence",
         "minimum_evidence_items",
+        "minimum_missing_evidence_items",
+        "minimum_counter_evidence_items",
+        "counter_evidence_bindings",
         "expected_tool_calls",
         "allowed_tool_selectors",
         "abstain_allowed",
@@ -147,7 +171,7 @@
         },
         "acceptable_rca_labels": {
           "type": "array",
-          "minItems": 1,
+          "minItems": 0,
           "maxItems": 12,
           "uniqueItems": true,
           "items": {
@@ -160,10 +184,44 @@
           "minimum": 0,
           "maximum": 1
         },
+        "maximum_confidence": {
+          "type": "number",
+          "minimum": 0,
+          "maximum": 1
+        },
         "minimum_evidence_items": {
           "type": "integer",
           "minimum": 0,
           "maximum": 200
+        },
+        "minimum_missing_evidence_items": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 100
+        },
+        "minimum_counter_evidence_items": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 100
+        },
+        "counter_evidence_bindings": {
+          "type": "array",
+          "maxItems": 100,
+          "items": {
+            "type": "object",
+            "additionalProperties": false,
+            "required": ["note_digest", "selector_arguments_digest"],
+            "properties": {
+              "note_digest": {
+                "type": "string",
+                "pattern": "^sha256:[a-f0-9]{64}$"
+              },
+              "selector_arguments_digest": {
+                "type": "string",
+                "pattern": "^sha256:[a-f0-9]{64}$"
+              }
+            }
+          }
         },
         "expected_tool_calls": {
           "type": "integer",

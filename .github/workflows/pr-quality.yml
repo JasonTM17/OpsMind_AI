@@ -81,14 +81,17 @@ jobs:
         run: node scripts/validation/validate-repository-layout.mjs
       - name: Validate bounded evidence-record checkpoint
         run: node scripts/validation/validate-phase-04b-evidence-records.mjs
-      - name: Validate Phase 8A deterministic evaluation
+      - name: Validate Phase 8 deterministic evaluation contracts
         shell: bash
         run: |
           set -euo pipefail
           evidence="artifacts/verification/phase-08/evaluation-foundation.txt"
           mkdir -p "$(dirname "$evidence")"
           {
-            node --test evaluation/runner/score-phase-07-trace.test.mjs
+            node --test evaluation/runner/*.test.mjs
+            python scripts/validation/cross-service/test_fixture_provider.py
+            pwsh -NoProfile -File \
+              scripts/validation/cross-service/test-cross-service-path-safety.ps1
             node scripts/validation/validate-phase-08-evaluation-foundation.mjs
           } | tee "$evidence"
       - name: Test Java security tooling
@@ -122,7 +125,7 @@ jobs:
             echo "Gate=actionlint"
             node scripts/dev/install-pinned-actionlint.mjs --cache-root "$OPS_CACHE_ROOT"
             "$OPS_CACHE_ROOT/tools/actionlint/1.7.12/actionlint" -version
-            "$OPS_CACHE_ROOT/tools/actionlint/1.7.12/actionlint" .github/workflows/pr-quality.yml
+            "$OPS_CACHE_ROOT/tools/actionlint/1.7.12/actionlint" .github/workflows/*.yml
           )
           run_actionlint > "$evidence" 2>&1
           status=$?
@@ -641,7 +644,7 @@ jobs:
             -Dtest=ToolGatewayPersistenceIntegrationTest,ToolGatewayPersistenceBoundaryIntegrationTest \
             -f services/tool-gateway/pom.xml test \
             2>&1 | tee artifacts/verification/phase-07/tool-gateway-persistence.txt
-      - name: Prove V006 to V007 evidence migration upgrade
+      - name: Prove V006 to V007 to V008 upgrade compatibility
         shell: bash
         env:
           OPSMIND_EPHEMERAL_DB: "true"

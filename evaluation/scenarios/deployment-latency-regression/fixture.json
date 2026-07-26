@@ -1,5 +1,6 @@
 {
   "schema_version": "opsmind-synthetic-observability-fixture-v1",
+  "evidence_classification": "REGRESSION_SNAPSHOT_NOT_PRODUCTION_PATH",
   "scenario_id": "deployment-latency-regression",
   "seed": 73001,
   "clock": {

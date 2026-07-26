@@ -13,29 +13,40 @@ effort: "3-4 weeks"
 
 Build a deterministic, versioned incident simulator and benchmark harness that can replay the first investigation slice, emit machine-readable ground truth, and score structured-output validity, evidence quality, tool use, latency, and cost before broader product expansion.
 
-## Phase 8A checkpoint (2026-07-26)
+## Phase 8B current checkpoint (2026-07-26)
 
-The first additive slice is implemented and locally verified:
+The Phase 8A contract/scorer baseline is retained and Phase 8B now implements:
 
-- `evaluation/schemas/scenario-ground-truth.schema.json`,
-  `evaluation/schemas/benchmark-result.schema.json`, and
-  `evaluation/schemas/benchmark-manifest.schema.json` are strict, versioned
-  contracts.
-- `evaluation/scenarios/deployment-latency-regression/` owns a digest-bound,
-  training-ineligible Scenario A fixture and ground truth.
-- `evaluation/benchmark-manifest.yaml` reserves ten SIM families while marking
-  only `SIM-01` implemented.
-- `evaluation/runner/score-phase-07-trace.mjs` scores the real Phase 7 trace
-  surface, binds it to the current Git revision, and fails closed to
-  `INCOMPLETE` when raw projection or tool-receipt references are missing.
-- `scripts/validation/validate-phase-08-evaluation-foundation.mjs` reports
-  `Errors=0`, `CheckpointResult=PASS`, `PhaseExit=BLOCK`.
-- `evaluate` is wired in both portable launchers, with D-backed artifact
-  publication through the existing storage guard.
+- three digest-bound, training-ineligible families: A latency regression, B
+  `ABSTAINED` with no tools, and C two opposing evidence reads with explicit
+  counter-evidence and cautious confidence;
+- Flyway V008 rolling expand/accepted-response binding plus strict
+  normalized-analysis, timeline, evidence-metadata, invocation, and
+  receipt/audit projection; response-less legacy writes remain temporarily
+  valid but are not evaluation-eligible;
+- Tool Gateway V002 observed tool/connector/manifest-byte provenance and exact
+  audit-result/receipt/persisted-evidence digest binding;
+- a non-login least-privilege view owner and separate non-inheriting read-only
+  evaluator restricted to security-barrier views under exact
+  organization/project/incident/run/actor scope;
+- bounded export/projector rules that exclude prompts, provider reasoning,
+  credentials, raw connector bodies, and evidence content;
+- typed raw-byte and domain-separated canonical JSON digests, LF-pinned byte
+  contracts, reparse-safe managed paths, and sensitive-first cleanup with
+  aggregated failures;
+- `.github/workflows/cross-service-evaluation.yml` for same-job build,
+  executable/source attestation, fresh A/B/C scoring, cleanup proof, and
+  artifact upload.
 
-This does not close Phase 8. Scenario B/C, timeline and receipt harvesting,
-held-out corpus, human baseline, live provider/connector conformance, and the
-100-invocation release gate remain open.
+The independent earlier tester recorded 28/28 Node tests; the current
+remediation rerun passes 33/33 Node tests, 40/40 targeted Python tests, 50
+shuffled semantic-order trials, and the junction-path safety test. The Phase 8
+validator reports
+`Implemented=3 CanonicalResults=3 Errors=0 CheckpointResult=PASS
+PhaseExit=BLOCK`; layout, actionlint, and the project secret scan pass. Fresh
+Docker/PostgreSQL A/B/C, executable attestation, independent review, exact
+pushed revision, uploaded CI artifact, and terminal-green workflow remain
+pending. This is not a Phase 8B PASS and does not close Phase 8/A-Z G4.
 
 Separate deterministic smoke coverage from statistical product evidence: preregister what “verified RCA” means, create an independently held-out corpus and human comparator protocol, and report confidence intervals instead of treating three or ten authored scenarios as a percentage denominator.
 
@@ -72,6 +83,10 @@ Separate deterministic smoke coverage from statistical product evidence: preregi
 
 ## Data Flow
 
+Current implementation consumes an existing production-path Phase 7 trace;
+`evaluate` does not create one. `seed` remains unavailable. The original target
+flow below still describes the broader simulator work:
+
 1. Simulator resets a named scenario to a clean starting state.
 2. Scenario seed generates incident metadata, synthetic observability/deployment/source/runbook evidence, and machine-readable ground truth.
 3. The benchmark runner invokes the same Phase 7 investigation path used by operators.
@@ -107,6 +122,11 @@ Separate deterministic smoke coverage from statistical product evidence: preregi
   - do not treat teacher output as ground truth
 
 ## File Inventory
+
+This inventory records the original target. The implemented checkpoint uses the
+existing cross-service harness plus `evaluation/` JavaScript contracts/scorer;
+`services/incident-simulator/`, its Compose fragment, held-out manifest, human
+protocol, statistical plan, and Python runner remain unimplemented.
 
 ### CREATE
 

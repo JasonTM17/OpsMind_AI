@@ -54,6 +54,20 @@ public record AnalysisRuntimeResponse(
             && requestedToolCalls.isEmpty() && missingEvidence.isEmpty()) {
             throw new IllegalArgumentException("AI Runtime response does not identify missing evidence.");
         }
+        if ("abstain".equals(status)
+            && (!hypotheses.isEmpty() || !citations.isEmpty()
+                || !requestedToolCalls.isEmpty() || missingEvidence.isEmpty())) {
+            throw new IllegalArgumentException(
+                "AI Runtime abstention must identify an evidence gap without asserting a cause."
+            );
+        }
+        if (Set.of("provider_unavailable", "budget_exceeded").contains(status)
+            && (!hypotheses.isEmpty() || !citations.isEmpty()
+                || !requestedToolCalls.isEmpty())) {
+            throw new IllegalArgumentException(
+                "AI Runtime failure response cannot assert an evidence-backed cause."
+            );
+        }
     }
 
     public record Citation(

@@ -558,7 +558,7 @@ case "$command_name" in
         capacity_guard
         run_checked mvn -q "-Dmaven.repo.local=$maven_repository" -f "$gateway_pom" test
         run_checked "$venv_python" -m pytest services/ai-runtime/tests
-        run_checked node --test evaluation/runner/score-phase-07-trace.test.mjs
+        run_checked node --test evaluation/runner/*.test.mjs
         run_checked node scripts/validation/validate-phase-08-evaluation-foundation.mjs
         capacity_guard
         ;;
@@ -586,6 +586,7 @@ case "$command_name" in
         capacity_guard
         ;;
     evaluate)
+        run_checked node --test evaluation/runner/*.test.mjs
         run_checked node scripts/validation/validate-phase-08-evaluation-foundation.mjs
         run_checked node evaluation/runner/score-phase-07-trace.mjs
         ;;

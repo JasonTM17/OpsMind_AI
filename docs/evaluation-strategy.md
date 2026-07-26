@@ -36,10 +36,18 @@ Cases are separated by incident family and time to reduce leakage between develo
 
 ### Deterministic smoke
 
-The Phase 8 target is three small cases. Phase 8A currently implements only
-Scenario A; the abstention and conflicting-evidence cases remain pending. These
-smoke cases validate harness determinism, schema handling, evidence citation,
-and result recording, and make no population-level quality claim.
+The three small Phase 8 smoke contracts are implemented:
+
+| Scenario | Contract |
+|---|---|
+| A — deployment latency regression | One read-only metrics result supports a completed, cited latency-regression hypothesis. |
+| B — insufficient evidence | The run is `ABSTAINED` with no tool execution, hypothesis, or citation; missing evidence is explicit and confidence is at most `0.3`. |
+| C — conflicting evidence | Two read-only evidence results oppose one another; completion requires both citations, a digest-bound counter-evidence note, and confidence between `0.3` and `0.6`. |
+
+These smoke cases validate deterministic contracts, abstention/conflict safety,
+schema handling, evidence linkage, and result recording. They make no
+population-level quality or percentile claim. Their authored fixtures are
+regression snapshots, not production-path execution evidence.
 
 ### Scenario-family regression
 
@@ -102,14 +110,57 @@ Student-model training smoke is mandatory to prove the pipeline. Promotion is co
 
 Each report records code/model/prompt/evaluator/dataset/scenario versions, environment, metric definitions, raw aggregate inputs, exclusions, uncertainty, result, decision, and reviewers. Raw sensitive evidence remains access-controlled; the release artifact can contain redacted summaries and immutable references.
 
+For the Phase 8B disposable integration, Platform Flyway V008 is an expand
+migration. It keeps legacy response-less V007 writes valid during rolling
+deployment while strictly validating and storing a normalized response from
+response-aware writers in the immutable `ANALYSIS_ACCEPTED` event. Legacy
+events remain readable but are not evaluation-eligible; a later contract
+migration may require `response` after old writers are drained. Tool Gateway
+Flyway V002 records the observed
+tool/action/risk, connector ID/profile, and digest of the exact manifest bytes
+selected at runtime. A non-login view owner receives allowlisted source columns;
+a separate
+non-inheriting evaluator can select only security-barrier views under exact
+transaction-local organization, project, incident, run, and actor scope. The
+strict export is bounded to one run, 128 events, 200 evidence metadata rows, 20
+receipts, 21 invocations, and 4 MiB of JSON.
+
+The projection contains accepted normalized analysis, event metadata, evidence
+identity/provenance/digests, invocation metadata, and receipt/audit bindings.
+Tool executions are derived from accepted tool intents plus durable
+receipt/audit/evidence bindings. Invocation model/prompt/schema/token/tool/cost
+accounting must agree with the accepted response; per-run cost is the sum of
+all accepted invocations. Audit result, receipt evidence, and persisted evidence
+digests must be identical. Malformed UTF-8, duplicate evidence digests, identity
+drift, and ambiguous bindings fail closed. Scenario C discovers primary and
+counter metrics from canonical metric content rather than database row or UUID
+order. The projection excludes prompts, provider reasoning, credentials,
+capability material, raw connector bodies, and evidence content. Raw bytes and
+canonical JSON use distinct typed, domain-separated digests.
+
+Managed paths reject reparse-point ancestors before writes. Cleanup removes
+credentials and raw exports before process/container cleanup, aggregates every
+failure, and refuses unsafe recursive removal.
+
 ## Verification Evidence
 
-Phase 8A now creates the executable contract/scorer baseline and one
-deterministic Scenario A. Its `INCOMPLETE` verdict is a deliberate guard when
-raw operator projection or tool-receipt references are absent. Follow-on Phase
-8 work must add abstention/conflict scenarios and timeline/tool harvesting
-before the phase can close. Later dataset/model lineage and final held-out, human,
-safety, performance, cost, and restore-linked evaluation remain required.
+The independent earlier tester recorded 28/28 Node tests. The current
+remediation rerun passes 33/33 Node tests, 40/40 targeted Python tests, 50
+shuffled semantic-order trials, and the junction-path safety test. The Phase 8
+validator reports
+`Implemented=3`, `CanonicalResults=3`, `Errors=0`,
+`CheckpointResult=PASS`, and `PhaseExit=BLOCK`; repository layout, actionlint,
+and the project secret scan pass. This proves local contract implementation,
+not the fresh production-path integration.
+
+The new `Cross-service evaluation` workflow builds exact service artifacts,
+records source/executable digests, runs fresh disposable A/B/C, scores the
+result, verifies transient-export cleanup, and uploads
+`phase-08b-cross-service-evaluation`. Until that workflow is pushed and reaches
+terminal green for the exact revision, Docker/PostgreSQL execution,
+attestation, and revision-bound artifacts remain pending. Later
+dataset/model lineage, independently held-out, human, safety, performance,
+cost, and restore-linked evaluation also remain required.
 
 ## Remaining Evaluation Decisions
 

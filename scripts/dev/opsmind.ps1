@@ -571,7 +571,12 @@ switch ($CommandName) {
         Invoke-CapacityGuard
         Invoke-Checked mvn ($mavenCommon + @('-f', $gatewayPom, 'test'))
         Invoke-Checked $pythonExecutable @('-m', 'pytest', 'services\ai-runtime\tests')
-        Invoke-Checked node @('--test', '.\evaluation\runner\score-phase-07-trace.test.mjs')
+        $evaluationTests = @(
+            Get-ChildItem -LiteralPath '.\evaluation\runner' -File -Filter '*.test.mjs' |
+                Sort-Object -Property FullName |
+                ForEach-Object { $_.FullName }
+        )
+        Invoke-Checked node (@('--test') + $evaluationTests)
         Invoke-Checked node @('.\scripts\validation\validate-phase-08-evaluation-foundation.mjs')
         Invoke-CapacityGuard
     }
@@ -598,6 +603,12 @@ switch ($CommandName) {
         Invoke-CapacityGuard
     }
     'evaluate' {
+        $evaluationTests = @(
+            Get-ChildItem -LiteralPath '.\evaluation\runner' -File -Filter '*.test.mjs' |
+                Sort-Object -Property FullName |
+                ForEach-Object { $_.FullName }
+        )
+        Invoke-Checked node (@('--test') + $evaluationTests)
         Invoke-Checked node @('.\scripts\validation\validate-phase-08-evaluation-foundation.mjs')
         Invoke-Checked node @('.\evaluation\runner\score-phase-07-trace.mjs')
     }

@@ -1,7 +1,10 @@
-import { mkdir, writeFile } from "node:fs/promises";
 import { performance } from "node:perf_hooks";
 import { randomUUID } from "node:crypto";
 import path from "node:path";
+import {
+  prepareValidationEvidence,
+  publishValidationEvidence,
+} from "../safe-validation-evidence.mjs";
 
 const required = [
   "OPSMIND_PLATFORM_BASE_URL",
@@ -18,6 +21,33 @@ for (const name of required) {
 }
 
 const baseUrl = process.env.OPSMIND_PLATFORM_BASE_URL.replace(/\/+$/, "");
+const scenario = process.env.OPSMIND_CROSS_SERVICE_SCENARIO ?? "A";
+const scenarioContract = {
+  A: {
+    terminalStatus: "COMPLETED",
+    analysisRequestsPerRun: 2,
+    queryRequestsPerRun: 1,
+    evidencePerRun: 1,
+    toolCallsPerRun: 1,
+  },
+  B: {
+    terminalStatus: "ABSTAINED",
+    analysisRequestsPerRun: 1,
+    queryRequestsPerRun: 0,
+    evidencePerRun: 0,
+    toolCallsPerRun: 0,
+  },
+  C: {
+    terminalStatus: "COMPLETED",
+    analysisRequestsPerRun: 2,
+    queryRequestsPerRun: 2,
+    evidencePerRun: 2,
+    toolCallsPerRun: 2,
+  },
+}[scenario];
+if (!scenarioContract) {
+  throw new Error("OPSMIND_CROSS_SERVICE_SCENARIO must be one of A, B, or C");
+}
 const warmRuns = Number.parseInt(process.env.OPSMIND_WARM_RUNS ?? "100", 10);
 if (!Number.isInteger(warmRuns) || warmRuns < 1 || warmRuns > 1000) {
   throw new Error("OPSMIND_WARM_RUNS must be between 1 and 1000");
@@ -106,21 +136,25 @@ function startPayload(runId) {
   };
 }
 
-function assertCompleted(result) {
+function assertTerminal(result) {
   if (result.response.status !== 200) {
     throw new Error(`investigation start failed with HTTP ${result.response.status}`);
   }
-  if (!result.parsed || result.parsed.status !== "COMPLETED") {
+  if (!result.parsed || result.parsed.status !== scenarioContract.terminalStatus) {
     const status = result.parsed?.status ?? "missing";
     const reason = typeof result.parsed?.terminalReason === "string"
       ? result.parsed.terminalReason
       : "missing";
     throw new Error(
-      `investigation did not complete; status=${status} terminalReason=${reason}`,
+      `investigation terminal mismatch; scenario=${scenario} status=${status} `
+        + `expected=${scenarioContract.terminalStatus} terminalReason=${reason}`,
     );
   }
-  if (!Array.isArray(result.parsed.evidenceIds) || result.parsed.evidenceIds.length < 1) {
-    throw new Error("completed investigation has no persisted evidence IDs");
+  if (
+    !Array.isArray(result.parsed.evidenceIds)
+    || result.parsed.evidenceIds.length !== scenarioContract.evidencePerRun
+  ) {
+    throw new Error("terminal investigation evidence count does not match the scenario");
   }
   if (forbidden.test(result.body)) throw new Error("cross-service response contains prohibited material");
 }
@@ -132,7 +166,7 @@ async function runOne() {
     body: JSON.stringify(startPayload(runId)),
   });
   try {
-    assertCompleted(started);
+    assertTerminal(started);
   } catch (error) {
     const [identity, provider, prometheus] = await Promise.all([
       status(
@@ -149,7 +183,7 @@ async function runOne() {
       status(
         providerStatusUrl,
         "opsmind-fixture-provider-status-v1",
-        new Set(["schema", "probe_requests", "analysis_requests", "total_requests"]),
+          new Set(["schema", "scenario", "probe_requests", "analysis_requests", "total_requests"]),
       ),
       status(
         prometheusStatusUrl,
@@ -174,7 +208,7 @@ async function runOne() {
     || read.parsed.runId !== runId
     || read.parsed.status !== started.parsed.status
   ) {
-    throw new Error("operator projection does not bind to the completed investigation");
+    throw new Error("operator projection does not bind to the terminal investigation");
   }
   for (const header of [
     "x-opsmind-projection-class",
@@ -184,6 +218,39 @@ async function runOne() {
     if (!read.response.headers.get(header)) throw new Error(`missing projection assurance header ${header}`);
   }
   if (forbidden.test(read.body)) throw new Error("operator projection contains prohibited material");
+  if (
+    read.parsed.rounds !== scenarioContract.analysisRequestsPerRun
+    || read.parsed.toolCalls !== scenarioContract.toolCallsPerRun
+    || !Array.isArray(read.parsed.evidenceIds)
+    || read.parsed.evidenceIds.length !== scenarioContract.evidencePerRun
+    || !Array.isArray(read.parsed.pendingToolCalls)
+    || read.parsed.pendingToolCalls.length !== 0
+  ) {
+    throw new Error("operator projection counts do not match the scenario contract");
+  }
+  if (scenario === "B" && read.parsed.analysis !== null) {
+    throw new Error("abstained operator projection must not claim a final analysis");
+  }
+  if (
+    scenario !== "B"
+    && (
+      !read.parsed.analysis
+      || read.parsed.analysis.status !== "complete"
+      || read.parsed.analysis.requested_tool_calls?.length !== 0
+    )
+  ) {
+    throw new Error("completed operator projection is missing its safe final analysis");
+  }
+  if (
+    scenario === "C"
+    && (
+      !Array.isArray(read.parsed.analysis.counter_evidence)
+      || read.parsed.analysis.counter_evidence.length < 1
+      || read.parsed.analysis.confidence > 0.6
+    )
+  ) {
+    throw new Error("conflict scenario must retain counter-evidence and cautious confidence");
+  }
   return {
     runId,
     startMs: started.elapsedMs,
@@ -212,7 +279,7 @@ async function main() {
   const providerObservation = await status(
     providerStatusUrl,
     "opsmind-fixture-provider-status-v1",
-    new Set(["schema", "probe_requests", "analysis_requests", "total_requests"]),
+    new Set(["schema", "scenario", "probe_requests", "analysis_requests", "total_requests"]),
   );
   const prometheusObservation = await status(
     prometheusStatusUrl,
@@ -223,19 +290,22 @@ async function main() {
     !Number.isInteger(providerObservation.probe_requests)
     || providerObservation.probe_requests < 1
     || !Number.isInteger(providerObservation.analysis_requests)
-    || providerObservation.analysis_requests !== warmRuns * 2
+    || providerObservation.scenario !== scenario
+    || providerObservation.analysis_requests
+      !== warmRuns * scenarioContract.analysisRequestsPerRun
     || providerObservation.total_requests
       !== providerObservation.probe_requests + providerObservation.analysis_requests
   ) {
-    throw new Error("fixture provider request counts do not prove two analysis rounds per run");
+    throw new Error("fixture provider request counts do not match the scenario");
   }
   if (
     !Number.isInteger(prometheusObservation.query_requests)
-    || prometheusObservation.query_requests !== warmRuns
+    || prometheusObservation.query_requests
+      !== warmRuns * scenarioContract.queryRequestsPerRun
     || !Number.isInteger(prometheusObservation.ready_requests)
     || prometheusObservation.ready_requests < 1
   ) {
-    throw new Error("fixture Prometheus request counts do not prove one catalog read per run");
+    throw new Error("fixture Prometheus request counts do not match the scenario");
   }
 
   const totalDurations = samples.map((sample) => sample.totalMs);
@@ -250,8 +320,11 @@ async function main() {
     schema: "opsmind-cross-service-trace-v1",
     generatedAt: new Date().toISOString(),
     environment: process.env.OPSMIND_ENVIRONMENT ?? "unspecified-non-production",
+    scenario,
     warmRuns,
-    terminalStatus: samples.every((sample) => sample.status === "COMPLETED") ? "PASS" : "FAIL",
+    terminalStatus: samples.every(
+      (sample) => sample.status === scenarioContract.terminalStatus,
+    ) ? "PASS" : "FAIL",
     latencyMs: {
       p50: percentile(totalDurations, 0.5),
       p95,
@@ -295,16 +368,33 @@ async function main() {
       status,
       totalMs,
       operatorProjection,
+      evaluationProjection: null,
     })),
   };
   if (!report.latencyMs.thresholdPass) {
     throw new Error(`cross-service p95 ${p95.toFixed(1)}ms exceeds ${p95ThresholdMs}ms`);
   }
 
-  const output = process.env.OPSMIND_TRACE_REPORT ?? ".opsmind/reports/cross-service-trace.json";
-  await mkdir(path.dirname(output), { recursive: true });
-  await writeFile(output, `${JSON.stringify(report, null, 2)}\n`, { encoding: "utf8", flag: "wx" });
-  console.log(`CrossServiceTrace=PASS WarmRuns=${warmRuns} P50Ms=${report.latencyMs.p50.toFixed(1)} P95Ms=${report.latencyMs.p95.toFixed(1)}`);
+  const repositoryRoot = path.resolve(import.meta.dirname, "../../..");
+  const output = path.resolve(
+    process.env.OPSMIND_TRACE_REPORT ?? ".opsmind/reports/cross-service-trace.json",
+  );
+  const reportRoot = path.resolve(repositoryRoot, ".opsmind/reports");
+  const evidence = prepareValidationEvidence({
+    repositoryRoot,
+    configuredArtifactRoot: reportRoot,
+    configuredEvidencePath: output,
+    defaultRelativePath: "cross-service-trace.json",
+    evidenceEnvironmentName: "OPSMIND_TRACE_REPORT",
+  });
+  if (evidence.error || evidence.evidencePath !== output) {
+    throw new Error(evidence.error ?? "cross-service trace path is unavailable");
+  }
+  publishValidationEvidence(output, `${JSON.stringify(report, null, 2)}\n`);
+  console.log(
+    `CrossServiceTrace=PASS Scenario=${scenario} WarmRuns=${warmRuns} `
+      + `P50Ms=${report.latencyMs.p50.toFixed(1)} P95Ms=${report.latencyMs.p95.toFixed(1)}`,
+  );
 }
 
 try {

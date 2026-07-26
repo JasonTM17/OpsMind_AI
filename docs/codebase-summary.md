@@ -11,8 +11,8 @@ boundaries rather than receive direct infrastructure authority.
 
 This summary is based on:
 
-- a Repomix 1.14.0 XML snapshot generated at `repomix-output.xml` from 4,503
-  repository files; Repomix reported no suspicious files;
+- a fresh Repomix 1.14.0 XML snapshot of 4,541 repository files; Repomix
+  reported no suspicious files;
 - direct inspection of the root manifests, Compose file, current service code,
   contracts, Flyway migrations, validation runners, and Phase 4 evidence;
 - cross-checks against [System Architecture](./system-architecture.md),
@@ -33,7 +33,7 @@ documentation. Source code and canonical contracts take precedence.
 | Phase 5 | In progress; provider-neutral analysis, DeepSeek adapter, egress guards, durable PostgreSQL state, V005 append-only probe audit, Platform API integration, and stream assembly exist. Static checkpoint passes; exit remains blocked by B-004 and missing rotated-key synthetic smoke. |
 | Phase 6 | In progress; durable PostgreSQL and synthetic Prometheus checkpoint passes revision-bound CI. Artifact/broader-connector exit remains blocked. |
 | Phase 7 | In progress; local cross-service trace, 100-warm-run latency, CK/Stitch UI, and browser E2E checkpoints pass. G3 remains blocked by live non-production connector/provider conformance, timeline linkage, and BFF/session proof. |
-| Phase 8 | In progress; Phase 8A deterministic contract/scorer checkpoint passes. Phase exit and G4 remain blocked. |
+| Phase 8 | In progress; Phase 8B A/B/C contracts, V008 binding, bounded projection, and local contract gates are implemented. Fresh production-path CI and the A-Z G4 exit remain blocked. |
 | Later phases | Durable workflow, RAG, remediation, complete operator UX, and production-hardening outcomes remain pending. |
 
 Phase 7's local Operator Web and fixture-backed cross-service checkpoints are
@@ -55,7 +55,7 @@ claimed.
 | `services/platform-api/` | Spring Boot control plane for OIDC identity, tenant/project access, persistence, messaging primitives, checkpoint 4A incidents, and the Phase 7 deterministic plus PostgreSQL persistence checkpoint. |
 | `services/ai-runtime/` | FastAPI bounded analysis runtime with provider-neutral contracts, DeepSeek adapter, shared PostgreSQL replay/accounting, startup/periodic capability probe, `/health` liveness, and `/ready` readiness; live egress remains disabled. |
 | `services/tool-gateway/` | Spring Boot fail-closed Tool Gateway: separated workload/delegated JWT trust, manifest registry, bounded DLP execution, dedicated PostgreSQL nonce/receipt/audit state, and exact read-only Prometheus query-range connector. Default profiles remain fail closed; durable/live checkpoint has revision-bound CI proof. |
-| `evaluation/` | Versioned, training-ineligible deterministic-smoke contracts, one implemented Scenario A, scorer, and synthetic trace fixture. Scenario B/C and release-scale evaluation remain pending. |
+| `evaluation/` | Versioned, training-ineligible deterministic-smoke contracts for A latency regression, B no-tool abstention, and C conflicting evidence; strict export/projector, scorer, schemas, and synthetic trace fixtures. Fresh production-path CI and release-scale evaluation remain pending. |
 | `packages/contracts/` | Canonical OpenAPI, JSON Schema, and synthetic fixtures. |
 | `scripts/dev/` | Shared command dispatcher and PowerShell/portable launchers. |
 | `scripts/storage/` | Capacity and storage-root preflight guards. |
@@ -203,10 +203,59 @@ audit JSON intentionally retain metadata only.
 
 This is persistence, not durable orchestration. The code does not resume an
 in-flight runner after process loss and does not append investigation events to
-`incident_timeline_events`. Only fixture implementations of the Phase 7 AI and
-Tool ports are currently usable in the local Operator Web browser harness, so
-the live capability-backed path and G3 remain open. The browser harness mirrors
-the typed Platform projection and rejects unassured or unclassified media.
+`incident_timeline_events`. The capability-backed AI/Tool clients and loopback
+synthetic Prometheus path run in the disposable cross-service harness; they do
+not establish a named live non-production connector or provider/legal
+conformance, so G3 remains open. The browser harness mirrors the typed Platform
+projection and rejects unassured or unclassified media.
+
+## Phase 8B Evaluation Boundary
+
+`evaluation/benchmark-manifest.yaml` marks exactly SIM-01, SIM-02, and SIM-03
+implemented. A is a deployment-latency regression with one read-only evidence
+result. B terminates `ABSTAINED` with no tools, hypotheses, or citations. C
+executes two opposing read-only evidence collections and requires persisted
+counter-evidence plus confidence no greater than `0.6`.
+
+Platform V008 is a rolling-compatible expand migration: it retains the exact
+legacy response-less V007 write shape while strictly validating a complete
+normalized response whenever a response-aware writer supplies one. Evaluator
+exports require response-bearing events. The V007-to-V008 upgrade proof retains
+a historical payload unchanged and appends a legacy event after migration;
+the later contract step waits until old writers are drained. Tool Gateway V002 records observed
+tool/action/risk, connector ID/profile, and the digest of the manifest bytes
+selected at runtime. The disposable cross-service harness creates a `NOLOGIN`
+view owner with allowlisted source-column access and a separate non-inheriting,
+read-only evaluator. Security-barrier views require exact transaction-local
+organization, project, incident, run, and actor scope. The evaluator has no
+raw-table or allowlist-table read grant.
+
+`cross-service-evaluation-export.sql` caps one run at 128 events, 200 evidence
+metadata rows, 20 receipts, 21 analysis invocations, and 4 MiB. The Node
+projector rejects duplicate keys, malformed UTF-8, duplicate evidence digests,
+unsafe values, unknown fields, scope drift, ambiguous accepted-response
+bindings, and receipt/evidence mismatch. It binds invocation
+model/prompt/schema/token/tool/cost accounting to the accepted response, sums
+cost across every accepted invocation, and derives trusted tool executions from
+accepted intents plus durable receipt/audit/evidence records. Audit result,
+receipt evidence, and persisted evidence digests must be identical. Scenario C
+derives metric meaning from canonical metric content rather than unstable
+ordering. Projection output contains normalized accepted analysis and
+timeline/evidence/invocation/receipt metadata only; prompts, provider reasoning,
+credentials, raw connector bodies, and evidence content are excluded. Raw bytes
+and semantic JSON carry separate typed, domain-separated SHA-256 digests.
+Reparse ancestors are rejected before writes; cleanup deletes credentials and
+raw exports first and aggregates failures.
+
+The independent earlier tester recorded 28/28 Node tests. The current
+remediation rerun passes 33/33 Node tests, 40/40 targeted Python tests, 50
+shuffled semantic-order trials, and the junction-path safety test. The Phase 8
+validator reports
+`Implemented=3 CanonicalResults=3 Errors=0 CheckpointResult=PASS
+PhaseExit=BLOCK`; layout, actionlint, and project secret gates pass. Fresh
+Docker/PostgreSQL A/B/C, exact executable/source attestation, independent
+review closure, a pushed revision, uploaded artifact, and terminal-green
+`.github/workflows/cross-service-evaluation.yml` remain pending.
 
 ## Security and Failure Posture
 
@@ -237,7 +286,7 @@ See [Security Model](./security-model.md) for the complete threat model and
 | `scripts/validation/validate-phase-05-ai-runtime.mjs` | Static checkpoint PASS | Exit gate remains BLOCK: active B-004 plus absent passing rotated-key synthetic smoke |
 | `scripts/validation/validate-phase-06-tool-gateway.mjs` | Durable Prometheus connector checkpoint PASS with schemas, canonical fixtures, digest/manifest/OpenAPI/source abuse checks | Phase exit BLOCK: artifact adapter, remaining connector families, tenant bulkhead, and provider-specific cancellation proof |
 | `scripts/validation/validate-phase-07-investigation-slice.mjs` | CK/Stitch/browser plus 100-warm-run revision-bound cross-service checkpoint PASS | G3 still requires live provider/connector, timeline, and BFF/session proof |
-| `scripts/validation/validate-phase-08-evaluation-foundation.mjs` | `Errors=0`, three schemas, ten registered families, one implemented family, eight metrics, and three negative cases; checkpoint PASS | Phase exit and G4 BLOCK; no live provider receipt or production claim |
+| `scripts/validation/validate-phase-08-evaluation-foundation.mjs` | `Implemented=3`, `CanonicalResults=3`, `Errors=0`, checkpoint PASS | Phase exit and A-Z G4 BLOCK; fresh A/B/C production-path CI and exact-revision artifact pending |
 | GitHub Actions `29987371420` | PASS on commit `ace3642`: PostgreSQL trust contracts, live Prometheus Compose query, dependency security, service suites, Keycloak, and cross-platform bootstrap | CI non-production evidence; not the Phase 7 cross-service trace or staging conformance |
 
 | Evidence | Verified result | Scope limitation |
@@ -270,8 +319,9 @@ After storage preflight and explicit setup, the Windows command surface is:
 
 Portable equivalents use `./scripts/dev/opsmind.sh`. `dev`/`up` require runtime
 database secrets and Docker-storage attestation. `seed` remains unavailable.
-`evaluate` validates Phase 8A and scores a fresh, clean-revision Phase 7 trace;
-missing raw artifacts or provenance fail closed. See
+`evaluate` validates the Phase 8 contracts and scores an existing clean-revision
+Phase 7 trace; it does not generate the trace. Missing raw artifacts or
+provenance fail closed. See
 [Local Development](./local-development.md) for prerequisites and failure
 semantics.
 

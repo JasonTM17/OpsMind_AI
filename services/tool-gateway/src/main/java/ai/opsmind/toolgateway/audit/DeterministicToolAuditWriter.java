@@ -16,12 +16,14 @@ public final class DeterministicToolAuditWriter implements ToolAuditWriter {
         String requestDigest,
         String capabilityId,
         String manifestVersion,
+        ToolExecutionProvenance provenance,
         String resultDigest,
         String policyVersion,
         DenialCode denialCode
     ) {
         String material = executionId + "|" + outcome + "|" + requestDigest + "|"
             + String.valueOf(capabilityId) + "|" + String.valueOf(manifestVersion) + "|"
+            + String.valueOf(provenance) + "|"
             + String.valueOf(resultDigest) + "|" + String.valueOf(policyVersion) + "|"
             + String.valueOf(denialCode);
         return UUID.nameUUIDFromBytes(material.getBytes(StandardCharsets.UTF_8));

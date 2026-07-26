@@ -152,7 +152,7 @@ class IncidentAnalysisControllerHttpTest {
     private AnalysisRuntimeResponse response() {
         return new AnalysisRuntimeResponse(
             "abstain", RUN_ID, "deepseek-v4-flash", "prompt-incident-v1", "analysis-v1",
-            List.of(), List.of(), List.of(), List.of(), 0.0,
+            List.of(), List.of(), List.of("No authorized evidence was available."), List.of(), 0.0,
             new AnalysisRuntimeResponse.Usage(1, 0, 1),
             new AnalysisRuntimeResponse.CostEstimate("USD", BigDecimal.ZERO),
             List.of()

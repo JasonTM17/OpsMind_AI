@@ -13,6 +13,7 @@ import java.util.concurrent.Executors;
 import java.util.concurrent.Future;
 
 import ai.opsmind.toolgateway.application.ExecutionReceiptStore;
+import ai.opsmind.toolgateway.audit.ToolExecutionProvenance;
 import ai.opsmind.toolgateway.domain.ToolExecutionRequest;
 import ai.opsmind.toolgateway.domain.ToolExecutionResponse;
 import ai.opsmind.toolgateway.domain.ToolOutcome;
@@ -101,7 +102,7 @@ class ToolGatewayPersistenceIntegrationTest {
         assertThatThrownBy(() -> database.transactionRunner().required(() -> {
             UUID inserted = audit.record(
                 request.executionId(), ToolOutcome.SUCCEEDED, digest,
-                "capability-test", "manifest-v1", digest, "policy-v1", null
+                "capability-test", "manifest-v1", provenance(), digest, "policy-v1", null
             );
             assertThat(inserted).isNotNull();
             store.complete(lease, response(request.executionId(), digest));
@@ -145,6 +146,13 @@ class ToolGatewayPersistenceIntegrationTest {
         return new ToolExecutionResponse(
             executionId, ToolOutcome.SUCCEEDED, List.of(), null, UUID.randomUUID(),
             digest, "manifest-v1", "prometheus/v1", 0, false, false
+        );
+    }
+
+    private ToolExecutionProvenance provenance() {
+        return new ToolExecutionProvenance(
+            "observability", "metrics.query", "read-only",
+            "prometheus-read-only", "prometheus", "sha256:" + "a".repeat(64)
         );
     }
 

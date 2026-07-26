@@ -17,5 +17,24 @@
     "required_role": "operator:read",
     "policy_version": "policy-prometheus-read-v1",
     "expected_manifest_version": "observability.metrics.query@1"
+  },
+  {
+    "connector": "metrics",
+    "operation": "query",
+    "tool": "observability",
+    "action": "metrics.query",
+    "schema_version": "1.0",
+    "resource": "prometheus:synthetic/opsmind-api",
+    "arguments": {
+      "service": "opsmind-api",
+      "metric": "http_errors_total",
+      "max_points": 3
+    },
+    "maximum_bytes": 65536,
+    "maximum_items": 10,
+    "maximum_duration": "PT5S",
+    "required_role": "operator:read",
+    "policy_version": "policy-prometheus-read-v1",
+    "expected_manifest_version": "observability.metrics.query@1"
   }
 ]

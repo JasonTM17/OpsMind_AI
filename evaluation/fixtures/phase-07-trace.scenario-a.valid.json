@@ -1,5 +1,7 @@
 {
   "schema": "opsmind-cross-service-trace-v1",
+  "scenario": "A",
+  "evidenceClassification": "REGRESSION_SNAPSHOT_NOT_PRODUCTION_PATH",
   "generatedAt": "2030-01-01T00:06:00Z",
   "environment": "local-disposable-cross-service",
   "warmRuns": 1,
@@ -75,9 +77,9 @@
           ],
           "confidence": 0.82,
           "usage": {
-            "prompt_tokens": 32,
-            "completion_tokens": 32,
-            "total_tokens": 64
+            "prompt_tokens": 30,
+            "completion_tokens": 14,
+            "total_tokens": 44
           },
           "cost_estimate": {
             "currency": "USD",
@@ -91,7 +93,7 @@
         "endedAt": "2030-01-01T00:00:05Z"
       },
       "rawAnalysisReference": "repository://evaluation/fixtures/phase-07-trace.scenario-a.valid.json#/runs/0/rawAnalysis",
-      "rawAnalysisDigest": "sha256:37fec0a4f8bb42f12fc337ac66b375c0cce86d1236721f2cf69e3025a2fe515f",
+      "rawAnalysisDigest": "sha256:73df948b13c25b3c2348bbb395ad1703124b93d4ba43af93a208dc168b877f46",
       "rawAnalysis": {
         "status": "complete",
         "run_id": "10000000-0000-4000-8000-000000000811",
@@ -123,9 +125,9 @@
         ],
         "confidence": 0.82,
         "usage": {
-          "prompt_tokens": 32,
-          "completion_tokens": 32,
-          "total_tokens": 64
+          "prompt_tokens": 30,
+          "completion_tokens": 14,
+          "total_tokens": 44
         },
         "cost_estimate": {
           "currency": "USD",
@@ -141,8 +143,18 @@
           "operation": "metrics.query",
           "riskClass": "read-only",
           "manifestVersion": "observability.metrics.query@1",
+          "connectorId": "prometheus-read-only",
+          "connectorProfile": "prometheus",
+          "connectorManifestByteDigest": "sha256:2954739ada4a59714b4a06f9329bac2548cb47a1551f09f0453a6f8151884dc2",
+          "argumentsDigest": "sha256:51ef8c2e4e2926e103ddd877490c64d604b1df593ca23cffca8d1b2fac5d8700",
           "evidenceDigests": [
             "sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+          ],
+          "evidenceBindings": [
+            {
+              "evidenceId": "10000000-0000-4000-8000-000000000813",
+              "digest": "sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+            }
           ]
         }
       ]

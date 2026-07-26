@@ -2,6 +2,7 @@ import { createHash } from "node:crypto";
 import path from "node:path";
 
 import { createEvaluationContractValidator } from "../../evaluation/runner/evaluation-contract-validation.mjs";
+import { projectCrossServiceEvaluationExport } from "../../evaluation/runner/cross-service-evaluation-projection.mjs";
 import { scorePhase07Trace } from "../../evaluation/runner/score-phase-07-trace-core.mjs";
 import { createContractFileAccess } from "./phase-04-incident-contracts/safe-contract-files.mjs";
 import { rejectDuplicateJsonKeys } from "./phase-04-incident-contracts/duplicate-json-key-detector.mjs";
@@ -36,23 +37,23 @@ function check(condition, message) {
   if (!condition) errors.push(message);
 }
 
-const truthPath = "evaluation/scenarios/deployment-latency-regression/ground-truth.json";
-const truth = readObject(truthPath);
-const truthFindings = validate(truth.document, "scenario-ground-truth.schema.json");
-errors.push(...truthFindings.map((finding) => `ground truth ${finding}`));
+function checkLfOnly(relativePath) {
+  const source = fileAccess.readSafeFile(path.join(repositoryRoot, relativePath));
+  check(!source.includes("\r"), `${relativePath} must use LF-only digest bytes`);
+}
 
-const fixturePath = path.resolve(
-  path.dirname(truth.absolutePath),
-  truth.document.fixture_path,
+const attributesSource = fileAccess.readSafeFile(
+  path.join(repositoryRoot, ".gitattributes"),
 );
-check(
-  fixturePath === path.join(path.dirname(truth.absolutePath), "fixture.json"),
-  "ground truth fixture path must remain scenario-local",
-);
-check(
-  sha256(fixturePath) === truth.document.fixture_digest,
-  "ground truth fixture digest is stale",
-);
+for (const rule of [
+  "evaluation/**/*.json text eol=lf",
+  "evaluation/**/*.yaml text eol=lf",
+  "services/tool-gateway/src/main/resources/tool-manifests/*.json text eol=lf",
+  "services/**/src/main/resources/db/migration/*.sql text eol=lf",
+  "scripts/validation/cross-service/*.sql text eol=lf",
+]) {
+  check(attributesSource.includes(rule), `.gitattributes is missing byte contract: ${rule}`);
+}
 
 const manifestPath = path.join(repositoryRoot, "evaluation", "benchmark-manifest.yaml");
 const manifestSource = fileAccess.readSafeFile(manifestPath);
@@ -79,32 +80,67 @@ check(
 );
 const implemented = families.filter((family) => family.status === "implemented");
 check(
-  implemented.length === 1 && implemented[0]?.scenario_id === truth.document.scenario_id,
-  "only Scenario A may be implemented in the Phase 8A checkpoint",
-);
-check(
-  implemented[0]?.fixture_digest === truth.document.fixture_digest,
-  "manifest and ground truth fixture digests differ",
-);
-check(
-  implemented[0]?.ground_truth_path === truthPath,
-  "manifest ground-truth path is not canonical",
+  JSON.stringify(implemented.map((family) => family.family_id))
+    === JSON.stringify(["SIM-01", "SIM-02", "SIM-03"]),
+  "only the three Phase 8B deterministic smoke families may be implemented",
 );
 
-const trace = readObject("evaluation/fixtures/phase-07-trace.scenario-a.valid.json");
-const result = scorePhase07Trace({
-  groundTruth: truth.document,
-  trace: trace.document,
-  traceReference: "repository://evaluation/fixtures/phase-07-trace.scenario-a.valid.json",
-  generatedAt: "2030-01-01T00:07:00Z",
-});
-const resultFindings = validate(result, "benchmark-result.schema.json");
-errors.push(...resultFindings.map((finding) => `benchmark result ${finding}`));
-check(result.verdict === "PASS", "canonical Scenario A fixture must pass");
-check(
-  Object.values(result.metrics).every((metric) => metric.status === "PASS"),
-  "canonical Scenario A metric set is incomplete",
-);
+const traceByFamily = {
+  "SIM-01": "evaluation/fixtures/phase-07-trace.scenario-a.valid.json",
+  "SIM-02": "evaluation/fixtures/phase-07-trace.scenario-b.valid.json",
+  "SIM-03": "evaluation/fixtures/phase-07-trace.scenario-c.valid.json",
+};
+const scenarioByFamily = { "SIM-01": "A", "SIM-02": "B", "SIM-03": "C" };
+const groundTruths = new Map();
+const traces = new Map();
+const results = [];
+for (const family of implemented) {
+  const truth = readObject(family.ground_truth_path);
+  groundTruths.set(family.family_id, truth);
+  const truthFindings = validate(truth.document, "scenario-ground-truth.schema.json");
+  errors.push(...truthFindings.map((finding) => `${family.family_id} ground truth ${finding}`));
+  const fixturePath = path.resolve(path.dirname(truth.absolutePath), truth.document.fixture_path);
+  const expectedFixturePath = path.join(path.dirname(truth.absolutePath), "fixture.json");
+  check(fixturePath === expectedFixturePath, `${family.family_id} fixture path is not scenario-local`);
+  checkLfOnly(path.relative(repositoryRoot, fixturePath));
+  check(sha256(fixturePath) === truth.document.fixture_digest, `${family.family_id} fixture digest is stale`);
+  check(
+    family.fixture_digest === truth.document.fixture_digest
+      && path.resolve(repositoryRoot, family.fixture_path) === fixturePath
+      && family.scenario_id === truth.document.scenario_id,
+    `${family.family_id} manifest binding differs from ground truth`,
+  );
+
+  const tracePath = traceByFamily[family.family_id];
+  const trace = readObject(tracePath);
+  traces.set(family.family_id, trace);
+  check(
+    trace.document.evidenceClassification === "REGRESSION_SNAPSHOT_NOT_PRODUCTION_PATH",
+    `${family.family_id} committed trace must be labeled as regression-only`,
+  );
+  check(
+    trace.document.scenario === scenarioByFamily[family.family_id],
+    `${family.family_id} regression trace scenario binding is invalid`,
+  );
+  const result = scorePhase07Trace({
+    groundTruth: truth.document,
+    trace: trace.document,
+    traceReference: `repository://${tracePath}`,
+    generatedAt: "2030-01-10T00:00:00Z",
+  });
+  results.push(result);
+  const resultFindings = validate(result, "benchmark-result.schema.json");
+  errors.push(...resultFindings.map((finding) => `${family.family_id} benchmark result ${finding}`));
+  check(result.verdict === "PASS", `${family.family_id} canonical regression fixture must pass`);
+  check(
+    Object.values(result.metrics).every((metric) => metric.status === "PASS"),
+    `${family.family_id} canonical metric set is incomplete`,
+  );
+}
+
+const truth = groundTruths.get("SIM-01");
+const trace = traces.get("SIM-01");
+const result = results[0];
 
 const incompleteTrace = structuredClone(trace.document);
 delete incompleteTrace.runs[0].operatorProjection;
@@ -130,13 +166,60 @@ check(
   "benchmark-result schema must require raw artifact references",
 );
 
+const exportFixturePath = "evaluation/fixtures/phase-08b-export.scenario-a.regression.json";
+const exportFixture = readObject(exportFixturePath);
+errors.push(...validate(
+  exportFixture.document,
+  "cross-service-evaluation-export.schema.json",
+).map((finding) => `cross-service export ${finding}`));
+try {
+  const projection = projectCrossServiceEvaluationExport(
+    fileAccess.readSafeFile(exportFixture.absolutePath),
+  );
+  check(
+    projection.schemaVersion === "opsmind-cross-service-evaluation-projection-v1",
+    "canonical cross-service export projection is invalid",
+  );
+} catch (error) {
+  errors.push(`canonical cross-service export rejected: ${error.message}`);
+}
+
 const crossServiceRunner = fileAccess.readSafeFile(
   path.join(repositoryRoot, "scripts/validation/cross-service/run-investigation-slice.mjs"),
 );
+for (const relativePath of [
+  "evaluation/benchmark-manifest.yaml",
+  "services/tool-gateway/src/main/resources/tool-manifests/observability-metrics-query-v1.json",
+  "services/tool-gateway/src/main/resources/tool-manifests/observability-metrics-query-prometheus-v1.json",
+  "scripts/validation/cross-service/cross-service-evaluation-export.sql",
+]) {
+  checkLfOnly(relativePath);
+}
 check(
-  crossServiceRunner.includes("operatorProjection: read.parsed"),
-  "Phase 7 trace must retain the bounded operator projection for scoring",
+  crossServiceRunner.includes("operatorProjection: read.parsed")
+    && crossServiceRunner.includes("evaluationProjection: null")
+    && crossServiceRunner.includes('OPSMIND_CROSS_SERVICE_SCENARIO'),
+  "cross-service runner does not declare the Phase 8B scenario/projection contract",
 );
+for (const [relativePath, markers] of Object.entries({
+  "scripts/validation/cross-service/create-evaluation-export-roles.sql": [
+    "NOBYPASSRLS", "security_barrier", "opsmind_evaluator",
+  ],
+  "scripts/validation/cross-service/cross-service-evaluation-export.sql": [
+    "READ ONLY", "unmatched_accepted_count", "4194304",
+  ],
+  "scripts/validation/cross-service/run-cross-service-verification.ps1": [
+    "project-cross-service-evaluation-export.mjs", "connectorManifestByteDigest", "Scenario",
+  ],
+  "services/platform-api/src/main/resources/db/migration/V008__accepted_analysis_event_binding.sql": [
+    "opsmind_valid_accepted_analysis_response", "'response'", "run_row.final_response",
+  ],
+})) {
+  const source = fileAccess.readSafeFile(path.join(repositoryRoot, relativePath));
+  for (const marker of markers) {
+    check(source.includes(marker), `${relativePath} is missing Phase 8B marker: ${marker}`);
+  }
+}
 for (const launcher of ["scripts/dev/opsmind.ps1", "scripts/dev/opsmind.sh"]) {
   const source = fileAccess.readSafeFile(path.join(repositoryRoot, launcher));
   check(
@@ -147,8 +230,8 @@ for (const launcher of ["scripts/dev/opsmind.ps1", "scripts/dev/opsmind.sh"]) {
 }
 
 console.log("Phase08EvaluationFoundation");
-console.log(`ScenarioSchemas=3 ScenarioFamilies=${families.length} Implemented=${implemented.length}`);
-console.log(`CanonicalMetrics=${Object.keys(result.metrics).length} NegativeCases=3`);
+console.log(`ScenarioSchemas=5 ScenarioFamilies=${families.length} Implemented=${implemented.length}`);
+console.log(`CanonicalResults=${results.length} CanonicalMetrics=${Object.keys(result.metrics).length} NegativeCases=4`);
 console.log(`Errors=${errors.length}`);
 for (const error of errors) console.log(`Error=${error}`);
 if (errors.length > 0) {

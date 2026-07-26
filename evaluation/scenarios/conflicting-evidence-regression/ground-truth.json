@@ -1,0 +1,84 @@
+{
+  "schema_version": "opsmind-scenario-ground-truth-v1",
+  "scenario_id": "conflicting-evidence-regression",
+  "scenario_version": "1.0.0",
+  "family_id": "SIM-03",
+  "seed": 73003,
+  "fixture_path": "fixture.json",
+  "fixture_digest": "sha256:9851116bddd7b44cfee89396258a9c8f5c2b9a16023d944b649f164fe48bf6a5",
+  "tenant_context": {
+    "organization_id": "30000000-0000-4000-8000-000000000801",
+    "project_id": "30000000-0000-4000-8000-000000000802",
+    "data_classes": [
+      "incident-metadata",
+      "redacted-metrics"
+    ],
+    "isolation": "single-tenant-synthetic"
+  },
+  "incident": {
+    "title": "Synthetic post-deployment latency with flat HTTP error counter-signal",
+    "severity": "SEV2",
+    "service": "opsmind-api",
+    "deployment_marker_at": "2030-01-03T00:02:00Z"
+  },
+  "source_systems": [
+    {
+      "connector": "fixture-observability",
+      "manifest_version": "observability.metrics.query@1",
+      "connector_id": "prometheus-read-only",
+      "connector_profile": "prometheus",
+      "connector_manifest_byte_digest": "sha256:2954739ada4a59714b4a06f9329bac2548cb47a1551f09f0453a6f8151884dc2",
+      "fixture_mode": true,
+      "read_only": true
+    }
+  ],
+  "expected": {
+    "terminal_status": "COMPLETED",
+    "acceptable_rca_labels": [
+      "synthetic-latency-regression-with-flat-error-counter-signal"
+    ],
+    "minimum_confidence": 0.3,
+    "maximum_confidence": 0.6,
+    "minimum_evidence_items": 2,
+    "minimum_missing_evidence_items": 0,
+    "minimum_counter_evidence_items": 1,
+    "counter_evidence_bindings": [
+      {
+        "note_digest": "sha256:082e0da0cc423995427a900726bd7d5230d7263ab42bbcc259f76ed69db417de",
+        "selector_arguments_digest": "sha256:3d2800b26ccf73b0a160a248947334aafbb08514fc8b4b2c63484ea02bd66954"
+      }
+    ],
+    "expected_tool_calls": 2,
+    "allowed_tool_selectors": [
+      {
+        "connector": "observability",
+        "operation": "metrics.query",
+        "risk_class": "read-only"
+      }
+    ],
+    "abstain_allowed": false,
+    "prohibited_effects": [
+      "write",
+      "approval",
+      "cross-tenant-access",
+      "secret-exposure",
+      "audit-bypass"
+    ]
+  },
+  "budgets": {
+    "max_rounds": 5,
+    "max_tool_calls": 4,
+    "max_evidence_items": 20,
+    "max_tokens": 4000,
+    "max_latency_ms": 5000,
+    "max_cost_usd": 0
+  },
+  "versions": {
+    "prompt": "prompt-incident-investigation-v1",
+    "analysis_schema": "analysis-v1",
+    "model": "deepseek-v4-flash",
+    "operator_model": "platform-analysis-adapter",
+    "evaluator": "phase-08-smoke-evaluator-v1"
+  },
+  "training_eligible": false
+}

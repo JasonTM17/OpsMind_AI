@@ -8,7 +8,71 @@
 - Record blockers explicitly and leave downstream phases pending.
 - Do not include secrets, raw credentials, or sensitive evidence.
 
-## 2026-07-26 — Phase 8A evaluation contract foundation
+## 2026-07-26 — Phase 8B production-path evaluation implementation
+
+Implemented:
+
+- Three deterministic, training-ineligible families: A latency regression, B
+  `ABSTAINED` with zero tools when evidence is unavailable, and C two opposing
+  read-only evidence collections with digest-bound counter-evidence and
+  cautious confidence.
+- Platform V008 rolling-compatible expand migration: strict immutable binding
+  for response-aware writers, exact legacy V007 shape retained temporarily, and
+  upgrade proof for both byte-stable history and a post-V008 legacy append.
+  Evaluator exports require response-bearing events; contract migration waits
+  until old writers are drained.
+- Tool Gateway V002 rolling expand with durable observed tool/action/risk,
+  connector ID/profile, and runtime manifest-byte digest for new writers;
+  exact legacy null tuples remain temporarily writable but are not
+  evaluation-eligible.
+- Strict bounded cross-service export/projector, typed
+  raw-byte/domain-separated canonical digests, durable derivation of trusted
+  tool executions, accepted-response invocation accounting and summed run cost,
+  fatal UTF-8 decoding, duplicate-evidence rejection, and exact audit/receipt/
+  persisted-evidence digest binding.
+- Scenario C metric-semantic selection independent of row/UUID order, with
+  selector-bound dynamic counter-evidence.
+- Scoped `.gitattributes` LF contracts and Phase 8 EOL assertions keep
+  raw-byte fixture/manifest/query provenance identical across Windows and
+  Linux checkouts.
+- Disposable least-privilege export roles: a non-login view owner with
+  allowlisted source columns and a non-inheriting read-only evaluator restricted
+  to security-barrier views under exact organization/project/incident/run/actor
+  scope.
+- Reparse-ancestor validation before managed writes; cleanup removes raw SQL
+  exports and ephemeral credentials first, aggregates cleanup errors, and
+  refuses unsafe recursive removal.
+- `.github/workflows/cross-service-evaluation.yml` wiring for same-job builds,
+  executable/source attestation, fresh A/B/C scoring, cleanup verification, and
+  artifact upload.
+
+Verified locally:
+
+- Independent earlier tester: 28/28 Node tests passed. Current remediation
+  rerun: 33/33 Node tests and 40/40 targeted Python tests passed.
+- Scenario C semantic-order test passed 50 shuffled evidence orders; managed
+  path test proved junction/reparse rejection.
+- `node scripts/validation/validate-phase-08-evaluation-foundation.mjs`:
+  `Implemented=3`, `CanonicalResults=3`, `Errors=0`,
+  `CheckpointResult=PASS`, `PhaseExit=BLOCK`.
+- Repository layout, actionlint, PowerShell/Bash syntax, diff whitespace, and
+  the working-tree/history project secret scan pass.
+
+Pending:
+
+- Fresh Docker/PostgreSQL A/B/C has not run in this dirty local worktree.
+- Executable attestation, uploaded `phase-08b-cross-service-evaluation`
+  artifact, exact pushed revision, independent blocking-review closure, and
+  terminal-green workflow evidence remain pending.
+- No Phase 8B PASS, Phase 8/A-Z G4 completion, held-out accuracy, population
+  p95, calibration, human benefit, live DeepSeek, or production connector
+  conformance is claimed.
+
+## 2026-07-26 — Historical Phase 8A evaluation contract foundation
+
+This entry records the earlier Phase 8A state and is superseded by the Phase 8B
+current-state entry above. Its Scenario-B/C and harvesting gaps were accurate
+at that checkpoint, not current implementation claims.
 
 Implemented:
 
@@ -243,7 +307,7 @@ Still open:
   now proves its database identity and scheduler boundary; Phase 9 must add and
   verify the externally authenticated runtime and deterministic target handoff.
 
-## 2026-07-22 â€” Phase 4 checkpoint 4A incident write ledger
+## 2026-07-22 — Phase 4 checkpoint 4A incident write ledger
 
 Implemented locally:
 
@@ -473,7 +537,7 @@ B-006/B-008/B-012.
    floors, but prefer CI for heavy Docker work while C remains close to its
    minimum reserve.
 
-## 2026-07-23 â€” Operator projection safety and CK/Stitch workspace
+## 2026-07-23 — Operator projection safety and CK/Stitch workspace
 
 Implemented:
 
@@ -503,7 +567,7 @@ Verified:
 Historical remaining at time of the previous entry (superseded by the
 revision-bound checkpoint below):
 
-- A real capability-backed Platform â†’ AI Runtime â†’ Tool Gateway â†’
+- A real capability-backed Platform → AI Runtime → Tool Gateway →
   Prometheus trace with 100 warm runs and p95 evidence.
 - Incident-timeline linkage, production BFF/session proof, and final reviewed
   screenshot/GIF media manifest.
