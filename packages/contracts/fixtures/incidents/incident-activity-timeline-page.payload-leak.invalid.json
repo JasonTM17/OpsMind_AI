@@ -1,0 +1,18 @@
+{
+  "items": [
+    {
+      "eventId": "66666666-6666-4666-8666-666666666662",
+      "source": "INVESTIGATION",
+      "eventType": "ANALYSIS_ACCEPTED",
+      "occurredAt": "2030-01-01T00:00:01.123456Z",
+      "actorId": "44444444-4444-4444-8444-444444444444",
+      "investigationRunId": "77777777-7777-4777-8777-777777777777",
+      "investigationSequence": 2,
+      "payload": {
+        "rootCause": "FORBIDDEN_FREE_TEXT_SENTINEL"
+      }
+    }
+  ],
+  "pageSize": 25,
+  "hasMore": false
+}

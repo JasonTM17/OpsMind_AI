@@ -1,0 +1,83 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://contracts.opsmind.invalid/incidents/incident-activity-timeline-entry.schema.json",
+  "title": "Incident Activity Timeline Entry",
+  "oneOf": [
+    { "$ref": "#/$defs/incidentEntry" },
+    { "$ref": "#/$defs/investigationEntry" }
+  ],
+  "$defs": {
+    "occurredAt": {
+      "type": "string",
+      "format": "date-time",
+      "minLength": 20,
+      "maxLength": 27,
+      "pattern": "^(?:19(?:7\\d|[89]\\d)|[2-9]\\d{3})-\\d{2}-\\d{2}T\\d{2}:\\d{2}:\\d{2}(?:\\.\\d{3}(?:\\d{3})?)?Z$"
+    },
+    "incidentEntry": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "eventId",
+        "source",
+        "eventType",
+        "occurredAt",
+        "actorId",
+        "incidentVersion"
+      ],
+      "properties": {
+        "eventId": { "$ref": "./incident-types.schema.json#/$defs/uuid" },
+        "source": { "const": "INCIDENT" },
+        "eventType": {
+          "type": "string",
+          "enum": ["INCIDENT_CREATED", "INCIDENT_STATUS_TRANSITIONED"]
+        },
+        "occurredAt": { "$ref": "#/$defs/occurredAt" },
+        "actorId": { "$ref": "./incident-types.schema.json#/$defs/uuid" },
+        "incidentVersion": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 2147483647
+        }
+      }
+    },
+    "investigationEntry": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "eventId",
+        "source",
+        "eventType",
+        "occurredAt",
+        "actorId",
+        "investigationRunId",
+        "investigationSequence"
+      ],
+      "properties": {
+        "eventId": { "$ref": "./incident-types.schema.json#/$defs/uuid" },
+        "source": { "const": "INVESTIGATION" },
+        "eventType": {
+          "type": "string",
+          "enum": [
+            "RUN_STARTED",
+            "ANALYSIS_ACCEPTED",
+            "TOOL_REQUESTED",
+            "EVIDENCE_APPENDED",
+            "COMPLETED",
+            "ABSTAINED",
+            "BUDGET_EXCEEDED",
+            "NO_PROGRESS",
+            "FAILED"
+          ]
+        },
+        "occurredAt": { "$ref": "#/$defs/occurredAt" },
+        "actorId": { "$ref": "./incident-types.schema.json#/$defs/uuid" },
+        "investigationRunId": { "$ref": "./incident-types.schema.json#/$defs/uuid" },
+        "investigationSequence": {
+          "type": "integer",
+          "minimum": 1
+        }
+      }
+    }
+  }
+}

@@ -1,0 +1,24 @@
+{
+  "items": [
+    {
+      "eventId": "66666666-6666-4666-8666-666666666661",
+      "source": "INCIDENT",
+      "eventType": "INCIDENT_CREATED",
+      "occurredAt": "2030-01-01T00:00:00.123456Z",
+      "actorId": "44444444-4444-4444-8444-444444444444",
+      "incidentVersion": 0
+    },
+    {
+      "eventId": "66666666-6666-4666-8666-666666666662",
+      "source": "INVESTIGATION",
+      "eventType": "ANALYSIS_ACCEPTED",
+      "occurredAt": "2030-01-01T00:00:01.123456Z",
+      "actorId": "44444444-4444-4444-8444-444444444444",
+      "investigationRunId": "77777777-7777-4777-8777-777777777777",
+      "investigationSequence": 2
+    }
+  ],
+  "pageSize": 25,
+  "nextPageToken": "djI6MzMzMzMzMzMtMzMzMy00MzMzLTgzMzMtMzMzMzMzMzMzMzMzOjE4OTM0NTYwMDAxMjM0NTY6MTo1NTU1NTU1NS01NTU1LTQ1NTUtODU1NS01NTU1NTU1NTU1NTU",
+  "hasMore": true
+}
