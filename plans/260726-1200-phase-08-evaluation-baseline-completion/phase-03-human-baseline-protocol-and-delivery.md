@@ -1,7 +1,7 @@
 ---
 phase: 3
 title: Human baseline protocol and delivery
-status: in-progress
+status: completed
 priority: P2
 dependencies:
   - 1
