@@ -42,13 +42,16 @@ Implemented:
 - Reparse-ancestor validation before managed writes; cleanup removes raw SQL
   exports and ephemeral credentials first, aggregates cleanup errors, and
   refuses unsafe recursive removal.
+- Human-baseline ingestion validates the listing and every bounded ASCII-safe
+  `.json` name before sorting/path access, forbids object coercion, and wraps
+  record stat/read failures in controlled single-line contract errors.
 - `.github/workflows/cross-service-evaluation.yml` wiring for same-job builds,
   executable/source attestation, fresh A/B/C scoring, cleanup verification, and
   artifact upload.
 
 Verified:
 
-- Current evaluation tests pass 52/52.
+- Current evaluation tests pass 60/60.
 - `node scripts/validation/validate-phase-08-evaluation-foundation.mjs`:
   six schemas, ten families/three implemented, held-out `UNAVAILABLE` zero
   cases, human baseline `UNAVAILABLE` zero cases, three canonical results,

@@ -164,9 +164,15 @@ Managed paths reject reparse-point ancestors before writes. Cleanup removes
 credentials and raw exports before process/container cleanup, aggregates every
 failure, and refuses unsafe recursive removal.
 
+Human-baseline discovery treats directory listings as untrusted input. It
+accepts only an array of bounded ASCII-safe `.json` names before sorting or
+path resolution, never coerces entry objects, and converts record stat/read
+failures into controlled single-line contract errors so filenames cannot forge
+evaluation status markers.
+
 ## Verification Evidence
 
-The current evaluation suite passes 52/52. The Phase 8 validator reports six
+The current evaluation suite passes 60/60. The Phase 8 validator reports six
 schemas, ten families with three implemented, three canonical results, eight
 metrics, four negative cases, zero errors, checkpoint `PASS`, and phase exit
 `BLOCK`. Held-out corpus and human baseline both report `UNAVAILABLE`, zero
