@@ -108,6 +108,116 @@ function Start-CrossServiceProcess {
     }
 }
 
+function Get-CrossServiceRedactedLogTail {
+    param(
+        [Parameter(Mandatory = $true)][string]$Path,
+        [Parameter(Mandatory = $true)][hashtable]$Environment
+    )
+
+    if (-not (Test-Path -LiteralPath $Path -PathType Leaf)) {
+        return ''
+    }
+    $stream = $null
+    try {
+        $stream = [IO.File]::Open(
+            $Path,
+            [IO.FileMode]::Open,
+            [IO.FileAccess]::Read,
+            [IO.FileShare]::ReadWrite
+        )
+        $byteCount = [int][math]::Min(16384L, $stream.Length)
+        if ($byteCount -eq 0) {
+            return ''
+        }
+        [void]$stream.Seek(-1L * $byteCount, [IO.SeekOrigin]::End)
+        $buffer = New-Object byte[] $byteCount
+        $bytesRead = 0
+        while ($bytesRead -lt $byteCount) {
+            $read = $stream.Read($buffer, $bytesRead, $byteCount - $bytesRead)
+            if ($read -eq 0) {
+                break
+            }
+            $bytesRead += $read
+        }
+        $content = [Text.Encoding]::UTF8.GetString($buffer, 0, $bytesRead)
+    }
+    catch {
+        return "[diagnostic unavailable: $($_.Exception.GetType().Name)]"
+    }
+    finally {
+        if ($null -ne $stream) {
+            $stream.Dispose()
+        }
+    }
+    $sensitiveValues = New-Object 'System.Collections.Generic.HashSet[string]'
+    $processEnvironment = [Environment]::GetEnvironmentVariables('Process')
+    foreach ($entry in $processEnvironment.GetEnumerator()) {
+        if ([string]$entry.Key -match '(?i)(auth|credential|key|password|secret|token)') {
+            $value = [string]$entry.Value
+            if (-not [string]::IsNullOrEmpty($value)) {
+                [void]$sensitiveValues.Add($value)
+            }
+        }
+    }
+    foreach ($name in $Environment.Keys) {
+        if ($name -match '(?i)(auth|credential|key|password|secret|token)') {
+            $value = [string]$Environment[$name]
+            if (-not [string]::IsNullOrEmpty($value)) {
+                [void]$sensitiveValues.Add($value)
+            }
+        }
+    }
+    foreach ($sensitiveValue in $sensitiveValues) {
+        $content = $content.Replace($sensitiveValue, '[REDACTED]')
+    }
+    $content = [regex]::Replace(
+        $content,
+        '[\x00-\x08\x0B\x0C\x0E-\x1F\x7F]',
+        '?'
+    )
+    $prohibitedPattern = '(?i)(' +
+        'authorization\s*["'']?\s*:\s*(?:bearer|basic)|' +
+        '(?:api[_ -]?key|client[_ -]?secret|access[_ -]?token|password|' +
+            'credential|secret|token|private[_ -]?key)\b|' +
+        'reasoning[_-]?content|' +
+        '-----BEGIN .*PRIVATE KEY-----|-----END .*PRIVATE KEY-----|' +
+        '\b(?:bearer|basic)\s+[A-Za-z0-9._~+/=-]{12,}|' +
+        '\beyJ[A-Za-z0-9_-]{10,}\.[A-Za-z0-9_-]{10,}\.' +
+            '[A-Za-z0-9_-]{10,}\b|' +
+        '\b(?:postgres(?:ql)?|mysql|mariadb|mongodb(?:\+srv)?|redis)' +
+            '://[^/\s:@]+:[^@\s/]+@)'
+    $allowedFailurePattern = '(?i)(' +
+        'application run failed|caused by:|exception|error|failed|failure|' +
+        'flyway|migration|sqlstate|permission denied|access denied|' +
+        'checksum|schema history|database .* unavailable|unable to|' +
+        'unsupported database|validate failed)'
+    $safeLines = New-Object 'System.Collections.Generic.List[string]'
+    foreach ($line in ($content -split '\r?\n')) {
+        $candidate = $line.Trim()
+        if ([string]::IsNullOrWhiteSpace($candidate)) {
+            continue
+        }
+        if ($candidate -match $prohibitedPattern -or
+            $candidate -match
+                '(?<![A-Za-z0-9_+/=-])[A-Za-z0-9_+/=-]{40,}' +
+                    '(?![A-Za-z0-9_+/=-])') {
+            $safeLines.Add('[redacted prohibited line]')
+            continue
+        }
+        if ($candidate -match $allowedFailurePattern) {
+            $safeLines.Add($candidate)
+        }
+    }
+    if ($safeLines.Count -eq 0) {
+        return '[log] diagnostic suppressed; no allowlisted failure lines'
+    }
+    $safeContent = $safeLines -join ' | '
+    if ($safeContent.Length -gt 8186) {
+        $safeContent = $safeContent.Substring($safeContent.Length - 8186)
+    }
+    return '[log] ' + $safeContent
+}
+
 function Invoke-CrossServiceProcess {
     param(
         [Parameter(Mandatory = $true)][string]$Executable,
@@ -193,6 +303,22 @@ function Invoke-CrossServiceProcess {
         )
     }
     if ($exitCode -ne 0) {
+        try {
+            foreach ($diagnosticPath in @($StdoutPath, $StderrPath)) {
+                $diagnostic = Get-CrossServiceRedactedLogTail `
+                    -Path $diagnosticPath -Environment $Environment
+                if (-not [string]::IsNullOrWhiteSpace($diagnostic)) {
+                    $diagnosticName = [IO.Path]::GetFileName($diagnosticPath)
+                    Write-Warning (
+                        "Redacted tail for '$diagnosticName' (max 8192 chars):`n" +
+                        $diagnostic
+                    ) -WarningAction Continue
+                }
+            }
+        }
+        catch {
+            # Diagnostics are best-effort and must never replace the native failure.
+        }
         throw "Cross-service command '$operation' failed with exit code $exitCode."
     }
 }
