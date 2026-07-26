@@ -151,7 +151,7 @@ Use either launcher consistently:
 | `test` | Phase 1 governance, repository layout, frontend test, both Java tests, Python pytest. |
 | `lint` | Layout, ESLint, TypeScript, Java compile, uv-lock check, Ruff, and mypy. |
 | `build` | Next.js production build, both Spring Boot packages, and Python bytecode validation. |
-| `security` / `security-scan` | Working tree/history secret scan, pnpm audit at moderate+, pip-audit, and Java dependency scan failing at CVSS 7+. |
+| `security` / `security-scan` | Working tree/history secret scan, executable proof of locally patched frontend dependencies, pnpm audit at moderate+, pip-audit, and Java dependency scan failing at CVSS 7+. |
 | `dev` | Build and run the Compose `application` profile in the foreground. |
 | `up` | Build and run the profile detached, waiting for health checks. |
 | `down` | Stop the profile; remains available when capacity is below threshold. |
@@ -163,6 +163,14 @@ The first Java dependency scan can take substantially longer while it builds
 the NVD database. Its data remains in the D-backed cache. The disabled
 `minio-review` profile is deliberately non-routable while blocker B-012 is
 unresolved; do not replace its deliberately invalid image sentinel locally.
+
+The frontend audit exception for `GHSA-mh99-v99m-4gvg` is not a bare risk
+waiver. Both launchers and CI first run
+`scripts/security/verify-brace-expansion-patch.mjs`, which fails unless the
+lockfile selects only patched brace-expansion artifacts and the legacy
+CommonJS/minimatch path proves its bounded runtime behavior. Platform Security
+must review and remove this temporary exception by 2026-08-09, or earlier when
+the dependency graph no longer resolves the legacy 1.x line.
 
 Before `dev` or `up`, verify Docker's daemon/build storage is backed by an
 approved capacity-monitored volume, then set
