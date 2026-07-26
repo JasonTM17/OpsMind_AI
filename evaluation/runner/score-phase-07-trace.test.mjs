@@ -180,6 +180,14 @@ test("does not let a missing run hide a failure the same metric observed", () =>
   const onlyAbsent = score(absent);
   assert.equal(onlyAbsent.metrics.structured_output.status, "UNAVAILABLE");
   assert.equal(onlyAbsent.verdict, "INCOMPLETE");
+
+  // A failing verdict does not suppress the fact that evidence was also
+  // missing. Six metrics were unobservable in the masked case above, and a
+  // reader has to be told that alongside the failure.
+  assert.ok(Object.values(withAbsence.metrics).some((metric) => (
+    metric.status === "UNAVAILABLE"
+  )));
+  assert.ok(withAbsence.warnings.some((warning) => /unavailable/iu.test(warning)));
 });
 
 test("passes a priced run that stays inside the scenario cost budget", () => {
