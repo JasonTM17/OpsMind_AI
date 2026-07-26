@@ -138,6 +138,16 @@ order. The projection excludes prompts, provider reasoning, credentials,
 capability material, raw connector bodies, and evidence content. Raw bytes and
 canonical JSON use distinct typed, domain-separated digests.
 
+Each scenario bounds per-run cost at its token budget priced at the configured
+rate. The runtime treats a configuration as valid only when both token prices
+are above zero, and denies egress otherwise, so a run that produces tokens
+always reports a cost; a zero cost bound would be unreachable rather than
+strict. The bound therefore stays an independent control: it fails a run whose
+reported cost exceeds what its permitted tokens can justify, which is the case a
+token count alone cannot detect. Identities are RFC 9562 UUIDs; evidence and
+execution identities are version 8 because the platform derives them from a
+domain-separated digest of organization, run, and intent.
+
 Managed paths reject reparse-point ancestors before writes. Cleanup removes
 credentials and raw exports before process/container cleanup, aggregates every
 failure, and refuses unsafe recursive removal.

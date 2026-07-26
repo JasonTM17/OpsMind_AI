@@ -128,6 +128,35 @@ test("sums every accepted invocation cost for the per-run budget", () => {
   assert.equal(result.metrics.cost.value, 0.01);
 });
 
+test("passes a priced run that stays inside the scenario cost budget", () => {
+  // The AI Runtime only treats a configuration as valid when both token prices
+  // are above zero, so a run that produces tokens necessarily reports a cost.
+  // This is the cost a scenario-A run reports at the harness price of
+  // 0.1 USD per million tokens, and it must score as a pass.
+  const priced = 0.0000396;
+  const trace = clonedTrace();
+  delete trace.runs[0].toolExecutions;
+  delete trace.runs[0].rawAnalysis;
+  delete trace.runs[0].rawAnalysisDigest;
+  delete trace.runs[0].rawAnalysisReference;
+  const exportDocument = JSON.parse(scenarioAExport);
+  const firstAccepted = exportDocument.events.find((event) => (
+    event.event_type === "ANALYSIS_ACCEPTED"
+  ));
+  firstAccepted.accepted_analysis.cost_estimate.amount = priced;
+  exportDocument.analysis_invocations[0].response_payload =
+    structuredClone(firstAccepted.accepted_analysis);
+  exportDocument.analysis_invocations[0].actual_cost_usd = priced;
+  const enriched = enrichTraceWithEvaluationExports(
+    trace,
+    [Buffer.from(JSON.stringify(exportDocument))],
+    traceReference,
+  );
+  const result = score(enriched);
+  assert.equal(result.metrics.cost.status, "PASS");
+  assert.equal(result.metrics.cost.value, priced);
+});
+
 test("fails a tampered projected fragment before semantic scoring", () => {
   const trace = clonedTrace();
   trace.runs[0].evaluationProjection =
