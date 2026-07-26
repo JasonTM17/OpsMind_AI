@@ -1,7 +1,7 @@
 ---
 phase: 2
 title: Statistical protocol and reporting
-status: in-progress
+status: completed
 priority: P1
 dependencies:
   - 1
@@ -75,14 +75,14 @@ gate stays BLOCK.
 
 ## Success Criteria
 
-- [ ] Wilson interval matches published values for known inputs and never leaves
+- [x] Wilson interval matches published values for known inputs and never leaves
       `[0, 1]`; a zero denominator reports unavailable rather than `NaN`.
-- [ ] A benchmark result reports `cases`, `trials`, and a two-sided interval per
+- [x] A benchmark result reports `cases`, `trials`, and a two-sided interval per
       scored metric, and the schema rejects a result missing them.
-- [ ] Scenario A at 100 warm runs reports one case and 100 trials, not 100 cases.
-- [ ] Editing the preregistration without updating the manifest digest fails the
+- [x] Scenario A at 100 warm runs reports one case and 100 trials, not 100 cases.
+- [x] Editing the preregistration without updating the manifest digest fails the
       validator.
-- [ ] Existing scenario scoring stays `PASS`; only the reported shape grows.
+- [x] Existing scenario scoring stays `PASS`; only the reported shape grows.
 
 ## Risk Assessment
 

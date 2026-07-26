@@ -1,0 +1,64 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://contracts.opsmind.invalid/evaluation/v1/human-baseline-record.schema.json",
+  "title": "OpsMindHumanBaselineRecordV1",
+  "description": "One reviewer's answer for one case. Carries no free-text field, so incident narrative and reviewer commentary have nowhere to enter the record.",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "schema_version",
+    "case_id",
+    "reviewer_id",
+    "minutes_to_conclusion",
+    "abstained",
+    "root_cause_label",
+    "later_corrected",
+    "interrupted",
+    "adjudicated"
+  ],
+  "properties": {
+    "schema_version": {
+      "const": "opsmind-human-baseline-record-v1"
+    },
+    "case_id": {
+      "type": "string",
+      "pattern": "^[a-z0-9]+(?:-[a-z0-9]+)*$",
+      "maxLength": 96
+    },
+    "reviewer_id": {
+      "type": "string",
+      "pattern": "^reviewer-[0-9a-f]{8}$"
+    },
+    "minutes_to_conclusion": {
+      "type": "number",
+      "minimum": 0,
+      "maximum": 60
+    },
+    "abstained": {
+      "type": "boolean"
+    },
+    "root_cause_label": {
+      "type": ["string", "null"],
+      "enum": [
+        "deployment-change",
+        "dependency-saturation",
+        "database-contention",
+        "queue-backlog",
+        "configuration-drift",
+        "authorization-denial",
+        "infrastructure-fault",
+        "insufficient-evidence",
+        null
+      ]
+    },
+    "later_corrected": {
+      "type": "boolean"
+    },
+    "interrupted": {
+      "type": "boolean"
+    },
+    "adjudicated": {
+      "type": "boolean"
+    }
+  }
+}

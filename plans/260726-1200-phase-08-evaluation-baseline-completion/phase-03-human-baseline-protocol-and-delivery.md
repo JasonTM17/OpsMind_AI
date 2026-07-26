@@ -1,10 +1,12 @@
 ---
 phase: 3
-title: "Human baseline protocol and delivery"
-status: pending
+title: Human baseline protocol and delivery
+status: in-progress
 priority: P2
-dependencies: [1, 2]
-effort: "0.5 day plus review"
+dependencies:
+  - 1
+  - 2
+effort: 0.5 day plus review
 ---
 
 # Phase 3: Human baseline protocol and delivery
@@ -71,13 +73,13 @@ is `UNAVAILABLE`, which is the state this plan expects to ship in.
 
 ## Success Criteria
 
-- [ ] The protocol states qualification, presentation, timing, adjudication, and
+- [x] The protocol states qualification, presentation, timing, adjudication, and
       recorded fields without ambiguity about who decides a tie.
-- [ ] The schema rejects unknown and narrative fields; tests prove both.
-- [ ] With no records configured the gate reports `UNAVAILABLE` with the reason,
+- [x] The schema rejects unknown and narrative fields; tests prove both.
+- [x] With no records configured the gate reports `UNAVAILABLE` with the reason,
       and never `PASS`.
-- [ ] Docs and the parent phase file state the remaining gate and its owner.
-- [ ] Full local gate set and revision-bound CI pass; `PhaseExit` stays BLOCK.
+- [x] Docs and the parent phase file state the remaining gate and its owner.
+- [x] Full local gate set and revision-bound CI pass; `PhaseExit` stays BLOCK.
 
 ## Risk Assessment
 
