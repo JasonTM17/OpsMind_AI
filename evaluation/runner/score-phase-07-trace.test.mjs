@@ -1,6 +1,7 @@
 import assert from "node:assert/strict";
 import { createHash } from "node:crypto";
 import { readFileSync } from "node:fs";
+import path from "node:path";
 import { test } from "node:test";
 
 import { stableStringify } from "./score-phase-07-projection.mjs";
@@ -9,6 +10,9 @@ import {
   projectCrossServiceEvaluationExport,
 } from "./cross-service-evaluation-projection.mjs";
 import { scorePhase07Trace } from "./score-phase-07-trace-core.mjs";
+import { createEvaluationContractValidator } from "./evaluation-contract-validation.mjs";
+
+const repositoryRoot = path.resolve(import.meta.dirname, "../..");
 
 const truth = JSON.parse(readFileSync(
   new URL("../scenarios/deployment-latency-regression/ground-truth.json", import.meta.url),
@@ -126,6 +130,28 @@ test("sums every accepted invocation cost for the per-run budget", () => {
   assert.equal(result.verdict, "FAIL");
   assert.equal(result.metrics.cost.status, "FAIL");
   assert.equal(result.metrics.cost.value, 0.01);
+});
+
+test("reports a trace carrying no run as incomplete, not as a malformed result", () => {
+  // Every check is vacuously satisfied over an empty run list, so the verdict
+  // has to come from the metrics being unobservable rather than from the
+  // provenance checks. The result must still satisfy its own contract, because
+  // a schema violation here reaches a reader as a broken artifact instead of as
+  // the absence of evidence it actually is.
+  const validate = createEvaluationContractValidator(repositoryRoot);
+  const empty = clonedTrace();
+  empty.runs = [];
+  empty.warmRuns = 0;
+  const result = score(empty);
+  assert.equal(result.verdict, "INCOMPLETE");
+  assert.equal(result.sample_count, 0);
+  assert.deepEqual(result.sampling, {
+    cases: 0,
+    trials: 0,
+    trials_per_case: 0,
+    independent: false,
+  });
+  assert.deepEqual(validate(result, "benchmark-result.schema.json"), []);
 });
 
 test("does not let a missing run hide a failure the same metric observed", () => {
