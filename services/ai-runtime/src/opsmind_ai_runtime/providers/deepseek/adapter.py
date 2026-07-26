@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 from datetime import UTC, datetime
+from decimal import ROUND_HALF_UP, Decimal
 from typing import Annotated, Literal
 
 from pydantic import BaseModel, ConfigDict, Field, ValidationError
@@ -35,6 +36,9 @@ class _StructuredAnalysis(BaseModel):
     requested_tool_calls: Annotated[tuple[ToolIntent, ...], Field(max_length=20)] = ()
 
 
+_COST_SCALE = Decimal("0.00000001")
+
+
 def _usage(raw: object) -> Usage:
     if not isinstance(raw, dict):
         raise InvalidProviderResponse("provider usage must be an object")
@@ -53,6 +57,29 @@ def _usage(raw: object) -> Usage:
         completion_tokens=completion_tokens,
         total_tokens=total_tokens,
     )
+
+
+def _reported_cost_usd(
+    *,
+    prompt_tokens: int,
+    completion_tokens: int,
+    input_cost_per_million_usd: float,
+    output_cost_per_million_usd: float,
+) -> float:
+    """Report cost at the scale the durable accounting column stores.
+
+    The reported amount is written both into the accepted response and into the
+    invocation's numeric(20, 8) cost column, and evaluation requires the two to
+    be identical. Binary floating point arithmetic can produce a tail past the
+    eighth decimal, which that column silently drops, so the amount is computed
+    in decimal and quantized here rather than at the point of storage.
+    """
+
+    total = (
+        Decimal(prompt_tokens) * Decimal(str(input_cost_per_million_usd))
+        + Decimal(completion_tokens) * Decimal(str(output_cost_per_million_usd))
+    ) / Decimal(1_000_000)
+    return float(total.quantize(_COST_SCALE, rounding=ROUND_HALF_UP))
 
 
 class DeepSeekAdapter:
@@ -100,11 +127,12 @@ class DeepSeekAdapter:
                 confidence=normalized.confidence,
                 usage=usage,
                 cost_estimate=CostEstimate(
-                    amount=(
-                        usage.prompt_tokens * context.input_cost_per_million_usd
-                        + usage.completion_tokens * context.output_cost_per_million_usd
-                    )
-                    / 1_000_000,
+                    amount=_reported_cost_usd(
+                        prompt_tokens=usage.prompt_tokens,
+                        completion_tokens=usage.completion_tokens,
+                        input_cost_per_million_usd=context.input_cost_per_million_usd,
+                        output_cost_per_million_usd=context.output_cost_per_million_usd,
+                    ),
                 ),
                 requested_tool_calls=normalized.requested_tool_calls,
             )

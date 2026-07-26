@@ -1,6 +1,7 @@
 import asyncio
 import json
 from datetime import UTC, datetime, timedelta
+from decimal import ROUND_HALF_UP, Decimal
 from uuid import uuid4
 
 import pytest
@@ -11,6 +12,7 @@ from opsmind_ai_runtime.application.provider_gateway import (
 )
 from opsmind_ai_runtime.providers.deepseek.adapter import (
     DeepSeekAdapter,
+    _reported_cost_usd,
 )
 from opsmind_ai_runtime.providers.deepseek.client import DeepSeekClient
 
@@ -95,6 +97,41 @@ def test_adapter_normalizes_structured_response_and_drops_reasoning() -> None:
     assert response.status == "complete"
     assert response.usage.total_tokens == 15
     assert response.cost_estimate.amount == pytest.approx(0.00002)
+
+
+@pytest.mark.parametrize(
+    ("prompt_tokens", "completion_tokens", "price_per_million"),
+    [
+        (1234, 567, 0.1),
+        (1, 1, 0.1),
+        (4000, 0, 0.1),
+        (0, 0, 0.1),
+        (999, 1, 2.5),
+        (7, 3, 0.27),
+    ],
+)
+def test_reported_cost_survives_the_durable_numeric_scale(
+    prompt_tokens: int, completion_tokens: int, price_per_million: float
+) -> None:
+    # The same amount is written into the accepted response and into a
+    # numeric(20, 8) column, and evaluation requires the two to stay identical.
+    # Plain float arithmetic can carry a tail past the eighth decimal that the
+    # column drops, which breaks that binding after the fact.
+    scale = Decimal("0.00000001")
+    amount = _reported_cost_usd(
+        prompt_tokens=prompt_tokens,
+        completion_tokens=completion_tokens,
+        input_cost_per_million_usd=price_per_million,
+        output_cost_per_million_usd=price_per_million,
+    )
+    stored = Decimal(str(amount))
+    assert stored == stored.quantize(scale, rounding=ROUND_HALF_UP)
+    assert amount >= 0.0
+    expected = (
+        Decimal(prompt_tokens) * Decimal(str(price_per_million))
+        + Decimal(completion_tokens) * Decimal(str(price_per_million))
+    ) / Decimal(1_000_000)
+    assert stored == expected.quantize(scale, rounding=ROUND_HALF_UP)
 
 
 def test_adapter_rejects_empty_content() -> None:
