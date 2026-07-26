@@ -51,7 +51,7 @@ const SAFE_IDENTIFIER = /^[A-Za-z0-9._-]{1,128}$/u;
  * a printable single-line shape is replaced rather than echoed.
  */
 export function safeIdentifier(value) {
-  return SAFE_IDENTIFIER.test(String(value ?? "")) ? String(value) : "[unsafe name]";
+  return typeof value === "string" && SAFE_IDENTIFIER.test(value) ? value : "[unsafe name]";
 }
 
 export class EvaluationContractError extends Error {

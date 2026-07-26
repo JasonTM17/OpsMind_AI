@@ -84,7 +84,10 @@ test("keeps an untrusted key out of the failure message it triggers", () => {
     () => projectCrossServiceEvaluationExport(mutated((value) => {
       value.events[4].accepted_analysis.hypotheses[0][forged] = "password=super-secret-value";
     })),
-    (error) => !/\r|\n/u.test(error.message) && !error.message.includes("Result=PASS"),
+    (error) => error?.code === "UNSAFE_VALUE"
+      && !/[\r\n]/u.test(error.message)
+      && !error.message.includes("Result=PASS")
+      && !error.message.includes("CrossServiceVerification"),
   );
 });
 
