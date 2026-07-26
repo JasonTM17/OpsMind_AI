@@ -137,7 +137,7 @@ Phase 8, layout, actionlint, and secret gates pass. Revision-bound run
 `30200584275` on commit `134d63c` is terminal green: fresh Docker/PostgreSQL
 A/B/C execute through the real service path, every scenario scores `PASS` on all
 eight metrics with 100 warm runs for A, and the uploaded artifact binds that
-exact revision and both service JAR digests. Blocking re-review remains pending.
+exact revision and both service JAR digests. Held-out corpus governance, preregistered sampling with Wilson intervals, and the human-baseline protocol are now in place and report `UNAVAILABLE` with their reasons rather than being absent. Blocking re-review remains pending.
 This is deterministic smoke evidence on authored scenarios, so parent Phase 8 and
 its A-Z G4 exit remain BLOCK on the held-out corpus, calibration, and human
 baseline.

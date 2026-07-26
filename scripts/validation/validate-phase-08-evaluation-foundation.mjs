@@ -8,6 +8,10 @@ import {
   PAYLOAD_ROOT_ENVIRONMENT,
   resolveHeldOutCorpus,
 } from "../../evaluation/runner/held-out-corpus.mjs";
+import {
+  BASELINE_ROOT_ENVIRONMENT,
+  resolveHumanBaseline,
+} from "../../evaluation/runner/human-baseline.mjs";
 import { createContractFileAccess } from "./phase-04-incident-contracts/safe-contract-files.mjs";
 import { rejectDuplicateJsonKeys } from "./phase-04-incident-contracts/duplicate-json-key-detector.mjs";
 
@@ -283,6 +287,22 @@ check(
   "held-out corpus resolved without any scorable case",
 );
 
+// Every other metric compares the system against its own ground truth, which
+// cannot separate "did what the scenario said" from "helped anyone". This gate
+// is expected to be UNAVAILABLE and is reported rather than omitted, so its
+// absence stays visible instead of being mistaken for a closed gate.
+let humanBaseline = { status: "BLOCKED", reason: "resolution failed", cases: [] };
+try {
+  humanBaseline = resolveHumanBaseline({
+    baselineRoot: process.env[BASELINE_ROOT_ENVIRONMENT] ?? "",
+    knownCaseIds: new Set(heldOutCorpus.cases.map((entry) => entry.caseId)),
+  });
+}
+catch (error) {
+  humanBaseline = { status: "BLOCKED", reason: error.code ?? "unknown", cases: [] };
+  check(false, `human baseline is unusable: ${error.message}`);
+}
+
 // A scenario bounds cost at its token budget priced at the rate the harness
 // configures. Nothing else ties the two together, so a price change would
 // silently make every cost budget wrong in whichever direction it moved.
@@ -321,6 +341,10 @@ console.log(`ScenarioSchemas=6 ScenarioFamilies=${families.length} Implemented=$
 console.log(
   `HeldOutCorpus=${heldOutCorpus.status} HeldOutCases=${heldOutCorpus.cases.length}`
     + ` HeldOutReason=${heldOutCorpus.reason ?? "none"}`,
+);
+console.log(
+  `HumanBaseline=${humanBaseline.status} BaselineCases=${humanBaseline.cases.length}`
+    + ` BaselineReason=${humanBaseline.reason ?? "none"}`,
 );
 console.log(`CanonicalResults=${results.length} CanonicalMetrics=${Object.keys(result.metrics).length} NegativeCases=4`);
 console.log(`Errors=${errors.length}`);

@@ -55,8 +55,8 @@ phase file so the inventory stops reading as outstanding work.
 | Phase | Name | Status |
 |-------|------|--------|
 | 1 | [Held-out corpus governance](./phase-01-held-out-corpus-and-family-specification.md) | Completed |
-| 2 | [Statistical protocol and reporting](./phase-02-statistical-protocol-and-reporting.md) | In Progress |
-| 3 | [Human baseline protocol and delivery](./phase-03-human-baseline-protocol-and-delivery.md) | Pending |
+| 2 | [Statistical protocol and reporting](./phase-02-statistical-protocol-and-reporting.md) | Completed |
+| 3 | [Human baseline protocol and delivery](./phase-03-human-baseline-protocol-and-delivery.md) | In Progress |
 
 ## Dependencies
 
