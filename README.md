@@ -53,9 +53,12 @@ receipt, audit, and evidence records; connector provenance is the digest of the
 manifest bytes selected by the Tool Gateway runtime. Platform V008 is an
 expand migration: rolling legacy writers remain accepted, while response-aware
 writes are strictly bound and only those runs are evaluation-eligible. Local Node, Python,
-semantic-order, path-safety, and static gates pass. Fresh disposable
-Docker/PostgreSQL A/B/C execution, executable attestation, and an artifact bound
-to the exact pushed revision remain pending CI evidence; Phase 8 stays blocked.
+semantic-order, path-safety, and static gates pass. Revision-bound run
+`30199870220` on commit `963ab8d` executes fresh disposable Docker/PostgreSQL
+A/B/C through the real service path, scores every scenario `PASS` across all
+eight metrics with 100 warm runs for A, and uploads an artifact bound to that
+exact revision and to both service JAR digests. Phase 8 exit stays blocked on
+the held-out corpus and human baseline, which this evidence does not claim.
 
 DeepSeek egress and all production credentials remain disabled by default.
 Production identity/provider/legal conformance, evidence-object lifecycle,
@@ -265,7 +268,7 @@ node .\scripts\validation\validate-phase-08-evaluation-foundation.mjs
 | AI Runtime | 149 offline tests plus PostgreSQL state gate pass; DeepSeek adapter defaults to `deepseek-v4-flash` | No live provider call or legal/residency approval |
 | Tool Gateway | Static contract, Platform issuer conformance, workload OAuth boundary, and dual-credential Platform execution client pass | Durable stores and live connector pending |
 | Investigation | Bounded-record checkpoint 4B, capability-backed AI rounds, exact-bound Tool Gateway client, CK/Stitch browser proof, and 100-warm-run trace pass | G3 still requires a named live non-production connector, provider/legal approval, timeline linkage, and BFF/session proof |
-| Evaluation | Three A/B/C contracts and strict projection pass; current evidence is 33/33 Node tests, 40/40 targeted Python tests, 50 shuffled semantic-order trials, and a junction-path safety test | Fresh disposable A/B/C, executable attestation, exact-revision CI artifact, held-out corpus, and human baseline remain pending; Phase 8 exit is BLOCK |
+| Evaluation | Fresh disposable A/B/C run through the real service path in revision-bound CI and score `PASS` on all eight metrics, with 100 warm runs for A and an artifact bound to the pushed revision and JAR digests; 36/36 Node tests and 148/148 AI Runtime tests pass | Held-out corpus, human baseline, and calibration remain pending; Phase 8 exit is BLOCK |
 | Compose | All application images build, start, and pass health smoke in CI | Not staging/production deployment evidence |
 
 Historical local evidence marked `REFERENCE_CONFORMANCE_NOT_PRODUCTION` stays

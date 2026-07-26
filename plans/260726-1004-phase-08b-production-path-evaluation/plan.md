@@ -82,10 +82,13 @@ live-provider conformance, G4, or Phase 8 completion.
   validator
   `Implemented=3 CanonicalResults=3 Errors=0 CheckpointResult=PASS
   PhaseExit=BLOCK`; repository layout, actionlint, and project secret scan PASS.
-- Pending proof: fresh Docker/PostgreSQL A/B/C, executable attestation,
-  independent blocking-review closure, exact pushed revision, uploaded
-  `phase-08b-cross-service-evaluation` artifact, and terminal-green
-  `.github/workflows/cross-service-evaluation.yml`.
+- Production-path proof: revision-bound run `30199870220` on commit `963ab8d` is
+  terminal green. Fresh disposable Docker/PostgreSQL Scenario A at 100 warm runs,
+  B, and C each score `EvaluationVerdict=PASS` with all eight metrics passing;
+  the uploaded artifact binds `GitHead=963ab8d`, `GitTree=0`, and service JAR,
+  manifest, export SQL, and projector digests.
+- Pending proof: independent blocking-review closure. Phase 8 exit stays BLOCK on
+  the held-out corpus and human baseline, which this checkpoint does not claim.
 - Gate-label question: the parent A-Z plan names Phase 8 exit `G4`, while
   `docs/project-roadmap.md` uses `G4` for durable workflow and `G7` for
   product/evaluation. Parent A-Z `G4` is canonical here until the taxonomy is

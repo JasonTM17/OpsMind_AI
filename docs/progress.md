@@ -598,6 +598,40 @@ non-production connector, provider/legal conformance, incident-timeline
 linkage, production BFF/session proof, and release-scale evaluation remain
 explicit blockers.
 
+## Phase 8B production-path evaluation
+
+Revision-bound run `30199870220` on commit `963ab8d` is the first terminal-green
+execution of the deterministic evaluation contracts against the real service
+path rather than authored fixtures. It provisions a disposable
+Docker/PostgreSQL stack per scenario and runs each one through Platform, AI
+Runtime, Tool Gateway, and the operator projection:
+
+- Scenario A, deployment-correlated latency regression, 100 warm runs, verdict
+  `PASS`;
+- Scenario B, insufficient-evidence abstention with no tool use, verdict `PASS`;
+- Scenario C, opposing read-only collections with counter-evidence, verdict
+  `PASS`;
+- all eight metrics pass in every scenario, including `root_cause_semantic`,
+  which requires a raw analysis whose digest and reference resolve against the
+  scored trace;
+- the uploaded artifact records `GitHead=963ab8d`, `GitTree=0`, and SHA-256
+  digests for both service JARs, the connector manifest, the export SQL, and the
+  projector.
+
+Five defects were closed to reach it. A PowerShell argument boundary silently
+split a probe command so a failing child reported success. The evidence identity
+contract accepted only UUID versions 1 through 5 while the platform derives
+version 8 identities from a domain-separated digest. The scenario cost budget was
+zero while the runtime requires non-zero token prices to permit egress, making
+the metric unreachable rather than strict. Reported cost was computed in binary
+floating point and no longer equalled the `numeric(20, 8)` column it was stored
+in, breaking the invocation binding. The artifact reference named the transient
+working path instead of the published trace, leaving the raw analysis untrusted.
+
+This is deterministic smoke evidence on three authored scenarios. It is not a
+held-out quality, calibration, or human-benefit claim, and Phase 8 exit remains
+BLOCK.
+
 ## Unresolved Questions
 
 No current implementation decision is being silently deferred. Production IdP,
