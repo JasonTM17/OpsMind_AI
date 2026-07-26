@@ -2,6 +2,7 @@ import { createHash } from "node:crypto";
 import fs from "node:fs";
 import path from "node:path";
 
+import { createEvaluationContractValidator } from "./evaluation-contract-validation.mjs";
 import { contractFailure, parseUntrustedJsonExport } from "./evaluation-value-safety.mjs";
 
 export const PAYLOAD_ROOT_ENVIRONMENT = "OPS_EVALUATION_HELDOUT_ROOT";
@@ -44,10 +45,24 @@ function unavailable(reason) {
  * contract failure, because a corpus that silently shrinks would otherwise read
  * as a corpus that passed.
  */
-export function resolveHeldOutCorpus({ manifestBytes, payloadRoot, knownFamilyIds = null }) {
+export function resolveHeldOutCorpus({
+  manifestBytes,
+  payloadRoot,
+  knownFamilyIds = null,
+  repositoryRoot = path.resolve(import.meta.dirname, "../.."),
+}) {
   const manifest = parseUntrustedJsonExport(manifestBytes).document;
   if (manifest.schema_version !== "opsmind-held-out-manifest-v1") {
     contractFailure("HELD_OUT_MANIFEST", "Held-out manifest schema version is unsupported.");
+  }
+  // Applied here as well as in the validator. A contract enforced in only one
+  // of the two places is how the human baseline record schema came to be
+  // documented but never applied.
+  if (createEvaluationContractValidator(repositoryRoot)(
+    manifest,
+    "held-out-manifest.schema.json",
+  ).length > 0) {
+    contractFailure("HELD_OUT_MANIFEST", "Held-out manifest violates its contract.");
   }
   if (manifest.payload_root_environment !== PAYLOAD_ROOT_ENVIRONMENT) {
     contractFailure("HELD_OUT_MANIFEST", "Held-out manifest names an unexpected payload root.");
