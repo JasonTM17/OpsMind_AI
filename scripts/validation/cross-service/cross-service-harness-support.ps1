@@ -162,12 +162,12 @@ function Invoke-CrossServiceProcess {
                 $ErrorActionPreference = 'Stop'
                 $PSNativeCommandUseErrorActionPreference = $false
                 try {
-                    $LASTEXITCODE = $null
+                    $global:LASTEXITCODE = $null
                     & $Executable @Arguments 1> $StdoutPath 2> $StderrPath
-                    if ($null -eq $LASTEXITCODE) {
+                    if ($null -eq $global:LASTEXITCODE) {
                         throw 'Native process completed without reporting an exit code.'
                     }
-                    return [int]$LASTEXITCODE
+                    return [int]$global:LASTEXITCODE
                 }
                 finally {
                     $ErrorActionPreference = $previousErrorActionPreference
