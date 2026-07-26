@@ -52,9 +52,25 @@ assertion is not vacuous. The Phase 8 validator reports
 `Implemented=3 CanonicalResults=3 Errors=0 CheckpointResult=PASS
 PhaseExit=BLOCK`; repository layout, actionlint, syntax checks, and the project
 secret scan pass. The independent tester completed with concerns limited to
-unrun heavy integration and coverage depth. Blocking review, fresh
-Docker/PostgreSQL A/B/C, executable attestation, exact pushed revision,
-artifact upload, and terminal-green CI remain pending.
+unrun heavy integration and coverage depth.
+
+Revision-bound GitHub Actions run `30199870220` on commit `963ab8d` is terminal
+green. It executed fresh disposable Docker/PostgreSQL Scenario A with 100 warm
+runs, Scenario B, and Scenario C through the real Platform, AI Runtime, Tool
+Gateway, and PostgreSQL path, and scored each one `EvaluationVerdict=PASS` with
+`ScorerExit=0`. All eight metrics pass in all three scenarios, including
+`root_cause_semantic`. The uploaded artifact records `GitHead=963ab8d`,
+`GitTree=0`, and SHA-256 digests for both service JARs, the connector manifest,
+the export SQL, and the projector.
+
+Five defects closed between the previous transcript and that run: a shell
+argument boundary that split the probe command, an evidence identity contract
+that rejected the version 8 UUIDs the platform derives, a cost budget that was
+unreachable rather than strict, a reported cost that did not survive the durable
+numeric scale, and an artifact reference that named a transient working path.
+
+Blocking independent review remains pending. Phase 8 exit stays BLOCK on the
+held-out corpus and human baseline, which this checkpoint does not claim.
 
 The workflow publishes traces only below `.opsmind/reports` and uploads
 `artifacts/verification/phase-08b/` plus the A/B/C trace paths as
@@ -93,11 +109,11 @@ powershell.exe -NoProfile -ExecutionPolicy Bypass -File .\scripts\governance\sca
 
 - [x] All scoped lightweight tests and static/security gates report zero failures.
 - [ ] Independent review has zero blocking findings.
-- [ ] Pushed revision receives terminal green CI with uploaded verification
+- [x] Pushed revision receives terminal green CI with uploaded verification
       artifacts bound to exact source and executable digests.
-- [x] Docs state local implementation/contracts pass while production-path CI
-      remains pending and Phase 8/A-Z G4 remains BLOCK.
-- [ ] Worktree clean and C/D free space reported without destructive cleanup.
+- [x] Docs state which evidence now exists and that Phase 8/A-Z G4 remains BLOCK
+      on held-out corpus and human baseline.
+- [x] Worktree clean and C/D free space reported without destructive cleanup.
 
 ## Risk Assessment
 

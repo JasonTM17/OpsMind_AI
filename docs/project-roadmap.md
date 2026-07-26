@@ -31,7 +31,7 @@ The detailed executable plan is [plans/260719-1747-opsmind-ai-production-platfor
 | 5 | DeepSeek AI runtime and provider gateway | G3 | In progress; static checkpoint passed, exit gate blocked |
 | 6 | Safe Tool Gateway and read-only connectors | G3 | In progress; durable Prometheus checkpoint PASS, PhaseExitGate BLOCK |
 | 7 | Evidence-backed incident vertical slice | G3 | In progress; phases 1–4 complete, cross-service/UI exit BLOCK |
-| 8 | Simulator and evaluation baseline | A-Z G4 / roadmap G7 | In progress; Phase 8B implementation and local contracts present, production-path CI pending, exit BLOCK |
+| 8 | Simulator and evaluation baseline | A-Z G4 / roadmap G7 | In progress; Phase 8B production-path A/B/C pass in revision-bound CI, held-out corpus and human baseline pending, exit BLOCK |
 | 9 | Durable Temporal investigation workflow | G4 | Pending |
 | 10 | Permission-aware RAG and knowledge lifecycle | G5 | Pending |
 | 11 | Exact-action approval and reversible remediation | G6 | Pending |
@@ -133,11 +133,14 @@ Every accepted invocation contributes to run cost; durable audit/receipt/
 evidence digests are exact-bound. Scenario C is independent of evidence
 row/UUID order. Reparse-safe managed paths and cleanup-first secret/export
 deletion protect failure paths. Local Node, Python, semantic-order, path-safety,
-Phase 8, layout, actionlint, and secret gates pass. Fresh Docker/PostgreSQL
-A/B/C, executable attestation, blocking re-review, exact-revision artifact
-upload, and terminal-green `.github/workflows/cross-service-evaluation.yml`
-remain pending. This is not a Phase 8B PASS; parent Phase 8 and its A-Z G4 exit
-remain BLOCK.
+Phase 8, layout, actionlint, and secret gates pass. Revision-bound run
+`30199870220` on commit `963ab8d` is terminal green: fresh Docker/PostgreSQL
+A/B/C execute through the real service path, every scenario scores `PASS` on all
+eight metrics with 100 warm runs for A, and the uploaded artifact binds that
+exact revision and both service JAR digests. Blocking re-review remains pending.
+This is deterministic smoke evidence on authored scenarios, so parent Phase 8 and
+its A-Z G4 exit remain BLOCK on the held-out corpus, calibration, and human
+baseline.
 
 ## Staffing Scenarios
 
