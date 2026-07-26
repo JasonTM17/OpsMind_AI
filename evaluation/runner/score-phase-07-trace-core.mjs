@@ -238,7 +238,11 @@ export function scorePhase07Trace({
   const warnings = [
     "Deterministic smoke evidence is not a held-out quality, calibration, p95, or human-benefit claim.",
   ];
-  if (verdict === "INCOMPLETE") {
+  // Tied to the metrics rather than to the verdict. A failing run can also be
+  // missing evidence, and now that an observed failure outranks an absent
+  // observation, a verdict-gated warning would go silent in exactly the case
+  // where a reader most needs to know how much of the surface went unobserved.
+  if (statuses.includes("UNAVAILABLE")) {
     warnings.push("Required raw projection or tool-execution references are unavailable.");
   }
   if (!sourceValid) {
