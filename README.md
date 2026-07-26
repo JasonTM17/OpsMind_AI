@@ -54,7 +54,7 @@ manifest bytes selected by the Tool Gateway runtime. Platform V008 is an
 expand migration: rolling legacy writers remain accepted, while response-aware
 writes are strictly bound and only those runs are evaluation-eligible. Local Node, Python,
 semantic-order, path-safety, and static gates pass. Revision-bound run
-`30199870220` on commit `963ab8d` executes fresh disposable Docker/PostgreSQL
+`30200584275` on commit `134d63c` executes fresh disposable Docker/PostgreSQL
 A/B/C through the real service path, scores every scenario `PASS` across all
 eight metrics with 100 warm runs for A, and uploads an artifact bound to that
 exact revision and to both service JAR digests. Phase 8 exit stays blocked on

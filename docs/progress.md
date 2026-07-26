@@ -600,7 +600,7 @@ explicit blockers.
 
 ## Phase 8B production-path evaluation
 
-Revision-bound run `30199870220` on commit `963ab8d` is the first terminal-green
+Revision-bound run `30200584275` on commit `134d63c` is the first terminal-green
 execution of the deterministic evaluation contracts against the real service
 path rather than authored fixtures. It provisions a disposable
 Docker/PostgreSQL stack per scenario and runs each one through Platform, AI
@@ -614,7 +614,7 @@ Runtime, Tool Gateway, and the operator projection:
 - all eight metrics pass in every scenario, including `root_cause_semantic`,
   which requires a raw analysis whose digest and reference resolve against the
   scored trace;
-- the uploaded artifact records `GitHead=963ab8d`, `GitTree=0`, and SHA-256
+- the uploaded artifact records `GitHead=134d63c`, `GitTree=0`, and SHA-256
   digests for both service JARs, the connector manifest, the export SQL, and the
   projector.
 
