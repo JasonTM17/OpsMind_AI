@@ -33,10 +33,22 @@ all broader quantitative exit gates independently pass.
 
 ## Current Evidence
 
+Cross-service child processes now read their exit status from the process
+handle on every platform instead of inferring it from `$LASTEXITCODE`. The
+previous non-Windows path lost that status once the call ran inside a pipeline,
+so a failing child was reported as success; the SQL role/schema helper shared
+the same defect and ran immediately before the failing Tool Gateway migration.
+Standard output and error are copied concurrently as raw bytes, standard input
+is fed after the drain starts, and secrets reach only the child environment
+rather than the parent process.
+
 The independent earlier tester recorded 28/28 Node tests; the current
 remediation rerun passes 33/33 Node tests and 40/40 targeted Python tests, plus
-50 shuffled semantic-order trials and the junction-path safety test. The Phase
-8 validator reports
+50 shuffled semantic-order trials and the path-safety test. That test now also
+covers exit status read from the handle, 512 KB concurrent capture, and a
+standard-input round trip, and it executed end to end on Windows PowerShell 7
+for the first time. A mutated expected exit code makes it fail, so the
+assertion is not vacuous. The Phase 8 validator reports
 `Implemented=3 CanonicalResults=3 Errors=0 CheckpointResult=PASS
 PhaseExit=BLOCK`; repository layout, actionlint, syntax checks, and the project
 secret scan pass. The independent tester completed with concerns limited to
