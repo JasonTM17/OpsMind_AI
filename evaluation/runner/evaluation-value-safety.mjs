@@ -28,7 +28,11 @@ const UNSAFE_VALUE_PATTERNS = [
   /\bBearer\s+[A-Za-z0-9._~+/-]{8,}=*\b/iu,
   /\beyJ[A-Za-z0-9_-]{8,}\.[A-Za-z0-9_-]{8,}\.[A-Za-z0-9_-]{8,}\b/u,
   /\b(?:gh[oprsu]_|sk-|xox[baprs]-)[A-Za-z0-9_-]{8,}\b/iu,
-  /\b(?:api[_ -]?key|access[_ -]?token|password|private[_ -]?key|secret)\s*[:=]\s*\S+/iu,
+  // Anchored with a lookbehind rather than a word boundary. `\b` never matches
+  // inside SPRING_DATASOURCE_PASSWORD, because the underscore before the
+  // keyword is itself a word character, which exempted every secret named the
+  // way this project names its own.
+  /(?<![A-Za-z0-9])(?:api[_ -]?key|access[_ -]?token|password|private[_ -]?key|secret)\s*[:=]\s*\S+/iu,
   /(?:<think>|chain[- ]of[- ]thought|hidden reasoning|internal reasoning)/iu,
 ];
 

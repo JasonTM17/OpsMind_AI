@@ -9,6 +9,7 @@ import {
 } from "./cross-service-evaluation-projection.mjs";
 import { runProjectionCli } from "./project-cross-service-evaluation-export.mjs";
 import { createEvaluationContractValidator } from "./evaluation-contract-validation.mjs";
+import { scanSafeValues } from "./evaluation-value-safety.mjs";
 
 const repositoryRoot = path.resolve(import.meta.dirname, "../..");
 const exportBytes = readFileSync(new URL(
@@ -72,6 +73,30 @@ test("rejects secrets and reasoning inside otherwise valid string fields", () =>
   rejects(mutated((value) => {
     value.events[4].accepted_analysis.hypotheses[0].explanation = "internal reasoning: private";
   }), "UNSAFE_VALUE");
+});
+
+test("rejects a secret named the way this project names its own", () => {
+  // A word boundary before the keyword never matches inside
+  // SPRING_DATASOURCE_PASSWORD, because the preceding underscore is a word
+  // character. That exempted the whole SCREAMING_SNAKE_CASE convention from a
+  // scan whose purpose is keeping credentials out of the evidence record.
+  for (const assignment of [
+    "SPRING_DATASOURCE_PASSWORD=canary-db-value",
+    "DEEPSEEK_API_KEY=canary-provider-value",
+    "OPS_EVIDENCE_SECRET=canary-evidence-value",
+  ]) {
+    rejects(mutated((value) => {
+      value.events[4].accepted_analysis.hypotheses[0].explanation = assignment;
+    }), "UNSAFE_VALUE");
+  }
+
+  // Prose describing an incident is not a credential. Asserted against the
+  // scanner directly, because mutating this field to carry prose would break
+  // the accepted-analysis to invocation binding and fail for an unrelated
+  // reason before the value scan is reached.
+  scanSafeValues({
+    explanation: "The deployment at 14:02 preceded the latency rise.",
+  });
 });
 
 test("keeps an untrusted key out of the failure message it triggers", () => {
