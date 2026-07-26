@@ -10,6 +10,7 @@
     "version",
     "evidence_level",
     "training_eligible",
+    "held_out_manifest_path",
     "scenario_families"
   ],
   "properties": {
@@ -29,6 +30,9 @@
     },
     "training_eligible": {
       "const": false
+    },
+    "held_out_manifest_path": {
+      "const": "evaluation/held-out/manifest.yaml"
     },
     "scenario_families": {
       "type": "array",

@@ -4,6 +4,7 @@
   "version": "0.2.0",
   "evidence_level": "deterministic-smoke",
   "training_eligible": false,
+  "held_out_manifest_path": "evaluation/held-out/manifest.yaml",
   "scenario_families": [
     {
       "family_id": "SIM-01",

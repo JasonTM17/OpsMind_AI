@@ -4,6 +4,10 @@ import path from "node:path";
 import { createEvaluationContractValidator } from "../../evaluation/runner/evaluation-contract-validation.mjs";
 import { projectCrossServiceEvaluationExport } from "../../evaluation/runner/cross-service-evaluation-projection.mjs";
 import { scorePhase07Trace } from "../../evaluation/runner/score-phase-07-trace-core.mjs";
+import {
+  PAYLOAD_ROOT_ENVIRONMENT,
+  resolveHeldOutCorpus,
+} from "../../evaluation/runner/held-out-corpus.mjs";
 import { createContractFileAccess } from "./phase-04-incident-contracts/safe-contract-files.mjs";
 import { rejectDuplicateJsonKeys } from "./phase-04-incident-contracts/duplicate-json-key-detector.mjs";
 
@@ -233,6 +237,37 @@ for (const [relativePath, markers] of Object.entries({
     check(source.includes(marker), `${relativePath} is missing Phase 8B marker: ${marker}`);
   }
 }
+// The held-out corpus is the only evidence about cases the system was not built
+// against, so an empty or unconfigured corpus must report as an absence here
+// rather than being skipped and read later as coverage.
+const heldOutManifestPath = path.join(repositoryRoot, manifest.held_out_manifest_path ?? "");
+const heldOutSource = fileAccess.readSafeFile(heldOutManifestPath);
+rejectDuplicateJsonKeys(heldOutSource);
+const heldOutManifest = JSON.parse(heldOutSource);
+errors.push(
+  ...validate(heldOutManifest, "held-out-manifest.schema.json")
+    .map((finding) => `held-out manifest ${finding}`),
+);
+let heldOutCorpus = { status: "BLOCKED", reason: "resolution failed", cases: [] };
+try {
+  heldOutCorpus = resolveHeldOutCorpus({
+    manifestBytes: Buffer.from(heldOutSource, "utf8"),
+    payloadRoot: process.env[PAYLOAD_ROOT_ENVIRONMENT] ?? "",
+    knownFamilyIds: new Set(families.map((family) => family.family_id)),
+  });
+}
+catch (error) {
+  // Reported through the same channel as every other finding so a corpus
+  // failure stays machine-readable in a transcript instead of arriving as an
+  // unhandled stack trace.
+  heldOutCorpus = { status: "BLOCKED", reason: error.code ?? "unknown", cases: [] };
+  check(false, `held-out corpus is unusable: ${error.message}`);
+}
+check(
+  heldOutCorpus.status === "UNAVAILABLE" || heldOutCorpus.cases.length > 0,
+  "held-out corpus resolved without any scorable case",
+);
+
 // A scenario bounds cost at its token budget priced at the rate the harness
 // configures. Nothing else ties the two together, so a price change would
 // silently make every cost budget wrong in whichever direction it moved.
@@ -267,7 +302,11 @@ for (const launcher of ["scripts/dev/opsmind.ps1", "scripts/dev/opsmind.sh"]) {
 }
 
 console.log("Phase08EvaluationFoundation");
-console.log(`ScenarioSchemas=5 ScenarioFamilies=${families.length} Implemented=${implemented.length}`);
+console.log(`ScenarioSchemas=6 ScenarioFamilies=${families.length} Implemented=${implemented.length}`);
+console.log(
+  `HeldOutCorpus=${heldOutCorpus.status} HeldOutCases=${heldOutCorpus.cases.length}`
+    + ` HeldOutReason=${heldOutCorpus.reason ?? "none"}`,
+);
 console.log(`CanonicalResults=${results.length} CanonicalMetrics=${Object.keys(result.metrics).length} NegativeCases=4`);
 console.log(`Errors=${errors.length}`);
 for (const error of errors) console.log(`Error=${error}`);

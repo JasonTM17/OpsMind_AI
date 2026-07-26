@@ -1,0 +1,7 @@
+{
+  "schema_version": "opsmind-held-out-manifest-v1",
+  "corpus_id": "phase-08-held-out",
+  "version": "0.1.0",
+  "payload_root_environment": "OPS_EVALUATION_HELDOUT_ROOT",
+  "cases": []
+}
