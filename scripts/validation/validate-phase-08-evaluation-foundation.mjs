@@ -233,6 +233,30 @@ for (const [relativePath, markers] of Object.entries({
     check(source.includes(marker), `${relativePath} is missing Phase 8B marker: ${marker}`);
   }
 }
+// A scenario bounds cost at its token budget priced at the rate the harness
+// configures. Nothing else ties the two together, so a price change would
+// silently make every cost budget wrong in whichever direction it moved.
+const harnessSource = fileAccess.readSafeFile(
+  path.join(repositoryRoot, "scripts/validation/cross-service/run-cross-service-verification.ps1"),
+);
+const configuredPrices = ["AI_INPUT_COST_USD_PER_MILLION", "AI_OUTPUT_COST_USD_PER_MILLION"]
+  .map((name) => harnessSource.match(new RegExp(`${name}\\s*=\\s*'([0-9.]+)'`, "u"))?.[1]);
+check(
+  configuredPrices.every((price) => price !== undefined),
+  "cross-service harness does not state both token prices",
+);
+if (configuredPrices.every((price) => price !== undefined)) {
+  const perToken = Math.max(...configuredPrices.map(Number)) / 1_000_000;
+  for (const [familyId, truth] of groundTruths) {
+    const { max_tokens: maxTokens, max_cost_usd: maxCost } = truth.document.budgets;
+    const expected = Number((maxTokens * perToken).toFixed(10));
+    check(
+      maxCost === expected,
+      `${familyId} cost budget ${maxCost} does not price its ${maxTokens} token budget at ${expected}`,
+    );
+  }
+}
+
 for (const launcher of ["scripts/dev/opsmind.ps1", "scripts/dev/opsmind.sh"]) {
   const source = fileAccess.readSafeFile(path.join(repositoryRoot, launcher));
   check(
