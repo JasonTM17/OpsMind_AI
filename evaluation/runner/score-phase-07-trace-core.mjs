@@ -14,9 +14,13 @@ function artifactReference(kind, reference, fragment, domain) {
 function aggregate(checks, unavailable, details, value = null) {
   const denominator = checks.length;
   const numerator = checks.filter(Boolean).length;
+  // An observed failure outranks a missing observation. Absent evidence cannot
+  // un-observe a check that already failed, and reporting the metric as
+  // unavailable would attribute a system failure to an evidence gap, which is
+  // the opposite conclusion for anyone reading the verdict.
   let status = "PASS";
-  if (unavailable > 0 || denominator === 0) status = "UNAVAILABLE";
-  else if (numerator !== denominator) status = "FAIL";
+  if (numerator !== denominator) status = "FAIL";
+  else if (unavailable > 0 || denominator === 0) status = "UNAVAILABLE";
   // The interval is reported alongside the ratio because a ratio over a handful
   // of correlated checks reads as a population estimate when it is not one.
   return {

@@ -128,6 +128,34 @@ test("sums every accepted invocation cost for the per-run budget", () => {
   assert.equal(result.metrics.cost.value, 0.01);
 });
 
+test("does not let a missing run hide a failure the same metric observed", () => {
+  // Scenario A replays a hundred runs. If one absent run could downgrade a
+  // metric that already observed a failing check, a real defect would be
+  // reported as an evidence gap, which tells a reader to rerun rather than that
+  // the system was wrong.
+  const failing = clonedTrace();
+  failing.runs[0].operatorProjection.analysis.model_id = "substituted-model";
+  const alone = score(failing);
+  assert.equal(alone.verdict, "FAIL");
+  assert.equal(alone.metrics.structured_output.status, "FAIL");
+
+  const masked = clonedTrace();
+  masked.runs.push(structuredClone(masked.runs[0]));
+  masked.warmRuns = 2;
+  masked.runs[0].operatorProjection.analysis.model_id = "substituted-model";
+  delete masked.runs[1].operatorProjection;
+  const withAbsence = score(masked);
+  assert.equal(withAbsence.metrics.structured_output.status, "FAIL");
+  assert.equal(withAbsence.verdict, "FAIL");
+
+  // Absence on its own still reports absence rather than inventing a failure.
+  const absent = clonedTrace();
+  delete absent.runs[0].operatorProjection;
+  const onlyAbsent = score(absent);
+  assert.equal(onlyAbsent.metrics.structured_output.status, "UNAVAILABLE");
+  assert.equal(onlyAbsent.verdict, "INCOMPLETE");
+});
+
 test("passes a priced run that stays inside the scenario cost budget", () => {
   // The AI Runtime only treats a configuration as valid when both token prices
   // are above zero, so a run that produces tokens necessarily reports a cost.
