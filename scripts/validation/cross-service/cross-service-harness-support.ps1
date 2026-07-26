@@ -134,7 +134,8 @@ function Invoke-CrossServiceProcess {
         Start-Process @startArguments
     }
     if ($process.ExitCode -ne 0) {
-        throw "Cross-service command failed with exit code $($process.ExitCode)."
+        $operation = [IO.Path]::GetFileNameWithoutExtension($StderrPath)
+        throw "Cross-service command '$operation' failed with exit code $($process.ExitCode)."
     }
 }
 

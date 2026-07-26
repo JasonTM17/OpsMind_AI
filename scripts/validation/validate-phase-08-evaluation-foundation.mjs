@@ -204,6 +204,12 @@ check(
 for (const [relativePath, markers] of Object.entries({
   "scripts/validation/cross-service/create-evaluation-export-roles.sql": [
     "NOBYPASSRLS", "security_barrier", "opsmind_evaluator",
+    "GRANT EXECUTE ON FUNCTION public.opsmind_current_tenant_id()\n"
+      + "    TO opsmind_evaluation_view_owner, opsmind_evaluator",
+    "GRANT EXECUTE ON FUNCTION ai_runtime.current_tenant_id()\n"
+      + "    TO opsmind_evaluation_view_owner, opsmind_evaluator",
+    "'opsmind_evaluator', 'public.opsmind_current_tenant_id()', 'EXECUTE'",
+    "'opsmind_evaluator', 'ai_runtime.current_tenant_id()', 'EXECUTE'",
   ],
   "scripts/validation/cross-service/cross-service-evaluation-export.sql": [
     "READ ONLY", "unmatched_accepted_count", "4194304",

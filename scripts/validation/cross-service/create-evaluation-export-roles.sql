@@ -12,9 +12,10 @@ GRANT CONNECT ON DATABASE opsmind TO opsmind_evaluator;
 GRANT USAGE ON SCHEMA public, ai_runtime, tool_gateway
     TO opsmind_evaluation_view_owner;
 GRANT EXECUTE ON FUNCTION public.opsmind_current_tenant_id()
-    TO opsmind_evaluation_view_owner;
+    TO opsmind_evaluation_view_owner, opsmind_evaluator;
+GRANT USAGE ON SCHEMA ai_runtime TO opsmind_evaluator;
 GRANT EXECUTE ON FUNCTION ai_runtime.current_tenant_id()
-    TO opsmind_evaluation_view_owner;
+    TO opsmind_evaluation_view_owner, opsmind_evaluator;
 
 GRANT SELECT (
     run_id, organization_id, project_id, incident_id, actor_id, status,
@@ -260,6 +261,12 @@ BEGIN
        OR view_owner.rolcreatedb OR view_owner.rolcanlogin
        OR view_owner.rolreplication OR view_owner.rolbypassrls
        OR pg_has_role('opsmind_evaluator', 'opsmind_evaluation_view_owner', 'MEMBER')
+       OR NOT has_function_privilege(
+            'opsmind_evaluator', 'public.opsmind_current_tenant_id()', 'EXECUTE'
+       )
+       OR NOT has_function_privilege(
+            'opsmind_evaluator', 'ai_runtime.current_tenant_id()', 'EXECUTE'
+       )
        OR has_table_privilege('opsmind_evaluator', 'public.investigation_runs', 'SELECT')
        OR has_table_privilege('opsmind_evaluator', 'public.investigation_run_events', 'SELECT')
        OR has_table_privilege('opsmind_evaluator', 'public.evidence_records', 'SELECT')

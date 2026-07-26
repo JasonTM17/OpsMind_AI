@@ -33,12 +33,14 @@ class ToolGatewayRequestCanonicalizerTest {
     private static final UUID RUN_ID = UUID.fromString("44444444-4444-4444-8444-444444444444");
     private static final UUID ACTOR_ID = UUID.fromString("77777777-7777-4777-8777-777777777777");
     private static final UUID INTENT_ID = UUID.fromString("88888888-8888-4888-8888-888888888888");
+    private static final String LATENCY_ARGUMENTS_DIGEST =
+        "sha256:51ef8c2e4e2926e103ddd877490c64d604b1df593ca23cffca8d1b2fac5d8700";
 
     @Test
     void resolvesImmutableTemplateAndBindsCanonicalBytesToDeterministicIdentity() throws Exception {
         ObjectMapper mapper = new ObjectMapper();
         InvestigationToolIntentCatalog catalog = InvestigationToolIntentCatalogResourceLoader.load(mapper);
-        InvestigationToolIntentCatalog.Selector selector = catalog.publicSelectors().getFirst();
+        InvestigationToolIntentCatalog.Selector selector = latencySelector(catalog);
         AnalysisRuntimeResponse.ToolIntent intent = new AnalysisRuntimeResponse.ToolIntent(
             INTENT_ID, selector.connector(), selector.operation(), selector.argumentsDigest(), "read"
         );
@@ -90,7 +92,7 @@ class ToolGatewayRequestCanonicalizerTest {
         AnalysisRuntimeResponse.ToolIntent unknown = new AnalysisRuntimeResponse.ToolIntent(
             INTENT_ID, "metrics", "query", "sha256:" + "0".repeat(64), "read"
         );
-        InvestigationToolIntentCatalog.Selector selector = catalog.publicSelectors().getFirst();
+        InvestigationToolIntentCatalog.Selector selector = latencySelector(catalog);
         AnalysisRuntimeResponse.ToolIntent valid = new AnalysisRuntimeResponse.ToolIntent(
             INTENT_ID, selector.connector(), selector.operation(), selector.argumentsDigest(), "read"
         );
@@ -105,6 +107,15 @@ class ToolGatewayRequestCanonicalizerTest {
         return new InvestigationToolGatewayClient.ToolExecutionContext(
             ORGANIZATION_ID, PROJECT_ID, INCIDENT_ID, RUN_ID, ACTOR_ID, deadline
         );
+    }
+
+    private InvestigationToolIntentCatalog.Selector latencySelector(
+        InvestigationToolIntentCatalog catalog
+    ) {
+        return catalog.publicSelectors().stream()
+            .filter(selector -> LATENCY_ARGUMENTS_DIGEST.equals(selector.argumentsDigest()))
+            .findFirst()
+            .orElseThrow();
     }
 
     private Path repositoryRoot() {
