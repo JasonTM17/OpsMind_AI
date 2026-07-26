@@ -54,7 +54,7 @@ phase file so the inventory stops reading as outstanding work.
 
 | Phase | Name | Status |
 |-------|------|--------|
-| 1 | [Held-out corpus and family specification](./phase-01-held-out-corpus-and-family-specification.md) | Pending |
+| 1 | [Held-out corpus governance](./phase-01-held-out-corpus-and-family-specification.md) | Pending |
 | 2 | [Statistical protocol and reporting](./phase-02-statistical-protocol-and-reporting.md) | Pending |
 | 3 | [Human baseline protocol and delivery](./phase-03-human-baseline-protocol-and-delivery.md) | Pending |
 
@@ -76,17 +76,25 @@ phase file so the inventory stops reading as outstanding work.
   detectable.
 - Reported quality carries an interval and an explicit correlated-repeat caveat;
   no percentage is reported over a denominator of three authored scenarios.
-- Ten scenario families are specified and isolated; three remain implemented.
-  Phase 16 owns the other seven.
+- The ten families already specified in `evaluation/benchmark-manifest.yaml`
+  stay untouched; Phase 16 still owns the seven reserved ones.
 - The human-baseline gate stays open and visibly attributed to missing reviewer
   data rather than being quietly dropped or filled with synthetic answers.
 
 ## Validation Log
 
-- Fact checked: `evaluation/scenarios/` holds three ground truths;
-  `evaluation/held-out/`, `evaluation/benchmark-manifest.yaml`,
-  `evaluation/human-baseline-protocol.md`, and
+- Fact corrected: an earlier revision of this log claimed
+  `evaluation/benchmark-manifest.yaml` was missing. It exists, carries JSON under
+  a `.yaml` name, already specifies ten families as `SIM-01` through `SIM-10`
+  with three implemented and seven reserved, and is already schema-validated by
+  the Phase 8 validator. The ten-family specification gate is therefore met and
+  is out of scope here.
+- Fact checked: `evaluation/scenarios/` holds three ground truths.
+  `evaluation/held-out/`, `evaluation/human-baseline-protocol.md`, and
   `evaluation/statistical-analysis-plan.md` do not exist.
+- Fact checked: no module reads a held-out corpus; the only occurrences of the
+  term are prose in `docs/evaluation-strategy.md`, `evaluation/README.md`, and
+  the scorer warning that disclaims held-out quality.
 - Fact checked: `services/` contains `ai-runtime`, `platform-api`, and
   `tool-gateway` only; no simulator service was ever created.
 - Fact checked: run `30200584275` on `134d63c` scores A at 100 samples and B/C
@@ -105,5 +113,6 @@ phase file so the inventory stops reading as outstanding work.
   reference content by digest and fail closed when a payload is missing.
 - Reject a human-baseline document that implies a pilot happened. It must state
   that no reviewer data exists and what would make the gate closable.
-- Reject specifying ten families as titles only; each needs a discriminating
-  question, so a family cannot silently become a rename of another.
+- Reject re-specifying the ten families. They already exist and are validated;
+  rewriting them would be churn, and the seven reserved ones belong to Phase 16
+  where an implementer can state the discriminating behaviour against real code.

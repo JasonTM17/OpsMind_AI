@@ -1,98 +1,102 @@
 ---
 phase: 1
-title: "Held-out corpus and family specification"
+title: "Held-out corpus governance"
 status: pending
 priority: P1
 dependencies: []
 effort: "1 day"
 ---
 
-# Phase 1: Held-out corpus and family specification
+# Phase 1: Held-out corpus governance
 
 ## Overview
 
-Give the evaluation a corpus it was not built against, and name the ten scenario
-families precisely enough that a later family cannot silently duplicate an
-earlier one.
+Give the evaluation a way to reference cases the system was not built against,
+without those cases entering the repository, and make the absence of such cases
+report as absence rather than as coverage.
+
+## Scope Correction
+
+The ten scenario families are already specified in
+`evaluation/benchmark-manifest.yaml` as `SIM-01` through `SIM-10`, three
+implemented and seven reserved, and the Phase 8 validator already schema-checks
+that file. This phase does not touch it beyond adding the held-out reference.
 
 ## Requirements
 
-- Functional: a held-out manifest references cases by digest, resolves them from
-  a configured root outside Git, and fails closed when a referenced case is
-  absent, altered, or unreadable.
-- Functional: a benchmark manifest lists ten families, each with an id, a
-  discriminating question, the failure it must expose, and its implementation
-  status.
-- Non-functional: no held-out payload, customer telemetry, or incident text
-  enters the repository. The manifest is the only committed artifact.
-- Non-functional: the existing three scenarios keep passing unchanged.
+- Functional: a held-out manifest references cases by content digest and byte
+  size, and resolves payloads from a root configured outside Git.
+- Functional: resolution fails closed when a payload is missing, altered,
+  oversized, or reachable only through a reparse point.
+- Functional: with no root configured, the corpus reports an explicit
+  unavailable reason. It never reports zero failures as success.
+- Non-functional: no case payload, incident text, or customer telemetry is
+  committed. The manifest and its README are the only committed artifacts.
+- Non-functional: existing scenario scoring is unchanged.
 
 ## Architecture
 
-`evaluation/held-out/manifest.yaml` lists case entries of
+`evaluation/held-out/manifest.yaml` carries JSON under a `.yaml` name, matching
+the convention `evaluation/benchmark-manifest.yaml` already set. Entries are
 `{case_id, family_id, content_digest, byte_size, added_at, contamination_tag}`.
-Payloads live under `OPS_EVALUATION_HELDOUT_ROOT`, which defaults to unset. When
-unset, held-out scoring reports `UNAVAILABLE` rather than passing vacuously —
-the same fail-closed shape the scorer already uses for `root_cause_semantic`.
 
-`evaluation/benchmark-manifest.yaml` records the ten families. Three carry
-`status: implemented` and point at the existing `evaluation/scenarios/`
-directories; seven carry `status: specified` and belong to Phase 16.
+Payload bytes live under `OPS_EVALUATION_HELDOUT_ROOT`, unset by default. The
+resolver returns one of three states, mirroring the shape the scorer already
+uses for an unavailable metric:
 
-A resolver module validates a manifest, resolves payload paths under the
-configured root, verifies digests, and refuses reparse-point ancestors, reusing
-the path rules the projector already applies.
+- `UNAVAILABLE` when the root is unset or the manifest lists no cases;
+- resolved cases when every referenced payload matches its digest and size;
+- a hard contract failure when any referenced payload is missing or drifted.
+
+Path handling reuses the rules the projector applies: absolute resolution,
+containment under the configured root, and rejection of reparse-point ancestors.
 
 ## Related Code Files
 
 - Create: `evaluation/held-out/manifest.yaml`
 - Create: `evaluation/held-out/README.md`
-- Create: `evaluation/benchmark-manifest.yaml`
 - Create: `evaluation/schemas/held-out-manifest.schema.json`
-- Create: `evaluation/schemas/benchmark-manifest.schema.json`
 - Create: `evaluation/runner/held-out-corpus.mjs`
 - Create: `evaluation/runner/held-out-corpus.test.mjs`
+- Modify: `evaluation/benchmark-manifest.yaml`
+- Modify: `evaluation/schemas/benchmark-manifest.schema.json`
 - Modify: `scripts/validation/validate-phase-08-evaluation-foundation.mjs`
 - Modify: `scripts/validation/validate-repository-layout.mjs`
 - Modify: `plans/260719-1747-opsmind-ai-production-platform/phase-08-simulator-and-evaluation-baseline.md`
 
 ## Implementation Steps
 
-1. Write both JSON schemas, rejecting unknown fields and requiring digests of
-   the form the repository already uses.
-2. Write `held-out-corpus.mjs`: parse and schema-validate a manifest, resolve
-   the configured root, verify each digest, and return either resolved cases or
-   an explicit unavailable reason. Refuse absolute traversal and reparse
-   ancestors.
-3. Author `benchmark-manifest.yaml` with ten families. Give each a
-   discriminating question that no other family answers the same way.
-4. Author an empty-but-valid `evaluation/held-out/manifest.yaml` with zero cases
-   and a README stating how a reviewer adds one without committing payloads.
-5. Extend the Phase 8 validator: both manifests parse, validate, and stay
-   consistent with `evaluation/scenarios/`; exactly three families are
-   implemented; every implemented family resolves to a real ground truth.
-6. Record the simulator scope decision in the parent phase file so the inventory
+1. Write `held-out-manifest.schema.json` rejecting unknown fields, requiring the
+   `sha256:` digest form already used across the repository, and bounding case
+   count and byte size.
+2. Author an empty-but-valid `evaluation/held-out/manifest.yaml` and a README
+   explaining how a reviewer registers a case without committing its bytes.
+3. Implement `held-out-corpus.mjs` returning the three states above, with
+   containment and reparse checks before any read.
+4. Add a `held_out_manifest_path` field to the benchmark manifest and its schema
+   so the two are linked rather than independently discoverable.
+5. Extend the Phase 8 validator: the held-out manifest parses and validates,
+   every referenced `family_id` exists in the benchmark manifest, and the
+   unavailable state is reported rather than skipped.
+6. Record the simulator scope decision in the parent phase file so its inventory
    stops listing unbuilt work as pending.
 
 ## Success Criteria
 
-- [ ] Both manifests validate against their schemas and the validator fails when
-      a family id, digest, or status is inconsistent.
-- [ ] A missing, altered, or oversized held-out payload produces `UNAVAILABLE`
-      or a hard failure, never a pass.
-- [ ] Ten families are specified with distinct discriminating questions; three
-      are implemented and resolve to existing ground truths.
-- [ ] No payload bytes are committed; the secret scanner and layout validator
-      both pass.
-- [ ] The parent phase file states the simulator decision with its reason.
+- [ ] The manifest validates, and an unknown field, a malformed digest, or a
+      family id absent from the benchmark manifest each fail the validator.
+- [ ] A missing, altered, or oversized payload produces a contract failure; an
+      unset root produces `UNAVAILABLE` with its reason.
+- [ ] A payload reachable only through a symlink or junction is refused.
+- [ ] No payload bytes are committed; secret scan and layout validator pass.
+- [ ] The parent phase file states the simulator decision and its reason.
 
 ## Risk Assessment
 
-A manifest that references nothing can look like coverage. The validator must
-assert the difference between "zero held-out cases configured" and "held-out
-cases passed", and the scorer must never treat the first as evidence.
+An empty manifest can read as coverage. The validator must distinguish "no
+held-out cases configured" from "held-out cases passed", and the reported state
+must carry the reason so a later reader cannot mistake silence for evidence.
 
-Ten families invented in one sitting risk being restatements of each other. The
-discriminating question per family is the control: if two questions can be
-answered by the same trace, the families are not distinct and the validator
-should not be the only thing that notices.
+Adding a field to the benchmark manifest touches a file the Phase 8 validator
+asserts against. The change is additive and validated in the same commit, so a
+mismatch fails locally before it reaches CI.
