@@ -12,6 +12,7 @@ import {
   BASELINE_ROOT_ENVIRONMENT,
   resolveHumanBaseline,
 } from "../../evaluation/runner/human-baseline.mjs";
+import { EvaluationContractError } from "../../evaluation/runner/evaluation-value-safety.mjs";
 import { createContractFileAccess } from "./phase-04-incident-contracts/safe-contract-files.mjs";
 import { rejectDuplicateJsonKeys } from "./phase-04-incident-contracts/duplicate-json-key-detector.mjs";
 
@@ -39,6 +40,16 @@ function sha256(filePath) {
     throw new Error("evaluation fixture path escapes the repository or contains a symlink");
   }
   return `sha256:${createHash("sha256").update(fileAccess.readSafeFile(filePath)).digest("hex")}`;
+}
+
+// A contract failure carries a message this repository already sanitises. Any
+// other error is a filesystem or system fault whose message embeds the absolute
+// path it failed on, and these roots are operator-configured directories whose
+// names can themselves be sensitive. Report the type for diagnosis instead.
+function safeFailureReason(error) {
+  return error instanceof EvaluationContractError
+    ? error.message
+    : `${error?.constructor?.name ?? "Error"} (${error?.code ?? "no code"})`;
 }
 
 function check(condition, message) {
@@ -280,7 +291,7 @@ catch (error) {
   // failure stays machine-readable in a transcript instead of arriving as an
   // unhandled stack trace.
   heldOutCorpus = { status: "BLOCKED", reason: error.code ?? "unknown", cases: [] };
-  check(false, `held-out corpus is unusable: ${error.message}`);
+  check(false, `held-out corpus is unusable: ${safeFailureReason(error)}`);
 }
 check(
   heldOutCorpus.status === "UNAVAILABLE" || heldOutCorpus.cases.length > 0,
@@ -300,7 +311,7 @@ try {
 }
 catch (error) {
   humanBaseline = { status: "BLOCKED", reason: error.code ?? "unknown", cases: [] };
-  check(false, `human baseline is unusable: ${error.message}`);
+  check(false, `human baseline is unusable: ${safeFailureReason(error)}`);
 }
 
 // A scenario bounds cost at its token budget priced at the rate the harness
