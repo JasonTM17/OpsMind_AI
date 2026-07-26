@@ -49,14 +49,22 @@ try {
     if (Test-CrossServiceWindows) {
         $probeExecutable = $env:ComSpec
         $probeArguments = @('/d', '/c', "echo %${probeName}%")
-        $failureArguments = @('/d', '/c', 'exit', '7')
+        $failureArguments = @(
+            '/d',
+            '/c',
+            'echo ERROR expected-stdout & echo ERROR expected-stderr 1>&2 & exit /b 7'
+        )
     }
     else {
         $probeExecutable = @(
             Get-Command sh -CommandType Application -ErrorAction Stop
         )[0].Path
         $probeArguments = @('-c', "printf '%s' `"`$$probeName`"")
-        $failureArguments = @('-c', 'exit 7')
+        $failureArguments = @(
+            '-c',
+            "printf '%s\n' 'ERROR expected-stdout'; " +
+                "printf '%s\n' 'ERROR expected-stderr' >&2; exit 7"
+        )
     }
     Invoke-CrossServiceProcess -Executable $probeExecutable -Arguments $probeArguments `
         -WorkingDirectory $repositoryRoot -StdoutPath $probeStdout `
@@ -66,17 +74,31 @@ try {
     }
 
     $failureMessage = $null
+    $failureWarnings = New-Object 'System.Collections.Generic.List[string]'
+    $previousWarningPreference = $WarningPreference
     try {
-        Invoke-CrossServiceProcess -Executable $probeExecutable -Arguments $failureArguments `
-            -WorkingDirectory $repositoryRoot -StdoutPath $failureStdout `
-            -StderrPath $failureStderr -Environment @{}
+        $WarningPreference = 'Stop'
+        try {
+            Invoke-CrossServiceProcess -Executable $probeExecutable `
+                -Arguments $failureArguments -WorkingDirectory $repositoryRoot `
+                -StdoutPath $failureStdout -StderrPath $failureStderr -Environment @{} `
+                3>&1 | ForEach-Object { $failureWarnings.Add([string]$_) }
+        }
+        catch {
+            $failureMessage = $_.Exception.Message
+        }
     }
-    catch {
-        $failureMessage = $_.Exception.Message
+    finally {
+        $WarningPreference = $previousWarningPreference
     }
     if ($failureMessage -ne
         "Cross-service command 'phase-08-process-failure.stderr' failed with exit code 7.") {
         throw "Cross-service process failure diagnostic drifted: $failureMessage"
+    }
+    $failureWarningText = $failureWarnings -join "`n"
+    if ($failureWarningText -notmatch 'ERROR expected-stdout' -or
+        $failureWarningText -notmatch 'ERROR expected-stderr') {
+        throw 'Cross-service process failure omitted safe diagnostic output.'
     }
 
     $missingMessage = $null
@@ -108,9 +130,103 @@ try {
         throw "Cross-service process-redirection guard drifted: $redirectMessage"
     }
 
+    $diagnosticSecret = 'probe-' + [guid]::NewGuid().ToString('N')
+    $bearerSecret = 'bearer-' + [guid]::NewGuid().ToString('N')
+    $jwtSecret = 'eyJ' + [guid]::NewGuid().ToString('N') + '.' +
+        [guid]::NewGuid().ToString('N') + '.' + [guid]::NewGuid().ToString('N')
+    $clientSecret = 'client-' + [guid]::NewGuid().ToString('N')
+    $accessToken = 'access-' + [guid]::NewGuid().ToString('N')
+    $jsonPassword = 'json-' + [guid]::NewGuid().ToString('N')
+    $urlPassword = 'url-' + [guid]::NewGuid().ToString('N')
+    $inheritedSecret = 'inherited-' + [guid]::NewGuid().ToString('N')
+    $derivedPassword = 'derived-' + [guid]::NewGuid().ToString('N')
+    $runtimeApiKey = ('A' + 'K' + 'I' + 'A') + [guid]::NewGuid().ToString('N')
+    $runtimePrivateKeyBody = [guid]::NewGuid().ToString('N') +
+        [guid]::NewGuid().ToString('N')
+    $inheritedSecretName = 'OPSMIND_DIAGNOSTIC_INHERITED_CLIENT_SECRET'
+    $previousInheritedSecret = [Environment]::GetEnvironmentVariable(
+        $inheritedSecretName,
+        'Process'
+    )
+    [Environment]::SetEnvironmentVariable(
+        $inheritedSecretName,
+        $inheritedSecret,
+        'Process'
+    )
+    $privateKeyHeader = '-----BEGIN ' + 'PRIVATE KEY-----'
+    $privateKeyFooter = '-----END ' + 'PRIVATE KEY-----'
+    $privateKeyBody = ('A' * 64)
+    $credentialDatabaseUrl = ('post' + 'gresql://') +
+        "user:${urlPassword}@db.invalid/opsmind"
+    $diagnosticPath = Join-Path $testRoot 'phase-08-redaction-probe.log'
+    [IO.File]::WriteAllText(
+        $diagnosticPath,
+        ('x' * 20000) +
+            "`npassword=$diagnosticSecret" +
+            "`nauthorization: Bearer $bearerSecret" +
+            "`nopaque=$jwtSecret" +
+            "`nERROR inherited-value=$inheritedSecret" +
+            "`nERROR client_secret=$clientSecret" +
+            "`nERROR access_token=$accessToken" +
+            "`nERROR {`"password`":`"$jsonPassword`"}" +
+            "`nERROR $credentialDatabaseUrl" +
+            "`n$privateKeyHeader`n$privateKeyBody`n$privateKeyFooter" +
+            "`nERROR password is $derivedPassword" +
+            "`nCaused by: invalid API key $runtimeApiKey" +
+            "`nERROR failed to parse private key $runtimePrivateKeyBody" +
+            "`n::error::forged-workflow-command" +
+            "`ncontrol=$([char]27)[31m`nerror=expected-diagnostic"
+    )
+    try {
+        $redactedDiagnostic = Get-CrossServiceRedactedLogTail `
+            -Path $diagnosticPath -Environment @{
+                TOOL_GATEWAY_DATABASE_PASSWORD = $diagnosticSecret
+            }
+    }
+    finally {
+        [Environment]::SetEnvironmentVariable(
+            $inheritedSecretName,
+            $previousInheritedSecret,
+            'Process'
+        )
+    }
+    $sensitiveCanaries = @(
+        $diagnosticSecret,
+        $bearerSecret,
+        $jwtSecret,
+        $clientSecret,
+        $accessToken,
+        $jsonPassword,
+        $urlPassword,
+        $inheritedSecret,
+        $privateKeyBody,
+        $derivedPassword,
+        $runtimeApiKey,
+        $runtimePrivateKeyBody
+    )
+    foreach ($canary in $sensitiveCanaries) {
+        if ($redactedDiagnostic -match [regex]::Escape($canary)) {
+            throw 'Cross-service diagnostic exposed a sensitive canary.'
+        }
+    }
+    if (-not $redactedDiagnostic.StartsWith('[log] ') -or
+        $redactedDiagnostic -match '[\r\n\x1B]' -or
+        $redactedDiagnostic.Length -gt 8192 -or
+        $redactedDiagnostic -notmatch '\[redacted prohibited line\]' -or
+        $redactedDiagnostic -notmatch 'inherited-value=\[REDACTED\]' -or
+        $redactedDiagnostic -notmatch 'error=expected-diagnostic') {
+        throw 'Cross-service diagnostic redaction failed closed.'
+    }
+    if ((Get-CrossServiceRedactedLogTail `
+            -Path (Join-Path $testRoot 'missing-diagnostic.log') `
+            -Environment @{}) -ne '') {
+        throw 'Missing cross-service diagnostic did not remain empty.'
+    }
+
     Write-Output (
         'CrossServicePathSafety=PASS ReparseAncestor=BLOCKED ProcessLaunch=PASS ' +
-        'LaunchFailure=BLOCKED RedirectionFailure=BLOCKED'
+        'LaunchFailure=BLOCKED RedirectionFailure=BLOCKED ' +
+        'DiagnosticRedaction=PASS'
     )
 }
 finally {
