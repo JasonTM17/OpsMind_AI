@@ -57,16 +57,14 @@ executions from durable intent/receipt/audit/evidence bindings, requires the
 three durable evidence digests to agree, and sums all accepted invocation cost.
 Malformed UTF-8 and duplicate evidence digests fail closed.
 
-The independent earlier tester recorded 28/28 Node tests. The current
-remediation rerun passes 33/33 Node tests, 40/40 targeted Python tests, 50
-shuffled semantic-order trials, and the junction-path safety test. The Phase 8
-validator reports three implemented families, three canonical results, zero
-errors, checkpoint PASS, and PhaseExit BLOCK. Repository layout, actionlint,
-and the project secret scan pass. Fresh Docker/PostgreSQL A/B/C, same-job
-executable attestation, exact-revision CI artifact, and independent review
-remain pending. This checkpoint is not a held-out or human study and cannot
-support production accuracy, calibration, population latency, p95, or benefit
-claims.
+The current evaluation suite passes 52/52. The Phase 8 validator reports six
+schemas, ten families/three implemented, held-out and human inputs
+`UNAVAILABLE` with zero cases, three canonical results, eight metrics, four
+negative cases, zero errors, checkpoint `PASS`, and phase exit `BLOCK`.
+Revision-bound A/B/C, same-job attestation, exact-revision artifact, and two
+independent supervision reviews pass. This checkpoint is not a held-out or
+human study and cannot support production accuracy, calibration, population
+latency, p95, or benefit claims.
 
 ## Critical Scenario Families
 
@@ -238,8 +236,8 @@ accepted by the evidence verifier.
 The transcript is ignored local evidence with
 `EvidenceScope=REFERENCE_CONFORMANCE_NOT_PRODUCTION`, `CodeRevision=UNBORN`,
 and `WorkspaceDirty=YES`; it is not production or immutable release evidence.
-The Linux `identity-conformance` job is configured in
-`.github/workflows/pr-quality.yml` but has no claimed remote run. This suite
+The Linux `identity-conformance` job passes in revision-bound PR-quality
+CI. This remains non-production reference conformance; the suite
 does not prove federation, break-glass, state/nonce assurance, browser/BFF
 session ownership, general bearer replay prevention, delegated capabilities,
 or immediate access-token revocation.
@@ -283,6 +281,20 @@ load objectives, production IdP, or the full Phase 4/G2 exit gate.
 ## Release Gate
 
 Release requires all required suites green, zero unresolved critical security finding, accepted migration and rollback evidence, provider/IdP/connector conformance, held-out evaluation within preregistered bounds, successful restore/reconciliation drill, and operator runbook exercise.
+
+## Current CI Checkpoint
+
+PR-quality run `30209210001` passes on revision
+`df4620313a3f39721ef1bb521a9cf7ddcac5929c`. Its executable jobs prove
+Linux/Windows bootstrap, repository secret scan, actionlint, Operator Web, AI
+Runtime, both Java services, dependency security, PostgreSQL trust, Keycloak
+reference conformance, and Compose build/health.
+
+Cross-service run `30209209999` passes A/B/C through the real service path with
+samples `100/1/1`, all eight metrics `PASS`, and `GitTree=0`. The evaluation
+unit suite passes 52/52. The Phase 8 validator still returns `PhaseExit=BLOCK`
+because held-out and human-baseline inputs are unavailable; no quality,
+calibration, or human-benefit inference is permitted.
 
 ## Verification Evidence
 

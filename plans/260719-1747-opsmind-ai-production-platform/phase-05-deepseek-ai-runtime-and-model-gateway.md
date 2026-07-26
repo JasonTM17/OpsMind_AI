@@ -254,7 +254,7 @@ The first Phase 5 checkpoint now exists under `services/ai-runtime/`:
 - offline contract, adapter, policy, capability, endpoint, replay, and stream
   tests. No real key or provider call is used by these tests.
 
-Current checkpoint evidence: the Python suite reports 149 passed with five
+Current checkpoint evidence: the Python suite reports 159 passed with five
 PostgreSQL-gated skips in the default local run; Ruff and mypy are clean; and
 the full Maven suite passes. The static validator reports `CheckpointResult=PASS`.
 The additive durable invocation/replay schema and Psycopg adapter exist, and

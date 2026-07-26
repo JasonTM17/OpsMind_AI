@@ -14,12 +14,12 @@ flowchart TB
     WEB --> API["Platform API"]
     API --> IDP["OIDC identity provider"]
     API --> DB["PostgreSQL and pgvector"]
-    API --> OBJECTS["Evidence object storage"]
+    API --> OBJECTS["Planned evidence object lifecycle"]
     API --> AIR["AI Runtime"]
     AIR --> DEEPSEEK["DeepSeek API"]
     API --> TOOL["Tool Gateway"]
     TOOL --> PROM["Prometheus and approved systems"]
-    API --> TEMPORAL["Temporal service"]
+    API --> TEMPORAL["Planned Temporal service - Phase 9"]
 ```
 
 Dashed future concerns are intentionally not represented as current runtime behavior. Temporal enters in Phase 9. G0.5 approves managed Kubernetes in Singapore, enterprise OIDC, MinIO locally, S3-compatible production evidence storage, and read-only Prometheus against synthetic non-production metrics; later phases must implement and verify them.
@@ -112,7 +112,7 @@ revocation behavior remain unproven.
 8. Provider response is schema-validated. Unsupported claims remain hypotheses and cannot mutate incident facts.
 9. UI displays evidence, hypotheses, contradictions, confidence, provider status, cost, and audit sequence.
 
-### Exact-action remediation
+### Planned exact-action remediation
 
 ```mermaid
 sequenceDiagram
@@ -133,7 +133,11 @@ sequenceDiagram
     P->>G: Reconcile before any retry
 ```
 
-An approval binds tenant, actor, incident, connector, action schema/version, normalized parameters, target identity/version, dry-run output digest, policy version, expiry, and execution nonce. “Exactly once” is not assumed; at-most-one effective write is established through target idempotency or discovery/reconciliation.
+This flow is a future contract, not current runtime behavior. An approval will
+bind tenant, actor, incident, connector, action schema/version, normalized
+parameters, target identity/version, dry-run output digest, policy version,
+expiry, and execution nonce. “Exactly once” is not assumed; at-most-one
+effective write requires target idempotency or discovery/reconciliation.
 
 ## Persistence Ownership
 
@@ -144,9 +148,9 @@ An approval binds tenant, actor, incident, connector, action schema/version, nor
 | Provider exchanges and budgets | AI Runtime schema or explicitly owned tables | Redacted and retention-bounded |
 | Connector execution receipts | Tool Gateway schema or explicitly owned tables | Idempotency and reconciliation authority |
 | Bounded redacted evidence records | Platform PostgreSQL schema | Immutable canonical JSON, 64 KiB maximum, run/event linkage, forced RLS |
-| Large evidence bodies | Evidence object port | Encrypted, content-addressed, lifecycle-controlled |
-| Embeddings and retrieval metadata | PostgreSQL/pgvector | ACL checked before ranking; generation epochs |
-| Workflow histories | Temporal | Introduced after deterministic state machine proof |
+| Large evidence bodies | Planned evidence object port | Lifecycle is not implemented |
+| Embeddings and retrieval metadata | Planned PostgreSQL/pgvector boundary | RAG is not implemented |
+| Workflow histories | Planned Temporal boundary | Phase 9; not implemented |
 
 Each service owns its migrations. Shared tables without a single owner are prohibited.
 
@@ -202,8 +206,8 @@ postmortems, or the evidence-object lifecycle and does not close Phase 4 or G2.
   Rolled-back claims disappear, committed `received` orphans can be reclaimed,
   and `processed`/`poisoned` records deny duplicate handling.
 - Kafka is deferred until measured throughput or independent ownership justifies it.
-- Temporal workflow start has one outbox-driven owner and a deterministic workflow ID.
-- Workflow code changes use version/build routing and golden-history replay.
+- Planned Temporal workflow start has one outbox-driven owner and a deterministic workflow ID.
+- Future workflow code changes use version/build routing and golden-history replay.
 - External effects are never inferred only from message delivery; they use execution receipts and reconciliation.
 
 ## Tenant Isolation
@@ -525,13 +529,29 @@ recursive removal.
 
 Scenario A proves the latency-regression contract, B requires `ABSTAINED` with
 zero tools, and C requires two opposing read-only evidence collections plus
-counter-evidence and cautious confidence. Local contracts pass, but fresh
-Docker/PostgreSQL A/B/C, executable attestation, exact-revision CI artifacts,
-and terminal-green workflow evidence remain pending. Phase 8 is still blocked.
+counter-evidence and cautious confidence. Revision-bound PR-quality run
+`30209210001` and cross-service run `30209209999` are terminal green on
+`df4620313a3f39721ef1bb521a9cf7ddcac5929c`. Fresh A/B/C score `PASS` across
+all eight metrics with samples `100/1/1` and `GitTree=0`. Artifact
+`8634029083` is 221,461 bytes, created 2026-07-26T16:01:34Z, and expires
+2026-10-24T15:54:25Z. Phase 8 remains blocked on unavailable held-out/human
+evidence, calibration, and human comparison.
 
-## Evidence Artifact Port
+The reviewed harness supervises process trees with a Windows Job Object and
+Linux `setsid`/subreaper/pidfd. Terminal status is authenticated; EOF ownership
+and fail-closed `/proc` identity checks prevent stale or detached processes from
+being mistaken for success. Independent Linux detached-child/controller-kill
+probes and Windows large-transport/late-cleanup probes pass.
 
-The port accepts an authorized stream plus tenant, incident, source classification, retention class, and expected digest. It returns an opaque artifact ID, content digest, byte count, encryption metadata reference, and lifecycle version. ADR-0003 originally selected MinIO locally, but that upstream is now archived; no replacement is silently treated as approved. B-006/B-008/B-012 keep the large-object path blocked until a supported backend passes the required conformance matrix. Production still requires an S3-compatible backend behind `production-kms` with Singapore residency. The implementation must support:
+## Planned Evidence Artifact Port
+
+No large-object lifecycle implementation exists. The planned port will accept
+an authorized stream plus tenant, incident, source classification, retention
+class, and expected digest, then return an opaque artifact ID, content digest,
+byte count, encryption metadata reference, and lifecycle version. ADR-0003
+originally selected MinIO locally, but that upstream is now archived; no
+replacement is silently treated as approved. B-006/B-008/B-012 keep the path
+blocked. A future implementation must support:
 
 - tenant-scoped authorization independent of object URL;
 - server-side encryption with controlled key boundary;
@@ -570,7 +590,15 @@ Every request carries trace, correlation, tenant-safe subject, incident, workflo
 
 Architecture claims become verified only through contract tests, provider conformance, tenant isolation suites, workflow replay, failure injection, evaluation, security review, and DR drills in later phases. Current Phase 3 evidence includes a live local PostgreSQL RLS/pool-reuse matrix, outbox/inbox crash-window recovery, API/dispatcher database-role separation, tenant-safe scheduling, SQL duplicate/order enforcement, static validation, Java tests, and a live local Keycloak 26.7 reference run. Checkpoint 4A adds live PostgreSQL create/read/transition, authorization-revocation serialization, idempotent replay, concurrency, rollback, semantic timeline/audit integrity, migration-upgrade, and append-only proofs.
 
-For the Phase 5 checkpoint, the Python suite reports 149 passed and five
+Revision-bound PR-quality run `30209210001` also proves Linux/Windows bootstrap,
+secret scan, actionlint, Compose health, AI Runtime, both Java services,
+Operator Web, dependency security, Keycloak reference conformance, and
+PostgreSQL trust. Cross-service run `30209209999` proves the Phase 8B A/B/C
+mechanical path. Neither run proves live DeepSeek/legal approval, a named live
+non-production connector, RAG, remediation, Temporal, object lifecycle,
+staging/production, DR, or release readiness.
+
+For the current AI Runtime checkpoint, the Python suite reports 159 passed and five
 PostgreSQL-gated tests skipped when that database gate is not enabled; Ruff and
 mypy are clean, and the full Maven suite passes. The Phase 5 static checkpoint
 passes, including the pgJDBC pin, V005 audit, liveness/readiness separation,

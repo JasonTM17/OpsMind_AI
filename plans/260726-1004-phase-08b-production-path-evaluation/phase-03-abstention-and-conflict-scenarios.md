@@ -1,7 +1,7 @@
 ---
 phase: 3
 title: "Abstention and Conflict Scenarios"
-status: in-progress
+status: completed
 priority: P1
 dependencies: [1]
 effort: "1 day"
@@ -41,10 +41,11 @@ SIM-01/SIM-02/SIM-03 are the only implemented manifest families. Local fixtures,
 ground truths, canonical results, and adversarial scorer tests pass. Scenario B
 requires `ABSTAINED` with zero tools. Scenario C requires two opposing
 read-only evidence collections, two persisted evidence/receipt bindings,
-counter-evidence, and confidence from `0.3` through `0.6`. Fresh traversal
-through Platform, AI Runtime, PostgreSQL, Tool Gateway, and Prometheus remains
-pending `.github/workflows/cross-service-evaluation.yml`; this phase stays in
-progress.
+counter-evidence, and confidence from `0.3` through `0.6`. Cross-service run
+`30209209999` proves fresh traversal through Platform, AI Runtime, PostgreSQL,
+Tool Gateway, Prometheus, and operator projection. A/B/C score `PASS` with
+samples `100/1/1`; these are deterministic authored smoke cases, not held-out
+quality, calibration, or human-benefit evidence.
 
 ## Related Code Files
 
@@ -94,7 +95,7 @@ progress.
 
 ## Success Criteria
 
-- [ ] Fresh SIM-01/SIM-02/SIM-03 runs traverse production components in CI.
+- [x] Fresh SIM-01/SIM-02/SIM-03 runs traverse production components in CI.
 - [x] SIM-01/SIM-02/SIM-03 are the only implemented manifest families.
 - [x] All three strict ground truths, fixtures and canonical benchmark results validate locally.
 - [x] Abstention quality and conflict handling are separately measurable.

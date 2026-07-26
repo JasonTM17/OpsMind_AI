@@ -2,14 +2,13 @@
 
 ## Current State
 
-OpsMind has no production deployment yet. The local workspace now contains a
-Phase 3 trust/data slice, Phase 4 checkpoint 4A incident ledger, and a Phase 5
-AI-runtime checkpoint, but this guide's promotion and
-verification contract still requires the production-authorized IdP, connector,
-and staging evidence. A local Windows Keycloak 26.7 reference profile passed on
-2026-07-22; its explicit scope is non-production and it does not authorize a
-vendor or rollout. Commands, manifests, image names, endpoints, and cloud
-resources are not production claims until they exist and have been tested.
+OpsMind has no production deployment. Current CI proves the local/CI checkpoint:
+identity/data and incident ledgers, AI Runtime, durable Tool Gateway with
+synthetic Prometheus, bounded Operator Web, Compose health, and Phase 8B A/B/C
+evaluation. Promotion still requires a production-authorized IdP, approved live
+provider/legal terms, a named live non-production connector, object lifecycle,
+staging, DR, and release evidence. Keycloak 26.7 remains non-production
+reference conformance and does not authorize a vendor or rollout.
 
 G0.5 approves managed Kubernetes in `ap-southeast-1` with Singapore residency,
 an enterprise OIDC profile, MinIO locally, S3-compatible production storage
@@ -36,8 +35,8 @@ The initial release produces independently versioned images for:
 - `ai-runtime`;
 - `tool-gateway`.
 
-Phase 2 establishes one root `compose.yaml` for local/staging-like integration;
-it does not exist in the Phase 1 snapshot. Production manifests will target the
+The repository has one root `compose.yaml` for local/CI integration. Production
+manifests do not yet exist; they will target the
 approved managed-Kubernetes environment and must reference immutable image
 digests. Simulator services are never included in production overlays.
 
@@ -208,13 +207,13 @@ roles before deployment.
 
 Later phases publish signed build provenance, scan reports, contract diffs, migration logs, conformance results, rollout metrics, rollback transcript, restore transcript, and reconciliation report under the configured artifact root and CI artifact store.
 
-The current `artifacts/verification/phase-03/identity-delegation.txt` is ignored
-local/reference evidence. It records `CodeRevision=UNBORN`,
-`WorkspaceDirty=YES`, a configuration digest, runtimes, command, timestamps,
-and `Result=PASS`; those fields make the run inspectable but not immutable
-release evidence. The Linux `identity-conformance` job exists in
-`.github/workflows/pr-quality.yml` and has not run remotely. No Compose identity
-PASS is claimed.
+The local `artifacts/verification/phase-03/identity-delegation.txt` remains
+ignored/reference evidence. Revision-bound PR-quality run `30209210001` passes
+Linux/Windows bootstrap, secret scan, actionlint, Operator Web, AI Runtime,
+both Java services, dependency security, PostgreSQL trust, Keycloak reference
+conformance, and Compose build/health on
+`df4620313a3f39721ef1bb521a9cf7ddcac5929c`. This is CI checkpoint evidence,
+not production identity or deployment proof.
 
 Evidence schema v2 now binds the source/profile manifest and packaged Platform
 API JAR digests, verifies cleanup before atomic publication, and has a separate
@@ -224,8 +223,8 @@ used for production promotion. A failed execution instead emits a bounded,
 sanitized `identity-delegation-failure.txt`; CI uploads it for diagnosis, and
 the success verifier always rejects a missing success artifact.
 
-The Phase 5 static checkpoint also passes locally; Python reports 149 passed
-with five PostgreSQL-gated skips, Ruff and mypy are clean, and the full Maven
+The AI Runtime static checkpoint also passes; revision-bound CI reports 159
+Python tests passed with five PostgreSQL-gated skips, Ruff and mypy clean, and the full Maven
 suite passes. This does not replace the blocked Phase 5 exit gate or authorize
 provider traffic.
 
@@ -235,6 +234,12 @@ successful revision-bound GitHub Actions run `29987371420` for commit
 rollback, append-only, dependency-security, promtool, live query-range, health,
 and cleanup checks. This remains CI non-production evidence, not staging or
 production conformance.
+
+Revision-bound cross-service run `30209209999` proves fresh Phase 8B A/B/C with
+samples `100/1/1`, all eight metrics `PASS`, and `GitTree=0`. Artifact
+`8634029083` is 221,461 bytes, created 2026-07-26T16:01:34Z, and expires
+2026-10-24T15:54:25Z. This does not prove held-out quality, calibration, human
+benefit, live DeepSeek, a named live connector, staging, or production.
 
 ## Remaining Deployment Decisions
 

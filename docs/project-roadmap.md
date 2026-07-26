@@ -31,8 +31,8 @@ The detailed executable plan is [plans/260719-1747-opsmind-ai-production-platfor
 | 5 | DeepSeek AI runtime and provider gateway | G3 | In progress; static checkpoint passed, exit gate blocked |
 | 6 | Safe Tool Gateway and read-only connectors | G3 | In progress; durable Prometheus checkpoint PASS, PhaseExitGate BLOCK |
 | 7 | Evidence-backed incident vertical slice | G3 | In progress; phases 1–4 complete, cross-service/UI exit BLOCK |
-| 8 | Simulator and evaluation baseline | A-Z G4 / roadmap G7 | In progress; Phase 8B production-path A/B/C pass in revision-bound CI, held-out corpus and human baseline pending, exit BLOCK |
-| 9 | Durable Temporal investigation workflow | G4 | Pending |
+| 8 | Simulator and evaluation baseline | A-Z G4 / roadmap G7 | In progress; Phase 8B complete, held-out/human/calibration evidence unavailable, exit BLOCK |
+| 9 | Durable Temporal investigation workflow | G4 | Pending; infrastructure may start, threshold freeze/exit waits for reviewed human pilot |
 | 10 | Permission-aware RAG and knowledge lifecycle | G5 | Pending |
 | 11 | Exact-action approval and reversible remediation | G6 | Pending |
 | 12 | Operator web experience completion | G7 | Pending |
@@ -58,7 +58,7 @@ production gates remain open, so Phase 4 and G2 are not complete.
 Phase 5 is in progress. The provider-neutral runtime, delegated capability and
 egress controls, durable PostgreSQL state, V005 append-only synthetic-probe
 audit, and Platform API integration checks are present. The static checkpoint
-passes; the Python suite reports 149 passed with five PostgreSQL-gated skips,
+passes; revision-bound CI reports 159 Python tests passed with five PostgreSQL-gated skips,
 Ruff/mypy are clean, and the full Maven suite passes. The Phase 5 exit gate is
 blocked, not passed: B-004 still requires provider region, processing terms,
 retention behavior, and redaction verification, and the externally rotated-key
@@ -132,15 +132,19 @@ evaluation-eligible; contract enforcement waits for old-writer drain.
 Every accepted invocation contributes to run cost; durable audit/receipt/
 evidence digests are exact-bound. Scenario C is independent of evidence
 row/UUID order. Reparse-safe managed paths and cleanup-first secret/export
-deletion protect failure paths. Local Node, Python, semantic-order, path-safety,
-Phase 8, layout, actionlint, and secret gates pass. Revision-bound run
-`30200584275` on commit `134d63c` is terminal green: fresh Docker/PostgreSQL
-A/B/C execute through the real service path, every scenario scores `PASS` on all
-eight metrics with 100 warm runs for A, and the uploaded artifact binds that
-exact revision and both service JAR digests. Held-out corpus governance, preregistered sampling with Wilson intervals, and the human-baseline protocol are now in place and report `UNAVAILABLE` with their reasons rather than being absent. Blocking re-review remains pending.
-This is deterministic smoke evidence on authored scenarios, so parent Phase 8 and
-its A-Z G4 exit remain BLOCK on the held-out corpus, calibration, and human
-baseline.
+deletion protect failure paths. The 52-test evaluation suite passes. PR-quality
+run `30209210001` and cross-service run `30209209999` are terminal green for
+revision `df462031`; fresh A/B/C score `PASS` on all eight metrics
+with samples `100/1/1` and `GitTree=0`. Artifact `8634029083` attests service and
+source hashes; tracked-source hashes independently match, and the preceding
+`5dfbc00` artifact ZIP hash was independently recomputed. Two blocking
+process-supervision reviews pass.
+The earlier run `30200584275` on `134d63c` remains historical first-green
+evidence. Held-out governance, preregistered Wilson reporting, and the human
+protocol are implemented, but held-out payloads and qualified human records/
+adjudication are unavailable. This is deterministic smoke evidence on authored
+scenarios, so parent Phase 8 and its A-Z G4 exit remain `BLOCK` on held-out
+quality, calibration, and human comparison.
 
 ## Staffing Scenarios
 
@@ -177,6 +181,11 @@ questions are the supported local S3 adapter after MinIO's upstream archive,
 reconciliation of the 120-minute service RTO with a four-hour artifact restore
 target, production-authorized enterprise-IdP conformance, and provider
 processing terms.
+
+Phase 9 infrastructure may proceed using provisional test-only values. The
+reviewed human pilot remains mandatory before no-progress/budget thresholds
+are frozen and before Phase 9 can exit. This reconciles preparatory engineering
+with the stricter parent Phase 8 evidence gate.
 
 Gate labels also drift between documents: the parent A-Z plan names Phase 8
 exit `G4`, while this roadmap's gate summary names durable workflow `G4` and

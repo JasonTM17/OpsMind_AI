@@ -1,7 +1,7 @@
 ---
 phase: 4
 title: "Verification and Delivery"
-status: in-progress
+status: completed
 priority: P1
 dependencies: [2, 3]
 effort: "0.5 day plus CI"
@@ -29,7 +29,7 @@ all broader quantitative exit gates independently pass.
 | Modify | `docs/project-roadmap.md` | Phase 8B current evidence and Phase exit BLOCK |
 | Modify | `plans/260719-1747-opsmind-ai-production-platform/phase-08-simulator-and-evaluation-baseline.md` | Parent-plan checkpoint |
 | Read | `plans/reports/tester-260726-phase8b-evaluation.md` | Completed QA evidence |
-| Pending | `plans/reports/code-review-260726-phase8b-evaluation.md` | Blocking review evidence |
+| Create | `reports/code-review-260726-phase8b-evaluation.md` | Plan-scoped blocking review evidence |
 
 ## Current Evidence
 
@@ -42,26 +42,20 @@ Standard output and error are copied concurrently as raw bytes, standard input
 is fed after the drain starts, and secrets reach only the child environment
 rather than the parent process.
 
-The independent earlier tester recorded 28/28 Node tests; the current
-remediation rerun passes 33/33 Node tests and 40/40 targeted Python tests, plus
-50 shuffled semantic-order trials and the path-safety test. That test now also
-covers exit status read from the handle, 512 KB concurrent capture, and a
-standard-input round trip, and it executed end to end on Windows PowerShell 7
-for the first time. A mutated expected exit code makes it fail, so the
-assertion is not vacuous. The Phase 8 validator reports
-`Implemented=3 CanonicalResults=3 Errors=0 CheckpointResult=PASS
-PhaseExit=BLOCK`; repository layout, actionlint, syntax checks, and the project
-secret scan pass. The independent tester completed with concerns limited to
-unrun heavy integration and coverage depth.
+The current local evaluation suite passes 52/52. The validator reports six
+schemas, ten families/three implemented, held-out `UNAVAILABLE` with zero cases
+because no held-out cases are registered, human baseline `UNAVAILABLE` with
+zero cases because its root is not configured, three canonical results, eight
+metrics, four negative cases, zero errors, checkpoint `PASS`, and phase exit
+`BLOCK`.
 
-Revision-bound GitHub Actions run `30200584275` on commit `134d63c` is terminal
-green. It executed fresh disposable Docker/PostgreSQL Scenario A with 100 warm
-runs, Scenario B, and Scenario C through the real Platform, AI Runtime, Tool
-Gateway, and PostgreSQL path, and scored each one `EvaluationVerdict=PASS` with
-`ScorerExit=0`. All eight metrics pass in all three scenarios, including
-`root_cause_semantic`. The uploaded artifact records `GitHead=134d63c`,
-`GitTree=0`, and SHA-256 digests for both service JARs, the connector manifest,
-the export SQL, and the projector.
+PR-quality run `30209210001` and cross-service run `30209209999` are terminal
+green for revision `df4620313a3f39721ef1bb521a9cf7ddcac5929c`.
+The cross-service run executes fresh disposable A/B/C through Platform, AI
+Runtime, Tool Gateway, PostgreSQL, Prometheus, and operator projection; A/B/C
+score `PASS` with samples `100/1/1`, all eight metrics pass, and `GitTree=0`.
+Run `30200584275` on `134d63c` remains the historical first green run and is
+superseded by this confirmation.
 
 Five defects closed between the previous transcript and that run: a shell
 argument boundary that split the probe command, an evidence identity contract
@@ -69,8 +63,20 @@ that rejected the version 8 UUIDs the platform derives, a cost budget that was
 unreachable rather than strict, a reported cost that did not survive the durable
 numeric scale, and an artifact reference that named a transient working path.
 
-Blocking independent review remains pending. Phase 8 exit stays BLOCK on the
-held-out corpus and human baseline, which this checkpoint does not claim.
+Artifact `8634029083` is 221,461 bytes, was created
+2026-07-26T16:01:34Z, and expires 2026-10-24T15:54:25Z. The preceding
+`5dfbc00` artifact `8633891153` has independently recomputed ZIP SHA-256
+`78d0f930e4cbcc55f6c2afd7e46fb5624642d485f62b579668e40eeefe903834`.
+Its attested component hashes are recorded in the parent plan.
+
+Two independent process-supervision reviews now pass. Linux probes show no
+leaked detached child and no leak after controller `SIGKILL`; 4 MiB transport
+completes in about 5-8 seconds. Windows path-safety reports
+`LargeTransport=PASS` and `LateCleanupStatus=PASS`. The design uses a Windows
+Job Object and Linux `setsid`/subreaper/pidfd with authenticated status, an EOF
+ownership lease, and fail-closed `/proc` identity metadata. Phase 8 exit still
+stays `BLOCK` on held-out cases, qualified human records/adjudication,
+calibration, and human comparison.
 
 The workflow publishes traces only below `.opsmind/reports` and uploads
 `artifacts/verification/phase-08b/` plus the A/B/C trace paths as
@@ -108,7 +114,7 @@ powershell.exe -NoProfile -ExecutionPolicy Bypass -File .\scripts\governance\sca
 ## Success Criteria
 
 - [x] All scoped lightweight tests and static/security gates report zero failures.
-- [ ] Independent review has zero blocking findings.
+- [x] Independent review has zero blocking findings.
 - [x] Pushed revision receives terminal green CI with uploaded verification
       artifacts bound to exact source and executable digests.
 - [x] Docs state which evidence now exists and that Phase 8/A-Z G4 remains BLOCK

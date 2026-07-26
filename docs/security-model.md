@@ -83,7 +83,13 @@ OpsMind assists privileged operators without becoming an uncontrolled privileged
 
 ## Delegated Capabilities
 
-The delegated-capability contract requires short-lived signed capabilities for Tool Gateway operations. Claims bind audience, issuer, actor/workload, tenant, project, incident, connector, operation class, resource constraints, query/time bounds, policy version, budget, nonce, and expiry. Phase 3 currently has contract/validator scaffolding; the Keycloak evidence is not delegated-capability proof.
+The Tool Gateway checkpoint implements short-lived signed capabilities plus a
+separate workload identity. Claims bind audience, issuer, actor/workload,
+tenant, project, incident, connector, operation class, resource constraints,
+query/time bounds, policy version, budget, nonce, expiry, and exact canonical
+request digest. Durable nonce/receipt/audit state and the bounded Platform client
+pass CI. Keycloak evidence remains identity reference conformance, not the proof
+for this separate capability boundary.
 
 The Tool Gateway must derive authority only from verified claims, apply its own connector policy, and record denial/usage. Capabilities are not general bearer credentials and cannot be widened by request parameters.
 
@@ -139,20 +145,22 @@ tokens: consumption commits before reservation, so a crash may burn one attempt
 but can never make bearer authority reusable; the hashed nonce row preserves
 that fact without storing the capability.
 
-## Evidence and Retrieval Security
+## Planned Evidence and Retrieval Security
 
-- Evidence is content-addressed and encrypted through an object-storage port.
-  The approved adapters are MinIO for local use and S3-compatible production
-  storage behind the `production-kms` boundary.
-- Metadata includes source, classification, digest, authorization epoch, retention, and incident relation.
-- Untrusted evidence is scanned and rendered safely.
-- Retrieval results preserve exact source/version provenance.
-- Revocation blocks reads immediately; purge removes derived content and produces receipts.
-- RAG context never contains unauthorized neighboring candidates.
+Bounded redacted evidence records exist in PostgreSQL. The large-object
+lifecycle and RAG boundary do not. Future implementation requirements are:
 
-## Exact-Action Security
+- content-addressed encryption through a supported object-storage port behind
+  the `production-kms` boundary;
+- source, classification, digest, authorization epoch, retention, and incident
+  metadata;
+- safe scanning/rendering and exact source/version provenance;
+- immediate read revocation plus derived-content purge receipts;
+- authoritative ACL filtering before any RAG ranking or neighboring context.
 
-A write requires:
+## Planned Exact-Action Security
+
+Write remediation is not implemented. A future write path requires:
 
 1. an authorized dry-run against current target state;
 2. normalized action parameters and deterministic digest;
@@ -218,12 +226,13 @@ database to `database-team`, workflow to `workflow-team`, and provider spend to
 
 ## Verification Evidence
 
-Phase 1 establishes boundaries and secret-free defaults. The 2026-07-21 local
-Keycloak transcript is a passing reference result, records no persisted runtime
-secrets, and is explicitly not production or immutable release evidence because
-the repository is unborn/dirty and the artifact is ignored. Later phases must
-map every threat to controls and executable evidence under `artifacts/security`,
-with release decisions linked to immutable CI artifacts.
+Revision-bound PR-quality run `30209210001` on `df462031` passes repository secret scanning,
+dependency security, Linux/Windows bootstrap, service/UI gates, PostgreSQL
+trust, Keycloak reference conformance, and Compose health. Cross-service run
+`30209209999` passes the bounded Tool Gateway/evaluation path and process-tree
+supervision review. These are non-production CI controls; they do not prove
+live provider/legal approval, a named live connector, object lifecycle, RAG,
+remediation, staging, DR, or release readiness.
 
 ## Remaining Security Gates
 
@@ -231,5 +240,6 @@ G0.5 is approved in the
 [authoritative contract](./decisions/product-production-contract.json). Vendor
 conformance, session/federation details, provider processing terms, detailed
 KMS topology, compliance mapping, and executable control evidence remain
-required before production promotion. Approval of policy is not proof that any
-runtime control exists.
+required before production promotion. One high Dependabot finding also remains
+open. Approval of policy is not proof that an unimplemented runtime control
+exists.

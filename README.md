@@ -47,18 +47,15 @@ proof, and release-scale evidence remain open.
 Phase 8B now implements three deterministic, training-ineligible evaluation
 contracts: A detects a deployment-correlated latency regression, B terminates
 `ABSTAINED` without tools when evidence is insufficient, and C performs two
-opposing read-only evidence collections and requires counter-evidence plus
-cautious confidence. Tool executions are reconstructed from immutable intent,
-receipt, audit, and evidence records; connector provenance is the digest of the
-manifest bytes selected by the Tool Gateway runtime. Platform V008 is an
-expand migration: rolling legacy writers remain accepted, while response-aware
-writes are strictly bound and only those runs are evaluation-eligible. Local Node, Python,
-semantic-order, path-safety, and static gates pass. Revision-bound run
-`30200584275` on commit `134d63c` executes fresh disposable Docker/PostgreSQL
-A/B/C through the real service path, scores every scenario `PASS` across all
-eight metrics with 100 warm runs for A, and uploads an artifact bound to that
-exact revision and to both service JAR digests. Phase 8 exit stays blocked on
-the held-out corpus and human baseline, which this evidence does not claim.
+opposing read-only evidence collections with counter-evidence and cautious
+confidence. Tool executions are reconstructed from immutable intent, receipt,
+audit, and evidence records. Platform V008 is a rolling expand migration: only
+strict response-aware writes are evaluation-eligible. Immutable terminal-green
+evidence for revision `df462031` is PR-quality run `30209210001` plus
+cross-service run `30209209999`; A/B/C score `PASS` across all eight metrics with
+samples `100/1/1` and `GitTree=0`. The artifact records exact service/source
+digests; its tracked-source hashes were independently recomputed. Phase 8 stays blocked: held-out cases, qualified human
+records/adjudication, calibration, and human comparison are unavailable.
 
 DeepSeek egress and all production credentials remain disabled by default.
 Production identity/provider/legal conformance, evidence-object lifecycle,
@@ -95,13 +92,13 @@ flowchart LR
     OP["Operator"] --> WEB["Operator Web - Next.js"]
     WEB --> API["Platform API - Spring modular monolith"]
     API --> DB["PostgreSQL + pgvector + forced RLS"]
-    API --> OBJ["Evidence artifact port"]
+    API --> OBJ["Evidence artifact port - lifecycle pending"]
     API --> AI["AI Runtime - FastAPI"]
     AI --> DSP["DeepSeek provider adapter"]
     API --> POL["Policy, approval and audit"]
     POL --> TG["Isolated Spring Tool Gateway"]
     TG --> OBS["Metrics, logs and infrastructure APIs"]
-    API --> WF["Temporal - introduced after vertical-slice proof"]
+    API --> WF["Temporal - Phase 9"]
 ```
 
 The first implementation uses four deployables: Operator Web, Platform API, AI Runtime, and Tool Gateway. PostgreSQL is the source of transactional truth. Redis is optional. Transactional outbox/inbox precedes Kafka. Temporal is introduced only after the deterministic investigation state machine and evaluation baseline are proven.
@@ -220,16 +217,12 @@ requirements, cache locations, and failure behavior.
 The roadmap contains sixteen phases. G0.5 records the approved deployment
 archetype, target environment, tenant model, IdP profile, DeepSeek egress policy,
 first live connector, evidence store, load/SLO/DR envelope, lifecycle rules, and
-accountable owners. Its strict validator passes. Revision-bound GitHub Actions
-run `29923961768` proves Ubuntu/Windows bootstrap, PostgreSQL V001-V006 trust
-contracts, Keycloak 26.7 conformance, Operator Web, AI Runtime, and Compose
-build/health for commit `0ec3cff`. The overall run was cancelled after both
-successful Java suites entered duplicate full-NVD downloads and hit their
-60-minute limits. The replacement CycloneDX/OSV job is locally verified, and
-revision-bound run `29930327761` passes every executable job on `8a6bd398`; its
-security artifact covers two SBOMs and 208 packages with zero CVSS findings.
-An authorized production IdP profile and the broader phase exits are still
-required. The PostgreSQL matrix proves migration-
+accountable owners. Its strict validator passes. Revision-bound PR-quality run
+`30209210001` on `df462031` proves
+Linux/Windows bootstrap, secret scan, actionlint, Compose health, AI Runtime,
+both Java services, Operator Web, dependency security, Keycloak conformance,
+and PostgreSQL trust. An authorized production IdP profile and broader phase
+exits remain required. The PostgreSQL matrix proves migration-
 role separation, pooled tenant-context cleanup, messaging crash-window recovery,
 and Phase 7 persistence/integrity. It also proves that an active platform user
 is accepted and an unknown or deprovisioned issuer/subject mapping is denied. The
@@ -265,10 +258,10 @@ node .\scripts\validation\validate-phase-08-evaluation-foundation.mjs
 | PostgreSQL trust | V001-V007, pooled tenant/RLS, messaging recovery, investigation persistence/evidence/upgrade/replay/rollback pass | Production database/DR and large-object lifecycle not proven |
 | Identity | Keycloak 26.7 conformance passes locally and in Linux CI | Not production-authorized enterprise IdP proof |
 | Incident control | CRUD subset, rollback/concurrency, timeline and audit-chain gates pass | Full Phase 4 remains open |
-| AI Runtime | 149 offline tests plus PostgreSQL state gate pass; DeepSeek adapter defaults to `deepseek-v4-flash` | No live provider call or legal/residency approval |
-| Tool Gateway | Static contract, Platform issuer conformance, workload OAuth boundary, and dual-credential Platform execution client pass | Durable stores and live connector pending |
+| AI Runtime | 159 offline tests plus five PostgreSQL-gated skips in current CI; the PostgreSQL state gate passes separately; DeepSeek defaults to `deepseek-v4-flash` | No live provider call or legal/residency approval |
+| Tool Gateway | Static contract, durable PostgreSQL receipt/audit state, synthetic Prometheus connector, workload OAuth boundary, and dual-credential Platform execution client pass | Named live non-production connector and production conformance pending |
 | Investigation | Bounded-record checkpoint 4B, capability-backed AI rounds, exact-bound Tool Gateway client, CK/Stitch browser proof, and 100-warm-run trace pass | G3 still requires a named live non-production connector, provider/legal approval, timeline linkage, and BFF/session proof |
-| Evaluation | Fresh disposable A/B/C run through the real service path in revision-bound CI and score `PASS` on all eight metrics, with 100 warm runs for A and an artifact bound to the pushed revision and JAR digests; 36/36 Node tests and 148/148 AI Runtime tests pass | Held-out corpus, human baseline, and calibration remain pending; Phase 8 exit is BLOCK |
+| Evaluation | Fresh disposable A/B/C through the real service path score `PASS` on all eight metrics with samples `100/1/1`; 52/52 evaluation tests pass; tracked-source hashes independently match and the preceding `5dfbc00` artifact ZIP was independently rehashed | Held-out payloads, human records/adjudication, calibration, and human comparison unavailable; Phase 8 exit is BLOCK |
 | Compose | All application images build, start, and pass health smoke in CI | Not staging/production deployment evidence |
 
 Historical local evidence marked `REFERENCE_CONFORMANCE_NOT_PRODUCTION` stays

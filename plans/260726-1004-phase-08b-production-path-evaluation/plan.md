@@ -3,7 +3,7 @@ title: Phase 8B Production-Path Evaluation Evidence
 description: >-
   Harvest strict, digest-bound evaluation evidence from the real Phase 7
   persistence path and add deterministic abstention/conflict smoke scenarios.
-status: in-progress
+status: completed
 priority: P1
 branch: main
 tags:
@@ -43,7 +43,7 @@ live-provider conformance, G4, or Phase 8 completion.
 | 1 | [Evaluation Evidence Contract](./phase-01-evaluation-evidence-contract.md) | Complete — contracts hold against fresh disposable-database exports in revision-bound CI |
 | 2 | [Cross-Service Artifact Harvesting](./phase-02-cross-service-artifact-harvesting.md) | Complete — least-privilege export and projection run end to end in the same job |
 | 3 | [Abstention and Conflict Scenarios](./phase-03-abstention-and-conflict-scenarios.md) | Complete — A, B, and C each score `PASS` on the production path |
-| 4 | [Verification and Delivery](./phase-04-verification-and-delivery.md) | In Progress — CI terminal green and docs synchronized; blocking review outstanding |
+| 4 | [Verification and Delivery](./phase-04-verification-and-delivery.md) | Complete — revision-bound executable evidence is green, tracked-source hashes match, the preceding artifact ZIP was independently rehashed, and two blocking reviews passed |
 
 ## Dependencies
 
@@ -75,20 +75,34 @@ live-provider conformance, G4, or Phase 8 completion.
   repository-layout validator, CI foundation job, and Phase 7 trace validator.
 - Design choice: disposable-database projection over internal API or production
   schema expansion; see `../reports/researcher-260726-phase8b-evaluation-design.md`.
-- Local proof: independent earlier tester 28/28 Node tests; current remediation
-  rerun 33/33 Node and 40/40 targeted Python tests, 50 shuffled semantic-order
-  trials, and the path-safety test executed under PowerShell 7 covering
-  handle-derived exit status, concurrent capture and standard input; Phase 8
-  validator
-  `Implemented=3 CanonicalResults=3 Errors=0 CheckpointResult=PASS
-  PhaseExit=BLOCK`; repository layout, actionlint, and project secret scan PASS.
-- Production-path proof: revision-bound run `30200584275` on commit `134d63c` is
-  terminal green. Fresh disposable Docker/PostgreSQL Scenario A at 100 warm runs,
-  B, and C each score `EvaluationVerdict=PASS` with all eight metrics passing;
-  the uploaded artifact binds `GitHead=134d63c`, `GitTree=0`, and service JAR,
-  manifest, export SQL, and projector digests.
-- Pending proof: independent blocking-review closure. Phase 8 exit stays BLOCK on
-  the held-out corpus and human baseline, which this checkpoint does not claim.
+- Local proof: 52/52 evaluation tests pass. The Phase 8 validator reports six
+  schemas, ten families with three implemented, three canonical results, eight
+  metrics, four negative cases, zero errors, checkpoint `PASS`, and phase exit
+  `BLOCK`. Held-out and human-baseline inputs both report `UNAVAILABLE` with
+  zero cases and explicit reasons.
+- Revision-bound proof: PR-quality run `30209210001` and cross-service run
+  `30209209999` pass for `df4620313a3f39721ef1bb521a9cf7ddcac5929c`.
+  A/B/C=`PASS`, samples `100/1/1`, and `GitTree=0`. Artifact
+  `8634029083` is 221,461 bytes, created 2026-07-26T16:01:34Z, and expires
+  2026-10-24T15:54:25Z.
+- The preceding executable revision `5dfbc00` passed runs `30208691371` and
+  `30208691365`. Its artifact `8633891153` has independently recomputed ZIP
+  SHA-256 `78d0f930e4cbcc55f6c2afd7e46fb5624642d485f62b579668e40eeefe903834`.
+  Its attested SHA-256 values are Platform JAR
+  `7a6e79c227ff50c372d9fe1a1b668ca430dd0580dcda760a50655b29cb7d3014`,
+  Tool Gateway JAR
+  `1cbb2516de76b1d30b6df4ff65a7ac148d7b4a0a8ebbd3c4b5d457e9beae2f0a`,
+  connector manifest
+  `2954739ada4a59714b4a06f9329bac2548cb47a1551f09f0453a6f8151884dc2`,
+  export SQL
+  `bb624903c49af77a5f0acd20bf873fc3fb66565d0d1b377f28244e4235f790c3`,
+  and projector
+  `7e92d68f14a617cc87a6bb08c3d4de536c92e07e9f4bd906a1114cc45c651bf1`.
+- Two independent process-supervision reviews passed after fixes; see
+  [the plan-scoped review](./reports/code-review-260726-phase8b-evaluation.md).
+  Run `30200584275` on `134d63c` remains the historical first green run.
+- Parent Phase 8 stays `BLOCK`: no held-out payloads, qualified human reviewer
+  records/adjudication, calibration, or human comparison exist.
 - Gate-label question: the parent A-Z plan names Phase 8 exit `G4`, while
   `docs/project-roadmap.md` uses `G4` for durable workflow and `G7` for
   product/evaluation. Parent A-Z `G4` is canonical here until the taxonomy is
