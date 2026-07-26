@@ -220,12 +220,23 @@ function Get-CrossServiceRedactedLogTail {
     return '[log] ' + $safeContent
 }
 
+$script:CrossServiceApplicationPaths = @{}
+
 function Resolve-CrossServiceApplicationPath {
     param([Parameter(Mandatory = $true)][string]$Executable)
 
-    return @(
-        Get-Command $Executable -CommandType Application -ErrorAction Stop
-    )[0].Path
+    # Resolution is memoised for the run because every invocation resolves the
+    # same handful of helpers, and `Get-Command -CommandType Application`
+    # enumerates PATH each time. That is cheap where PATH is native and very
+    # expensive where it is not: under WSL, PATH carries 51 Windows directories
+    # reached over a network filesystem, and a single lookup there measured
+    # between 1.9 and 4.2 seconds.
+    if (-not $script:CrossServiceApplicationPaths.ContainsKey($Executable)) {
+        $script:CrossServiceApplicationPaths[$Executable] = @(
+            Get-Command $Executable -CommandType Application -ErrorAction Stop
+        )[0].Path
+    }
+    return $script:CrossServiceApplicationPaths[$Executable]
 }
 
 function Stop-CrossServiceOwnedProcessTree {
