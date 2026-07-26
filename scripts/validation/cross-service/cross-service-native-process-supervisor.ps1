@@ -176,9 +176,18 @@ function Get-LinuxProcessIdentity {
             StartTime = [uint64]$fields[19]
         }
     }
+    catch [UnauthorizedAccessException] {
+        throw
+    }
+    catch [IO.IOException] {
+        if (-not (Test-Path -LiteralPath "/proc/$ProcessId/stat" `
+            -PathType Leaf)) {
+            return $null
+        }
+        throw
+    }
     catch {
-        # Processes can exit while /proc is read.
-        return $null
+        throw
     }
 }
 
@@ -192,8 +201,18 @@ function Get-LinuxPidfdProcessId {
         }
         return $null
     }
+    catch [UnauthorizedAccessException] {
+        throw
+    }
+    catch [IO.IOException] {
+        if (-not (Test-Path -LiteralPath "/proc/self/fdinfo/$Pidfd" `
+            -PathType Leaf)) {
+            return $null
+        }
+        throw
+    }
     catch {
-        return $null
+        throw
     }
 }
 
