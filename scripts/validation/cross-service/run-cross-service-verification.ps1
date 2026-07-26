@@ -723,7 +723,10 @@ INSERT INTO incidents (
         -StdoutPath (Join-Path $runRoot 'evaluation-output-path.stdout.log') `
         -StderrPath (Join-Path $runRoot 'evaluation-output-path.stderr.log')
     $projectorArguments = New-Object 'System.Collections.Generic.List[string]'
-    foreach ($argument in @($projector, '--trace', $ReportPath, '--output', $enrichedTrace)) {
+    foreach ($argument in @(
+        $projector, '--trace', $ReportPath, '--output', $enrichedTrace,
+        '--published-as', $ReportPath
+    )) {
         $projectorArguments.Add($argument)
     }
     foreach ($exportPath in $exportPaths) {

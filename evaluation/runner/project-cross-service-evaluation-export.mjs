@@ -66,14 +66,20 @@ function parseArguments(argv) {
   for (let index = 0; index < argv.length; index += 2) {
     const flag = argv[index];
     const value = argv[index + 1];
-    if (!value || !["--export", "--trace", "--output"].includes(flag)) {
-      throw new Error("Usage: --trace <path> --output <path> --export <path> [--export <path> ...]");
+    if (!value || !["--export", "--trace", "--output", "--published-as"].includes(flag)) {
+      throw new Error(
+        "Usage: --trace <path> --output <path> --published-as <path>"
+          + " --export <path> [--export <path> ...]",
+      );
     }
     if (flag === "--export") parsed.exports.push(path.resolve(value));
+    else if (flag === "--published-as") parsed.publishedAs = path.resolve(value);
     else parsed[flag.slice(2)] = path.resolve(value);
   }
-  if (!parsed.trace || !parsed.output || parsed.exports.length === 0) {
-    throw new Error("Trace, output, and at least one export path are required.");
+  if (!parsed.trace || !parsed.output || !parsed.publishedAs || parsed.exports.length === 0) {
+    throw new Error(
+      "Trace, output, published-as, and at least one export path are required.",
+    );
   }
   if (new Set(parsed.exports).size !== parsed.exports.length) {
     throw new Error("Duplicate export path.");
@@ -92,10 +98,15 @@ export function runProjectionCli(argv) {
   const options = parseArguments(argv);
   const trace = parseUntrustedJsonExport(readFileSync(options.trace)).document;
   const exports = options.exports.map((filePath) => readFileSync(filePath));
+  // Artifact references name the file the fragment is read from, and the
+  // enriched document is written to a transient working path before it is
+  // published. Deriving the reference from the working path leaves it naming a
+  // file that no longer exists once scoring runs, so the caller states the
+  // published destination explicitly.
   const enriched = enrichTraceWithEvaluationExports(
     trace,
     exports,
-    traceReference(options.output),
+    traceReference(options.publishedAs),
   );
   publishExclusive(options.output, `${JSON.stringify(enriched, null, 2)}\n`);
 }

@@ -219,9 +219,17 @@ test("CLI refuses existing and linked output paths", () => {
   try {
     assert.throws(
       () => runProjectionCli([
-        "--trace", tracePath, "--output", outputPath, "--export", exportPath,
+        "--trace", tracePath, "--output", outputPath,
+        "--published-as", tracePath, "--export", exportPath,
       ]),
       /already exists/u,
+    );
+    assert.throws(
+      () => runProjectionCli([
+        "--trace", tracePath, "--output", path.join(root, "unstated.json"),
+        "--export", exportPath,
+      ]),
+      /published-as/u,
     );
     try {
       symlinkSync(target, linked, "junction");
@@ -229,6 +237,7 @@ test("CLI refuses existing and linked output paths", () => {
         () => runProjectionCli([
           "--trace", tracePath,
           "--output", path.join(linked, "unsafe.json"),
+          "--published-as", tracePath,
           "--export", exportPath,
         ]),
         /unsafe/u,
@@ -236,6 +245,35 @@ test("CLI refuses existing and linked output paths", () => {
     } catch (error) {
       if (!["EPERM", "EACCES"].includes(error?.code)) throw error;
     }
+  } finally {
+    if (existsSync(root)) rmSync(root, { recursive: true, force: true });
+  }
+});
+
+test("CLI references the published destination rather than the working path", () => {
+  // The enriched document is written to a transient working path and then
+  // published elsewhere. Scoring resolves the artifact reference against the
+  // published file, so a reference naming the working path leaves the raw
+  // analysis untrusted and its semantic metric unscored.
+  const root = path.join(repositoryRoot, ".opsmind", "reports", `projection-ref-${process.pid}`);
+  mkdirSync(root, { recursive: true });
+  const tracePath = path.join(root, "trace.json");
+  const exportPath = path.join(root, "export.json");
+  const workingPath = path.join(root, "working.json");
+  const publishedPath = path.join(root, "published.json");
+  writeFileSync(tracePath, JSON.stringify(baseTrace));
+  writeFileSync(exportPath, exportBytes);
+  try {
+    runProjectionCli([
+      "--trace", tracePath, "--output", workingPath,
+      "--published-as", publishedPath, "--export", exportPath,
+    ]);
+    const enriched = JSON.parse(readFileSync(workingPath, "utf8"));
+    const expected = `repository://${
+      path.relative(repositoryRoot, publishedPath).replaceAll(path.sep, "/")
+    }#/runs/0/rawAnalysis`;
+    assert.equal(enriched.runs[0].rawAnalysisReference, expected);
+    assert.ok(!enriched.runs[0].rawAnalysisReference.includes("working.json"));
   } finally {
     if (existsSync(root)) rmSync(root, { recursive: true, force: true });
   }
