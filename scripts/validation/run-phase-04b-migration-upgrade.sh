@@ -307,6 +307,8 @@ INSERT INTO investigation_run_events (
     )
   )
 );
+COMMIT;
+BEGIN;
 UPDATE investigation_runs
 SET status = 'ABSTAINED',
     rounds = 1,
