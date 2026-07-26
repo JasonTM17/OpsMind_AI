@@ -230,6 +230,25 @@ for (const dockerfile of [
   }
 }
 
+const operatorDockerfilePath = path.join(
+  repositoryRoot,
+  "apps/operator-web/Dockerfile",
+);
+if (fs.existsSync(operatorDockerfilePath)) {
+  const operatorDockerfile = fs.readFileSync(operatorDockerfilePath, "utf8");
+  const patchCopy = /^\s*COPY\s+patches\s+\.\/patches\s*$/mu.exec(
+    operatorDockerfile,
+  );
+  const frozenInstall = /\bpnpm\s+install\s+--frozen-lockfile\b/u.exec(
+    operatorDockerfile,
+  );
+  if (!patchCopy || !frozenInstall || patchCopy.index > frozenInstall.index) {
+    errors.push(
+      "Operator Web Dockerfile must copy pnpm patch inputs before frozen install",
+    );
+  }
+}
+
 for (const contract of javaContainerContracts) {
   const manifest = fs.readFileSync(path.join(repositoryRoot, contract.manifest), "utf8");
   const dockerfile = fs.readFileSync(path.join(repositoryRoot, contract.dockerfile), "utf8");

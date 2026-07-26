@@ -5,6 +5,7 @@ import test from "node:test";
 const manifestUrl = new URL("../package.json", import.meta.url);
 const workspaceUrl = new URL("../../../pnpm-workspace.yaml", import.meta.url);
 const lockfileUrl = new URL("../../../pnpm-lock.yaml", import.meta.url);
+const dockerfileUrl = new URL("../Dockerfile", import.meta.url);
 
 test("operator web manifest stays private and exposes required gates", async () => {
   const manifest = JSON.parse(await readFile(manifestUrl, "utf8"));
@@ -224,6 +225,19 @@ test("workspace pins the patched sharp line used by Next.js", async () => {
   const version = override.slice(1).join(".");
   assert.match(workspace, new RegExp(`^  'sharp@${version}': true$`, "m"));
   assert.match(lockfile, new RegExp(`^  sharp@${version}:$`, "m"));
+});
+
+test("operator image copies pnpm patch inputs before frozen install", async () => {
+  const dockerfile = await readFile(dockerfileUrl, "utf8");
+  const patchCopy = /^\s*COPY\s+patches\s+\.\/patches\s*$/mu.exec(dockerfile);
+  const frozenInstall = /\bpnpm\s+install\s+--frozen-lockfile\b/u.exec(dockerfile);
+
+  assert.ok(patchCopy, "Docker build context must include pnpm patches");
+  assert.ok(frozenInstall, "container install must remain frozen");
+  assert.ok(
+    patchCopy.index < frozenInstall.index,
+    "pnpm patches must be available before dependency installation",
+  );
 });
 
 function restoreEnvironment(name, value) {
