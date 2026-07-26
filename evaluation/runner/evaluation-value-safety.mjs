@@ -32,6 +32,14 @@ const UNSAFE_VALUE_PATTERNS = [
   /(?:<think>|chain[- ]of[- ]thought|hidden reasoning|internal reasoning)/iu,
 ];
 
+// RFC 9562 defines versions 1 through 8 and pins the variant bits to 10xx, so
+// the version nibble accepts 1-8 while the variant nibble stays restricted.
+// Platform evidence and execution identities are version 8: they are derived
+// from a domain-separated SHA-256 of the organization, run, and intent so the
+// same logical tool intent always yields the same identity.
+export const RFC_9562_UUID =
+  /^[0-9a-f]{8}-[0-9a-f]{4}-[1-8][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/iu;
+
 export class EvaluationContractError extends Error {
   constructor(code, message) {
     super(message);

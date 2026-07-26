@@ -12,9 +12,10 @@ import {
   contractFailure,
   exactObject,
   parseUntrustedJsonExport,
+  RFC_9562_UUID,
 } from "./evaluation-value-safety.mjs";
 
-const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/iu;
+const UUID = RFC_9562_UUID;
 
 function uniqueBy(items, key, label) {
   const values = items.map((item) => item[key]);

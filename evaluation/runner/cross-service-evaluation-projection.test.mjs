@@ -154,6 +154,47 @@ test("enriches only the exactly matching trace run", () => {
   );
 });
 
+test("accepts derived version 8 identities and still rejects malformed ones", () => {
+  // Platform evidence and execution identities are RFC 9562 version 8, derived
+  // from a domain-separated SHA-256 rather than drawn at random, so a validator
+  // limited to versions 1 through 5 rejects every real production export while
+  // the version 4 literals in this fixture keep passing.
+  const derived = "10000000-0000-8000-8000-000000000813";
+  const accepted = projectCrossServiceEvaluationExport(mutated((value) => {
+    value.run.evidence_ids = [derived];
+    for (const record of value.evidence_records) {
+      if (record.evidence_id === "10000000-0000-4000-8000-000000000813") {
+        record.evidence_id = derived;
+      }
+    }
+    for (const receipt of value.tool_receipts) {
+      if (receipt.evidence_id === "10000000-0000-4000-8000-000000000813") {
+        receipt.evidence_id = derived;
+      }
+    }
+    for (const event of value.events) {
+      if (event.evidence_id === "10000000-0000-4000-8000-000000000813") {
+        event.evidence_id = derived;
+      }
+    }
+  }));
+  assert.deepEqual(accepted.run.evidenceIds, [derived]);
+  assert.equal(accepted.evidenceRecords[0].evidenceId, derived);
+
+  for (const malformed of [
+    "10000000-0000-0000-8000-000000000813",
+    "10000000-0000-9000-8000-000000000813",
+    "10000000-0000-8000-c000-000000000813",
+  ]) {
+    rejects(
+      mutated((value) => {
+        value.run.evidence_ids = [malformed];
+      }),
+      "INVALID_IDENTITY",
+    );
+  }
+});
+
 test("CLI refuses existing and linked output paths", () => {
   const root = path.join(repositoryRoot, ".opsmind", "reports", `projection-test-${process.pid}`);
   const linked = path.join(root, "linked");
