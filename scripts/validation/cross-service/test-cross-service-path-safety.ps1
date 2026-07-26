@@ -62,8 +62,10 @@ try {
         $probeArguments = @('-c', "printf '%s' `"`$$probeName`"")
         $failureArguments = @(
             '-c',
-            "printf '%s\n' 'ERROR expected-stdout'; " +
-                "printf '%s\n' 'ERROR expected-stderr' >&2; exit 7"
+            (
+                "printf '%s\n' 'ERROR expected-stdout'; " +
+                    "printf '%s\n' 'ERROR expected-stderr' >&2; exit 7"
+            )
         )
     }
     $previousLastExitCodeVariable = Get-Variable -Name LASTEXITCODE -Scope Global `
