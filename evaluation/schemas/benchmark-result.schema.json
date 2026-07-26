@@ -13,6 +13,7 @@
     "source",
     "versions",
     "sample_count",
+    "sampling",
     "metrics",
     "raw_artifact_references",
     "warnings",
@@ -133,6 +134,17 @@
       "minimum": 1,
       "maximum": 1000
     },
+    "sampling": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["cases", "trials", "trials_per_case", "independent"],
+      "properties": {
+        "cases": { "type": "integer", "minimum": 0, "maximum": 1000 },
+        "trials": { "type": "integer", "minimum": 0, "maximum": 100000 },
+        "trials_per_case": { "type": "number", "minimum": 0 },
+        "independent": { "type": "boolean" }
+      }
+    },
     "metrics": {
       "type": "object",
       "additionalProperties": false,
@@ -239,7 +251,7 @@
     "metric": {
       "type": "object",
       "additionalProperties": false,
-      "required": ["status", "numerator", "denominator", "value", "details"],
+      "required": ["status", "numerator", "denominator", "value", "details", "interval"],
       "properties": {
         "status": {
           "enum": ["PASS", "FAIL", "UNAVAILABLE"]
@@ -260,6 +272,18 @@
           "type": "string",
           "minLength": 1,
           "maxLength": 1024
+        },
+        "interval": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["method", "level", "lower", "upper", "reason"],
+          "properties": {
+            "method": { "const": "wilson" },
+            "level": { "const": 0.95 },
+            "lower": { "type": ["number", "null"], "minimum": 0, "maximum": 1 },
+            "upper": { "type": ["number", "null"], "minimum": 0, "maximum": 1 },
+            "reason": { "type": ["string", "null"], "maxLength": 128 }
+          }
         }
       }
     }

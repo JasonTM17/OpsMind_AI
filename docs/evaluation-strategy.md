@@ -138,6 +138,17 @@ order. The projection excludes prompts, provider reasoning, credentials,
 capability material, raw connector bodies, and evidence content. Raw bytes and
 canonical JSON use distinct typed, domain-separated digests.
 
+Every metric reports a two-sided Wilson interval at the 95 percent level beside
+its ratio, and every result reports cases separately from trials. Replaying one
+scenario a hundred times yields `cases: 1, trials: 100, independent: false`, so
+a stability measurement cannot be read as accuracy across incidents. At the
+current corpus size the intervals are wide by construction — four of four checks
+reports roughly `[0.51, 1.00]` — and that width is the reason the exit gate is
+closed rather than an argument for a larger denominator. The unit of analysis,
+target sample size, interval method, stopping rule, and exclusions are
+preregistered in `evaluation/statistical-analysis-plan.md`, whose digest is bound
+in the benchmark manifest so an unaccompanied edit fails the gate.
+
 Each scenario bounds per-run cost at its token budget priced at the configured
 rate. The runtime treats a configuration as valid only when both token prices
 are above zero, and denies egress otherwise, so a run that produces tokens

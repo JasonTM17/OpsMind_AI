@@ -4,6 +4,7 @@ import {
   toolChecks,
 } from "./score-phase-07-projection.mjs";
 import { canonicalDigest } from "./cross-service-evaluation-digests.mjs";
+import { summarizeSampling, wilsonInterval } from "./sampling-intervals.mjs";
 import { evaluationProjectionIntegrityChecks } from "./cross-service-evaluation-projection-verifier.mjs";
 
 function artifactReference(kind, reference, fragment, domain) {
@@ -16,7 +17,16 @@ function aggregate(checks, unavailable, details, value = null) {
   let status = "PASS";
   if (unavailable > 0 || denominator === 0) status = "UNAVAILABLE";
   else if (numerator !== denominator) status = "FAIL";
-  return { status, numerator, denominator, value, details };
+  // The interval is reported alongside the ratio because a ratio over a handful
+  // of correlated checks reads as a population estimate when it is not one.
+  return {
+    status,
+    numerator,
+    denominator,
+    value,
+    details,
+    interval: wilsonInterval(numerator, denominator),
+  };
 }
 export function scorePhase07Trace({
   groundTruth,
@@ -251,6 +261,10 @@ export function scorePhase07Trace({
     },
     versions: groundTruth.versions,
     sample_count: runs.length,
+    // Every run in one trace replays the same scenario, so the case count comes
+    // from the scenario identity rather than the run count. A hundred warm runs
+    // are a hundred trials of one case.
+    sampling: summarizeSampling(runs.map(() => groundTruth.scenario_id)),
     metrics,
     raw_artifact_references: rawReferences,
     warnings,

@@ -1,10 +1,11 @@
 ---
 phase: 2
-title: "Statistical protocol and reporting"
-status: pending
+title: Statistical protocol and reporting
+status: in-progress
 priority: P1
-dependencies: [1]
-effort: "1 day"
+dependencies:
+  - 1
+effort: 1 day
 ---
 
 # Phase 2: Statistical protocol and reporting
