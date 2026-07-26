@@ -7,7 +7,7 @@
   "held_out_manifest_path": "evaluation/held-out/manifest.yaml",
   "statistical_analysis_plan": {
     "path": "evaluation/statistical-analysis-plan.md",
-    "content_digest": "sha256:d045469b56defb938703bc33c6f59083d7312b8265d5974f17c1e02d4d44dac0"
+    "content_digest": "sha256:b7b2eeba61145b64fae039047e4cb636150586a0fa47f300431ebd379672193b"
   },
   "scenario_families": [
     {
