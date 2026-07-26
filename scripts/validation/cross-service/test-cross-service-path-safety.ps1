@@ -117,6 +117,50 @@ try {
         throw 'Cross-service process control accepted a forged exit status.'
     }
 
+    # The gate nonce is written to the control directory, so anything that can
+    # write a status file can also read it. Only the control nonce, which
+    # travels over standard input and never reaches disk, may authenticate a
+    # successful exit. A failure status may carry either, because a supervisor
+    # can fail before it has read the transport.
+    [IO.File]::WriteAllText(
+        $forgedStatusPath,
+        ('exit:0:' + $gateNonceProbe),
+        [Text.UTF8Encoding]::new($false)
+    )
+    $gateSignedExitBlocked = $false
+    try {
+        [void](Read-CrossServiceSupervisorStatus -Path $forgedStatusPath `
+            -ControlNonce $controlNonceProbe -GateNonce $gateNonceProbe)
+    }
+    catch [FormatException] {
+        $gateSignedExitBlocked = $_.Exception.Message -eq
+            'Cross-service supervisor exit status is unauthenticated.'
+    }
+    finally {
+        Remove-Item -LiteralPath $forgedStatusPath -Force
+    }
+    if (-not $gateSignedExitBlocked) {
+        throw 'Cross-service process control accepted a gate-signed exit status.'
+    }
+
+    [IO.File]::WriteAllText(
+        $forgedStatusPath,
+        ('failure:LaunchException:None:' + $gateNonceProbe),
+        [Text.UTF8Encoding]::new($false)
+    )
+    $gateSignedFailure = $null
+    try {
+        $gateSignedFailure = Read-CrossServiceSupervisorStatus -Path $forgedStatusPath `
+            -ControlNonce $controlNonceProbe -GateNonce $gateNonceProbe
+    }
+    finally {
+        Remove-Item -LiteralPath $forgedStatusPath -Force
+    }
+    if ($null -eq $gateSignedFailure -or
+        $gateSignedFailure.FailureType -ne 'LaunchException') {
+        throw 'Cross-service process control rejected a gate-signed failure status.'
+    }
+
     $probeName = 'OPSMIND_CROSS_SERVICE_PROCESS_PROBE'
     $probeValue = [guid]::NewGuid().ToString('N')
     $probeStdout = Join-Path $testRoot 'phase-08-process-probe.stdout.log'
@@ -776,6 +820,7 @@ $ErrorActionPreference = 'Stop'
     Write-Output (
         'CrossServicePathSafety=PASS ReparseAncestor=BLOCKED ProcessLaunch=PASS ' +
         'ControlReparse=BLOCKED StatusForgery=BLOCKED ' +
+        'GateSignedExitForgery=BLOCKED GateSignedFailure=ACCEPTED ' +
         'ExitStatusFromHandle=PASS ConcurrentCapture=PASS StandardInput=PASS ' +
         'LargeTransport=PASS LateCleanupStatus=PASS ' +
         'LaunchFailure=BLOCKED RedirectionFailure=BLOCKED ' +
