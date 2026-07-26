@@ -93,6 +93,60 @@ test("refuses unadjudicated disagreement rather than picking a side", () => {
   });
 });
 
+test("enforces the record contract instead of trusting it", () => {
+  // The protocol promises a submission cannot carry incident narrative or
+  // reviewer commentary because the schema has nowhere to put it. That promise
+  // is only real if the schema is applied at ingestion, so this asserts the
+  // enforcement rather than the schema file's existence.
+  withRoot((root, write) => {
+    write("one.json", { ...record(), notes: "customer outage narrative" });
+    write("two.json", { ...record({ reviewer_id: "reviewer-0000000b" }) });
+    rejects(root, "HUMAN_BASELINE_RECORD");
+
+    write("one.json", record({ minutes_to_conclusion: 999 }));
+    rejects(root, "HUMAN_BASELINE_RECORD");
+
+    write("one.json", record({ reviewer_id: "alice@example.com" }));
+    rejects(root, "HUMAN_BASELINE_RECORD");
+
+    write("one.json", record({ root_cause_label: "operator-was-tired" }));
+    rejects(root, "HUMAN_BASELINE_RECORD");
+  });
+});
+
+test("refuses a record path that escapes its configured root", () => {
+  // Directory entries cannot contain separators, but the listing seam accepts
+  // any name, and the sibling held-out resolver contains this check. Without it
+  // a caller-supplied listing reads a file the operator never registered.
+  withRoot((root) => {
+    const outside = path.join(root, "..", `escaped-${process.pid}.json`);
+    writeFileSync(outside, JSON.stringify(record()));
+    try {
+      assert.throws(
+        () => resolveHumanBaseline({
+          baselineRoot: root,
+          knownCaseIds: caseIds,
+          readDirectory: () => [`../escaped-${process.pid}.json`],
+        }),
+        (error) => error?.code === "HUMAN_BASELINE_PATH",
+      );
+    } finally {
+      if (existsSync(outside)) rmSync(outside, { force: true });
+    }
+  });
+});
+
+test("bounds a record before reading it into memory", () => {
+  withRoot((root, write) => {
+    write("one.json", record());
+    writeFileSync(
+      path.join(root, "large.json"),
+      JSON.stringify({ ...record(), padding: "x".repeat(70 * 1024) }),
+    );
+    rejects(root, "HUMAN_BASELINE_RECORD");
+  });
+});
+
 test("rejects records that contradict themselves or the corpus", () => {
   withRoot((root, write) => {
     write("one.json", record({ case_id: "case-unknown" }));

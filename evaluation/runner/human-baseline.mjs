@@ -1,11 +1,26 @@
 import fs from "node:fs";
 import path from "node:path";
 
+import { createEvaluationContractValidator } from "./evaluation-contract-validation.mjs";
 import { contractFailure, parseUntrustedJsonExport } from "./evaluation-value-safety.mjs";
 
 export const BASELINE_ROOT_ENVIRONMENT = "OPS_EVALUATION_HUMAN_BASELINE_ROOT";
 const MAX_RECORDS = 20000;
+const MAX_RECORD_BYTES = 64 * 1024;
 const REQUIRED_REVIEWERS_PER_CASE = 2;
+const SAFE_IDENTIFIER = /^[A-Za-z0-9._-]{1,128}$/u;
+
+// A name read from disk or from a manifest reaches redacted evidence
+// transcripts through failure messages. Restricting it to a printable, single
+// line shape keeps a crafted name from forging transcript lines.
+function safeName(value) {
+  return SAFE_IDENTIFIER.test(String(value ?? "")) ? String(value) : "[unsafe name]";
+}
+
+function isWithin(candidatePath, parentPath) {
+  const relative = path.relative(parentPath, candidatePath);
+  return relative !== "" && !relative.startsWith("..") && !path.isAbsolute(relative);
+}
 
 function unavailable(reason) {
   return { status: "UNAVAILABLE", reason, cases: [], recordCount: 0 };
@@ -19,7 +34,12 @@ function unavailable(reason) {
  * anyone". This gate is expected to be `UNAVAILABLE`: producing it needs
  * reviewer time, not code, and reporting it as absent is the honest state.
  */
-export function resolveHumanBaseline({ baselineRoot, knownCaseIds = null, readDirectory = null }) {
+export function resolveHumanBaseline({
+  baselineRoot,
+  knownCaseIds = null,
+  readDirectory = null,
+  repositoryRoot = path.resolve(import.meta.dirname, "../.."),
+}) {
   const configuredRoot = typeof baselineRoot === "string" ? baselineRoot.trim() : "";
   if (configuredRoot === "") {
     return unavailable(`${BASELINE_ROOT_ENVIRONMENT} is not configured`);
@@ -44,15 +64,29 @@ export function resolveHumanBaseline({ baselineRoot, knownCaseIds = null, readDi
     contractFailure("HUMAN_BASELINE_RECORD", "Human baseline record count is unbounded.");
   }
 
+  // The protocol promises a submission cannot carry incident narrative or
+  // reviewer commentary, and that promise is only real if the schema is
+  // enforced here. Without this the record shape is checked ad hoc and an
+  // unknown free-text field passes straight through.
+  const validate = createEvaluationContractValidator(repositoryRoot);
+
   const byCase = new Map();
-  for (const name of listing.slice().sort()) {
-    const recordPath = path.join(resolvedRoot, name);
+  for (const rawName of listing.slice().sort()) {
+    const name = safeName(rawName);
+    const recordPath = path.resolve(resolvedRoot, String(rawName));
+    if (!isWithin(recordPath, resolvedRoot)) {
+      contractFailure("HUMAN_BASELINE_PATH", `Human baseline record escapes its root: ${name}.`);
+    }
     if (fs.lstatSync(recordPath).isSymbolicLink()) {
       contractFailure("HUMAN_BASELINE_PATH", `Human baseline record is a link: ${name}.`);
     }
+    if (fs.lstatSync(recordPath).size > MAX_RECORD_BYTES) {
+      contractFailure("HUMAN_BASELINE_RECORD", `Human baseline record exceeds its bound: ${name}.`);
+    }
     const record = parseUntrustedJsonExport(fs.readFileSync(recordPath)).document;
-    if (record.schema_version !== "opsmind-human-baseline-record-v1") {
-      contractFailure("HUMAN_BASELINE_RECORD", `Human baseline record version is unsupported: ${name}.`);
+    const findings = validate(record, "human-baseline-record.schema.json");
+    if (findings.length > 0) {
+      contractFailure("HUMAN_BASELINE_RECORD", `Human baseline record violates its contract: ${name}.`);
     }
     if (knownCaseIds && !knownCaseIds.has(record.case_id)) {
       contractFailure("HUMAN_BASELINE_RECORD", `Human baseline record names an unknown case: ${name}.`);
@@ -65,7 +99,10 @@ export function resolveHumanBaseline({ baselineRoot, knownCaseIds = null, readDi
     }
     const reviewers = byCase.get(record.case_id) ?? new Map();
     if (reviewers.has(record.reviewer_id)) {
-      contractFailure("HUMAN_BASELINE_RECORD", `Reviewer answered a case twice: ${record.case_id}.`);
+      contractFailure(
+        "HUMAN_BASELINE_RECORD",
+        `Reviewer answered a case twice: ${safeName(record.case_id)}.`,
+      );
     }
     reviewers.set(record.reviewer_id, record);
     byCase.set(record.case_id, reviewers);
