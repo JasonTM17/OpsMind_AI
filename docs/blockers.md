@@ -19,6 +19,7 @@ Cleanup, credential rotation, production deployment, external writes, and other 
 | B-012 | Production-readiness claim | Approved local MinIO adapter now has an archived upstream repository and no ongoing upstream maintenance commitment | Platform + security owners | Supported replacement/supply-chain decision or bounded local-only exception with pinned provenance and exit plan | Active |
 | B-013 | Phase 8 exit | No held-out payloads are registered and no qualified human reviewer records/adjudication exist; calibration and human comparison are unavailable | Product + evaluation owners | Governed held-out case evidence plus qualified paired-review/adjudication report | Active |
 | B-015 | Dependency security | GitHub Dependabot reports one unresolved high finding | Security + owning maintainer | Fix/upgrade evidence or explicit risk disposition under repository policy | Active |
+| B-016 | Tenant-isolation claim | Tool Gateway stores `tenant_id` and `project_id` in `tool_gateway.execution_receipts` with no row-level security, no policy, and no transaction-local tenant binding, while the security model states without exemption that application authorization and forced RLS are both required | Security + Tool Gateway owner | Either forced RLS with transaction-local tenant binding for the gateway schema, or a recorded decision stating why capability-derived authority alone is sufficient there | Active |
 
 ## Capacity Guard
 
