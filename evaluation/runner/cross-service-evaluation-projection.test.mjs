@@ -124,18 +124,28 @@ test("rejects connector substitution and receipt drift", () => {
 });
 
 test("rejects invocation identity, accounting, and timestamp drift", () => {
-  for (const change of [
-    (value) => { value.analysis_invocations[0].model_id = "substituted-model"; },
-    (value) => { value.analysis_invocations[0].prompt_version = "substituted-prompt"; },
-    (value) => { value.analysis_invocations[0].schema_version = "substituted-schema"; },
-    (value) => { value.analysis_invocations[0].actual_tokens += 1; },
-    (value) => { value.analysis_invocations[0].actual_tools += 1; },
-    (value) => { value.analysis_invocations[0].actual_cost_usd = 0.01; },
-    (value) => {
+  // The reported field is what makes a production binding failure actionable,
+  // so each case asserts the drifted column is named and no other one is.
+  for (const [field, change] of [
+    ["model_id", (value) => { value.analysis_invocations[0].model_id = "substituted-model"; }],
+    ["prompt_version",
+      (value) => { value.analysis_invocations[0].prompt_version = "substituted-prompt"; }],
+    ["schema_version",
+      (value) => { value.analysis_invocations[0].schema_version = "substituted-schema"; }],
+    ["actual_tokens", (value) => { value.analysis_invocations[0].actual_tokens += 1; }],
+    ["actual_tools", (value) => { value.analysis_invocations[0].actual_tools += 1; }],
+    ["actual_cost_usd", (value) => { value.analysis_invocations[0].actual_cost_usd = 0.01; }],
+    ["finished_at", (value) => {
       value.analysis_invocations[0].finished_at = "2029-12-31T23:59:59Z";
-    },
+    }],
   ]) {
-    rejects(mutated(change), "INVOCATION_BINDING");
+    const bytes = mutated(change);
+    rejects(bytes, "INVOCATION_BINDING");
+    assert.throws(
+      () => projectCrossServiceEvaluationExport(bytes),
+      (error) => error.message.includes(field)
+        && error.message.split(": ")[1] === `${field}.`,
+    );
   }
 });
 
