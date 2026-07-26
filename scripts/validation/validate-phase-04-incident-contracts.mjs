@@ -56,6 +56,8 @@ const requiredSchemaPaths = [
   "packages/contracts/json-schema/incidents/incident.schema.json",
   "packages/contracts/json-schema/incidents/incident-timeline-event.schema.json",
   "packages/contracts/json-schema/incidents/incident-timeline-page.schema.json",
+  "packages/contracts/json-schema/incidents/incident-activity-timeline-entry.schema.json",
+  "packages/contracts/json-schema/incidents/incident-activity-timeline-page.schema.json",
   "packages/contracts/json-schema/audit/audit-event.schema.json",
 ];
 
