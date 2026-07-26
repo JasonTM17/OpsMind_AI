@@ -52,7 +52,9 @@ try {
         $failureArguments = @('/d', '/c', 'exit', '7')
     }
     else {
-        $probeExecutable = (Get-Command sh -CommandType Application -ErrorAction Stop).Path
+        $probeExecutable = @(
+            Get-Command sh -CommandType Application -ErrorAction Stop
+        )[0].Path
         $probeArguments = @('-c', "printf '%s' `"`$$probeName`"")
         $failureArguments = @('-c', 'exit 7')
     }
