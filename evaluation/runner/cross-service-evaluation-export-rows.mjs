@@ -5,10 +5,11 @@ import {
   boundedString,
   contractFailure,
   exactObject,
+  RFC_9562_UUID,
 } from "./evaluation-value-safety.mjs";
 import { sha256DigestValid } from "./cross-service-evaluation-digests.mjs";
 
-const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/iu;
+const UUID = RFC_9562_UUID;
 const DATE_TIME = /^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}(?:\.\d+)?(?:Z|[+-]\d{2}:\d{2})$/u;
 const EVENT_TYPES = new Set([
   "RUN_STARTED", "ANALYSIS_ACCEPTED", "TOOL_REQUESTED", "EVIDENCE_APPENDED",

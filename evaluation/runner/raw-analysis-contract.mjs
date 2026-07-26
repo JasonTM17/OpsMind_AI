@@ -1,4 +1,6 @@
-const UUID_PATTERN = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/iu;
+import { RFC_9562_UUID } from "./evaluation-value-safety.mjs";
+
+const UUID_PATTERN = RFC_9562_UUID;
 const DIGEST_PATTERN = /^sha256:[a-f0-9]{64}$/u;
 const TOOL_CONNECTORS = new Set(["metrics", "logs", "traces", "changes", "runbooks"]);
 const MAX_PROMPT_TOKENS = 100_000;
