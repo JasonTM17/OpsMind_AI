@@ -11,6 +11,8 @@ import java.util.ArrayList;
 import java.util.List;
 import org.flywaydb.core.Flyway;
 import org.flywaydb.core.api.FlywayException;
+import org.flywaydb.core.api.configuration.FluentConfiguration;
+import org.flywaydb.database.postgresql.PostgreSQLConfigurationExtension;
 import org.junit.jupiter.api.Assumptions;
 import org.junit.jupiter.api.Test;
 
@@ -34,11 +36,17 @@ class FlywayRecoveryHarnessTest {
             assertThat(successfulVersion(connection)).isEqualTo("8");
             createInvalidInvestigationIndex(connection);
 
-            Flyway flyway = Flyway.configure()
+            FluentConfiguration flywayConfiguration = Flyway.configure()
                 .dataSource(settings.url(), settings.username(), settings.password())
                 .locations("classpath:db/migration")
-                .target("9")
-                .load();
+                .target("9");
+            PostgreSQLConfigurationExtension postgresql =
+                flywayConfiguration.getConfigurationExtension(
+                    PostgreSQLConfigurationExtension.class
+                );
+            postgresql.setTransactionalLock(false);
+            assertThat(postgresql.isTransactionalLock()).isFalse();
+            Flyway flyway = flywayConfiguration.load();
 
             boolean migrationFailed = false;
             try {
