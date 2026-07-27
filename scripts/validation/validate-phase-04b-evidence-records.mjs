@@ -113,6 +113,7 @@ const v009Seed = requireMarkers(
     "generate_series(1, 10000, 50)",
     "LEAST(batch_start + 49, 50000)",
     "LEAST(batch_start + 49, 10000)",
+    "JOIN phase_v009_distractors fixture ON fixture.run_id = runs.run_id",
     "\\gexec",
     "ANALYZE incident_timeline_events",
     "ANALYZE investigation_run_events",
@@ -123,6 +124,64 @@ const v009SeedBatchExecutions = v009Seed.match(/^\\gexec$/gm) ?? [];
 if (v009SeedBatchExecutions.length !== 2) {
   errors.push(
     "V009 seed must autocommit exactly two bounded advisory-lock batch families.",
+  );
+}
+const v009DistractorBatchMarker =
+  "$batch$, batch_start, LEAST(batch_start + 49, 10000))";
+const v009DistractorBatchStart = v009Seed.indexOf(
+  "-- Each distractor batch inserts its snapshots and one-event ledgers atomically.",
+);
+const v009DistractorBatchEnd = v009Seed.indexOf(
+  v009DistractorBatchMarker,
+  v009DistractorBatchStart,
+);
+const v009DistractorBatchIsBounded =
+  v009DistractorBatchStart >= 0
+  && v009DistractorBatchEnd > v009DistractorBatchStart;
+const v009DistractorBatch = v009DistractorBatchIsBounded
+    ? v009Seed.slice(
+        v009DistractorBatchStart,
+        v009DistractorBatchEnd + v009DistractorBatchMarker.length,
+      )
+    : "";
+const v009DistractorAtomicSequence = [
+  "SELECT format($batch$",
+  "WITH runs AS (",
+  "INSERT INTO investigation_runs (",
+  "FROM phase_v009_distractors",
+  "RETURNING run_id",
+  "INSERT INTO investigation_run_events (",
+  "FROM runs",
+  "JOIN phase_v009_distractors fixture ON fixture.run_id = runs.run_id",
+];
+let v009DistractorSequenceCursor = 0;
+for (const marker of v009DistractorAtomicSequence) {
+  const markerIndex = v009DistractorBatch.indexOf(
+    marker,
+    v009DistractorSequenceCursor,
+  );
+  if (markerIndex < 0) {
+    errors.push(
+      "V009 distractor snapshots and ledgers must remain in one ordered batch statement.",
+    );
+    break;
+  }
+  v009DistractorSequenceCursor = markerIndex + marker.length;
+}
+const v009DistractorFixtureStart = v009Seed.indexOf(
+  "CREATE TEMP TABLE phase_v009_distractors",
+);
+const v009DistractorPreBatch =
+  v009DistractorFixtureStart >= 0 && v009DistractorBatchStart > 0
+    ? v009Seed.slice(v009DistractorFixtureStart, v009DistractorBatchStart)
+    : "";
+const hasPrecommittedDistractorSnapshots =
+  /INSERT INTO investigation_runs\s*\([\s\S]*?FROM phase_v009_distractors\s*;/u.test(
+    v009DistractorPreBatch,
+  );
+if (hasPrecommittedDistractorSnapshots) {
+  errors.push(
+    "V009 distractor snapshots must not commit before their matching ledgers.",
   );
 }
 const v009SeedFirstBatch = v009Seed.indexOf("SELECT format($batch$");
