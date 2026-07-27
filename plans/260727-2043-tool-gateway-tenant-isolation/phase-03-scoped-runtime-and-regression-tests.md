@@ -1,6 +1,6 @@
 ---
 title: Scoped Runtime and Regression Tests
-status: in-progress
+status: completed
 ---
 
 # Phase 3: Scoped Runtime and Regression Tests
@@ -47,5 +47,7 @@ status: in-progress
 - PostgreSQL tests against a disposable CI database.
 - Full service test/build and repository validators after focused tests pass.
 
-Local unit/static evidence passes. PostgreSQL and cross-service CI execution is
-still required before this phase is completed.
+Local unit/static evidence and the immutable CI gates pass. PostgreSQL job
+`90022080029` reports 12 targeted tests with zero failures/errors, including
+pool reuse; cross-service run `30279067839` passes Scenarios A/B/C and the
+Phase 7 regression at source `269bd39e626836607fe66ed7eb050e1aa309044a`.

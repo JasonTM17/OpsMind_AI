@@ -8,7 +8,7 @@
 - Record blockers explicitly and leave downstream phases pending.
 - Do not include secrets, raw credentials, or sensitive evidence.
 
-## 2026-07-27 — Tool Gateway tenant-isolation implementation awaiting CI evidence
+## 2026-07-27 — Tool Gateway tenant-isolation immutable evidence passed
 
 Implemented in the current branch:
 
@@ -56,9 +56,25 @@ Current local evidence:
   repository's 10 GiB heavyweight-work capacity guard. The exact PostgreSQL,
   upgrade, pool-reuse, and cross-service gates are wired into GitHub Actions.
 
+Immutable CI evidence for source
+`269bd39e626836607fe66ed7eb050e1aa309044a` is green:
+
+- PR Quality run `30279072972` is terminal `success`; PostgreSQL job
+  `90022080029` is terminal `success`.
+- PostgreSQL artifact `8658901958`
+  (`sha256:1e76f5c67d0abc726b6d0779022f5005d777fcea63e52123cc176d1baabf909e`)
+  proves V002-to-V003 upgrade, legacy preservation, forced RLS including the
+  migrator owner, no-context denial, scoped runtime reads, same-tenant/
+  foreign-project denial, and the tenant-free unverified lane. The targeted
+  persistence boundary runs 12 tests with zero failures/errors; the full local
+  Tool Gateway suite remains 53 passed and 12 PostgreSQL-gated skips.
+- Cross-service run `30279067839` and artifact `8658216777`
+  (`sha256:a5e2798b5c3035bdca3992f083cefbafc8df0121f35bd1447dcf3d46478b27a7`)
+  are terminal green. Scenarios A/B/C pass with 100/1/1 samples, cleanup
+  passes, and the Phase 7 regression checkpoint is `PASS`.
+
 Independent review round three confirms zero unresolved P0/P1 findings.
-`B-016` remains Active until one immutable revision passes the PostgreSQL and
-cross-service CI gates. This work does not change any other active provider,
+`B-016` is resolved. This slice does not change any other active provider,
 connector, lifecycle, SLO, DR, human evaluation, dependency, staging,
 production, or release blocker.
 
@@ -104,10 +120,11 @@ Immutable evidence for source
 These are CI fixture/test gates, not production latency, SLO, or rollout
 evidence. This closes only the Incident Activity Timeline Bridge plan slice.
 
-Still open: `B-004`, `B-005`, `B-006`, `B-007`, `B-008`, `B-011`, `B-012`,
-`B-013`, `B-015`, and `B-016`; see [Blockers](./blockers.md). The bridge does
-not close provider/legal, live connector, lifecycle, load/SLO, DR,
-held-out/human evaluation, dependency, or Tool Gateway tenant-isolation gates.
+At the time of this bridge checkpoint, `B-016` was still open alongside
+`B-004`, `B-005`, `B-006`, `B-007`, `B-008`, `B-011`, `B-012`, `B-013`, and
+`B-015`. The later immutable Tool Gateway evidence entry above resolves only
+`B-016`; this bridge does not close provider/legal, live connector, lifecycle,
+load/SLO, DR, held-out/human evaluation, or dependency gates.
 
 ## 2026-07-26 — Phase 8B production-path evaluation delivered
 

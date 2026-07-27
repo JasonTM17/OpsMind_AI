@@ -4,7 +4,7 @@ description: >-
   Close B-016 with capability-derived scope propagation, forced PostgreSQL RLS,
   transaction-local context, separate unverified audit storage, and adversarial
   pool-reuse/collision evidence.
-status: in-progress
+status: completed
 priority: P0
 effort: 12-18h
 branch: feature/tool-gateway-tenant-isolation
@@ -40,9 +40,9 @@ They append to a separate global, insert-only security-audit lane.
 | Phase | Name | Status |
 |---|---|---|
 | 1 | [Threat Model and Contract](./phase-01-threat-model-and-contract.md) | Completed |
-| 2 | [Forward-only RLS Migration](./phase-02-forward-only-rls-migration.md) | In progress |
-| 3 | [Scoped Runtime and Regression Tests](./phase-03-scoped-runtime-and-regression-tests.md) | In progress |
-| 4 | [Security Review, Evidence, and Documentation](./phase-04-security-review-evidence-and-documentation.md) | In progress |
+| 2 | [Forward-only RLS Migration](./phase-02-forward-only-rls-migration.md) | Completed |
+| 3 | [Scoped Runtime and Regression Tests](./phase-03-scoped-runtime-and-regression-tests.md) | Completed |
+| 4 | [Security Review, Evidence, and Documentation](./phase-04-security-review-evidence-and-documentation.md) | Completed |
 
 ## Architecture Decision
 

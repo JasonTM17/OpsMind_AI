@@ -3,8 +3,8 @@
 - Date: 2026-07-27
 - Scope: B-016 application scope propagation, PostgreSQL V003, audit lanes,
   readiness, leases, migration/CI evidence
-- Revision: uncommitted branch working tree
-- Result: local PASS; immutable PostgreSQL evidence pending
+- Revision: `269bd39e626836607fe66ed7eb050e1aa309044a`
+- Result: immutable PASS
 
 ## Threat Model
 
@@ -68,12 +68,24 @@ Independent review round three reports zero unresolved P0/P1 issues.
 - Full Tool Gateway suite: 65 tests, 0 failures/errors, 12 intentionally skipped
   PostgreSQL-gated tests.
 - Phase 6 static checkpoint: zero errors.
-- Phase 7 static checkpoint: zero errors; external cross-service report absent
-  locally as expected.
+- Phase 7 static checkpoint: zero errors.
 - Repository layout: 893 files, zero errors.
 - Secret scan: 0 findings across working tree, Git index, configured artifacts,
   and 129 historical commits.
 - Upgrade harness syntax: PASS.
+
+Immutable CI evidence for source
+`269bd39e626836607fe66ed7eb050e1aa309044a`:
+
+- PR Quality run `30279072972` and PostgreSQL job `90022080029` are terminal
+  green. Artifact `8658901958`
+  (`sha256:1e76f5c67d0abc726b6d0779022f5005d777fcea63e52123cc176d1baabf909e`)
+  records the V002-to-V003 and isolation matrix; targeted persistence tests
+  are 12/12 with zero failures/errors.
+- Cross-service run `30279067839` and artifact `8658216777`
+  (`sha256:a5e2798b5c3035bdca3992f083cefbafc8df0121f35bd1447dcf3d46478b27a7`)
+  are terminal green. Scenarios A/B/C pass with 100/1/1 samples and cleanup
+  verification passes.
 
 ## First Immutable CI Attempt
 
@@ -87,20 +99,19 @@ ERROR: LEAST types interval and timestamp with time zone cannot be matched
 
 Cross-service run `30277633352` independently observed the same failure before
 any Prometheus query. Claim and reclaim now cast the bound deadline explicitly
-to `timestamptz`. The local suite and static validators pass after the fix; a
-new immutable PostgreSQL/cross-service attempt remains required.
+to `timestamptz`. The corrected immutable PostgreSQL/cross-service attempt is
+recorded above.
 
 ## Required Immutable Evidence
 
-- Fresh V003 and V002-to-V003 migration.
-- Exact policy catalog definitions and role grants.
-- Forced RLS against runtime and table-owning migrator.
-- Same-tenant/foreign-project and no-context raw-RLS denial.
-- A-to-B-to-no-context pool reuse after commit, rollback, and malformed context.
-- Cross-service evaluation regression at the exact source SHA.
-- Independent review round three: zero unresolved P0/P1 findings.
+All required immutable evidence is present in the recorded PostgreSQL and
+cross-service artifacts: fresh V003 and V002-to-V003 migration, exact policy
+catalog definitions and role grants, forced RLS against runtime and
+table-owning migrator, same-tenant/foreign-project and no-context denial,
+A-to-B-to-no-context pool reuse, cross-service regression at the exact source
+SHA, and independent review round three with zero unresolved P0/P1 findings.
 
 ## Unresolved Questions
 
-None for implementation. CI evidence remains a promotion gate, not an
-architecture question.
+None for implementation. B-016 CI evidence is complete for this revision;
+broader Phase 6 and production gates remain separate promotion blockers.
