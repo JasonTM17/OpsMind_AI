@@ -3,10 +3,10 @@ title: Incident Activity Timeline Bridge
 description: >-
   Add a versioned incident activity timeline that unions incident and
   investigation metadata without breaking the current v1 route.
-status: pending
+status: in-progress
 priority: P1
 effort: 10-14h
-branch: main
+branch: feature/incident-activity-timeline-phase2
 tags:
   - phase7
   - incident-timeline
@@ -29,8 +29,8 @@ Close the remaining Phase 7 timeline gap without new parallel services or ledger
 | Phase | Name | Status |
 |-------|------|--------|
 | 1 | [Contract and Cursor Compatibility](./phase-01-contract-and-cursor-compatibility.md) | Completed |
-| 2 | [Unified Read Projection](./phase-02-unified-read-projection.md) | Pending |
-| 3 | [Verification and Gate Integration](./phase-03-verification-and-gate-integration.md) | Pending |
+| 2 | [Unified Read Projection](./phase-02-unified-read-projection.md) | In progress |
+| 3 | [Verification and Gate Integration](./phase-03-verification-and-gate-integration.md) | In progress |
 
 ## Dependencies
 

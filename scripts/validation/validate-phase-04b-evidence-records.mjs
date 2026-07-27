@@ -155,6 +155,7 @@ requireMarkers(
   [
     'DROP INDEX CONCURRENTLY public.',
     'flyway.repair();',
+    'setTransactionalLock(false);',
     'failedV009History',
     'exactIndexCatalog',
     'OPSMIND_PHASE4B_RECOVERY_ENABLED',

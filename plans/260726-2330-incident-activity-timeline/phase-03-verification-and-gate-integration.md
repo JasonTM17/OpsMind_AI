@@ -1,7 +1,7 @@
 ---
 phase: 3
 title: "Verification and Gate Integration"
-status: pending
+status: in-progress
 priority: P1
 dependencies: [2]
 ---
@@ -73,5 +73,5 @@ Finish the bridge with validator, doc, and review gates only. Current project do
 ## Success Criteria
 
 - [ ] Phase 4/4B/7 validators pass with the representation v1 contract, ANALYZE-only eight-field bridge, and V009 fresh/upgrade/recovery evidence.
-- [ ] Docs state that incident activity timeline linkage is delivered, while the remaining Phase 7/8/9 blockers stay explicit.
-- [ ] A focused review confirms legacy v1 compatibility, data classification, same-tenant isolation, live-view cursor semantics, negotiation/cache safety, bounded query plan, migration recovery, and no forbidden-byte leakage.
+- [x] Docs state that incident activity timeline linkage is delivered, while the remaining Phase 7/8/9 blockers stay explicit.
+- [x] A focused review confirms legacy v1 compatibility, data classification, same-tenant isolation, live-view cursor semantics, negotiation/cache safety, bounded query plan, migration recovery, and no forbidden-byte leakage.

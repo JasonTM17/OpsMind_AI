@@ -230,7 +230,11 @@ remain authoritative.
 Platform V009 adds only the two concurrent ordering indexes
 `incident_timeline_activity_order_idx` and
 `investigation_run_events_activity_order_idx`; its script-level Flyway config
-sets `executeInTransaction=false`. Deployment applies V009 before new code.
+sets `executeInTransaction=false`. The persistence profile sets
+`spring.flyway.postgresql.transactional-lock=false`: PostgreSQL concurrent
+index creation cannot wait on Flyway's own history-lock transaction, while the
+resulting session-level advisory lock still serializes migration runners.
+Deployment applies V009 before new code.
 Fresh/upgrade, invalid-index recovery, high-cardinality query-plan, append-
 latency, vendor-read latency, and storage-budget evidence are still required
 pending gates. Their absence prevents a Phase 2/3 or performance claim.

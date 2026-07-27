@@ -139,7 +139,10 @@ A failed gate cannot be converted to a warning solely to meet a schedule.
   Evaluation-eligible runs require the complete tuple.
 - Apply Platform V009 before enabling the incident activity vendor media type.
   V009 creates the two activity ordering indexes concurrently and is configured
-  outside a Flyway transaction. This rollout is not yet release-qualified:
+  outside a Flyway transaction. The persistence profile also disables Flyway's
+  PostgreSQL transactional advisory lock so the concurrent build cannot wait on
+  Flyway's own history-lock transaction; Flyway retains a session-level advisory
+  lock to serialize migration runners. This rollout is not yet release-qualified:
   fresh and V008-to-V009 migration, valid-index catalog state, failed-build
   recovery, high-cardinality query plans, append/read latency, and index-size
   evidence require a revision-bound CI artifact. The present upgrade runner

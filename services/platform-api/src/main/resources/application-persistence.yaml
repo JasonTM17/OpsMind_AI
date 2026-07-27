@@ -12,6 +12,10 @@ spring:
     enabled: ${OPSMIND_FLYWAY_ENABLED:true}
     locations: classpath:db/migration
     baseline-on-migrate: false
+    postgresql:
+      # CREATE INDEX CONCURRENTLY must not wait on Flyway's own transaction lock.
+      # A session-level advisory lock still serializes migration runners.
+      transactional-lock: false
 
 management:
   health:

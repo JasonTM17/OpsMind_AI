@@ -192,6 +192,7 @@ requireContracts(persistence, "persistence profile", [
   "SPRING_DATASOURCE_USERNAME",
   "SPRING_DATASOURCE_PASSWORD",
   "enabled: ${OPSMIND_FLYWAY_ENABLED:true}",
+  "transactional-lock: false",
   "opsmind:",
   "persistence:",
   "enabled: true",
