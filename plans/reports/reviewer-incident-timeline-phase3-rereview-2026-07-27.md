@@ -43,6 +43,6 @@ None.
 
 None.
 
-Status: DONE  
-Summary: All three prior P1/P2 findings are materially remediated; no remaining P0-P2 issue found.  
+Status: DONE
+Summary: All three prior P1/P2 findings are materially remediated; no remaining P0-P2 issue found.
 Concerns/Blockers: None.
