@@ -142,12 +142,13 @@ A failed gate cannot be converted to a warning solely to meet a schedule.
   outside a Flyway transaction. The persistence profile also disables Flyway's
   PostgreSQL transactional advisory lock so the concurrent build cannot wait on
   Flyway's own history-lock transaction; Flyway retains a session-level advisory
-  lock to serialize migration runners. This rollout is not yet release-qualified:
-  fresh and V008-to-V009 migration, valid-index catalog state, failed-build
-  recovery, high-cardinality query plans, append/read latency, and index-size
-  evidence require a revision-bound CI artifact. The present upgrade runner
-  executes the V009 disposable proof in CI, but neither its unobserved source
-  wiring nor the activity HTTP CI wiring proves V009 before that artifact exists.
+  lock to serialize migration runners. PR Quality run `30257587569`,
+  PostgreSQL job `89950772823`, and artifact `8650178111` prove fresh/upgrade,
+  valid-index catalog state, failed-build recovery, bounded query plans,
+  legacy-write compatibility, cleanup, and the 3/3 activity HTTP matrix on
+  `a975f922`. The CI fixture passed append/vendor <=500 ms, append regression
+  <=20%, and index <=256 bytes/row and <=100% table-byte gates. This evidence
+  qualifies the plan slice, not production latency, SLOs, or rollout.
   If a concurrent build fails, stop rollout, retain Flyway history and exact
   index-catalog evidence, use the approved recovery path to remove both
   V009-owned indexes concurrently, repair through the approved Flyway seam,
@@ -224,12 +225,13 @@ roles before deployment.
 Later phases publish signed build provenance, scan reports, contract diffs, migration logs, conformance results, rollout metrics, rollback transcript, restore transcript, and reconciliation report under the configured artifact root and CI artifact store.
 
 The local `artifacts/verification/phase-03/identity-delegation.txt` remains
-ignored/reference evidence. Revision-bound PR-quality run `30209210001` passes
+ignored/reference evidence. Revision-bound PR-quality run `30257587569` passes
 Linux/Windows bootstrap, secret scan, actionlint, Operator Web, AI Runtime,
 both Java services, dependency security, PostgreSQL trust, Keycloak reference
 conformance, and Compose build/health on
-`df4620313a3f39721ef1bb521a9cf7ddcac5929c`. This is CI checkpoint evidence,
-not production identity or deployment proof.
+`a975f922fcd93c71479b9e15563643a9ea1aa04f`. PostgreSQL artifact `8650178111`
+adds the V009/activity evidence above. This is CI fixture/checkpoint evidence,
+not production identity, latency, SLO, or deployment proof.
 
 Evidence schema v2 now binds the source/profile manifest and packaged Platform
 API JAR digests, verifies cleanup before atomic publication, and has a separate
@@ -251,11 +253,12 @@ rollback, append-only, dependency-security, promtool, live query-range, health,
 and cleanup checks. This remains CI non-production evidence, not staging or
 production conformance.
 
-Revision-bound cross-service run `30209209999` proves fresh Phase 8B A/B/C with
+Revision-bound cross-service run `30257587543` proves fresh Phase 8B A/B/C with
 samples `100/1/1`, all eight metrics `PASS`, and `GitTree=0`. Artifact
-`8634029083` is 221,461 bytes, created 2026-07-26T16:01:34Z, and expires
-2026-10-24T15:54:25Z. This does not prove held-out quality, calibration, human
-benefit, live DeepSeek, a named live connector, staging, or production.
+`8649696519` also records the Phase 7 OperatorWorkspace/CrossService/
+Checkpoint/PhaseExit regression as `PASS`. This does not prove held-out
+quality, calibration, human benefit, live DeepSeek, a named live connector,
+staging, or production.
 
 ## Remaining Deployment Decisions
 

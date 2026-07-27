@@ -234,19 +234,19 @@ sets `executeInTransaction=false`. The persistence profile sets
 `spring.flyway.postgresql.transactional-lock=false`: PostgreSQL concurrent
 index creation cannot wait on Flyway's own history-lock transaction, while the
 resulting session-level advisory lock still serializes migration runners.
-Deployment applies V009 before new code.
-Fresh/upgrade, invalid-index recovery, high-cardinality query-plan, append-
-latency, vendor-read latency, and storage-budget evidence are still required
-pending gates. Their absence prevents a Phase 2/3 or performance claim.
-The checked-in PR workflow runs the activity HTTP integration test and a V009
-disposable upgrade/recovery proof, but source wiring is not V009 fresh/upgrade
-or recovery evidence. Before a gate can pass, a revision-bound artifact must
-show both indexes valid after fresh and V008-to-V009 migration, a failed concurrent
-build recovery, branch-bounded `EXPLAIN (ANALYZE, BUFFERS, FORMAT JSON)`, 300
-append samples per ledger in each pre/post-index phase (50 warm-up and 250
-measured), 10,000 same-tenant/project distractor incidents per source, and 300
-vendor reads across initial, rank-0 cursor, and rank-1 cursor modes (50 warm-up
-and 50 measured per mode), plus the plan's latency/storage limits.
+Deployment applies V009 before new code. If either concurrent build fails,
+operators capture Flyway history and both index catalog rows, drop both exact
+V009 index names concurrently, run the approved Flyway repair seam, and retry;
+applied migration bytes and history are never edited blindly.
+
+PR Quality run `30257587569`, PostgreSQL job `89950772823`, and artifact
+`8650178111` prove fresh/upgrade, failed-build recovery, branch-bounded query
+plans, legacy-write compatibility, cleanup, and the 3/3 activity HTTP matrix on
+`a975f922`. The 60,600/61,206-row fixture passed append/vendor latency and
+storage gates: append p95 regressions were 11.66%/4.02%; vendor initial/rank-0/
+rank-1 p95 was 2.563/1.466/1.533 ms; index cost was 95.70 bytes/source row and
+10.76% of source-table bytes. These are CI fixture/test gates, not production
+latency or SLO evidence.
 
 ## Consistency and Messaging
 
@@ -536,12 +536,10 @@ completed samples, current git head, and a clean working tree.
 
 G3 stays blocked on a named live non-production connector, provider/legal
 conformance, and the later BFF/session proof. The metadata-only activity route
-closes the read-linkage implementation gap but its revision-bound CI and V009
-high-cardinality evidence gates remain pending. The
-CK/Stitch operator workspace has local unit, build, accessibility, responsive,
-and Chromium browser proof against the safe projection boundary. Durable Tool
-Gateway and synthetic Prometheus evidence establish the local integration
-checkpoint but do not by themselves establish G3 or production readiness.
+and its V009 CI fixture gates close this plan's read-linkage slice. The
+CK/Stitch operator workspace has unit, build, accessibility, responsive, and
+Chromium browser proof against the safe projection boundary. These checkpoints
+do not by themselves establish G3 or production readiness.
 
 ## Evaluation Projection Boundary (Phase 8B)
 
@@ -604,12 +602,11 @@ recursive removal.
 Scenario A proves the latency-regression contract, B requires `ABSTAINED` with
 zero tools, and C requires two opposing read-only evidence collections plus
 counter-evidence and cautious confidence. Revision-bound PR-quality run
-`30209210001` and cross-service run `30209209999` are terminal green on
-`df4620313a3f39721ef1bb521a9cf7ddcac5929c`. Fresh A/B/C score `PASS` across
-all eight metrics with samples `100/1/1` and `GitTree=0`. Artifact
-`8634029083` is 221,461 bytes, created 2026-07-26T16:01:34Z, and expires
-2026-10-24T15:54:25Z. Phase 8 remains blocked on unavailable held-out/human
-evidence, calibration, and human comparison.
+`30257587569` and cross-service run `30257587543` are terminal green on
+`a975f922fcd93c71479b9e15563643a9ea1aa04f`. Fresh A/B/C score `PASS` across
+all eight metrics with samples `100/1/1` and `GitTree=0`; artifact
+`8649696519` contains the executable evidence. Phase 8 remains blocked on
+unavailable held-out/human evidence, calibration, and human comparison.
 
 The reviewed harness supervises process trees with a Windows Job Object and
 Linux `setsid`/subreaper/pidfd. Terminal status is authenticated; EOF ownership
@@ -664,19 +661,17 @@ Every request carries trace, correlation, tenant-safe subject, incident, workflo
 
 Architecture claims become verified only through contract tests, provider conformance, tenant isolation suites, workflow replay, failure injection, evaluation, security review, and DR drills in later phases. Current Phase 3 evidence includes a live local PostgreSQL RLS/pool-reuse matrix, outbox/inbox crash-window recovery, API/dispatcher database-role separation, tenant-safe scheduling, SQL duplicate/order enforcement, static validation, Java tests, and a live local Keycloak 26.7 reference run. Checkpoint 4A adds live PostgreSQL create/read/transition, authorization-revocation serialization, idempotent replay, concurrency, rollback, semantic timeline/audit integrity, migration-upgrade, and append-only proofs.
 
-Revision-bound PR-quality run `30209210001` also proves Linux/Windows bootstrap,
+Revision-bound PR-quality run `30257587569` also proves Linux/Windows bootstrap,
 secret scan, actionlint, Compose health, AI Runtime, both Java services,
 Operator Web, dependency security, Keycloak reference conformance, and
-PostgreSQL trust. Cross-service run `30209209999` proves the Phase 8B A/B/C
-mechanical path. Neither run proves live DeepSeek/legal approval, a named live
-non-production connector, RAG, remediation, Temporal, object lifecycle,
-staging/production, DR, or release readiness.
-
-The current worktree contains the incident activity HTTP integration test and
-adds it to the PostgreSQL CI matrix, but no completed revision-bound CI run is
-yet evidence for that change. The required 50,000-row-per-ledger query plan,
-latency, index-size, and recovery thresholds remain pending; no production SLO
-or timeline Phase 2/3 completion is inferred from source or test wiring.
+PostgreSQL trust on `a975f922`. PostgreSQL artifact `8650178111` proves the
+V009 recovery/catalog/query-plan/latency/storage/upgrade/cleanup gates and the
+3/3 activity timeline matrix. Cross-service run `30257587543` and artifact
+`8649696519` prove A/B/C plus the Phase 7 OperatorWorkspace/CrossService/
+Checkpoint/PhaseExit regression. Neither run proves live DeepSeek/legal
+approval, a named live non-production connector, RAG, remediation, Temporal,
+object lifecycle, staging/production, DR, production latency/SLOs, or release
+readiness.
 
 For the current AI Runtime checkpoint, the Python suite reports 159 passed and five
 PostgreSQL-gated tests skipped when that database gate is not enabled; Ruff and

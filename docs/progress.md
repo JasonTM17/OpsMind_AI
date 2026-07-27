@@ -8,7 +8,7 @@
 - Record blockers explicitly and leave downstream phases pending.
 - Do not include secrets, raw credentials, or sensitive evidence.
 
-## 2026-07-27 — Incident activity timeline bridge implemented; evidence gate pending
+## 2026-07-27 — Incident activity timeline bridge evidence gate passed
 
 Implemented in the current worktree:
 
@@ -28,13 +28,27 @@ Implemented in the current worktree:
 - V009 defines two concurrent ordering indexes and sets
   `executeInTransaction=false`.
 
-Local, non-release validation on 2026-07-27 passed the Phase 4 static contract
-gate (`Errors=0`) and the Phase 7 static checkpoint (`Errors=0`,
-`CheckpointResult=PASS`, `PhaseExit=BLOCK`). These outputs came from a dirty
-worktree and are not CI artifacts. No V009 claim is `PASS`: the checked-in
-upgrade runner now executes the V009 proof, while fresh/upgrade, invalid-index
-recovery, 50,000-row query-plan, append/read latency, and index-storage evidence
-await a revision-bound CI artifact.
+Immutable evidence for source
+`a975f922fcd93c71479b9e15563643a9ea1aa04f`:
+
+- PR Quality run `30257587569` is terminal green. PostgreSQL job `89950772823`
+  and artifact `8650178111` (`postgres-trust-contracts`) prove V009
+  fresh/upgrade, invalid-index recovery, query-plan, legacy-write, cleanup, and
+  3/3 activity HTTP gates; pooled tests pass 17/17 and the alternating contract
+  records `Result=PASS`.
+- The fixture has 60,600 incident and 61,206 investigation rows. Append p95
+  pre/post is 1.346/1.503 ms (+11.66%) and 2.265/2.356 ms (+4.02%). Vendor
+  initial/rank-0/rank-1 p95 is 2.563/1.466/1.533 ms.
+- Combined indexes are 11,657,216 bytes over 121,806 rows and 108,347,392
+  table bytes: 95.70 bytes/row and 10.76%. All plan thresholds pass.
+- Cross-service run `30257587543` and artifact `8649696519`
+  (`phase-08b-cross-service-evaluation`) are terminal green. Phase 7 records
+  OperatorWorkspace/CrossService/Checkpoint/PhaseExit `PASS`; A/B/C pass,
+  Scenario A has 100 warm runs, and the exact CI evaluation command passes
+  61/61.
+
+These are CI fixture/test gates, not production latency, SLO, or rollout
+evidence. This closes only the Incident Activity Timeline Bridge plan slice.
 
 Still open: `B-004`, `B-005`, `B-006`, `B-007`, `B-008`, `B-011`, `B-012`,
 `B-013`, `B-015`, and `B-016`; see [Blockers](./blockers.md). The bridge does

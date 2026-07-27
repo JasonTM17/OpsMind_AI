@@ -57,7 +57,7 @@ executions from durable intent/receipt/audit/evidence bindings, requires the
 three durable evidence digests to agree, and sums all accepted invocation cost.
 Malformed UTF-8 and duplicate evidence digests fail closed.
 
-The current evaluation suite passes 52/52. The Phase 8 validator reports six
+The exact CI evaluation command passes 61/61. The Phase 8 validator reports six
 schemas, ten families/three implemented, held-out and human inputs
 `UNAVAILABLE` with zero cases, three canonical results, eight metrics, four
 negative cases, zero errors, checkpoint `PASS`, and phase exit `BLOCK`.
@@ -65,6 +65,29 @@ Revision-bound A/B/C, same-job attestation, exact-revision artifact, and two
 independent supervision reviews pass. This checkpoint is not a held-out or
 human study and cannot support production accuracy, calibration, population
 latency, p95, or benefit claims.
+
+### Incident activity timeline checkpoint
+
+The legacy timeline representation remains `incident:read` + `READ` and reads
+only `incident_timeline_events`. The opt-in vendor representation requires
+`incident:analyze` + `ANALYZE`; authorization runs before incident lookup.
+Integration tests prove exact organization/project/incident predicates on both
+branches, same/cross-tenant denial, a forward-only v2 cursor, and absence of
+payloads, free text, credentials, evidence/tool identifiers, and canonical
+evidence from response bytes.
+
+Platform migrations now run through V009. PR Quality run `30257587569`,
+PostgreSQL job `89950772823`, and artifact `8650178111` prove fresh and upgrade
+paths, invalid-index recovery, bounded query plans, legacy writes, cleanup, and
+the 3/3 route matrix. The fixture contains 60,600/61,206 ledger rows; append
+p95 regression is 11.66%/4.02%, vendor p95 is 2.563/1.466/1.533 ms, and the
+indexes cost 95.70 bytes/source row and 10.76% of table bytes. These pass the
+plan's <=500 ms, <=20%, <=256 bytes/row, and <=100% test gates. They are not
+production latency, SLO, or rollout evidence.
+
+`OPSMIND_EPHEMERAL_DB=true` is a guard against running destructive harness
+steps without explicit intent. It does not isolate a database; the job/runner
+must provision and verify a disposable database boundary independently.
 
 ## Critical Scenario Families
 
@@ -284,17 +307,20 @@ Release requires all required suites green, zero unresolved critical security fi
 
 ## Current CI Checkpoint
 
-PR-quality run `30209210001` passes on revision
-`df4620313a3f39721ef1bb521a9cf7ddcac5929c`. Its executable jobs prove
+PR-quality run `30257587569` passes on revision
+`a975f922fcd93c71479b9e15563643a9ea1aa04f`. Its executable jobs prove
 Linux/Windows bootstrap, repository secret scan, actionlint, Operator Web, AI
 Runtime, both Java services, dependency security, PostgreSQL trust, Keycloak
-reference conformance, and Compose build/health.
+reference conformance, and Compose build/health. PostgreSQL job `89950772823`
+and artifact `8650178111` prove the V009/activity checkpoint above.
 
-Cross-service run `30209209999` passes A/B/C through the real service path with
+Cross-service run `30257587543` passes A/B/C through the real service path with
 samples `100/1/1`, all eight metrics `PASS`, and `GitTree=0`. The evaluation
-unit suite passes 52/52. The Phase 8 validator still returns `PhaseExit=BLOCK`
-because held-out and human-baseline inputs are unavailable; no quality,
-calibration, or human-benefit inference is permitted.
+unit suite passes 61/61. Artifact `8649696519` also records Phase 7
+OperatorWorkspace/CrossService/Checkpoint/PhaseExit `PASS`. The Phase 8
+validator still returns `PhaseExit=BLOCK` because held-out and human-baseline
+inputs are unavailable; no quality, calibration, or human-benefit inference is
+permitted.
 
 ## Verification Evidence
 

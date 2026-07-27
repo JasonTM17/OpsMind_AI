@@ -31,7 +31,10 @@ forced RLS, and optimistic concurrency. This is durable data, not a durable
 workflow. V007 adds immutable bounded canonical evidence records, exact replay,
 authorized reads, and full transaction rollback; revision-bound CI passes its
 fresh/upgrade and 13-case PostgreSQL gate. Restart/resume remains Phase 9, and
-current investigation events are not yet appended to the incident timeline.
+investigation events remain separate from `incident_timeline_events`. The
+opt-in ANALYZE-only incident activity representation read-unions both ledgers
+as a forward-only live metadata view; it does not copy rows or expose payloads,
+free text, credentials, or evidence/tool identifiers.
 The non-fixture investigation AI port now re-authorizes every evidence set,
 assembles a selector-only bounded prompt, signs the exact canonical body, and
 reuses the existing AI Runtime transport. The Platform Tool Gateway client
@@ -39,10 +42,10 @@ resolves only immutable catalog selectors, derives deterministic identities,
 sends independent workload and one-use capability credentials, and accepts
 only fully verified inline evidence. Durable Gateway stores, the loopback
 synthetic Prometheus connector, CK/Stitch operator UI/browser E2E, and a
-revision-bound 100-warm-run cross-service trace now have passing local
-evidence. G3 is still not claimed: a named live non-production connector,
-approved provider/legal conformance, revision-bound incident-activity
-route/index evidence, BFF/session proof, and release-scale evidence remain open.
+revision-bound 100-warm-run cross-service trace have passing evidence. G3 is
+still not claimed: a named live non-production connector, approved
+provider/legal conformance, BFF/session proof, and release-scale evidence
+remain open.
 
 Phase 8B now implements three deterministic, training-ineligible evaluation
 contracts: A detects a deployment-correlated latency regression, B terminates
@@ -50,12 +53,11 @@ contracts: A detects a deployment-correlated latency regression, B terminates
 opposing read-only evidence collections with counter-evidence and cautious
 confidence. Tool executions are reconstructed from immutable intent, receipt,
 audit, and evidence records. Platform V008 is a rolling expand migration: only
-strict response-aware writes are evaluation-eligible. Immutable terminal-green
-evidence for revision `df462031` is PR-quality run `30209210001` plus
-cross-service run `30209209999`; A/B/C score `PASS` across all eight metrics with
-samples `100/1/1` and `GitTree=0`. The artifact records exact service/source
-digests; its tracked-source hashes were independently recomputed. Phase 8 stays blocked: held-out cases, qualified human
-records/adjudication, calibration, and human comparison are unavailable.
+strict response-aware writes are evaluation-eligible. At revision `a975f922`,
+PR-quality run `30257587569` and cross-service run `30257587543` are terminal
+green; artifact `8649696519` records A/B/C `PASS`, samples `100/1/1`, and
+`GitTree=0`. Phase 8 stays blocked: held-out cases, qualified human records/
+adjudication, calibration, and human comparison are unavailable.
 
 DeepSeek egress and all production credentials remain disabled by default.
 Production identity/provider/legal conformance, evidence-object lifecycle,
@@ -218,7 +220,7 @@ The roadmap contains sixteen phases. G0.5 records the approved deployment
 archetype, target environment, tenant model, IdP profile, DeepSeek egress policy,
 first live connector, evidence store, load/SLO/DR envelope, lifecycle rules, and
 accountable owners. Its strict validator passes. Revision-bound PR-quality run
-`30209210001` on `df462031` proves
+`30257587569` on `a975f922` proves
 Linux/Windows bootstrap, secret scan, actionlint, Compose health, AI Runtime,
 both Java services, Operator Web, dependency security, Keycloak conformance,
 and PostgreSQL trust. An authorized production IdP profile and broader phase
@@ -255,13 +257,13 @@ node .\scripts\validation\validate-phase-08-evaluation-foundation.mjs
 | Checkpoint | Current evidence | Scope limit |
 |---|---|---|
 | Governance/foundation | Secret scan, layout, portable surface, actionlint, Ubuntu/Windows bootstrap pass | G1 remains broader than one run |
-| PostgreSQL trust | V001-V007, pooled tenant/RLS, messaging recovery, investigation persistence/evidence/upgrade/replay/rollback pass | Production database/DR and large-object lifecycle not proven |
+| PostgreSQL trust | V001-V009, pooled tenant/RLS, messaging recovery, investigation persistence/evidence, and V009 recovery/query-plan/latency/storage gates pass in job `89950772823`, artifact `8650178111` | CI fixture gates; production database/DR, SLO, and large-object lifecycle not proven |
 | Identity | Keycloak 26.7 conformance passes locally and in Linux CI | Not production-authorized enterprise IdP proof |
 | Incident control | CRUD subset, rollback/concurrency, timeline and audit-chain gates pass | Full Phase 4 remains open |
 | AI Runtime | 159 offline tests plus five PostgreSQL-gated skips in current CI; the PostgreSQL state gate passes separately; DeepSeek defaults to `deepseek-v4-flash` | No live provider call or legal/residency approval |
 | Tool Gateway | Static contract, durable PostgreSQL receipt/audit state, synthetic Prometheus connector, workload OAuth boundary, and dual-credential Platform execution client pass | Named live non-production connector and production conformance pending |
-| Investigation | Bounded-record checkpoint 4B, capability-backed AI rounds, exact-bound Tool Gateway client, CK/Stitch browser proof, and 100-warm-run trace pass | G3 still requires a named live non-production connector, provider/legal approval, revision-bound incident-activity route/index evidence, and BFF/session proof |
-| Evaluation | Fresh disposable A/B/C through the real service path score `PASS` on all eight metrics with samples `100/1/1`; 52/52 evaluation tests pass; tracked-source hashes independently match and the preceding `5dfbc00` artifact ZIP was independently rehashed | Held-out payloads, human records/adjudication, calibration, and human comparison unavailable; Phase 8 exit is BLOCK |
+| Investigation | Bounded-record checkpoint 4B, ANALYZE-only activity view, V009 evidence, capability-backed AI rounds, CK/Stitch/browser proof, and Phase 7 regression PASS in artifact `8649696519` | G3 still requires a named live connector, provider/legal approval, and BFF/session proof |
+| Evaluation | Fresh disposable A/B/C score `PASS` on all eight metrics with samples `100/1/1`; exact CI command passes 61/61 | Held-out payloads, human adjudication, calibration, and comparison unavailable; Phase 8 exit is BLOCK |
 | Compose | All application images build, start, and pass health smoke in CI | Not staging/production deployment evidence |
 
 Historical local evidence marked `REFERENCE_CONFORMANCE_NOT_PRODUCTION` stays
