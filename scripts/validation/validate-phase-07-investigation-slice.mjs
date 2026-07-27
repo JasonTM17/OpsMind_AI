@@ -461,7 +461,7 @@ const durableGatewayMarkers = [
   [receiptStorePath, "lease_token = ?"],
   [receiptStorePath, "validateCompletedResponse("],
   [receiptStorePath, "completionMarginMilliseconds"],
-  [receiptStorePath, "LEAST(? + (? * INTERVAL '1 millisecond'),"],
+  [receiptStorePath, "LEAST(CAST(? AS timestamptz) + (? * INTERVAL '1 millisecond'),"],
   [transactionRunnerPath, "tenantContext.apply(scope)"],
   [isolationReadinessPath, "has_schema_privilege(current_user, 'tool_gateway', 'USAGE')"],
   [isolationReadinessPath, "EXPECTED_POLICY_EXPRESSION"],

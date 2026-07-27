@@ -75,6 +75,21 @@ Independent review round three reports zero unresolved P0/P1 issues.
   and 129 historical commits.
 - Upgrade harness syntax: PASS.
 
+## First Immutable CI Attempt
+
+PR Quality run `30277638321`, PostgreSQL job `90017201442`, proved that the
+initial completion-margin SQL left the deadline bind parameter ambiguous.
+PostgreSQL rejected every receipt claim with:
+
+```text
+ERROR: LEAST types interval and timestamp with time zone cannot be matched
+```
+
+Cross-service run `30277633352` independently observed the same failure before
+any Prometheus query. Claim and reclaim now cast the bound deadline explicitly
+to `timestamptz`. The local suite and static validators pass after the fix; a
+new immutable PostgreSQL/cross-service attempt remains required.
+
 ## Required Immutable Evidence
 
 - Fresh V003 and V002-to-V003 migration.

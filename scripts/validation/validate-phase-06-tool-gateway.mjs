@@ -208,7 +208,7 @@ const gatewayTenantIsolationConformant = sourceContains(
     "AND tenant_id = ? AND project_id = ?",
     "if (rows.isEmpty()) return Claim.of(ClaimStatus.CONFLICT);",
     "completionMarginMilliseconds",
-    "LEAST(? + (? * INTERVAL '1 millisecond'),",
+    "LEAST(CAST(? AS timestamptz) + (? * INTERVAL '1 millisecond'),",
   ],
 ) && sourceContains(
   "services/tool-gateway/src/main/java/ai/opsmind/toolgateway/audit/ToolAuditWriter.java",
