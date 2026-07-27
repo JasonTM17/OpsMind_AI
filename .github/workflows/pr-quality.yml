@@ -646,7 +646,7 @@ jobs:
             -Dtest=ToolGatewayPersistenceIntegrationTest,ToolGatewayPersistenceBoundaryIntegrationTest \
             -f services/tool-gateway/pom.xml test \
             2>&1 | tee artifacts/verification/phase-07/tool-gateway-persistence.txt
-      - name: Prove V006 to V007 to V008 upgrade compatibility
+      - name: Prove V006 to V009 upgrade, recovery, and activity-index evidence
         shell: bash
         env:
           OPSMIND_EPHEMERAL_DB: "true"
@@ -667,7 +667,7 @@ jobs:
           mkdir -p artifacts/verification/phase-03
           mvn --batch-mode --no-transfer-progress \
             -Dmaven.repo.local="$OPS_CACHE_ROOT/maven" \
-            -Dtest=TenantRlsPoolIntegrationTest,TransactionalOutboxIntegrationTest,TransactionalInboxIntegrationTest,PlatformUserStatusVerifierIntegrationTest,OutboxDispatcherWorkloadIntegrationTest,InvestigationPersistenceIntegrationTest,InvestigationPersistenceIntegrityIntegrationTest,InvestigationEvidencePersistenceIntegrationTest,InvestigationEvidenceRollbackIntegrationTest,InvestigationEvidenceReplayIntegrationTest \
+            -Dtest=TenantRlsPoolIntegrationTest,TransactionalOutboxIntegrationTest,TransactionalInboxIntegrationTest,PlatformUserStatusVerifierIntegrationTest,OutboxDispatcherWorkloadIntegrationTest,InvestigationPersistenceIntegrationTest,InvestigationPersistenceIntegrityIntegrationTest,InvestigationEvidencePersistenceIntegrationTest,InvestigationEvidenceRollbackIntegrationTest,InvestigationEvidenceReplayIntegrationTest,IncidentActivityTimelineHttpIntegrationTest \
             -f services/platform-api/pom.xml test \
             2>&1 | tee artifacts/verification/phase-03/authz-rls-pool-matrix.txt
       - name: Run alternating-tenant and append-only contract

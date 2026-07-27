@@ -113,6 +113,61 @@ final class IncidentQueryService {
         }
     }
 
+    IncidentActivityTimelinePage activityTimeline(
+        OpsMindPrincipal principal,
+        UUID organizationId,
+        UUID projectId,
+        UUID incidentId,
+        int pageSize,
+        String rawPageToken
+    ) {
+        IncidentScopePolicy.require(principal, IncidentScopePolicy.ANALYZE_SCOPE);
+        IncidentCommandValidator.requireResourceIds(organizationId, projectId, incidentId);
+        IncidentCommandValidator.requirePageSize(pageSize);
+        IncidentTimelinePageToken.ActivityCursor after =
+            pageToken.decodeActivity(rawPageToken, incidentId);
+        try {
+            IncidentActivityTimelinePage result = transactions.execute(status -> {
+                accessRepository.requireAccess(
+                    principal,
+                    organizationId,
+                    projectId,
+                    IncidentAccessMode.ANALYZE
+                );
+                incidentRepository.find(organizationId, projectId, incidentId)
+                    .orElseThrow(IncidentRolePolicy::hiddenDenial);
+                List<IncidentActivityTimelineEntry> queried = timelineRepository.listActivity(
+                    organizationId,
+                    projectId,
+                    incidentId,
+                    after,
+                    pageSize + 1
+                );
+                boolean hasMore = queried.size() > pageSize;
+                List<IncidentActivityTimelineEntry> items = hasMore
+                    ? List.copyOf(queried.subList(0, pageSize))
+                    : List.copyOf(queried);
+                String nextToken = hasMore
+                    ? pageToken.encodeActivity(
+                        incidentId,
+                        items.getLast().occurredAt(),
+                        sourceRank(items.getLast()),
+                        items.getLast().eventId()
+                    )
+                    : null;
+                return new IncidentActivityTimelinePage(items, pageSize, nextToken, hasMore);
+            });
+            return requireResult(result);
+        }
+        catch (TransactionException exception) {
+            throw transactionUnavailable(exception);
+        }
+    }
+
+    private int sourceRank(IncidentActivityTimelineEntry entry) {
+        return IncidentActivityTimelineEntry.INCIDENT.equals(entry.source()) ? 0 : 1;
+    }
+
     private <T> T requireResult(T result) {
         if (result == null) {
             throw new IllegalStateException("Incident query transaction returned no result.");

@@ -195,4 +195,24 @@ class MigrationContractTest {
             .readAllBytes();
         return HexFormat.of().formatHex(MessageDigest.getInstance("SHA-256").digest(migration));
     }
+
+    @Test
+    void activityTimelineMigrationBuildsOnlyConcurrentOrderingIndexes() throws IOException {
+        String migration = readMigration("V009__incident_activity_timeline_indexes.sql");
+        String config = new String(
+            MigrationContractTest.class.getResourceAsStream(
+                "/db/migration/V009__incident_activity_timeline_indexes.sql.conf"
+            ).readAllBytes(),
+            StandardCharsets.UTF_8
+        );
+
+        assertThat(migration)
+            .contains("CREATE INDEX CONCURRENTLY incident_timeline_activity_order_idx")
+            .contains("ON incident_timeline_events")
+            .contains("(organization_id, project_id, incident_id, occurred_at, event_id)")
+            .contains("CREATE INDEX CONCURRENTLY investigation_run_events_activity_order_idx")
+            .contains("ON investigation_run_events")
+            .doesNotContain("CREATE TABLE", "CREATE VIEW", "IF NOT EXISTS", "DROP ");
+        assertThat(config.trim()).isEqualTo("executeInTransaction=false");
+    }
 }

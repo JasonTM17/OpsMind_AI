@@ -76,11 +76,88 @@ const upgradeRunner = requireMarkers(
     'migrate_to 6',
     'migrate_to 7',
     'migrate_to 8',
+    'run_incident_timeline_v009_evidence',
+    'ON_ERROR_STOP=1',
     "to_regclass('public.evidence_records')",
     "LegacyPayloadDigestStable=%s",
     "RollingLegacyWriteCount=%s",
     "UpgradeResult=PASS",
     "CleanupResult=PASS",
+  ],
+);
+const v009EvidenceModule = requireMarkers(
+  "scripts/validation/phase-04b-evidence-records/incident-timeline-v009-evidence.sh",
+  [
+    "run_append_benchmark",
+    "IncidentActivityTimelineAppendBenchmarkHarnessTest",
+    "run_plan_and_read_benchmark",
+    "IncidentActivityTimelinePlanHarnessTest",
+    "assert_sample_count",
+    "POSTGRES_APP_USER",
+    '-Dsurefire.useFile=false',
+    'V009EvidenceResult=PASS',
+  ],
+);
+const v009Seed = requireMarkers(
+  "scripts/validation/phase-04b-evidence-records/incident-timeline-v009-seed.sql",
+  [
+    "FOR event_version IN 1..49999 LOOP",
+    "generate_series(2, 50000)",
+    "ANALYZE incident_timeline_events",
+    "ANALYZE investigation_run_events",
+    "70000000-0000-4000-8000-000000000018",
+  ],
+);
+const v009Query = requireMarkers(
+  "services/platform-api/src/main/java/ai/opsmind/platform/incident/IncidentActivityTimelineQuery.java",
+  [
+    "static Prepared build(",
+    "AND (occurred_at, event_id) > (?, ?)",
+    "AND occurred_at >= ?",
+    "AND occurred_at > ?",
+    "ORDER BY occurred_at ASC, event_id ASC LIMIT ?",
+  ],
+);
+const v009AppendHarness = requireMarkers(
+  "services/platform-api/src/test/java/ai/opsmind/platform/incident/IncidentActivityTimelineAppendBenchmarkHarnessTest.java",
+  [
+    "WARMUP_SAMPLES = 50",
+    "MEASURED_SAMPLES = 250",
+    "JdbcIncidentRepository",
+    "JdbcIncidentTimelineRepository",
+    "tenantContext.apply",
+    "V009AppendHarness=PASS",
+  ],
+);
+const v009PlanHarness = requireMarkers(
+  "services/platform-api/src/test/java/ai/opsmind/platform/incident/IncidentActivityTimelinePlanHarnessTest.java",
+  [
+    "IncidentActivityTimelineQuery.build",
+    "JdbcIncidentTimelineRepository",
+    "EXPLAIN (ANALYZE, BUFFERS, FORMAT JSON)",
+    "CURSOR_RANK_0",
+    "CURSOR_RANK_1",
+    "V009QueryPlanResult=PASS",
+  ],
+);
+const v009PlanAssertions = requireMarkers(
+  "services/platform-api/src/test/java/ai/opsmind/platform/incident/IncidentActivityTimelinePlanAssertions.java",
+  [
+    '"Actual Loops"',
+    '"Index Cond"',
+    '"Seq Scan", "Bitmap Heap Scan", "Bitmap Index Scan", "Materialize"',
+    "hasSizeGreaterThanOrEqualTo(3)",
+    "isLessThanOrEqualTo(200)",
+  ],
+);
+requireMarkers(
+  "services/platform-api/src/test/java/ai/opsmind/platform/persistence/FlywayRecoveryHarnessTest.java",
+  [
+    'DROP INDEX CONCURRENTLY public.',
+    'flyway.repair();',
+    'failedV009History',
+    'exactIndexCatalog',
+    'OPSMIND_PHASE4B_RECOVERY_ENABLED',
   ],
 );
 const workflow = requireMarkers(
@@ -104,6 +181,7 @@ for (const testFile of [
   "services/platform-api/src/test/java/ai/opsmind/platform/investigation/application/InvestigationEvidencePersistenceIntegrationTest.java",
   "services/platform-api/src/test/java/ai/opsmind/platform/investigation/application/InvestigationEvidenceRollbackIntegrationTest.java",
   "services/platform-api/src/test/java/ai/opsmind/platform/investigation/application/InvestigationEvidenceReplayIntegrationTest.java",
+  "services/platform-api/src/test/java/ai/opsmind/platform/persistence/FlywayRecoveryHarnessTest.java",
 ]) read(testFile);
 requireMarkers(
   "services/platform-api/src/test/java/ai/opsmind/platform/investigation/application/InvestigationEvidenceReplayIntegrationTest.java",
@@ -128,13 +206,18 @@ for (const file of evidenceFiles) {
 }
 
 const combined = [
-  migration, canonicalizer, writer, reader, ledger, codec, upgradeRunner, workflow,
+  migration, canonicalizer, writer, reader, ledger, codec, upgradeRunner,
+  v009EvidenceModule, v009Seed, v009Query, v009AppendHarness, v009PlanHarness,
+  v009PlanAssertions, workflow,
 ].join("\n");
 if (/raw_prompt|chain[_-]?of[_-]?thought|provider_api_key/iu.test(combined)) {
   errors.push("evidence checkpoint contains a prohibited sensitive field");
 }
 if (migration.includes("CREATE TABLE evidence_artifacts")) {
   errors.push("bounded record checkpoint must not pretend to implement the artifact plane");
+}
+if ((v009EvidenceModule + v009Seed).includes("session_replication_role")) {
+  errors.push("V009 evidence must not bypass persistence triggers");
 }
 
 const lines = [
@@ -143,6 +226,7 @@ const lines = [
   `EvidenceSourceFiles=${evidenceFiles.length}`,
   `Errors=${errors.length}`,
   `CheckpointResult=${errors.length === 0 ? "PASS" : "BLOCK"}`,
+  "V009DatabaseGate=ENVIRONMENT_REQUIRED",
   "ArtifactLifecycleExit=BLOCK",
   "ArtifactLifecycleBlocker=B-006/B-008/B-012 remain active",
   ...errors.slice(0, 50).map((error) => `Error=${error}`),

@@ -41,8 +41,8 @@ only fully verified inline evidence. Durable Gateway stores, the loopback
 synthetic Prometheus connector, CK/Stitch operator UI/browser E2E, and a
 revision-bound 100-warm-run cross-service trace now have passing local
 evidence. G3 is still not claimed: a named live non-production connector,
-approved provider/legal conformance, incident-timeline linkage, BFF/session
-proof, and release-scale evidence remain open.
+approved provider/legal conformance, revision-bound incident-activity
+route/index evidence, BFF/session proof, and release-scale evidence remain open.
 
 Phase 8B now implements three deterministic, training-ineligible evaluation
 contracts: A detects a deployment-correlated latency regression, B terminates
@@ -260,7 +260,7 @@ node .\scripts\validation\validate-phase-08-evaluation-foundation.mjs
 | Incident control | CRUD subset, rollback/concurrency, timeline and audit-chain gates pass | Full Phase 4 remains open |
 | AI Runtime | 159 offline tests plus five PostgreSQL-gated skips in current CI; the PostgreSQL state gate passes separately; DeepSeek defaults to `deepseek-v4-flash` | No live provider call or legal/residency approval |
 | Tool Gateway | Static contract, durable PostgreSQL receipt/audit state, synthetic Prometheus connector, workload OAuth boundary, and dual-credential Platform execution client pass | Named live non-production connector and production conformance pending |
-| Investigation | Bounded-record checkpoint 4B, capability-backed AI rounds, exact-bound Tool Gateway client, CK/Stitch browser proof, and 100-warm-run trace pass | G3 still requires a named live non-production connector, provider/legal approval, timeline linkage, and BFF/session proof |
+| Investigation | Bounded-record checkpoint 4B, capability-backed AI rounds, exact-bound Tool Gateway client, CK/Stitch browser proof, and 100-warm-run trace pass | G3 still requires a named live non-production connector, provider/legal approval, revision-bound incident-activity route/index evidence, and BFF/session proof |
 | Evaluation | Fresh disposable A/B/C through the real service path score `PASS` on all eight metrics with samples `100/1/1`; 52/52 evaluation tests pass; tracked-source hashes independently match and the preceding `5dfbc00` artifact ZIP was independently rehashed | Held-out payloads, human records/adjudication, calibration, and human comparison unavailable; Phase 8 exit is BLOCK |
 | Compose | All application images build, start, and pass health smoke in CI | Not staging/production deployment evidence |
 

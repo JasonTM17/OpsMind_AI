@@ -1,6 +1,7 @@
 package ai.opsmind.platform.incident;
 
 import java.nio.charset.StandardCharsets;
+import java.util.List;
 import java.util.UUID;
 
 import jakarta.servlet.http.HttpServletRequest;
@@ -18,8 +19,10 @@ import ai.opsmind.platform.identity.JwtPrincipalMapper;
 import ai.opsmind.platform.identity.OpsMindPrincipal;
 
 import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
+import org.springframework.http.CacheControl;
 import org.springframework.http.HttpHeaders;
 import org.springframework.http.HttpStatus;
+import org.springframework.http.InvalidMediaTypeException;
 import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.core.Authentication;
@@ -42,6 +45,10 @@ import org.springframework.web.HttpMediaTypeNotAcceptableException;
 public class IncidentController {
 
     static final String OPERATION_ID_HEADER = "X-Operation-Id";
+    static final String ACTIVITY_TIMELINE_MEDIA_TYPE_VALUE =
+        "application/vnd.opsmind.incident-activity-timeline.v1+json";
+    static final MediaType ACTIVITY_TIMELINE_MEDIA_TYPE =
+        MediaType.parseMediaType(ACTIVITY_TIMELINE_MEDIA_TYPE_VALUE);
 
     private final JwtPrincipalMapper principalMapper;
     private final IncidentMutationService mutationService;
@@ -127,17 +134,116 @@ public class IncidentController {
         return mutationResponse(result);
     }
 
-    @GetMapping("/{incidentId}/timeline")
-    IncidentTimelinePage timeline(
+    @GetMapping(
+        value = "/{incidentId}/timeline",
+        produces = {MediaType.APPLICATION_JSON_VALUE, ACTIVITY_TIMELINE_MEDIA_TYPE_VALUE}
+    )
+    ResponseEntity<?> timeline(
         Authentication authentication,
         @PathVariable UUID organizationId,
         @PathVariable UUID projectId,
         @PathVariable UUID incidentId,
         @RequestParam(defaultValue = "25") @Min(1) @Max(100) int pageSize,
-        @RequestParam(required = false) @Size(max = 512) String pageToken
-    ) {
-        return queryService.timeline(
-            principal(authentication), organizationId, projectId, incidentId, pageSize, pageToken
+        @RequestParam(required = false) @Size(max = 512) String pageToken,
+        @RequestHeader(name = HttpHeaders.ACCEPT, required = false) String accept
+    ) throws HttpMediaTypeNotAcceptableException {
+        OpsMindPrincipal verifiedPrincipal = principal(authentication);
+        if (activityTimelineRequested(accept)) {
+            IncidentActivityTimelinePage page = queryService.activityTimeline(
+                verifiedPrincipal, organizationId, projectId, incidentId, pageSize, pageToken
+            );
+            return ResponseEntity.ok()
+                .contentType(ACTIVITY_TIMELINE_MEDIA_TYPE)
+                .cacheControl(CacheControl.noStore())
+                .varyBy(HttpHeaders.ACCEPT)
+                .body(page);
+        }
+        IncidentTimelinePage page = queryService.timeline(
+            verifiedPrincipal, organizationId, projectId, incidentId, pageSize, pageToken
+        );
+        return ResponseEntity.ok()
+            .contentType(MediaType.APPLICATION_JSON)
+            .varyBy(HttpHeaders.ACCEPT)
+            .body(page);
+    }
+
+    private boolean activityTimelineRequested(String accept)
+        throws HttpMediaTypeNotAcceptableException {
+        if (accept == null || accept.isBlank()) {
+            return false;
+        }
+        final List<MediaType> accepted;
+        try {
+            accepted = MediaType.parseMediaTypes(accept);
+        }
+        catch (InvalidMediaTypeException exception) {
+            throw notAcceptable();
+        }
+
+        for (MediaType mediaType : accepted) {
+            if (isActivityTimelineType(mediaType) && hasNonQualityParameters(mediaType)) {
+                throw notAcceptable();
+            }
+        }
+
+        double vendorQuality = selectedQuality(accepted, ACTIVITY_TIMELINE_MEDIA_TYPE);
+        double jsonQuality = selectedQuality(accepted, MediaType.APPLICATION_JSON);
+        if (vendorQuality <= 0 && jsonQuality <= 0) {
+            throw notAcceptable();
+        }
+        return vendorQuality > 0 && vendorQuality > jsonQuality;
+    }
+
+    private double selectedQuality(List<MediaType> accepted, MediaType representation) {
+        int selectedSpecificity = -1;
+        double selectedQuality = -1;
+        for (MediaType mediaRange : accepted) {
+            if (!matches(mediaRange, representation) || hasNonQualityParameters(mediaRange)) {
+                continue;
+            }
+            int specificity = specificity(mediaRange);
+            if (specificity > selectedSpecificity) {
+                selectedSpecificity = specificity;
+                selectedQuality = mediaRange.getQualityValue();
+            }
+            else if (specificity == selectedSpecificity) {
+                selectedQuality = Math.max(selectedQuality, mediaRange.getQualityValue());
+            }
+        }
+        return selectedQuality;
+    }
+
+    private boolean matches(MediaType mediaRange, MediaType representation) {
+        if ("*".equals(mediaRange.getType())) {
+            return "*".equals(mediaRange.getSubtype());
+        }
+        if (!representation.getType().equalsIgnoreCase(mediaRange.getType())) {
+            return false;
+        }
+        return "*".equals(mediaRange.getSubtype())
+            || representation.getSubtype().equalsIgnoreCase(mediaRange.getSubtype());
+    }
+
+    private int specificity(MediaType mediaRange) {
+        if ("*".equals(mediaRange.getType())) {
+            return 0;
+        }
+        return "*".equals(mediaRange.getSubtype()) ? 1 : 2;
+    }
+
+    private boolean hasNonQualityParameters(MediaType mediaType) {
+        return mediaType.getParameters().keySet().stream()
+            .anyMatch(parameter -> !"q".equalsIgnoreCase(parameter));
+    }
+
+    private boolean isActivityTimelineType(MediaType mediaType) {
+        return ACTIVITY_TIMELINE_MEDIA_TYPE.getType().equalsIgnoreCase(mediaType.getType())
+            && ACTIVITY_TIMELINE_MEDIA_TYPE.getSubtype().equalsIgnoreCase(mediaType.getSubtype());
+    }
+
+    private HttpMediaTypeNotAcceptableException notAcceptable() {
+        return new HttpMediaTypeNotAcceptableException(
+            List.of(MediaType.APPLICATION_JSON, ACTIVITY_TIMELINE_MEDIA_TYPE)
         );
     }
 

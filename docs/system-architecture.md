@@ -178,6 +178,72 @@ then proves incident, timeline, audit, and idempotency rows all rolled back.
 This checkpoint does not implement incident list/patch/assignment,
 postmortems, or the evidence-object lifecycle and does not close Phase 4 or G2.
 
+### Incident activity timeline representation
+
+`GET /api/v1/organizations/{organizationId}/projects/{projectId}/incidents/
+{incidentId}/timeline` now has two representations without changing the legacy
+JSON contract. Missing `Accept`, `*/*`, or an equal-quality choice selects
+`application/json`; that path still requires `incident:read` plus `READ`
+access, reads only `incident_timeline_events`, and uses the existing v1
+incident-version cursor and response schema.
+
+The opt-in
+`application/vnd.opsmind.incident-activity-timeline.v1+json` representation
+requires `incident:analyze` plus `ANALYZE` access. Inside the existing hidden-
+denial transaction, it authorizes before lookup and runs a parameterized
+`UNION ALL` over `incident_timeline_events` and `investigation_run_events`.
+Both branches filter the exact organization, project, and incident. The query
+projects only these eight possible entry fields:
+
+| Field | Availability |
+|---|---|
+| `eventId`, `source`, `eventType`, `occurredAt`, `actorId` | Both sources |
+| `incidentVersion` | Incident source only |
+| `investigationRunId`, `investigationSequence` | Investigation source only |
+
+The SQL never selects either ledger's JSON `payload` and exposes no reason,
+root-cause, resolution, prompt, model prose, credential, evidence/tool
+identifier, or other free text. Results order by
+`(occurred_at, source_rank, event_id)`, where incident is rank 0 and
+investigation is rank 1. The v2 cursor binds the incident and the exact
+database-returned microsecond timestamp, source rank, and event ID.
+
+This is a forward-only live view, not a snapshot or lossless change feed. A
+row committed later at or before an issued cursor can be absent from that
+continuation; callers must start a fresh traversal to discover late backdated
+rows. No investigation row is copied into `incident_timeline_events`.
+
+Negotiation uses RFC 9110 media-range specificity before quality. JSON wins
+ties for compatibility; the vendor type is selected only when its selected
+quality is strictly higher and nonzero. Unsupported ranges can coexist with a
+supported range, while malformed media types, unsupported-only choices, or
+vendor parameters other than `q` return `406`. Both successful responses set
+`Vary: Accept`; the vendor response also sets `Cache-Control: no-store`.
+
+OpenAPI 3.1 cannot attach a different standard security requirement to each
+response media type. The operation therefore lists both scopes and uses the
+`x-opsmind-representation-security` extension to record the per-
+representation scope/access-mode mapping. Generic OpenAPI generators may
+ignore this extension; runtime authorization and the checked contract tests
+remain authoritative.
+
+Platform V009 adds only the two concurrent ordering indexes
+`incident_timeline_activity_order_idx` and
+`investigation_run_events_activity_order_idx`; its script-level Flyway config
+sets `executeInTransaction=false`. Deployment applies V009 before new code.
+Fresh/upgrade, invalid-index recovery, high-cardinality query-plan, append-
+latency, vendor-read latency, and storage-budget evidence are still required
+pending gates. Their absence prevents a Phase 2/3 or performance claim.
+The checked-in PR workflow runs the activity HTTP integration test and a V009
+disposable upgrade/recovery proof, but source wiring is not V009 fresh/upgrade
+or recovery evidence. Before a gate can pass, a revision-bound artifact must
+show both indexes valid after fresh and V008-to-V009 migration, a failed concurrent
+build recovery, branch-bounded `EXPLAIN (ANALYZE, BUFFERS, FORMAT JSON)`, 300
+append samples per ledger in each pre/post-index phase (50 warm-up and 250
+measured), 10,000 same-tenant/project distractor incidents per source, and 300
+vendor reads across initial, rank-0 cursor, and rank-1 cursor modes (50 warm-up
+and 50 measured per mode), plus the plan's latency/storage limits.
+
 ## Consistency and Messaging
 
 - PostgreSQL transactions protect state and matching outbox records.
@@ -436,9 +502,11 @@ The row records Gateway audit/request identities, provenance, redaction,
 truncation, and duplicate-replay state. This bounded control plane does not
 provide object upload, hold, restore, purge, malware scanning, or residency.
 
-This checkpoint does **not** append to `incident_timeline_events` and does not
-provide workflow restart/resume semantics; the orchestrator is still synchronous
-and in-process. Fixture AI/Tool clients remain non-production and profile-bound.
+The investigation writer still does **not** append or copy rows into
+`incident_timeline_events`; the activity representation above links the two
+ledgers only at read time. The checkpoint does not provide workflow
+restart/resume semantics; the orchestrator is still synchronous and in-process.
+Fixture AI/Tool clients remain non-production and profile-bound.
 The non-fixture Tool Gateway port resolves the model's selector through the
 immutable Platform catalog before credential acquisition. It derives stable
 execution/evidence IDs, builds canonical server-owned request bytes, and caps
@@ -463,7 +531,9 @@ The phase validator requires the report schema, threshold, exact counts,
 completed samples, current git head, and a clean working tree.
 
 G3 stays blocked on a named live non-production connector, provider/legal
-conformance, incident-timeline linkage, and the later BFF/session proof. The
+conformance, and the later BFF/session proof. The metadata-only activity route
+closes the read-linkage implementation gap but its revision-bound CI and V009
+high-cardinality evidence gates remain pending. The
 CK/Stitch operator workspace has local unit, build, accessibility, responsive,
 and Chromium browser proof against the safe projection boundary. Durable Tool
 Gateway and synthetic Prometheus evidence establish the local integration
@@ -597,6 +667,12 @@ PostgreSQL trust. Cross-service run `30209209999` proves the Phase 8B A/B/C
 mechanical path. Neither run proves live DeepSeek/legal approval, a named live
 non-production connector, RAG, remediation, Temporal, object lifecycle,
 staging/production, DR, or release readiness.
+
+The current worktree contains the incident activity HTTP integration test and
+adds it to the PostgreSQL CI matrix, but no completed revision-bound CI run is
+yet evidence for that change. The required 50,000-row-per-ledger query plan,
+latency, index-size, and recovery thresholds remain pending; no production SLO
+or timeline Phase 2/3 completion is inferred from source or test wiring.
 
 For the current AI Runtime checkpoint, the Python suite reports 159 passed and five
 PostgreSQL-gated tests skipped when that database gate is not enabled; Ruff and
