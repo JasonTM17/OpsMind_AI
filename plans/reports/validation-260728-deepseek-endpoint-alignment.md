@@ -12,6 +12,8 @@ origin while preserving the fail-closed default and provider trust boundary.
 - Added `DEFAULT_DEEPSEEK_API_BASE_URL` to the typed AI Runtime settings.
 - Changed `.env.example` and the AI Runtime Compose default to
   `https://api.deepseek.com`.
+- Synchronized `services/ai-runtime/.env.example` and added a parity test so
+  both operator entry points match the typed default.
 - Added a settings regression assertion for the default endpoint.
 - Documented the endpoint and the fact that egress remains disabled by default.
 
@@ -27,10 +29,10 @@ Commands run from the dedicated worktree:
 
 ```text
 python -m pytest services/ai-runtime/tests/unit/test_settings.py -q
-25 passed
+26 passed
 
 python -m pytest services/ai-runtime/tests -q
-167 passed, 5 skipped
+168 passed, 5 skipped
 
 python -m ruff check services/ai-runtime/src services/ai-runtime/tests
 All checks passed!

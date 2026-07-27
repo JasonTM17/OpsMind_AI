@@ -1,4 +1,5 @@
 from datetime import UTC, datetime
+from pathlib import Path
 
 import pytest
 
@@ -8,6 +9,9 @@ from opsmind_ai_runtime.config.settings import (
     RuntimeSettings,
 )
 
+SERVICE_ROOT = Path(__file__).resolve().parents[2]
+REPOSITORY_ROOT = SERVICE_ROOT.parents[1]
+
 
 def test_default_settings_are_disabled_and_use_flash() -> None:
     settings = RuntimeSettings.from_env()
@@ -15,6 +19,13 @@ def test_default_settings_are_disabled_and_use_flash() -> None:
     assert settings.model == "deepseek-v4-flash"
     assert settings.base_url == DEFAULT_DEEPSEEK_API_BASE_URL
     assert settings.provider_ready is False
+
+
+def test_checked_in_provider_examples_share_the_typed_default() -> None:
+    expected = f"DEEPSEEK_API_BASE_URL={DEFAULT_DEEPSEEK_API_BASE_URL}"
+    for path in (REPOSITORY_ROOT / ".env.example", SERVICE_ROOT / ".env.example"):
+        lines = path.read_text(encoding="utf-8").splitlines()
+        assert expected in lines
 
 
 def test_retired_legacy_model_is_rejected(monkeypatch: pytest.MonkeyPatch) -> None:
