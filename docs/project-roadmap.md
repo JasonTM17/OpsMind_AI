@@ -148,8 +148,7 @@ code and forward recovery remain mandatory.
 Active program blockers remain explicit: `B-004`
 (provider/legal), `B-005` (named live connector), `B-006` (evidence lifecycle),
 `B-007` (load/SLO), `B-008` (retention/deletion), `B-011` (RTO/restore),
-`B-012` (object-store supply chain), `B-013` (held-out/human evaluation),
-and `B-015` (Dependabot disposition).
+`B-012` (object-store supply chain), and `B-013` (held-out/human evaluation).
 See [Blockers](./blockers.md) for accountable owners and unblock evidence.
 
 Phase 8B now implements three secret-free, training-ineligible contracts:
