@@ -89,6 +89,194 @@ for (const marker of [
   if (!openApi.includes(marker)) errors.push("OpenAPI investigation contract is incomplete");
 }
 
+const activityFieldNames = new Set([
+  "eventId",
+  "source",
+  "eventType",
+  "occurredAt",
+  "actorId",
+  "incidentVersion",
+  "investigationRunId",
+  "investigationSequence",
+]);
+const activityForbiddenColumns = [
+  "payload",
+  "reason",
+  "operation_id",
+  "external_trace_id",
+  "terminal_reason",
+  "final_response",
+  "accepted_response",
+  "canonical_content",
+  "evidence_id",
+  "evidence_ids_state",
+  "pending_intents_state",
+  "tool_request_digest",
+  "credential",
+  "prompt",
+  "reasoning",
+];
+
+function sameMembers(actual, expected) {
+  return actual.size === expected.size
+    && [...actual].every((value) => expected.has(value));
+}
+
+const incidentSourceRoot = path.join(
+  repositoryRoot, "services", "platform-api", "src", "main", "java",
+  "ai", "opsmind", "platform", "incident",
+);
+const activityEntryPath = path.join(incidentSourceRoot, "IncidentActivityTimelineEntry.java");
+const incidentQueryServicePath = path.join(incidentSourceRoot, "IncidentQueryService.java");
+const incidentTimelineRepositoryPath = path.join(
+  incidentSourceRoot, "JdbcIncidentTimelineRepository.java",
+);
+const activityQueryPath = path.join(
+  incidentSourceRoot, "IncidentActivityTimelineQuery.java",
+);
+const activityIntegrationTestPath = path.join(
+  repositoryRoot, "services", "platform-api", "src", "test", "java",
+  "ai", "opsmind", "platform", "incident", "IncidentActivityTimelineHttpIntegrationTest.java",
+);
+const activitySchemaPath = path.join(
+  contractsRoot, "json-schema", "incidents", "incident-activity-timeline-entry.schema.json",
+);
+const activityBridgePaths = [
+  activityEntryPath,
+  incidentQueryServicePath,
+  incidentTimelineRepositoryPath,
+  activityQueryPath,
+  activityIntegrationTestPath,
+  activitySchemaPath,
+];
+if (!activityBridgePaths.every(fs.existsSync)) {
+  errors.push("incident activity timeline bridge files are incomplete");
+}
+else {
+  const activityEntrySource = access.readSafeFile(activityEntryPath);
+  const queryServiceSource = access.readSafeFile(incidentQueryServicePath);
+  const repositorySource = access.readSafeFile(incidentTimelineRepositoryPath);
+  const activityQuerySource = access.readSafeFile(activityQueryPath);
+  const integrationTestSource = access.readSafeFile(activityIntegrationTestPath);
+  let activitySchema;
+  try {
+    activitySchema = JSON.parse(access.readSafeFile(activitySchemaPath));
+  }
+  catch {
+    errors.push("incident activity timeline schema is not valid JSON");
+  }
+
+  const recordHeader = activityEntrySource.match(
+    /public record IncidentActivityTimelineEntry\(([\s\S]*?)\)\s*\{/u,
+  )?.[1] ?? "";
+  const recordFields = new Set([...recordHeader.matchAll(
+    /\b(?:UUID|String|Instant|Long)\s+([a-z][A-Za-z0-9]*)/gu,
+  )].map((match) => match[1]));
+  const incidentSchemaFields = new Set(Object.keys(
+    activitySchema?.$defs?.incidentEntry?.properties ?? {},
+  ));
+  const investigationSchemaFields = new Set(Object.keys(
+    activitySchema?.$defs?.investigationEntry?.properties ?? {},
+  ));
+  const schemaFields = new Set([...incidentSchemaFields, ...investigationSchemaFields]);
+  if (!sameMembers(recordFields, activityFieldNames)
+      || !sameMembers(schemaFields, activityFieldNames)) {
+    errors.push("incident activity timeline is not the exact eight-field bridge");
+  }
+
+  const serviceStart = queryServiceSource.indexOf("IncidentActivityTimelinePage activityTimeline(");
+  const serviceEnd = queryServiceSource.indexOf("private int sourceRank", serviceStart);
+  const serviceBridge = serviceStart >= 0 && serviceEnd > serviceStart
+    ? queryServiceSource.slice(serviceStart, serviceEnd)
+    : "";
+  if (!serviceBridge.includes("IncidentScopePolicy.ANALYZE_SCOPE")
+      || !serviceBridge.includes("IncidentAccessMode.ANALYZE")
+      || serviceBridge.includes("IncidentAccessMode.READ")) {
+    errors.push("incident activity timeline is not ANALYZE-only");
+  }
+
+  const repositoryStart = repositorySource.indexOf(
+    "public List<IncidentActivityTimelineEntry> listActivity(",
+  );
+  const repositoryEnd = repositorySource.indexOf(
+    "private IncidentActivityTimelineEntry mapActivityEvent", repositoryStart,
+  );
+  const repositoryMethod = repositoryStart >= 0 && repositoryEnd > repositoryStart
+    ? repositorySource.slice(repositoryStart, repositoryEnd)
+    : "";
+  if (!repositoryMethod.includes("IncidentActivityTimelineQuery.build(")
+      || !repositoryMethod.includes("query.sql()")
+      || !repositoryMethod.includes("query.parameters().toArray()")) {
+    errors.push("incident activity repository does not execute the shared production query");
+  }
+  const queryStart = activityQuerySource.indexOf("static Prepared build(");
+  const queryEnd = activityQuerySource.indexOf("record Prepared(", queryStart);
+  const repositoryBridge = queryStart >= 0 && queryEnd > queryStart
+    ? activityQuerySource.slice(queryStart, queryEnd)
+    : "";
+  const scopedPredicate = "WHERE organization_id = ? AND project_id = ? AND incident_id = ?";
+  const scopedPredicateCount = repositoryBridge.split(scopedPredicate).length - 1;
+  for (const marker of [
+    "UNION ALL",
+    "AND (occurred_at, event_id) > (?, ?)",
+    "AND occurred_at >= ?",
+    "AND occurred_at > ?",
+    "ORDER BY occurred_at ASC, source_rank ASC, event_id ASC LIMIT ?",
+  ]) {
+    if (!repositoryBridge.includes(marker)) {
+      errors.push(`incident activity timeline query is missing: ${marker}`);
+    }
+  }
+  const branchOrder = "ORDER BY occurred_at ASC, event_id ASC LIMIT ?";
+  const firstBranchOrder = repositoryBridge.indexOf(branchOrder);
+  const secondBranchOrder = repositoryBridge.indexOf(branchOrder, firstBranchOrder + 1);
+  const union = repositoryBridge.indexOf("UNION ALL");
+  if (
+    firstBranchOrder < 0
+    || secondBranchOrder < 0
+    || repositoryBridge.indexOf(branchOrder, secondBranchOrder + 1) >= 0
+    || firstBranchOrder > union
+    || secondBranchOrder < union
+  ) {
+    errors.push("incident activity timeline query must bound each source before the union");
+  }
+  if (
+    repositoryBridge.includes("(occurred_at, 0, event_id)")
+    || repositoryBridge.includes("(occurred_at, 1, event_id)")
+    || (repositoryBridge.match(/parameters\.add\(limit\)/gu) ?? []).length !== 3
+  ) {
+    errors.push("incident activity timeline cursor or branch limits are not index-bounded");
+  }
+  if (scopedPredicateCount !== 2) {
+    errors.push("incident activity timeline query must scope both ledger branches exactly");
+  }
+  const projectedForbiddenColumns = activityForbiddenColumns.filter((column) =>
+    new RegExp(`\\b${column}\\b`, "u").test(repositoryBridge));
+  if (projectedForbiddenColumns.length > 0) {
+    errors.push("incident activity timeline query reads a forbidden classified column");
+  }
+
+  for (const marker of [
+    "application/vnd.opsmind.incident-activity-timeline.v1+json",
+    "requiredScope: incident:analyze",
+    "incidentAccessMode: ANALYZE",
+  ]) {
+    if (!openApi.includes(marker)) {
+      errors.push(`incident activity timeline OpenAPI contract is missing: ${marker}`);
+    }
+  }
+  for (const marker of [
+    "secret-free-text-",
+    "doesNotContain(sentinel, \"triage\")",
+    "vendorRouteMaintainsHiddenDenialAcrossTenantProjectIncidentAndCursorScopes",
+    "unionQueryExcludesSameTenantRowsFromOtherProjectsAndIncidents",
+  ]) {
+    if (!integrationTestSource.includes(marker)) {
+      errors.push(`incident activity timeline boundary proof is missing: ${marker}`);
+    }
+  }
+}
+
 const sourceRoot = path.join(
   repositoryRoot, "services", "platform-api", "src", "main", "java",
   "ai", "opsmind", "platform", "investigation",

@@ -89,8 +89,12 @@ const routeContracts = [
       "#/components/parameters/OrganizationId", "#/components/parameters/ProjectId",
       "#/components/parameters/IncidentId", "#/components/parameters/PageSize",
       "#/components/parameters/PageToken", "'200':", "'400':", "'401':", "'403':", "'404':",
-      "'503':",
+      "'406':", "'503':", "incident:analyze", "ANALYZE",
+      "x-opsmind-representation-security", "requiredScope", "incidentAccessMode",
+      "Vary:", "const: Accept", "Cache-Control:", "const: no-store",
       "#/components/schemas/IncidentTimelinePage",
+      "application/vnd.opsmind.incident-activity-timeline.v1+json",
+      "#/components/schemas/IncidentActivityTimelinePage",
     ],
   },
 ];
@@ -103,6 +107,7 @@ export function validateOpenApi({ openApi, openApiPath, errors, resolveLocalRefe
     "../json-schema/incidents/transition-incident-request.schema.json",
     "../json-schema/incidents/incident.schema.json",
     "../json-schema/incidents/incident-timeline-page.schema.json",
+    "../json-schema/incidents/incident-activity-timeline-page.schema.json",
   ], errors);
 
   const operationIds = [...openApi.matchAll(
@@ -118,6 +123,23 @@ export function validateOpenApi({ openApi, openApiPath, errors, resolveLocalRefe
     } else {
       requireText(block, `${contract.method} ${contract.route}`, contract.markers, errors);
     }
+  }
+  const timelineBlock = operationBlock(
+    openApi,
+    "/organizations/{organizationId}/projects/{projectId}/incidents/{incidentId}/timeline",
+    "get",
+  );
+  requireText(timelineBlock, "incident activity timeline representation", [
+    "security:\n        - oidcBearer: [incident:read]\n        - oidcBearer: [incident:analyze]",
+    "application/json:\n          requiredScope: incident:read\n          incidentAccessMode: READ",
+    "application/vnd.opsmind.incident-activity-timeline.v1+json:\n"
+      + "          requiredScope: incident:analyze\n          incidentAccessMode: ANALYZE",
+    "application/vnd.opsmind.incident-activity-timeline.v1+json:\n"
+      + "              schema:\n"
+      + "                $ref: '#/components/schemas/IncidentActivityTimelinePage'",
+  ], errors);
+  if ((timelineBlock.match(/IncidentActivityTimelinePage/gu) ?? []).length !== 1) {
+    errors.push("incident activity timeline representation must have one exact schema binding");
   }
   if (/^\s{4}(?:patch|delete):/gmu.test(openApi)) {
     errors.push("OpenAPI exposes an out-of-scope patch or delete operation");

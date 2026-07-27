@@ -1,6 +1,6 @@
 # OpsMind AI Codebase Summary
 
-Last verified: 2026-07-26
+Last verified: 2026-07-27
 
 ## Purpose and Verification Basis
 
@@ -18,10 +18,11 @@ This summary is based on:
   [Progress](./progress.md), and [Roadmap](./project-roadmap.md).
 
 Generated local artifacts are evidence inputs, not source-of-truth
-documentation. Source code and canonical contracts take precedence.
-A Repomix refresh was intentionally not run because `D:` was below the
-repository's 20 GiB safety floor; direct verified files and revision-bound CI
-evidence are the authority for this update.
+documentation. Source code and canonical contracts take precedence. Repomix
+1.14.0 refreshed `repomix-output.xml` on 2026-07-27: 4,602 files and
+10,357,455 tokens were packed, and its security check reported no suspicious
+files. Claims below were still checked against the current code, OpenAPI,
+migrations, tests, and CI workflow rather than inferred from the compaction.
 
 ## Delivery State
 
@@ -33,15 +34,18 @@ evidence are the authority for this update.
 | Phase 4 | In progress; checkpoint 4A incident write ledger is locally complete. Full Phase 4 and G2/G3 are not complete. |
 | Phase 5 | In progress; provider-neutral analysis, DeepSeek adapter, egress guards, durable PostgreSQL state, V005 append-only probe audit, Platform API integration, and stream assembly exist. Static checkpoint passes; exit remains blocked by B-004 and missing rotated-key synthetic smoke. |
 | Phase 6 | In progress; durable PostgreSQL and synthetic Prometheus checkpoint passes revision-bound CI. Artifact/broader-connector exit remains blocked. |
-| Phase 7 | In progress; local cross-service trace, 100-warm-run latency, CK/Stitch UI, and browser E2E checkpoints pass. G3 remains blocked by live non-production connector/provider conformance, timeline linkage, and BFF/session proof. |
+| Phase 7 | In progress; local cross-service trace, 100-warm-run latency, CK/Stitch UI, browser E2E, and the metadata-only incident activity route exist. G3 remains blocked by live non-production connector/provider/legal conformance and BFF/session proof; the activity route's revision-bound CI and V009 performance gates are pending. |
 | Phase 8 | In progress; Phase 8B contracts, V008 binding, bounded projection, production-path A/B/C, artifact attestation, and blocking review pass. Parent exit remains blocked by unavailable held-out/human/calibration evidence. |
 | Later phases | Durable workflow, RAG, remediation, complete operator UX, and production-hardening outcomes remain pending. |
 
 Phase 7's local Operator Web and fixture-backed cross-service checkpoints are
-complete for the safe projection boundary; incident-timeline linkage, live
-provider/connector conformance, and the production BFF/session gate remain
-open. The revision-bound report contains 100 warm runs and binds its git head
-and clean-tree assertion to the tested commit.
+complete for the safe projection boundary. The activity representation now
+links incident and investigation metadata at read time without copying ledger
+rows. Live provider/connector/legal conformance and the production BFF/session
+gate remain open, and no timeline Phase 2/3 or V009 performance completion is
+claimed before revision-bound CI. The earlier revision-bound report contains
+100 warm investigation runs and binds its git head and clean-tree assertion to
+the tested commit; it is not evidence for the new timeline route.
 
 Historical Phase 3/4 workstation transcripts remain local/reference evidence
 and explicitly deny release status. Revision-bound GitHub Actions evidence is
@@ -112,7 +116,7 @@ The current controllers expose:
 | `POST /api/v1/organizations/{organizationId}/projects/{projectId}/incidents` | `IncidentController.create` |
 | `GET /api/v1/organizations/{organizationId}/projects/{projectId}/incidents/{incidentId}` | `IncidentController.detail` |
 | `POST /api/v1/organizations/{organizationId}/projects/{projectId}/incidents/{incidentId}/transitions` | `IncidentController.transition` |
-| `GET /api/v1/organizations/{organizationId}/projects/{projectId}/incidents/{incidentId}/timeline` | `IncidentController.timeline` |
+| `GET /api/v1/organizations/{organizationId}/projects/{projectId}/incidents/{incidentId}/timeline` | `IncidentController.timeline`; legacy JSON plus opt-in metadata-only activity representation |
 | `POST /api/v1/organizations/{organizationId}/projects/{projectId}/incidents/{incidentId}/investigations` | `InvestigationRunController.start` (feature flagged) |
 | `GET /api/v1/organizations/{organizationId}/projects/{projectId}/incidents/{incidentId}/investigations/{runId}` | `InvestigationRunController.get` (feature flagged) |
 
@@ -127,6 +131,24 @@ Incident and investigation detail reads additionally support the typed
 projection-class, redaction-version, and redaction-count assurances, is
 `no-store`, varies on `Accept`, and is scoped by organization/project/
 incident/run. Legacy JSON remains available for non-browser callers.
+
+The timeline route preserves the existing `application/json` READ path and v1
+incident-version cursor. Its opt-in
+`application/vnd.opsmind.incident-activity-timeline.v1+json` representation
+requires `incident:analyze` plus `ANALYZE`, returns `no-store`, and uses a
+strict v2 cursor over `(occurredAt, sourceRank, eventId)`. Negotiation uses the
+most-specific matching media range before quality; JSON wins ties. OpenAPI
+uses `x-opsmind-representation-security` because standard OpenAPI security
+requirements cannot vary by response representation, so generic tooling may
+not enforce that mapping.
+
+`JdbcIncidentTimelineRepository.listActivity` runs a parameterized `UNION ALL`
+with organization/project/incident predicates in both branches. It projects
+only `eventId`, `source`, `eventType`, `occurredAt`, `actorId`, and the source-
+specific `incidentVersion` or `investigationRunId` plus
+`investigationSequence`. It does not select JSON payloads or free text. The
+ordering cursor is a forward-only live view: a fresh traversal is required for
+rows committed later at or before an issued cursor.
 
 The canonical public contract is
 `packages/contracts/openapi/opsmind-v1.yaml` (OpenAPI 3.1.1, contract version
@@ -203,12 +225,23 @@ re-verifies content before returning the redacted AI-input projection. Event and
 audit JSON intentionally retain metadata only.
 
 This is persistence, not durable orchestration. The code does not resume an
-in-flight runner after process loss and does not append investigation events to
-`incident_timeline_events`. The capability-backed AI/Tool clients and loopback
+in-flight runner after process loss and does not append or copy investigation
+events to `incident_timeline_events`; the activity route reads both ledgers
+without changing either. The capability-backed AI/Tool clients and loopback
 synthetic Prometheus path run in the disposable cross-service harness; they do
 not establish a named live non-production connector or provider/legal
 conformance, so G3 remains open. The browser harness mirrors the typed Platform
 projection and rejects unassured or unclassified media.
+
+V009 adds concurrent ordering indexes on both activity sources and opts that
+script out of Flyway transactions. Rollout order is migration before code.
+Fresh and V008-to-V009 migration, recovery, bounded query-plan, 50,000-row-per-
+ledger, latency, and storage-budget evidence remain pending a terminal,
+revision-bound CI artifact; index definitions and CI wiring alone do not prove
+those thresholds. The current upgrade runner executes the V009 disposable
+proof, but it cannot be cited as V009 fresh/upgrade/recovery evidence until its
+CI artifact is available; the activity HTTP matrix likewise cannot establish the
+V009 query-plan or performance gates by itself.
 
 ## Phase 8B Evaluation Boundary
 
@@ -286,7 +319,7 @@ See [Security Model](./security-model.md) for the complete threat model and
 | Platform API Maven suite | Pass | Local verification, including pgJDBC `42.7.13` and V005 migration contracts |
 | `scripts/validation/validate-phase-05-ai-runtime.mjs` | Static checkpoint PASS | Exit gate remains BLOCK: active B-004 plus absent passing rotated-key synthetic smoke |
 | `scripts/validation/validate-phase-06-tool-gateway.mjs` | Durable Prometheus connector checkpoint PASS with schemas, canonical fixtures, digest/manifest/OpenAPI/source abuse checks | Phase exit BLOCK: artifact adapter, remaining connector families, tenant bulkhead, and provider-specific cancellation proof |
-| `scripts/validation/validate-phase-07-investigation-slice.mjs` | CK/Stitch/browser plus 100-warm-run revision-bound cross-service checkpoint PASS | G3 still requires live provider/connector, timeline, and BFF/session proof |
+| `scripts/validation/validate-phase-07-investigation-slice.mjs` | CK/Stitch/browser plus 100-warm-run revision-bound cross-service checkpoint PASS | G3 still requires live provider/connector/legal and BFF/session proof; the new timeline route is not covered by that older revision-bound run |
 | `scripts/validation/validate-phase-08-evaluation-foundation.mjs` | Six schemas, ten families/three implemented, three results/eight metrics/four negative cases, zero errors, checkpoint PASS | Phase exit BLOCK; held-out and human inputs unavailable |
 | GitHub Actions `30209210001` | PASS on revision `df462031`: bootstrap, secrets, actionlint, service/UI suites, dependency security, PostgreSQL, Keycloak, Compose | CI non-production evidence; not staging/production conformance |
 | GitHub Actions `30209209999` | PASS on revision `df462031`: A/B/C samples `100/1/1`, all metrics PASS, `GitTree=0`, artifact `8634029083` | Deterministic authored smoke; not held-out quality, calibration, or human benefit |
@@ -335,6 +368,8 @@ semantics.
   workflows, RAG, remediation, and production object storage/lifecycle. The
   bounded Operator workspace and real Platform-to-Tool-Gateway read-only path
   are implemented checkpoints, not remaining gaps.
+- Revision-bound incident activity CI plus V009 fresh/upgrade/recovery,
+  high-cardinality query-plan, append/read latency, and index-storage gates.
 - Production IdP/federation/session/break-glass conformance.
 - Measured load/SLO proof, DR proof, or a production release.
 

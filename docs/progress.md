@@ -8,6 +8,39 @@
 - Record blockers explicitly and leave downstream phases pending.
 - Do not include secrets, raw credentials, or sensitive evidence.
 
+## 2026-07-27 — Incident activity timeline bridge implemented; evidence gate pending
+
+Implemented in the current worktree:
+
+- The existing incident timeline route retains legacy `application/json` as its
+  default READ/version-cursor representation. The opt-in
+  `application/vnd.opsmind.incident-activity-timeline.v1+json` representation
+  requires `incident:analyze` and `ANALYZE` access.
+- RFC-style `Accept` handling uses the most-specific matching range before
+  quality, retains JSON on ties, returns `406` for malformed, unsupported-only,
+  or parameterized vendor requests, sets `Vary: Accept` for both successful
+  representations, and sets `Cache-Control: no-store` for the vendor response.
+- The vendor view is a forward-only live `UNION ALL` of the incident and
+  investigation ledgers. Both branches filter organization/project/incident,
+  select only the eight metadata fields, and do not select JSON payloads or
+  free text. Late backdated commits require a new traversal; no row is copied
+  into the incident ledger.
+- V009 defines two concurrent ordering indexes and sets
+  `executeInTransaction=false`.
+
+Local, non-release validation on 2026-07-27 passed the Phase 4 static contract
+gate (`Errors=0`) and the Phase 7 static checkpoint (`Errors=0`,
+`CheckpointResult=PASS`, `PhaseExit=BLOCK`). These outputs came from a dirty
+worktree and are not CI artifacts. No V009 claim is `PASS`: the checked-in
+upgrade runner now executes the V009 proof, while fresh/upgrade, invalid-index
+recovery, 50,000-row query-plan, append/read latency, and index-storage evidence
+await a revision-bound CI artifact.
+
+Still open: `B-004`, `B-005`, `B-006`, `B-007`, `B-008`, `B-011`, `B-012`,
+`B-013`, `B-015`, and `B-016`; see [Blockers](./blockers.md). The bridge does
+not close provider/legal, live connector, lifecycle, load/SLO, DR,
+held-out/human evaluation, dependency, or Tool Gateway tenant-isolation gates.
+
 ## 2026-07-26 — Phase 8B production-path evaluation delivered
 
 Implemented:

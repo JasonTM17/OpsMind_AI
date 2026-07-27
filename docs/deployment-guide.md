@@ -137,6 +137,19 @@ A failed gate cannot be converted to a warning solely to meet a schedule.
   V002 permits the exact legacy null tuple during the rolling window and
   requires all six observed-provenance fields together from new writers.
   Evaluation-eligible runs require the complete tuple.
+- Apply Platform V009 before enabling the incident activity vendor media type.
+  V009 creates the two activity ordering indexes concurrently and is configured
+  outside a Flyway transaction. This rollout is not yet release-qualified:
+  fresh and V008-to-V009 migration, valid-index catalog state, failed-build
+  recovery, high-cardinality query plans, append/read latency, and index-size
+  evidence require a revision-bound CI artifact. The present upgrade runner
+  executes the V009 disposable proof in CI, but neither its unobserved source
+  wiring nor the activity HTTP CI wiring proves V009 before that artifact exists.
+  If a concurrent build fails, stop rollout, retain Flyway history and exact
+  index-catalog evidence, use the approved recovery path to remove both
+  V009-owned indexes concurrently, repair through the approved Flyway seam,
+  then retry and capture the resulting artifact. Do not alter applied migration
+  bytes or delete Flyway history blindly.
 - Schema compatibility covers the rolling window used by deployment.
 - Destructive transformations use expand/migrate/contract and verified backup/restore evidence.
 - Temporal workflows use version/build routing; golden histories replay before worker promotion.
@@ -252,3 +265,13 @@ ingress, certificate authority, production IdP vendor, observability backend, av
 topology, and named release approvers remain implementation decisions. The
 120-minute service RTO versus four-hour artifact restore target is an explicit
 pre-production reconciliation gate.
+
+## Active Release Blockers
+
+`B-004`, `B-005`, `B-006`, `B-007`, `B-008`, `B-011`, `B-012`, `B-013`,
+`B-015`, and `B-016` remain active. They respectively block provider/legal
+egress, live-connector proof, evidence lifecycle, load/SLO, data lifecycle,
+RTO/restore alignment, object-store supply-chain posture, held-out/human
+evaluation, Dependabot disposition, and Tool Gateway tenant isolation. See
+[Blockers](./blockers.md) for owners and required evidence; no deployment gate
+may treat this timeline implementation as resolving any of them.

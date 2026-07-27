@@ -14,4 +14,12 @@ interface IncidentTimelineRepository {
         Long afterIncidentVersion,
         int limit
     );
+
+    List<IncidentActivityTimelineEntry> listActivity(
+        UUID organizationId,
+        UUID projectId,
+        UUID incidentId,
+        IncidentTimelinePageToken.ActivityCursor after,
+        int limit
+    );
 }

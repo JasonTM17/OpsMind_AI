@@ -292,6 +292,22 @@ paths:
       tags: [incidents]
       security:
         - oidcBearer: [incident:read]
+        - oidcBearer: [incident:analyze]
+      x-opsmind-representation-security:
+        application/json:
+          requiredScope: incident:read
+          incidentAccessMode: READ
+        application/vnd.opsmind.incident-activity-timeline.v1+json:
+          requiredScope: incident:analyze
+          incidentAccessMode: ANALYZE
+      description: >-
+        application/json retains the legacy incident timeline and requires
+        incident:read. The
+        application/vnd.opsmind.incident-activity-timeline.v1+json
+        representation is a metadata-only live union and requires
+        incident:analyze plus ANALYZE access. This representation is a
+        forward-only live view, not a snapshot or lossless change feed; a
+        fresh traversal is required to discover later backdated activity.
       parameters:
         - $ref: '#/components/parameters/OrganizationId'
         - $ref: '#/components/parameters/ProjectId'
@@ -301,10 +317,25 @@ paths:
       responses:
         '200':
           description: Bounded immutable incident timeline page
+          headers:
+            Vary:
+              description: Response representation is selected from the Accept header.
+              required: true
+              schema:
+                type: string
+                const: Accept
+            Cache-Control:
+              description: Present as no-store only on the ANALYZE-only vendor representation.
+              schema:
+                type: string
+                const: no-store
           content:
             application/json:
               schema:
                 $ref: '#/components/schemas/IncidentTimelinePage'
+            application/vnd.opsmind.incident-activity-timeline.v1+json:
+              schema:
+                $ref: '#/components/schemas/IncidentActivityTimelinePage'
         '400':
           $ref: '#/components/responses/InvalidRequest'
         '401':
@@ -313,6 +344,8 @@ paths:
           $ref: '#/components/responses/Forbidden'
         '404':
           $ref: '#/components/responses/NotFound'
+        '406':
+          $ref: '#/components/responses/UnacceptableMediaType'
         '503':
           $ref: '#/components/responses/ServiceUnavailable'
   /organizations/{organizationId}/projects/{projectId}/incidents/{incidentId}/analysis:
@@ -586,6 +619,8 @@ components:
       $ref: '../json-schema/incidents/incident.schema.json'
     IncidentTimelinePage:
       $ref: '../json-schema/incidents/incident-timeline-page.schema.json'
+    IncidentActivityTimelinePage:
+      $ref: '../json-schema/incidents/incident-activity-timeline-page.schema.json'
     AnalysisRuntimeResponse:
       $ref: '../json-schema/ai-runtime/v1/analysis-response.schema.json'
     ToolExecutionRequest:

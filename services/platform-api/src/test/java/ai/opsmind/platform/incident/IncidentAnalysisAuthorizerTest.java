@@ -123,13 +123,17 @@ class IncidentAnalysisAuthorizerTest {
             assertThat(exception.code()).isEqualTo("authorization.scope-required"));
         verify(transactions, never()).getTransaction(any());
 
-        assertThatThrownBy(() -> IncidentRolePolicy.requireAllowed(
-            "VIEWER", "VIEWER", IncidentAccessMode.ANALYZE
-        )).isInstanceOfSatisfying(PlatformProblemException.class, exception ->
-            assertThat(exception.code()).isEqualTo("resource.not-found"));
-        assertThatCode(() -> IncidentRolePolicy.requireAllowed(
-            "SRE", "SRE", IncidentAccessMode.ANALYZE
-        )).doesNotThrowAnyException();
+        for (String role : Set.of("DEVELOPER", "SECURITY_REVIEWER", "VIEWER", "AI_AGENT")) {
+            assertThatThrownBy(() -> IncidentRolePolicy.requireAllowed(
+                role, role, IncidentAccessMode.ANALYZE
+            )).isInstanceOfSatisfying(PlatformProblemException.class, exception ->
+                assertThat(exception.code()).isEqualTo("resource.not-found"));
+        }
+        for (String role : Set.of("ADMIN", "SRE")) {
+            assertThatCode(() -> IncidentRolePolicy.requireAllowed(
+                role, role, IncidentAccessMode.ANALYZE
+            )).doesNotThrowAnyException();
+        }
     }
 
     @Test
