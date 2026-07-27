@@ -8,6 +8,60 @@
 - Record blockers explicitly and leave downstream phases pending.
 - Do not include secrets, raw credentials, or sensitive evidence.
 
+## 2026-07-27 — Tool Gateway tenant-isolation implementation awaiting CI evidence
+
+Implemented in the current branch:
+
+- Trusted `TenantProjectScope` is created only after delegated capability
+  verification and exact request binding. Receipt leases carry that scope
+  through replay, success, completion, and abandon.
+- Tool Gateway V003 adds transaction-local tenant/project context, forced RLS
+  for receipts and verified audit events, and a distinct tenant-free,
+  insert-only, append-only lane for pre-verification security decisions.
+- Receipt claim/select/reclaim/complete/abandon SQL retains explicit
+  tenant/project predicates. A global `execution_id` collision hidden by RLS
+  returns the existing generic conflict rather than a storage failure.
+- Connector I/O remains outside database transactions. Scoped success audit and
+  receipt completion still commit atomically. Startup rejects an execution
+  lease that cannot cover the longest enabled connector bound plus a fixed
+  finalization margin. The stored lease expires at the earlier of the configured
+  lease bound or request deadline plus that margin, so finalization immediately
+  after the signed deadline remains fenced but does not lose its audit/receipt.
+- Request digesting now sits inside the fail-closed decision boundary. Nested
+  JSON nulls cannot escape it, non-canonicalizable input is audited before
+  capability verification, and authenticated malformed-body/missing-capability
+  delivery failures use the tenant-free lane.
+- Readiness verifies schema usage and the exact single RLS policy definition,
+  not only policy names. Adversarial PostgreSQL tests revoke schema usage and
+  replace a policy with same-name `USING (true)` drift.
+- Cross-service evaluation now binds Tool Gateway tenant/project context before
+  its security-barrier views read receipt/audit state.
+- A disposable V002-to-V003 script seeds legacy receipt/audit rows before the
+  migration, then checks preservation, forced RLS, no-context denial, scoped
+  access, table-owner enforcement, same-tenant/foreign-project denial, exact
+  policy definitions, and the separate unverified lane.
+
+Current local evidence:
+
+- Tool Gateway compile and test-compile pass.
+- Reviewer-remediation suite: 13/13 pass.
+- Full Tool Gateway suite: 65 tests, 53 pass and 12 PostgreSQL-gated skips;
+  zero failures/errors.
+- Secret scan covers the working tree, Git index, configured artifacts, and
+  129 historical commits: zero findings.
+- Phase 6 and Phase 7 static checkpoints report zero implementation errors.
+  Their broader phase exits remain blocked for the already documented external
+  work.
+- Local PostgreSQL/Docker evidence was not run because `C:` remained below the
+  repository's 10 GiB heavyweight-work capacity guard. The exact PostgreSQL,
+  upgrade, pool-reuse, and cross-service gates are wired into GitHub Actions.
+
+Independent review round three confirms zero unresolved P0/P1 findings.
+`B-016` remains Active until one immutable revision passes the PostgreSQL and
+cross-service CI gates. This work does not change any other active provider,
+connector, lifecycle, SLO, DR, human evaluation, dependency, staging,
+production, or release blocker.
+
 ## 2026-07-27 — Incident activity timeline bridge evidence gate passed
 
 Implemented in the current worktree:

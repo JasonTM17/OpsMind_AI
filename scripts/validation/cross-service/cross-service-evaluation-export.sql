@@ -14,11 +14,19 @@ SELECT set_config(
     'opsmind.ai_runtime_tenant_id', :'scope_organization_id', true
 ) AS runtime_tenant_context
 \gset
+SELECT set_config(
+    'opsmind.tool_gateway_tenant_id', :'scope_organization_id', true
+) AS gateway_tenant_context
+\gset
 SELECT set_config('opsmind.actor_id', :'scope_actor_id', true) AS actor_context
 \gset
 SELECT set_config(
     'opsmind.evaluation_project_id', :'scope_project_id', true
 ) AS project_context
+\gset
+SELECT set_config(
+    'opsmind.tool_gateway_project_id', :'scope_project_id', true
+) AS gateway_project_context
 \gset
 SELECT set_config(
     'opsmind.evaluation_incident_id', :'scope_incident_id', true

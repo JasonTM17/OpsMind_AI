@@ -54,7 +54,7 @@ public final class ToolExecutionService {
         this.durability = new DurableToolExecutionCoordinator(
             receiptStore, auditWriter, transactionRunner
         );
-        this.responseFactory = new ToolExecutionResponseFactory(auditWriter);
+        this.responseFactory = new ToolExecutionResponseFactory(auditWriter, transactionRunner);
         this.connectors = connectors.stream().collect(Collectors.toUnmodifiableMap(
             ToolConnector::id,
             Function.identity(),
@@ -65,17 +65,22 @@ public final class ToolExecutionService {
     }
 
     public ToolExecutionResponse execute(String capabilityToken, ToolExecutionRequest request) {
-        String requestDigest = request == null
-            ? RequestDigester.fallbackDigest("null-request") : requestDigester.digest(request);
+        String requestDigest = RequestDigester.fallbackDigest("uncanonicalizable-tool-request");
         UUID executionId = request == null ? null : request.executionId();
+        TenantProjectScope trustedScope = null;
         String capabilityId = null;
         String policyVersion = null;
         String manifestVersion = null;
         ToolExecutionProvenance provenance = null;
         ExecutionReceiptStore.Lease lease = null;
-        String stage = "capability-verification";
+        String stage = "request-digest";
         try {
+            requestDigest = request == null
+                ? RequestDigester.fallbackDigest("null-request")
+                : requestDigester.digest(request);
+            stage = "capability-verification";
             VerifiedCapability capability = capabilityVerifier.verify(capabilityToken, request);
+            trustedScope = TenantProjectScope.fromVerifiedCapability(capability, request);
             capabilityId = capability.capabilityId();
             policyVersion = capability.policyVersion();
             stage = "manifest-resolution";
@@ -97,11 +102,15 @@ public final class ToolExecutionService {
             }
 
             stage = "execution-claim";
-            ExecutionReceiptStore.Claim claim = durability.claim(request, requestDigest);
+            ExecutionReceiptStore.Claim claim = durability.claim(
+                trustedScope,
+                request,
+                requestDigest
+            );
             switch (claim.status()) {
                 case REPLAY -> {
                     UUID auditId = durability.recordReplay(
-                        executionId, requestDigest, capabilityId, manifestVersion,
+                        trustedScope, executionId, requestDigest, capabilityId, manifestVersion,
                         provenance, responseFactory.evidenceDigest(claim.response()), policyVersion
                     );
                     return claim.response().asDuplicate(auditId);
@@ -150,14 +159,9 @@ public final class ToolExecutionService {
                 stage,
                 exception.code().value()
             );
-            return responseFactory.denial(
-                executionId,
-                requestDigest,
-                capabilityId,
-                manifestVersion,
-                provenance,
-                policyVersion,
-                exception.code()
+            return denialResponse(
+                trustedScope, executionId, requestDigest, capabilityId, manifestVersion,
+                provenance, policyVersion, exception.code()
             );
         }
         catch (RuntimeException exception) {
@@ -166,14 +170,11 @@ public final class ToolExecutionService {
                 stage,
                 exception.getClass().getSimpleName()
             );
-            return responseFactory.denial(
-                executionId,
-                requestDigest,
-                capabilityId,
-                manifestVersion,
-                provenance,
-                policyVersion,
-                DenialCode.CONNECTOR_FAILED
+            return denialResponse(
+                trustedScope, executionId, requestDigest, capabilityId, manifestVersion,
+                provenance, policyVersion,
+                "request-digest".equals(stage)
+                    ? DenialCode.REQUEST_INVALID : DenialCode.CONNECTOR_FAILED
             );
         }
         finally {
@@ -183,5 +184,24 @@ public final class ToolExecutionService {
 
     private ToolDeniedException denied(DenialCode code, String message) {
         return new ToolDeniedException(code, message);
+    }
+
+    private ToolExecutionResponse denialResponse(
+        TenantProjectScope trustedScope,
+        UUID executionId,
+        String requestDigest,
+        String capabilityId,
+        String manifestVersion,
+        ToolExecutionProvenance provenance,
+        String policyVersion,
+        DenialCode code
+    ) {
+        if (trustedScope == null) {
+            return responseFactory.unverifiedDenial(executionId, requestDigest, code);
+        }
+        return responseFactory.scopedDenial(
+            trustedScope, executionId, requestDigest, capabilityId, manifestVersion,
+            provenance, policyVersion, code
+        );
     }
 }

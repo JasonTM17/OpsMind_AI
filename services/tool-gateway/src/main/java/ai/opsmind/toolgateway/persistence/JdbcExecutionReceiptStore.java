@@ -6,59 +6,54 @@ import java.sql.Timestamp;
 import java.time.Clock;
 import java.time.Duration;
 import java.time.Instant;
+import java.util.List;
 import java.util.UUID;
 import java.util.regex.Pattern;
 
 import ai.opsmind.toolgateway.application.ExecutionReceiptStore;
+import ai.opsmind.toolgateway.application.TenantProjectScope;
 import ai.opsmind.toolgateway.domain.ToolExecutionRequest;
 import ai.opsmind.toolgateway.domain.ToolExecutionResponse;
 import ai.opsmind.toolgateway.domain.ToolOutcome;
 
 import org.springframework.jdbc.core.JdbcTemplate;
-import org.springframework.transaction.support.TransactionTemplate;
+import org.springframework.transaction.support.TransactionSynchronizationManager;
 
 public final class JdbcExecutionReceiptStore implements ExecutionReceiptStore {
 
     private static final Pattern DIGEST = Pattern.compile("[0-9a-f]{64}");
 
     private final JdbcTemplate jdbc;
-    private final TransactionTemplate transactions;
     private final ToolExecutionResponseJsonCodec codec;
     private final long leaseMilliseconds;
+    private final long completionMarginMilliseconds;
     private final Clock clock;
 
     public JdbcExecutionReceiptStore(
         JdbcTemplate jdbc,
-        TransactionTemplate transactions,
         tools.jackson.databind.ObjectMapper objectMapper,
         int maximumResponseBytes,
         Duration leaseDuration,
+        Duration completionMargin,
         Clock clock
     ) {
         if (leaseDuration == null || leaseDuration.toMillis() < 1) {
             throw new IllegalArgumentException("Execution receipt lease is invalid.");
         }
+        if (completionMargin == null || completionMargin.toMillis() < 1) {
+            throw new IllegalArgumentException("Execution completion margin is invalid.");
+        }
         this.jdbc = jdbc;
-        this.transactions = transactions;
         this.codec = new ToolExecutionResponseJsonCodec(objectMapper, maximumResponseBytes);
         this.leaseMilliseconds = leaseDuration.toMillis();
+        this.completionMarginMilliseconds = completionMargin.toMillis();
         this.clock = clock;
     }
 
     @Override
     public boolean available() {
         try {
-            Boolean available = jdbc.queryForObject(
-                "SELECT to_regclass('tool_gateway.execution_receipts') IS NOT NULL "
-                    + "AND has_table_privilege(current_user, "
-                    + "'tool_gateway.execution_receipts', 'SELECT') "
-                    + "AND has_table_privilege(current_user, "
-                    + "'tool_gateway.execution_receipts', 'INSERT') "
-                    + "AND has_table_privilege(current_user, "
-                    + "'tool_gateway.execution_receipts', 'UPDATE')",
-                Boolean.class
-            );
-            return Boolean.TRUE.equals(available);
+            return GatewayIsolationReadinessSql.receiptStoreReady(jdbc);
         }
         catch (RuntimeException exception) {
             return false;
@@ -66,36 +61,51 @@ public final class JdbcExecutionReceiptStore implements ExecutionReceiptStore {
     }
 
     @Override
-    public Claim claim(ToolExecutionRequest request, String requestDigest) {
-        validateRequest(request, requestDigest);
-        Claim result = transactions.execute(status -> claimInTransaction(request, requestDigest));
-        if (result == null) throw new IllegalStateException("Execution receipt claim failed.");
-        return result;
+    public Claim claim(
+        TenantProjectScope scope,
+        ToolExecutionRequest request,
+        String requestDigest
+    ) {
+        requireScopedTransaction();
+        validateRequest(scope, request, requestDigest);
+        return claimInTransaction(scope, request, requestDigest);
     }
 
-    private Claim claimInTransaction(ToolExecutionRequest request, String requestDigest) {
+    private Claim claimInTransaction(
+        TenantProjectScope scope,
+        ToolExecutionRequest request,
+        String requestDigest
+    ) {
         UUID leaseToken = UUID.randomUUID();
         int inserted = jdbc.update(
             "INSERT INTO tool_gateway.execution_receipts "
                 + "(execution_id, tenant_id, project_id, incident_id, run_id, request_digest, "
                 + "status, lease_token, lease_expires_at) "
                 + "VALUES (?, ?, ?, ?, ?, ?, 'IN_PROGRESS', ?, "
-                + "LEAST(?, transaction_timestamp() + (? * INTERVAL '1 millisecond'))) "
+                + "LEAST(? + (? * INTERVAL '1 millisecond'), "
+                + "transaction_timestamp() + (? * INTERVAL '1 millisecond'))) "
                 + "ON CONFLICT (execution_id) DO NOTHING",
-            request.executionId(), request.tenantId(), request.projectId(), request.incidentId(),
+            request.executionId(), scope.tenantId(), scope.projectId(), request.incidentId(),
             request.runId(), requestDigest, leaseToken, Timestamp.from(request.deadlineAt()),
-            leaseMilliseconds
+            completionMarginMilliseconds, leaseMilliseconds
         );
-        if (inserted == 1) return Claim.claimed(lease(request, requestDigest, leaseToken));
+        if (inserted == 1) {
+            return Claim.claimed(lease(scope, request, requestDigest, leaseToken));
+        }
 
-        JdbcExecutionReceiptRow row = jdbc.queryForObject(
+        List<JdbcExecutionReceiptRow> rows = jdbc.query(
             "SELECT tenant_id, project_id, incident_id, run_id, request_digest, status, "
                 + "lease_expires_at > transaction_timestamp() AS lease_active, "
                 + "response_json::text AS response_json "
-                + "FROM tool_gateway.execution_receipts WHERE execution_id = ? FOR UPDATE",
+                + "FROM tool_gateway.execution_receipts "
+                + "WHERE execution_id = ? AND tenant_id = ? AND project_id = ? FOR UPDATE",
             (result, ignored) -> JdbcExecutionReceiptRow.from(result),
-            request.executionId()
+            request.executionId(),
+            scope.tenantId(),
+            scope.projectId()
         );
+        if (rows.isEmpty()) return Claim.of(ClaimStatus.CONFLICT);
+        JdbcExecutionReceiptRow row = rows.getFirst();
         if (!sameScope(row, request) || !sameDigest(row.requestDigest(), requestDigest)) {
             return Claim.of(ClaimStatus.CONFLICT);
         }
@@ -113,20 +123,24 @@ public final class JdbcExecutionReceiptStore implements ExecutionReceiptStore {
         int reclaimed = jdbc.update(
             "UPDATE tool_gateway.execution_receipts "
                 + "SET lease_token = ?, lease_expires_at = "
-                + "LEAST(?, transaction_timestamp() + (? * INTERVAL '1 millisecond')), "
+                + "LEAST(? + (? * INTERVAL '1 millisecond'), "
+                + "transaction_timestamp() + (? * INTERVAL '1 millisecond')), "
                 + "updated_at = transaction_timestamp() "
                 + "WHERE execution_id = ? AND status = 'IN_PROGRESS' "
+                + "AND tenant_id = ? AND project_id = ? "
                 + "AND lease_expires_at <= transaction_timestamp()",
-            leaseToken, Timestamp.from(request.deadlineAt()), leaseMilliseconds,
-            request.executionId()
+            leaseToken, Timestamp.from(request.deadlineAt()),
+            completionMarginMilliseconds, leaseMilliseconds,
+            request.executionId(), scope.tenantId(), scope.projectId()
         );
         if (reclaimed != 1) throw new IllegalStateException("Execution receipt reclaim failed.");
-        return Claim.claimed(lease(request, requestDigest, leaseToken));
+        return Claim.claimed(lease(scope, request, requestDigest, leaseToken));
     }
 
     @Override
     public void complete(Lease lease, ToolExecutionResponse response) {
         if (lease == null) throw new IllegalArgumentException("Execution lease is required.");
+        requireScopedTransaction();
         validateCompletedResponse(lease.executionId(), lease.requestDigest(), response);
         String json = codec.write(response);
         int updated = jdbc.update(
@@ -135,26 +149,37 @@ public final class JdbcExecutionReceiptStore implements ExecutionReceiptStore {
                 + "response_json = CAST(? AS jsonb), completed_at = transaction_timestamp(), "
                 + "updated_at = transaction_timestamp() "
                 + "WHERE execution_id = ? AND request_digest = ? AND status = 'IN_PROGRESS' "
+                + "AND tenant_id = ? AND project_id = ? "
                 + "AND lease_token = ? AND lease_expires_at > transaction_timestamp()",
-            json, lease.executionId(), lease.requestDigest(), lease.token()
+            json, lease.executionId(), lease.requestDigest(),
+            lease.scope().tenantId(), lease.scope().projectId(), lease.token()
         );
         if (updated != 1) throw new IllegalStateException("Execution receipt lease was lost.");
     }
 
     @Override
     public void abandon(Lease lease) {
+        if (lease == null) throw new IllegalArgumentException("Execution lease is required.");
+        requireScopedTransaction();
         jdbc.update(
             "UPDATE tool_gateway.execution_receipts "
                 + "SET lease_expires_at = transaction_timestamp(), "
                 + "updated_at = transaction_timestamp() "
                 + "WHERE execution_id = ? AND request_digest = ? AND status = 'IN_PROGRESS' "
+                + "AND tenant_id = ? AND project_id = ? "
                 + "AND lease_token = ?",
-            lease.executionId(), lease.requestDigest(), lease.token()
+            lease.executionId(), lease.requestDigest(),
+            lease.scope().tenantId(), lease.scope().projectId(), lease.token()
         );
     }
 
-    private Lease lease(ToolExecutionRequest request, String digest, UUID token) {
-        return new Lease(request.executionId(), digest, token);
+    private Lease lease(
+        TenantProjectScope scope,
+        ToolExecutionRequest request,
+        String digest,
+        UUID token
+    ) {
+        return new Lease(scope, request.executionId(), digest, token);
     }
 
     private boolean sameScope(JdbcExecutionReceiptRow row, ToolExecutionRequest request) {
@@ -172,12 +197,23 @@ public final class JdbcExecutionReceiptStore implements ExecutionReceiptStore {
             );
     }
 
-    private void validateRequest(ToolExecutionRequest request, String requestDigest) {
-        if (request == null || request.executionId() == null || request.tenantId() == null
+    private void validateRequest(
+        TenantProjectScope scope,
+        ToolExecutionRequest request,
+        String requestDigest
+    ) {
+        if (scope == null || !scope.matches(request)
+            || request.executionId() == null || request.tenantId() == null
             || request.projectId() == null || request.incidentId() == null || request.runId() == null
             || request.deadlineAt() == null || !request.deadlineAt().isAfter(clock.instant())
             || requestDigest == null || !DIGEST.matcher(requestDigest).matches()) {
             throw new IllegalArgumentException("Execution receipt claim is invalid.");
+        }
+    }
+
+    private void requireScopedTransaction() {
+        if (!TransactionSynchronizationManager.isActualTransactionActive()) {
+            throw new IllegalStateException("Execution receipt operation requires a scoped transaction.");
         }
     }
 

@@ -1,6 +1,7 @@
 package ai.opsmind.toolgateway.application;
 
 import java.util.ArrayList;
+import java.util.Collections;
 import java.util.List;
 import java.util.Map;
 import java.util.TreeMap;
@@ -19,7 +20,7 @@ final class CanonicalJsonValue {
         if (value instanceof List<?> list) {
             List<Object> normalized = new ArrayList<>(list.size());
             list.forEach(item -> normalized.add(normalize(item)));
-            return List.copyOf(normalized);
+            return Collections.unmodifiableList(normalized);
         }
         return value;
     }

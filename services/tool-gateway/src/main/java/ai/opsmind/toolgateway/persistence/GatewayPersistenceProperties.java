@@ -10,6 +10,8 @@ public record GatewayPersistenceProperties(
     int maximumResponseBytes,
     Duration executionLeaseDuration
 ) {
+    private static final Duration LEASE_COMPLETION_MARGIN = Duration.ofSeconds(5);
+
     public GatewayPersistenceProperties {
         maximumResponseBytes = maximumResponseBytes == 0 ? 131_072 : maximumResponseBytes;
         executionLeaseDuration = executionLeaseDuration == null
@@ -27,5 +29,25 @@ public record GatewayPersistenceProperties(
             || executionLeaseDuration.compareTo(Duration.ofMinutes(2)) > 0) {
             throw new IllegalStateException("Tool execution lease duration is invalid.");
         }
+    }
+
+    public void validateEnabled(Duration maximumEnabledActionDuration) {
+        validateEnabled();
+        if (maximumEnabledActionDuration == null
+            || maximumEnabledActionDuration.isNegative()) {
+            throw new IllegalStateException("Enabled tool action duration is invalid.");
+        }
+        if (!maximumEnabledActionDuration.isZero()
+            && executionLeaseDuration.compareTo(
+                maximumEnabledActionDuration.plus(LEASE_COMPLETION_MARGIN)
+            ) < 0) {
+            throw new IllegalStateException(
+                "Tool execution lease does not cover the enabled connector duration."
+            );
+        }
+    }
+
+    Duration leaseCompletionMargin() {
+        return LEASE_COMPLETION_MARGIN;
     }
 }

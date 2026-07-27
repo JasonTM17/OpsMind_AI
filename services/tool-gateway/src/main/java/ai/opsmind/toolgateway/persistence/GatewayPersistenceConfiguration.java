@@ -5,6 +5,7 @@ import java.time.Clock;
 import ai.opsmind.toolgateway.application.ExecutionReceiptStore;
 import ai.opsmind.toolgateway.application.NonceReplayStore;
 import ai.opsmind.toolgateway.application.ToolExecutionTransactionRunner;
+import ai.opsmind.toolgateway.application.ToolManifestRegistry;
 import ai.opsmind.toolgateway.audit.ToolAuditWriter;
 
 import tools.jackson.databind.ObjectMapper;
@@ -36,6 +37,11 @@ public class GatewayPersistenceConfiguration {
     }
 
     @Bean
+    GatewayTenantContextSql gatewayTenantContextSql(JdbcTemplate jdbc) {
+        return new GatewayTenantContextSql(jdbc);
+    }
+
+    @Bean
     NonceReplayStore nonceReplayStore(
         JdbcTemplate jdbc,
         TransactionTemplate toolGatewayTransactionTemplate
@@ -46,18 +52,18 @@ public class GatewayPersistenceConfiguration {
     @Bean
     ExecutionReceiptStore executionReceiptStore(
         JdbcTemplate jdbc,
-        TransactionTemplate toolGatewayTransactionTemplate,
         ObjectMapper objectMapper,
         GatewayPersistenceProperties properties,
+        ToolManifestRegistry manifestRegistry,
         Clock gatewayClock
     ) {
-        properties.validateEnabled();
+        properties.validateEnabled(manifestRegistry.maximumEnabledDuration());
         return new JdbcExecutionReceiptStore(
             jdbc,
-            toolGatewayTransactionTemplate,
             objectMapper,
             properties.maximumResponseBytes(),
             properties.executionLeaseDuration(),
+            properties.leaseCompletionMargin(),
             gatewayClock
         );
     }
@@ -69,8 +75,12 @@ public class GatewayPersistenceConfiguration {
 
     @Bean
     ToolExecutionTransactionRunner toolExecutionTransactionRunner(
-        TransactionTemplate toolGatewayTransactionTemplate
+        TransactionTemplate toolGatewayTransactionTemplate,
+        GatewayTenantContextSql gatewayTenantContextSql
     ) {
-        return new JdbcToolExecutionTransactionRunner(toolGatewayTransactionTemplate);
+        return new JdbcToolExecutionTransactionRunner(
+            toolGatewayTransactionTemplate,
+            gatewayTenantContextSql
+        );
     }
 }
