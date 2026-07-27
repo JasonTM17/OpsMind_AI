@@ -6,7 +6,10 @@ import java.util.function.Supplier;
 public final class DirectToolExecutionTransactionRunner implements ToolExecutionTransactionRunner {
 
     @Override
-    public <T> T required(Supplier<T> operation) {
+    public <T> T required(TenantProjectScope scope, Supplier<T> operation) {
+        if (scope == null) {
+            throw new IllegalArgumentException("Tenant and project scope are required.");
+        }
         return operation.get();
     }
 }

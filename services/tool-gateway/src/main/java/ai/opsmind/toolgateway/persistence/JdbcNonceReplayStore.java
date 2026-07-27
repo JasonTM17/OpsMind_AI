@@ -24,17 +24,7 @@ public final class JdbcNonceReplayStore implements NonceReplayStore {
     @Override
     public boolean available() {
         try {
-            Boolean available = jdbc.queryForObject(
-                "SELECT to_regclass('tool_gateway.capability_nonce_claims') IS NOT NULL "
-                    + "AND has_table_privilege(current_user, "
-                    + "'tool_gateway.capability_nonce_claims', 'SELECT') "
-                    + "AND has_table_privilege(current_user, "
-                    + "'tool_gateway.capability_nonce_claims', 'INSERT') "
-                    + "AND has_table_privilege(current_user, "
-                    + "'tool_gateway.capability_nonce_claims', 'DELETE')",
-                Boolean.class
-            );
-            return Boolean.TRUE.equals(available);
+            return GatewayIsolationReadinessSql.nonceStoreReady(jdbc);
         }
         catch (RuntimeException exception) {
             return false;

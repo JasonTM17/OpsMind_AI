@@ -16,6 +16,10 @@ GRANT EXECUTE ON FUNCTION public.opsmind_current_tenant_id()
 GRANT USAGE ON SCHEMA ai_runtime TO opsmind_evaluator;
 GRANT EXECUTE ON FUNCTION ai_runtime.current_tenant_id()
     TO opsmind_evaluation_view_owner, opsmind_evaluator;
+GRANT EXECUTE ON FUNCTION tool_gateway.current_tenant_id()
+    TO opsmind_evaluation_view_owner, opsmind_evaluator;
+GRANT EXECUTE ON FUNCTION tool_gateway.current_project_id()
+    TO opsmind_evaluation_view_owner, opsmind_evaluator;
 
 GRANT SELECT (
     run_id, organization_id, project_id, incident_id, actor_id, status,
@@ -48,8 +52,9 @@ GRANT SELECT (
     status, completed_at
 ) ON tool_gateway.execution_receipts TO opsmind_evaluation_view_owner;
 GRANT SELECT (
-    audit_event_id, execution_id, outcome, request_digest, manifest_version,
-    tool, action, risk_class, connector_id, connector_profile,
+    audit_event_id, tenant_id, project_id, execution_id, outcome,
+    request_digest, manifest_version, tool, action, risk_class,
+    connector_id, connector_profile,
     connector_manifest_byte_digest, result_digest, policy_version, denial_code
 ) ON tool_gateway.tool_audit_events TO opsmind_evaluation_view_owner;
 
@@ -221,6 +226,8 @@ JOIN opsmind_evaluation.scoped_evidence_records evidence
 JOIN tool_gateway.tool_audit_events audit
   ON audit.audit_event_id = evidence.gateway_audit_event_id
  AND audit.execution_id = receipt.execution_id
+ AND audit.tenant_id = receipt.tenant_id
+ AND audit.project_id = receipt.project_id
 WHERE receipt.tenant_id = nullif(current_setting('opsmind.tenant_id', true), '')::uuid
   AND receipt.project_id = nullif(current_setting('opsmind.evaluation_project_id', true), '')::uuid
   AND receipt.incident_id = nullif(current_setting('opsmind.evaluation_incident_id', true), '')::uuid
@@ -266,6 +273,12 @@ BEGIN
        )
        OR NOT has_function_privilege(
             'opsmind_evaluator', 'ai_runtime.current_tenant_id()', 'EXECUTE'
+        )
+       OR NOT has_function_privilege(
+            'opsmind_evaluator', 'tool_gateway.current_tenant_id()', 'EXECUTE'
+       )
+       OR NOT has_function_privilege(
+            'opsmind_evaluator', 'tool_gateway.current_project_id()', 'EXECUTE'
        )
        OR has_table_privilege('opsmind_evaluator', 'public.investigation_runs', 'SELECT')
        OR has_table_privilege('opsmind_evaluator', 'public.investigation_run_events', 'SELECT')

@@ -61,7 +61,7 @@ claimed.
 | `apps/operator-web/` | Next.js server-rendered operator investigation workspace with a server-only Platform client, versioned safe-projection parser, degraded states, and Playwright coverage. |
 | `services/platform-api/` | Spring Boot control plane for OIDC identity, tenant/project access, persistence, messaging primitives, checkpoint 4A incidents, and the Phase 7 deterministic plus PostgreSQL persistence checkpoint. |
 | `services/ai-runtime/` | FastAPI bounded analysis runtime with provider-neutral contracts, DeepSeek adapter, shared PostgreSQL replay/accounting, startup/periodic capability probe, `/health` liveness, and `/ready` readiness; live egress remains disabled. |
-| `services/tool-gateway/` | Spring Boot fail-closed Tool Gateway: separated workload/delegated JWT trust, manifest registry, bounded DLP execution, dedicated PostgreSQL nonce/receipt/audit state, and exact read-only Prometheus query-range connector. Default profiles remain fail closed; durable/live checkpoint has revision-bound CI proof. |
+| `services/tool-gateway/` | Spring Boot fail-closed Tool Gateway: separated workload/delegated JWT trust, capability-derived tenant/project scope, exact-policy forced-RLS receipt/verified-audit state, a tenant-free unverified audit lane, lease-vs-manifest safety validation, bounded DLP execution, and exact read-only Prometheus query-range connector. Default profiles remain fail closed; the new V003 isolation evidence is pending immutable CI. |
 | `evaluation/` | Versioned, training-ineligible A/B/C smoke contracts; strict export/projector, scorer, held-out and human-input validators, schemas, and regression fixtures. Production-path smoke passes; release-scale held-out/human evidence is unavailable. |
 | `packages/contracts/` | Canonical OpenAPI, JSON Schema, and synthetic fixtures. |
 | `scripts/dev/` | Shared command dispatcher and PowerShell/portable launchers. |
@@ -260,12 +260,20 @@ legacy response-less V007 write shape while strictly validating a complete
 normalized response whenever a response-aware writer supplies one. Evaluator
 exports require response-bearing events. The V007-to-V008 upgrade proof retains
 a historical payload unchanged and appends a legacy event after migration;
-the later contract step waits until old writers are drained. Tool Gateway V002 records observed
-tool/action/risk, connector ID/profile, and the digest of the manifest bytes
-selected at runtime. The disposable cross-service harness creates a `NOLOGIN`
-view owner with allowlisted source-column access and a separate non-inheriting,
-read-only evaluator. Security-barrier views require exact transaction-local
-organization, project, incident, run, and actor scope. The evaluator has no
+the later contract step waits until old writers are drained. Tool Gateway V002
+records observed tool/action/risk, connector ID/profile, and the digest of the
+manifest bytes selected at runtime. V003 adds capability-derived
+`TenantProjectScope`, transaction-local tenant/project binding, forced RLS on
+receipts and verified audits, and a separate insert-only lane for
+pre-verification decisions. Global nonces and `execution_id` remain compatible;
+an RLS-invisible foreign-ID collision is a generic conflict. Readiness checks
+schema usage and the exact sole RLS definitions, authenticated delivery
+rejections use the tenant-free audit lane, and startup rejects leases shorter
+than enabled connector duration plus finalization margin. The disposable
+cross-service harness creates a `NOLOGIN` view owner with allowlisted
+source-column access and a separate non-inheriting, read-only evaluator.
+Security-barrier views require exact transaction-local organization, Tool
+Gateway tenant/project, incident, run, and actor scope. The evaluator has no
 raw-table or allowlist-table read grant.
 
 `cross-service-evaluation-export.sql` caps one run at 128 events, 200 evidence

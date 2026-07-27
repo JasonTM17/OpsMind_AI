@@ -2,12 +2,14 @@ package ai.opsmind.toolgateway.persistence;
 
 import java.util.UUID;
 
+import ai.opsmind.toolgateway.application.TenantProjectScope;
 import ai.opsmind.toolgateway.audit.ToolAuditWriter;
 import ai.opsmind.toolgateway.audit.ToolExecutionProvenance;
 import ai.opsmind.toolgateway.domain.DenialCode;
 import ai.opsmind.toolgateway.domain.ToolOutcome;
 
 import org.springframework.jdbc.core.JdbcTemplate;
+import org.springframework.transaction.support.TransactionSynchronizationManager;
 
 public final class JdbcToolAuditWriter implements ToolAuditWriter {
 
@@ -20,13 +22,7 @@ public final class JdbcToolAuditWriter implements ToolAuditWriter {
     @Override
     public boolean available() {
         try {
-            Boolean available = jdbc.queryForObject(
-                "SELECT to_regclass('tool_gateway.tool_audit_events') IS NOT NULL "
-                    + "AND has_table_privilege(current_user, "
-                    + "'tool_gateway.tool_audit_events', 'INSERT')",
-                Boolean.class
-            );
-            return Boolean.TRUE.equals(available);
+            return GatewayIsolationReadinessSql.auditStoreReady(jdbc);
         }
         catch (RuntimeException exception) {
             return false;
@@ -34,7 +30,8 @@ public final class JdbcToolAuditWriter implements ToolAuditWriter {
     }
 
     @Override
-    public UUID record(
+    public UUID recordScoped(
+        TenantProjectScope scope,
         UUID executionId,
         ToolOutcome outcome,
         String requestDigest,
@@ -45,15 +42,23 @@ public final class JdbcToolAuditWriter implements ToolAuditWriter {
         String policyVersion,
         DenialCode denialCode
     ) {
+        if (scope == null) {
+            throw new IllegalArgumentException("Verified audit scope is required.");
+        }
+        if (!TransactionSynchronizationManager.isActualTransactionActive()) {
+            throw new IllegalStateException("Verified audit append requires a scoped transaction.");
+        }
         UUID auditId = UUID.randomUUID();
         int inserted = jdbc.update(
             "INSERT INTO tool_gateway.tool_audit_events "
-                + "(audit_event_id, execution_id, outcome, request_digest, capability_id, "
-                + "manifest_version, tool, action, risk_class, connector_id, "
+                + "(audit_event_id, tenant_id, project_id, execution_id, outcome, "
+                + "request_digest, capability_id, manifest_version, "
+                + "tool, action, risk_class, connector_id, "
                 + "connector_profile, connector_manifest_byte_digest, result_digest, "
                 + "policy_version, denial_code) "
-                + "VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)",
-            auditId, executionId, outcome.name(), requestDigest, capabilityId,
+                + "VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)",
+            auditId, scope.tenantId(), scope.projectId(), executionId,
+            outcome.name(), requestDigest, capabilityId,
             manifestVersion,
             provenance == null ? null : provenance.tool(),
             provenance == null ? null : provenance.action(),
@@ -65,6 +70,34 @@ public final class JdbcToolAuditWriter implements ToolAuditWriter {
             denialCode == null ? null : denialCode.value()
         );
         if (inserted != 1) throw new IllegalStateException("Tool audit append failed.");
+        return auditId;
+    }
+
+    @Override
+    public UUID recordUnverified(
+        UUID executionId,
+        ToolOutcome outcome,
+        String requestDigest,
+        DenialCode denialCode
+    ) {
+        if ((outcome != ToolOutcome.DENIED && outcome != ToolOutcome.FAILED)
+            || denialCode == null) {
+            throw new IllegalArgumentException("Unverified security audit decision is invalid.");
+        }
+        UUID auditId = UUID.randomUUID();
+        int inserted = jdbc.update(
+            "INSERT INTO tool_gateway.unverified_tool_audit_events "
+                + "(audit_event_id, execution_id, outcome, request_digest, denial_code) "
+                + "VALUES (?, ?, ?, ?, ?)",
+            auditId,
+            executionId,
+            outcome.name(),
+            requestDigest,
+            denialCode == null ? null : denialCode.value()
+        );
+        if (inserted != 1) {
+            throw new IllegalStateException("Unverified tool security audit append failed.");
+        }
         return auditId;
     }
 }

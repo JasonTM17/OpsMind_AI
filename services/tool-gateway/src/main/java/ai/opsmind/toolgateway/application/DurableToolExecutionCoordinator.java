@@ -33,11 +33,15 @@ final class DurableToolExecutionCoordinator {
     }
 
     ExecutionReceiptStore.Claim claim(
+        TenantProjectScope scope,
         ToolExecutionRequest request,
         String requestDigest
     ) {
         try {
-            return receiptStore.claim(request, requestDigest);
+            return transactionRunner.required(
+                scope,
+                () -> receiptStore.claim(scope, request, requestDigest)
+            );
         }
         catch (RuntimeException exception) {
             throw denied(
@@ -49,6 +53,7 @@ final class DurableToolExecutionCoordinator {
     }
 
     UUID recordReplay(
+        TenantProjectScope scope,
         UUID executionId,
         String requestDigest,
         String capabilityId,
@@ -58,9 +63,12 @@ final class DurableToolExecutionCoordinator {
         String policyVersion
     ) {
         try {
-            return auditWriter.record(
-                executionId, ToolOutcome.DUPLICATE, requestDigest, capabilityId,
-                manifestVersion, provenance, resultDigest, policyVersion, null
+            return transactionRunner.required(
+                scope,
+                () -> auditWriter.recordScoped(
+                    scope, executionId, ToolOutcome.DUPLICATE, requestDigest, capabilityId,
+                    manifestVersion, provenance, resultDigest, policyVersion, null
+                )
             );
         }
         catch (RuntimeException exception) {
@@ -81,9 +89,12 @@ final class DurableToolExecutionCoordinator {
         String policyVersion
     ) {
         try {
-            return transactionRunner.required(() -> finalizeInTransaction(
-                lease, evidence, capabilityId, manifestVersion, provenance, policyVersion
-            ));
+            return transactionRunner.required(
+                lease.scope(),
+                () -> finalizeInTransaction(
+                    lease, evidence, capabilityId, manifestVersion, provenance, policyVersion
+                )
+            );
         }
         catch (ToolDeniedException exception) {
             throw exception;
@@ -100,7 +111,10 @@ final class DurableToolExecutionCoordinator {
     void abandon(ExecutionReceiptStore.Lease lease) {
         if (lease == null) return;
         try {
-            receiptStore.abandon(lease);
+            transactionRunner.required(lease.scope(), () -> {
+                receiptStore.abandon(lease);
+                return Boolean.TRUE;
+            });
         }
         catch (RuntimeException ignored) {
             // The bounded lease remains reclaimable after expiry.
@@ -146,9 +160,10 @@ final class DurableToolExecutionCoordinator {
         String policyVersion
     ) {
         try {
-            return auditWriter.record(
-                lease.executionId(), ToolOutcome.SUCCEEDED, lease.requestDigest(), capabilityId,
-                manifestVersion, provenance, evidence.contentDigest(), policyVersion, null
+            return auditWriter.recordScoped(
+                lease.scope(), lease.executionId(), ToolOutcome.SUCCEEDED,
+                lease.requestDigest(), capabilityId, manifestVersion, provenance,
+                evidence.contentDigest(), policyVersion, null
             );
         }
         catch (RuntimeException exception) {

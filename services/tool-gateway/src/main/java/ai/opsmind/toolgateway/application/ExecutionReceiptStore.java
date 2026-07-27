@@ -11,7 +11,11 @@ public interface ExecutionReceiptStore {
         return true;
     }
 
-    Claim claim(ToolExecutionRequest request, String requestDigest);
+    Claim claim(
+        TenantProjectScope scope,
+        ToolExecutionRequest request,
+        String requestDigest
+    );
 
     void complete(Lease lease, ToolExecutionResponse response);
 
@@ -25,9 +29,14 @@ public interface ExecutionReceiptStore {
         UNAVAILABLE
     }
 
-    record Lease(UUID executionId, String requestDigest, UUID token) {
+    record Lease(
+        TenantProjectScope scope,
+        UUID executionId,
+        String requestDigest,
+        UUID token
+    ) {
         public Lease {
-            if (executionId == null || requestDigest == null || token == null) {
+            if (scope == null || executionId == null || requestDigest == null || token == null) {
                 throw new IllegalArgumentException("Execution receipt lease is incomplete.");
             }
         }

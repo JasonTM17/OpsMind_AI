@@ -427,16 +427,28 @@ const gatewaySourceRoot = path.join(gatewayRoot, "java", "ai", "opsmind", "toolg
 const gatewayMigrationPath = path.join(
   gatewayRoot, "resources", "db", "migration", "V001__durable_tool_gateway_state.sql",
 );
+const gatewayTenantIsolationMigrationPath = path.join(
+  gatewayRoot, "resources", "db", "migration", "V003__tenant_project_row_security.sql",
+);
 const receiptStorePath = path.join(
   gatewaySourceRoot, "persistence", "JdbcExecutionReceiptStore.java",
 );
 const transactionRunnerPath = path.join(
   gatewaySourceRoot, "persistence", "JdbcToolExecutionTransactionRunner.java",
 );
+const isolationReadinessPath = path.join(
+  gatewaySourceRoot, "persistence", "GatewayIsolationReadinessSql.java",
+);
+const persistencePropertiesPath = path.join(
+  gatewaySourceRoot, "persistence", "GatewayPersistenceProperties.java",
+);
 const gatewayPersistenceFiles = [
   gatewayMigrationPath,
+  gatewayTenantIsolationMigrationPath,
   receiptStorePath,
   transactionRunnerPath,
+  isolationReadinessPath,
+  persistencePropertiesPath,
   path.join(gatewaySourceRoot, "persistence", "JdbcNonceReplayStore.java"),
   path.join(gatewaySourceRoot, "persistence", "JdbcToolAuditWriter.java"),
 ];
@@ -444,9 +456,16 @@ const durableGatewayMarkers = [
   [gatewayMigrationPath, "CREATE TABLE tool_gateway.capability_nonce_claims"],
   [gatewayMigrationPath, "CREATE TABLE tool_gateway.execution_receipts"],
   [gatewayMigrationPath, "tool_audit_events_reject_truncate"],
+  [gatewayTenantIsolationMigrationPath, "FORCE ROW LEVEL SECURITY"],
+  [gatewayTenantIsolationMigrationPath, "unverified_tool_audit_events"],
   [receiptStorePath, "lease_token = ?"],
   [receiptStorePath, "validateCompletedResponse("],
-  [transactionRunnerPath, "transactions.execute("],
+  [receiptStorePath, "completionMarginMilliseconds"],
+  [receiptStorePath, "LEAST(CAST(? AS timestamptz) + (? * INTERVAL '1 millisecond'),"],
+  [transactionRunnerPath, "tenantContext.apply(scope)"],
+  [isolationReadinessPath, "has_schema_privilege(current_user, 'tool_gateway', 'USAGE')"],
+  [isolationReadinessPath, "EXPECTED_POLICY_EXPRESSION"],
+  [persistencePropertiesPath, "LEASE_COMPLETION_MARGIN"],
 ];
 const durableGatewayPresent = gatewayPersistenceFiles.every(fs.existsSync)
   && durableGatewayMarkers.every(([file, marker]) =>

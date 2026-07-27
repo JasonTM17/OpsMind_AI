@@ -127,7 +127,9 @@ A failed gate cannot be converted to a warning solely to meet a schedule.
 - Tool Gateway receipt leases use PostgreSQL transaction time. Connector I/O
   occurs between the claim and finalization transactions; successful audit and
   receipt completion commit together. Rollback preserves the reclaimable lease
-  and never publishes an unaudited success.
+  and never publishes an unaudited success. The effective expiry is bounded by
+  both the configured lease and request deadline plus the fixed completion
+  margin; do not remove the margin from claim/reclaim SQL.
 - Apply Platform V008 before deploying response-aware investigation writers.
   V008 is the expand step and accepts both exact legacy and strictly validated
   response-bearing `ANALYSIS_ACCEPTED` events. Drain every legacy writer and
@@ -137,6 +139,24 @@ A failed gate cannot be converted to a warning solely to meet a schedule.
   V002 permits the exact legacy null tuple during the rolling window and
   requires all six observed-provenance fields together from new writers.
   Evaluation-eligible runs require the complete tuple.
+- Treat Tool Gateway V003 as a controlled security boundary, not a mixed-writer
+  expand window. Drain V002 runtime, apply V003 as
+  `opsmind_tool_gateway_migrator`, then start only a scope-aware runtime. V003
+  forces tenant/project RLS for receipts and verified audits; an old runtime
+  fails closed because it cannot bind transaction-local context.
+- Pre-verification denials append only to
+  `tool_gateway.unverified_tool_audit_events`. Do not copy request tenant/project
+  values into that lane. Historical V001/V002 audit rows retain NULL scope and
+  must not be backfilled with guessed attribution.
+- Promotion requires the V002-to-V003 disposable upgrade transcript plus the
+  PostgreSQL pool-reuse/cross-tenant matrix. On failure, restore a
+  V003-compatible runtime or add a forward migration; never disable forced RLS,
+  edit V001/V002, or reuse the migration login in the application pool.
+- Keep `TOOL_GATEWAY_EXECUTION_LEASE_DURATION` at least as long as the maximum
+  enabled manifest timeout plus the runtime's five-second finalization margin.
+  Startup rejects unsafe shorter values. Readiness must also fail after schema
+  `USAGE` loss, extra/replaced policies, or any drift from the exact
+  tenant-and-project `USING` and `WITH CHECK` definition.
 - Apply Platform V009 before enabling the incident activity vendor media type.
   V009 creates the two activity ordering indexes concurrently and is configured
   outside a Flyway transaction. The persistence profile also disables Flyway's
@@ -275,9 +295,9 @@ pre-production reconciliation gate.
 ## Active Release Blockers
 
 `B-004`, `B-005`, `B-006`, `B-007`, `B-008`, `B-011`, `B-012`, `B-013`,
-`B-015`, and `B-016` remain active. They respectively block provider/legal
+and `B-015` remain active. They respectively block provider/legal
 egress, live-connector proof, evidence lifecycle, load/SLO, data lifecycle,
 RTO/restore alignment, object-store supply-chain posture, held-out/human
-evaluation, Dependabot disposition, and Tool Gateway tenant isolation. See
-[Blockers](./blockers.md) for owners and required evidence; no deployment gate
-may treat this timeline implementation as resolving any of them.
+evaluation, and Dependabot disposition. B-016 tenant isolation is resolved by
+the immutable CI evidence recorded in [Progress](./progress.md), but no
+deployment gate may treat this slice as resolving the remaining blockers.
