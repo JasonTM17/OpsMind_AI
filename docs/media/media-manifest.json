@@ -3,8 +3,8 @@
   "media": [
     {
       "path": "docs/media/operator-investigation-workspace.png",
-      "sha256": "4b4781a3d66ea5d169d463cff7304862994df018f2f57814f64010896e234b0f",
-      "byteSize": 234318,
+      "sha256": "a5ebd654cb2971351c012cae6313758a8736cdfa2625b9549de9aad188a65313",
+      "byteSize": 233748,
       "mediaType": "image/png",
       "width": 1280,
       "height": 1831,
@@ -14,8 +14,8 @@
     },
     {
       "path": "docs/media/operator-investigation-workspace-walkthrough.gif",
-      "sha256": "23bda9fce995dd9ed03747b8a0458bc5a8cb5c09eaee108ceaed660f8cb0afc2",
-      "byteSize": 616356,
+      "sha256": "04fdb00aba0817bec345e8bce9a4dd50ecb0071c30150ca684c2be0c47c2f826",
+      "byteSize": 613249,
       "mediaType": "image/gif",
       "width": 720,
       "height": 480,

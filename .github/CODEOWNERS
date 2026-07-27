@@ -1,0 +1,21 @@
+# Every path has an owner so no change reaches main unreviewed.
+# Later rules win, so the specific entries below override the catch-all.
+
+*                                       @JasonTM17
+
+# Security boundaries. A change here alters what the system will refuse.
+/services/tool-gateway/                 @JasonTM17
+/services/platform-api/src/main/resources/db/migration/  @JasonTM17
+/services/ai-runtime/src/opsmind_ai_runtime/application/egress_policy.py  @JasonTM17
+/scripts/governance/                    @JasonTM17
+/docs/security-model.md                 @JasonTM17
+/docs/blockers.md                       @JasonTM17
+
+# Evidence contracts. A change here alters what counts as proof.
+/evaluation/                            @JasonTM17
+/scripts/validation/                    @JasonTM17
+/packages/contracts/                    @JasonTM17
+
+# Delivery surface.
+/.github/workflows/                     @JasonTM17
+/compose.yaml                           @JasonTM17
