@@ -1,7 +1,7 @@
 ---
 phase: 3
 title: "Verification and Gate Integration"
-status: in-progress
+status: completed
 priority: P1
 dependencies: [2]
 ---
@@ -10,7 +10,10 @@ dependencies: [2]
 
 ## Overview
 
-Finish the bridge with validator, doc, and review gates only. Current project docs and validators still describe timeline linkage as missing (`plans/260719-1747-opsmind-ai-production-platform/phase-07-thin-evidence-backed-incident-vertical-slice.md:66-80`, `docs/project-roadmap.md:104-119`); this phase updates those statements without overstating Phase 7 or Phase 9 completion.
+At plan start, project docs and validators described timeline linkage as
+missing. This phase completed the validator, documentation, immutable-evidence,
+and review gates without claiming broader Phase 7, Phase 9, G3, or release
+completion.
 
 ## Requirements
 
@@ -59,6 +62,16 @@ Finish the bridge with validator, doc, and review gates only. Current project do
 - `mvn -f services/platform-api/pom.xml test`
 - Review gate: `ck code-review` or repository-standard code review checklist against the timeline diff
 
+## Completion Evidence
+
+The immutable evidence block in [the plan](./plan.md#immutable-completion-evidence)
+binds completion to source `a975f922fcd93c71479b9e15563643a9ea1aa04f`.
+PR Quality run `30257587569` is terminal green; PostgreSQL job `89950772823`
+and artifact `8650178111` prove the V009 and 3/3 activity-route gates.
+Cross-service run `30257587543` and artifact `8649696519` preserve the Phase 7
+OperatorWorkspace/CrossService/Checkpoint/PhaseExit `PASS` regression and A/B/C
+results. These remain CI fixture/test gates, not production SLO evidence.
+
 ## Risk Assessment
 
 - Medium: validators pass on marker strings while runtime behavior drifts. Mitigation: keep HTTP/integration tests from Phase 2 mandatory before claiming success.
@@ -72,6 +85,6 @@ Finish the bridge with validator, doc, and review gates only. Current project do
 
 ## Success Criteria
 
-- [ ] Phase 4/4B/7 validators pass with the representation v1 contract, ANALYZE-only eight-field bridge, and V009 fresh/upgrade/recovery evidence.
+- [x] Phase 4/4B/7 validators pass with the representation v1 contract, ANALYZE-only eight-field bridge, and V009 fresh/upgrade/recovery evidence.
 - [x] Docs state that incident activity timeline linkage is delivered, while the remaining Phase 7/8/9 blockers stay explicit.
 - [x] A focused review confirms legacy v1 compatibility, data classification, same-tenant isolation, live-view cursor semantics, negotiation/cache safety, bounded query plan, migration recovery, and no forbidden-byte leakage.

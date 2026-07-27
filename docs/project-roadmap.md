@@ -30,7 +30,7 @@ The detailed executable plan is [plans/260719-1747-opsmind-ai-production-platfor
 | 4 | Incident control plane, evidence lifecycle, and audit | G2/G3 | In progress; checkpoint 4A local proof complete |
 | 5 | DeepSeek AI runtime and provider gateway | G3 | In progress; static checkpoint passed, exit gate blocked |
 | 6 | Safe Tool Gateway and read-only connectors | G3 | In progress; durable Prometheus checkpoint PASS, PhaseExitGate BLOCK |
-| 7 | Evidence-backed incident vertical slice | G3 | In progress; metadata activity route delivered in current worktree, revision-bound CI/performance gates and external blockers remain |
+| 7 | Evidence-backed incident vertical slice | G3 | In progress; metadata activity route and V009 CI fixture gates pass; external G3 blockers remain |
 | 8 | Simulator and evaluation baseline | A-Z G4 / roadmap G7 | In progress; Phase 8B complete, held-out/human/calibration evidence unavailable, exit BLOCK |
 | 9 | Durable Temporal investigation workflow | G4 | Pending; infrastructure may start, threshold freeze/exit waits for reviewed human pilot |
 | 10 | Permission-aware RAG and knowledge lifecycle | G5 | Pending |
@@ -126,16 +126,15 @@ require a fresh traversal. No investigation event is copied into the incident
 ledger.
 
 V009 builds two ordering indexes concurrently and outside a Flyway transaction,
-before new application code is rolled out. Timeline-plan Phases 2 and 3 remain
-pending until revision-bound CI proves fresh and V008-to-V009 migration,
-failure recovery, bounded plans, at least 50,000 rows in each source ledger,
-append/read latency thresholds, and index-storage budgets. No production SLO
-or phase completion is claimed from the source implementation alone.
+before new application code is rolled out. Timeline-plan Phases 2 and 3 are
+completed for this plan slice by PR Quality run `30257587569`, PostgreSQL job
+`89950772823`, and artifact `8650178111`. Fresh/upgrade, failed-build recovery,
+bounded plans, 60,600/61,206 source rows, append/vendor latency, index storage,
+legacy writes, cleanup, and the 3/3 activity HTTP matrix pass. The measured
+fixture gates are not production SLO or rollout evidence. Migration-before-
+code and forward recovery remain mandatory.
 
-The activity integration test and V009 upgrade/recovery proof are wired into
-the PostgreSQL CI matrix, but neither supplies proof until a terminal,
-revision-bound artifact exists. The required 50,000-row, query-plan, latency,
-and storage evidence therefore remains pending. Active program blockers remain explicit: `B-004`
+Active program blockers remain explicit: `B-004`
 (provider/legal), `B-005` (named live connector), `B-006` (evidence lifecycle),
 `B-007` (load/SLO), `B-008` (retention/deletion), `B-011` (RTO/restore),
 `B-012` (object-store supply chain), `B-013` (held-out/human evaluation),
@@ -156,13 +155,12 @@ evaluation-eligible; contract enforcement waits for old-writer drain.
 Every accepted invocation contributes to run cost; durable audit/receipt/
 evidence digests are exact-bound. Scenario C is independent of evidence
 row/UUID order. Reparse-safe managed paths and cleanup-first secret/export
-deletion protect failure paths. The 52-test evaluation suite passes. PR-quality
-run `30209210001` and cross-service run `30209209999` are terminal green for
-revision `df462031`; fresh A/B/C score `PASS` on all eight metrics
-with samples `100/1/1` and `GitTree=0`. Artifact `8634029083` attests service and
-source hashes; tracked-source hashes independently match, and the preceding
-`5dfbc00` artifact ZIP hash was independently recomputed. Two blocking
-process-supervision reviews pass.
+deletion protect failure paths. The exact CI evaluation command passes 61/61.
+PR-quality run `30257587569` and cross-service run `30257587543` are terminal
+green for revision `a975f922`; fresh A/B/C score `PASS` on all eight metrics
+with samples `100/1/1` and `GitTree=0`. Artifact `8649696519` attests the run
+and preserves the Phase 7 regression. Two blocking process-supervision reviews
+pass.
 The earlier run `30200584275` on `134d63c` remains historical first-green
 evidence. Held-out governance, preregistered Wilson reporting, and the human
 protocol are implemented, but held-out payloads and qualified human records/

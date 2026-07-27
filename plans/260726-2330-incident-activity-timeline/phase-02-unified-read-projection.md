@@ -1,7 +1,7 @@
 ---
 phase: 2
 title: "Unified Read Projection"
-status: in-progress
+status: completed
 priority: P1
 dependencies: [1]
 ---
@@ -10,7 +10,10 @@ dependencies: [1]
 
 ## Overview
 
-Implement the metadata-only bridge in the existing incident query stack. The current authorized transaction gates access before the timeline query runs (`services/platform-api/src/main/java/ai/opsmind/platform/incident/IncidentQueryService.java:84-107`); this phase keeps legacy JSON on `READ`, adds an ANALYZE-only vendor query in the same service/repository stack, and wires the contract created in Phase 1.
+This phase implemented the metadata-only bridge in the existing incident query
+stack. The authorized transaction gates access before the timeline query runs;
+legacy JSON remains on `READ`, while the opt-in vendor query uses `ANALYZE` in
+the same service/repository stack.
 
 ## Requirements
 
@@ -64,6 +67,15 @@ Implement the metadata-only bridge in the existing incident query stack. The cur
 - `$env:OPSMIND_PHASE4_DB_INTEGRATION='true'; $env:OPSMIND_PHASE7_DB_INTEGRATION='true'; mvn -f services/platform-api/pom.xml "-Dtest=IncidentActivityTimelineHttpIntegrationTest,IncidentHttpPersistenceIntegrationTest,InvestigationPersistenceIntegrationTest,InvestigationEvidencePersistenceIntegrationTest" test`
 - V008-to-V009 upgrade plus fresh migration run; record valid-index catalog state, query plan, migration duration, append p95 before/after/delta, vendor-read p95, row counts, index bytes, `pg_table_size`, and the evidence-gated recovery result.
 
+## Completion Evidence
+
+The immutable evidence block in [the plan](./plan.md#immutable-completion-evidence)
+binds this phase to source `a975f922fcd93c71479b9e15563643a9ea1aa04f`,
+successful PR Quality run `30257587569`, PostgreSQL artifact `8650178111`, and
+successful cross-service run `30257587543`. It proves the representation,
+authorization, isolation, V009 recovery/query-plan, latency, and storage gates.
+Those measurements are CI fixture/test evidence, not production SLO evidence.
+
 ## Risk Assessment
 
 - High: late/backdated commits fall before an issued cursor. Mitigation: explicitly expose a forward-only live view, test this boundary, and require a new snapshot/feed design before any lossless claim.
@@ -82,5 +94,5 @@ Implement the metadata-only bridge in the existing incident query stack. The cur
 - [x] Vendor representation v1 returns only the eight-field contract, is ANALYZE-only, and uses the strictly parsed v2 live-view cursor.
 - [x] The vendor media type and 406 response are published in OpenAPI only with the real controller/service/repository path; the legacy OpenAPI response remains compatible.
 - [x] The current JSON route still reads only `incident_timeline_events` through the unchanged v1 path.
-- [ ] Same-tenant and cross-tenant negatives prove both branches stay scoped; forbidden sentinels are absent from response bytes.
-- [ ] V009 is online, forward-recoverable, fresh/upgrade tested, and its representative query plan/append/storage budgets pass without a ledger rewrite, copy, or view.
+- [x] Same-tenant and cross-tenant negatives prove both branches stay scoped; forbidden sentinels are absent from response bytes.
+- [x] V009 is online, forward-recoverable, fresh/upgrade tested, and its representative query plan/append/storage budgets pass without a ledger rewrite, copy, or view.
