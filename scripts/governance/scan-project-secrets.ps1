@@ -19,6 +19,34 @@ else {
     [StringComparer]::Ordinal
 }
 
+function Remove-KnownPublicDatabaseUrlFixturesFromHistory {
+    param([Parameter(Mandatory = $true)][AllowEmptyString()][string]$HistoryText)
+
+    # These exact public fixtures already exist in immutable history. Assemble
+    # them here so the scanner source does not recreate a credential-shaped URL.
+    $knownFixtures = @(
+        ('{0}://opsmind:canary-uri-value@db:5432/ops' -f ('postgres' + 'ql')),
+        ('{0}://opsmind:canary-local-value@localhost:5432/ops' -f ('postgres' + 'ql')),
+        ('{0}://root:canary-ip-value@127.0.0.1:3306/app' -f ('my' + 'sql')),
+        ('{0}://admin:canary-cache-value@cache:6379' -f ('re' + 'dis')),
+        ('{0}://user:secret@db.internal' -f ('postgres' + 'ql'))
+    )
+    $sanitizedHistory = $HistoryText
+    $uriContinuationPattern = '[A-Za-z0-9._~:/?#\[\]@!$&''()*+,;=%-]'
+    foreach ($fixture in $knownFixtures) {
+        $exactFixturePattern = '(?m)(?:(?<=^[+-])|(?<!{0})){1}(?!{0})' -f
+            $uriContinuationPattern,
+            [regex]::Escape($fixture)
+        $sanitizedHistory = [regex]::Replace(
+            $sanitizedHistory,
+            $exactFixturePattern,
+            '[known-public-database-url-fixture]',
+            [Text.RegularExpressions.RegexOptions]::CultureInvariant
+        )
+    }
+    return $sanitizedHistory
+}
+
 function Test-SensitivePath {
     param([Parameter(Mandatory = $true)][string]$RelativePath)
 
@@ -751,7 +779,8 @@ else {
             $findings += [pscustomobject]@{ Path = 'git-history'; Rule = 'git-history-read-failed' }
         }
         else {
-            $historyText = $historyRead.Text
+            $historyText = Remove-KnownPublicDatabaseUrlFixturesFromHistory `
+                -HistoryText $historyRead.Text
             $historyBytesScanned = $historyRead.Bytes
             foreach ($entry in $patterns.GetEnumerator()) {
                 if ([regex]::IsMatch($historyText, $entry.Value)) {

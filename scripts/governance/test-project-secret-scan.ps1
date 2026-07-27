@@ -25,6 +25,43 @@ function Invoke-SecretScan {
     }
 }
 
+function Invoke-DatabaseUrlHistoryNearMissScan {
+    param(
+        [Parameter(Mandatory = $true)][string]$ScannerPath,
+        [Parameter(Mandatory = $true)][string]$CaseRoot,
+        [Parameter(Mandatory = $true)][string]$EvidencePath,
+        [Parameter(Mandatory = $true)][string]$DatabaseUrl,
+        [Parameter(Mandatory = $true)][Text.Encoding]$Encoding
+    )
+
+    [void](New-Item -ItemType Directory -Path $CaseRoot -Force)
+    & git -C $CaseRoot init --quiet
+    if ($LASTEXITCODE -ne 0) { throw 'Unable to initialize database URL near-miss repository.' }
+    & git -C $CaseRoot config user.name 'OpsMind Test'
+    if ($LASTEXITCODE -ne 0) { throw 'Unable to configure database URL near-miss identity.' }
+    & git -C $CaseRoot config user.email 'opsmind-test@example.invalid'
+    if ($LASTEXITCODE -ne 0) { throw 'Unable to configure database URL near-miss identity.' }
+
+    $fixtureName = 'database-url-history-near-miss.txt'
+    $fixturePath = Join-Path $CaseRoot $fixtureName
+    [IO.File]::WriteAllText($fixturePath, $DatabaseUrl, $Encoding)
+    & git -C $CaseRoot add -- $fixtureName
+    if ($LASTEXITCODE -ne 0) { throw 'Unable to stage database URL history near miss.' }
+    & git -C $CaseRoot commit --quiet -m 'test database URL history near miss'
+    if ($LASTEXITCODE -ne 0) { throw 'Unable to commit database URL history near miss.' }
+    & git -C $CaseRoot rm --quiet -- $fixtureName
+    if ($LASTEXITCODE -ne 0) { throw 'Unable to remove database URL history near miss.' }
+    & git -C $CaseRoot commit --quiet -m 'remove database URL history near miss'
+    if ($LASTEXITCODE -ne 0) { throw 'Unable to commit database URL history near-miss removal.' }
+
+    Invoke-SecretScan -ScannerPath $ScannerPath -RepositoryRoot $CaseRoot `
+        -EvidencePath $EvidencePath `
+        -ExpectedExitCode 7 -ExpectedRule 'credential-bearing-database-url'
+    if (-not (Select-String -LiteralPath $EvidencePath -SimpleMatch 'FindingPath=git-history;Rule=credential-bearing-database-url' -Quiet)) {
+        throw 'Expected isolated database URL history near miss to remain blocked.'
+    }
+}
+
 function Test-ReparsePointInRepositoryPath {
     param(
         [Parameter(Mandatory = $true)][string]$Path,
@@ -75,6 +112,7 @@ $ignoredEnvironmentPath = Join-Path $isolatedRepository ".env.opsmind-secret-sca
 $extensionlessPath = Join-Path $isolatedRepository "opsmind-secret-scan-test-$suffix"
 $utf32Path = Join-Path $isolatedRepository "utf32-canary-$suffix.conf"
 $genericCredentialPath = Join-Path $isolatedRepository "credential-canary-$suffix.conf"
+$knownNonSecretDatabaseUrlPath = Join-Path $isolatedRepository "known-database-url-canary-$suffix.txt"
 $benignTokenSourcePath = Join-Path $isolatedRepository "benign-token-source-$suffix.txt"
 $emptyTextPath = Join-Path $isolatedRepository "empty-text-$suffix.txt"
 $historyCanaryPath = Join-Path $isolatedRepository "history-canary-$suffix.txt"
@@ -168,6 +206,44 @@ try {
         -EvidencePath (Join-Path $isolatedEvidenceRoot 'benign-source-token-names.txt') `
         -ExpectedExitCode 0
     Remove-Item -LiteralPath $benignTokenSourcePath -Force
+
+    $knownNonSecretDatabaseUrlCredentials = @(
+        ('canary-' + 'uri-value'),
+        ('canary-' + 'local-value'),
+        ('canary-' + 'ip-value'),
+        ('canary-' + 'cache-value')
+    )
+    $knownNonSecretDatabaseUrls = @(
+        ('{0}://{1}:{2}@db:5432/ops' -f
+            ('postgres' + 'ql'), 'opsmind', $knownNonSecretDatabaseUrlCredentials[0]),
+        ('{0}://{1}:{2}@localhost:5432/ops' -f
+            ('postgres' + 'ql'), 'opsmind', $knownNonSecretDatabaseUrlCredentials[1]),
+        ('{0}://{1}:{2}@127.0.0.1:3306/app' -f
+            'mysql', 'root', $knownNonSecretDatabaseUrlCredentials[2]),
+        ('{0}://{1}:{2}@cache:6379' -f
+            'redis', 'admin', $knownNonSecretDatabaseUrlCredentials[3]),
+        ('{0}://{1}:{2}@db.internal' -f
+            ('postgres' + 'ql'), 'user', 'secret')
+    )
+    [IO.File]::WriteAllText(
+        $knownNonSecretDatabaseUrlPath,
+        ($knownNonSecretDatabaseUrls -join "`n"),
+        $encoding
+    )
+    Invoke-SecretScan -ScannerPath $scannerPath -RepositoryRoot $isolatedRepository `
+        -EvidencePath (Join-Path $isolatedEvidenceRoot 'known-database-url-working-tree.txt') `
+        -ExpectedExitCode 7 -ExpectedRule 'credential-bearing-database-url'
+    & git -C $isolatedRepository add -- ([IO.Path]::GetFileName($knownNonSecretDatabaseUrlPath))
+    if ($LASTEXITCODE -ne 0) { throw 'Unable to stage known public database URL fixtures.' }
+    & git -C $isolatedRepository commit --quiet -m 'test known public database URL history fixtures'
+    if ($LASTEXITCODE -ne 0) { throw 'Unable to commit known public database URL fixtures.' }
+    & git -C $isolatedRepository rm --quiet -- ([IO.Path]::GetFileName($knownNonSecretDatabaseUrlPath))
+    if ($LASTEXITCODE -ne 0) { throw 'Unable to remove known public database URL fixtures.' }
+    & git -C $isolatedRepository commit --quiet -m 'remove known public database URL history fixtures'
+    if ($LASTEXITCODE -ne 0) { throw 'Unable to commit known public database URL fixture removal.' }
+    Invoke-SecretScan -ScannerPath $scannerPath -RepositoryRoot $isolatedRepository `
+        -EvidencePath (Join-Path $isolatedEvidenceRoot 'known-database-url-history.txt') `
+        -ExpectedExitCode 0
 
     $providerCanary = 'sk-proj-' + ('A' * 32)
     [void](New-Item -ItemType Directory -Path $excludedToolingPath -Force)
@@ -292,6 +368,26 @@ try {
         throw 'Expected history-only secret finding was not recorded against git-history.'
     }
 
+    $databaseUrlNearMisses = @(
+        ('{0}://opsmind:CANARY-URI-VALUE@db:5432/ops' -f ('postgres' + 'ql')),
+        ('{0}://other:canary-uri-value@db:5432/ops' -f ('postgres' + 'ql')),
+        ('{0}://opsmind:canary-uri-value@db.example:5432/ops' -f ('postgres' + 'ql')),
+        ('{0}://user:secret@db.internal.evil/real' -f ('postgres' + 'ql')),
+        ('{0}://user:secret@db.internal:5432/real' -f ('postgres' + 'ql')),
+        ('{0}://user:secret@db.internal/real' -f ('postgres' + 'ql')),
+        ('{0}://user:secret1@db.internal' -f ('postgres' + 'ql')),
+        ('{0}://opsmind:canary-uri-value@db:5432/ops' -f 'postgres')
+    )
+    for ($nearMissIndex = 0; $nearMissIndex -lt $databaseUrlNearMisses.Count; $nearMissIndex++) {
+        $caseName = 'database-url-near-miss-{0:D2}' -f ($nearMissIndex + 1)
+        Invoke-DatabaseUrlHistoryNearMissScan `
+            -ScannerPath $scannerPath `
+            -CaseRoot (Join-Path $evidenceRoot $caseName) `
+            -EvidencePath (Join-Path $isolatedEvidenceRoot "$caseName.txt") `
+            -DatabaseUrl $databaseUrlNearMisses[$nearMissIndex] `
+            -Encoding $encoding
+    }
+
     [IO.File]::WriteAllText($historicalSensitivePath, 'FEATURE_FLAG=enabled', $encoding)
     & git -C $isolatedRepository add -- '.env'
     if ($LASTEXITCODE -ne 0) { throw 'Unable to stage historical sensitive-path canary.' }
@@ -325,11 +421,11 @@ try {
         -EvidencePath (Join-Path $isolatedEvidenceRoot 'binary-history.txt') `
         -ExpectedExitCode 7 -ExpectedRule 'binary-history-unscanned'
 
-    Write-Output 'Project secret-scan tests: PASS (17/17)'
+    Write-Output 'Project secret-scan tests: PASS (26/26)'
 }
 finally {
     $env:OPS_ARTIFACT_ROOT = $previousArtifactRoot
-    foreach ($path in @($ignoredEnvironmentPath, $extensionlessPath, $utf32Path, $genericCredentialPath, $benignTokenSourcePath, $emptyTextPath, $historyCanaryPath, $binaryCanaryPath, $stagedCanaryPath, $historicalSensitivePath, $externalArtifactCanaryPath)) {
+    foreach ($path in @($ignoredEnvironmentPath, $extensionlessPath, $utf32Path, $genericCredentialPath, $knownNonSecretDatabaseUrlPath, $benignTokenSourcePath, $emptyTextPath, $historyCanaryPath, $binaryCanaryPath, $stagedCanaryPath, $historicalSensitivePath, $externalArtifactCanaryPath)) {
         if (Test-Path -LiteralPath $path -PathType Leaf) {
             Remove-Item -LiteralPath $path -Force
         }
