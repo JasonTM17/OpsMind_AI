@@ -27,6 +27,18 @@ OpsMind AI is built as an evidence-first AI SRE/DevSecOps platform. Contribution
 
 Use the pull request template. Include exact verification commands, artifact paths, capacity results, and unresolved questions. A maintainer may request a plan or a narrower vertical slice before implementation.
 
+## Branch protection
+
+`main` refuses force pushes and branch deletion, and requires review
+conversations to be resolved before merge. History on `main` is append-only in
+practice: a mistake is corrected by a further commit, not by rewriting what
+others may already have pulled.
+
+Ownership of every path is declared in [CODEOWNERS](.github/CODEOWNERS). The
+security and evidence boundaries are listed there explicitly rather than left to
+the catch-all, because a change to what the system refuses deserves a named
+reviewer.
+
 ## Security issues
 
 Do not open a public issue for a vulnerability. Follow [SECURITY.md](SECURITY.md) and use GitHub's private advisory flow.
