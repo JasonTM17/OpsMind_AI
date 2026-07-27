@@ -56,6 +56,10 @@ release secrets or short-lived workload identities and never checked in.
 - Provider egress is limited to redacted metrics and redacted log summaries,
   with no provider retention, approved region/terms, a USD 1,000 monthly
   budget, and human-only fallback.
+- The checked-in DeepSeek base URL is the official OpenAI-compatible origin
+  `https://api.deepseek.com`; `AI_PROVIDER=disabled` and
+  `OPS_ENABLE_DEEPSEEK_EGRESS=false` still keep all provider traffic off until
+  the conformance gate is approved.
 - `B-004` remains active: do not run a live DeepSeek smoke or permit production
   egress until provider region, processing terms, retention behavior, and
   redaction controls are verified. The required synthetic smoke also needs an
