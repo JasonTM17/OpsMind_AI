@@ -11,7 +11,11 @@ public final class FailClosedExecutionReceiptStore implements ExecutionReceiptSt
     }
 
     @Override
-    public Claim claim(ToolExecutionRequest request, String requestDigest) {
+    public Claim claim(
+        TenantProjectScope scope,
+        ToolExecutionRequest request,
+        String requestDigest
+    ) {
         return Claim.of(ClaimStatus.UNAVAILABLE);
     }
 

@@ -12,14 +12,23 @@ public final class FixtureExecutionReceiptStore implements ExecutionReceiptStore
     private final ConcurrentHashMap<UUID, Entry> entries = new ConcurrentHashMap<>();
 
     @Override
-    public Claim claim(ToolExecutionRequest request, String requestDigest) {
+    public Claim claim(
+        TenantProjectScope scope,
+        ToolExecutionRequest request,
+        String requestDigest
+    ) {
+        if (scope == null || !scope.matches(request)) {
+            throw new IllegalArgumentException("Execution receipt scope is invalid.");
+        }
         UUID token = UUID.randomUUID();
-        Entry candidate = new Entry(requestDigest, token, null);
+        Entry candidate = new Entry(scope, requestDigest, token, null);
         Entry current = entries.putIfAbsent(request.executionId(), candidate);
         if (current == null) {
-            return Claim.claimed(new Lease(request.executionId(), requestDigest, token));
+            return Claim.claimed(new Lease(scope, request.executionId(), requestDigest, token));
         }
-        if (!current.requestDigest().equals(requestDigest)) return Claim.of(ClaimStatus.CONFLICT);
+        if (!current.scope().equals(scope) || !current.requestDigest().equals(requestDigest)) {
+            return Claim.of(ClaimStatus.CONFLICT);
+        }
         if (current.response() == null) return Claim.of(ClaimStatus.IN_PROGRESS);
         return new Claim(ClaimStatus.REPLAY, current.response(), null);
     }
@@ -28,8 +37,8 @@ public final class FixtureExecutionReceiptStore implements ExecutionReceiptStore
     public void complete(Lease lease, ToolExecutionResponse response) {
         boolean replaced = entries.replace(
             lease.executionId(),
-            new Entry(lease.requestDigest(), lease.token(), null),
-            new Entry(lease.requestDigest(), null, response)
+            new Entry(lease.scope(), lease.requestDigest(), lease.token(), null),
+            new Entry(lease.scope(), lease.requestDigest(), null, response)
         );
         if (!replaced) throw new IllegalStateException("Execution receipt claim was lost.");
     }
@@ -38,9 +47,14 @@ public final class FixtureExecutionReceiptStore implements ExecutionReceiptStore
     public void abandon(Lease lease) {
         entries.remove(
             lease.executionId(),
-            new Entry(lease.requestDigest(), lease.token(), null)
+            new Entry(lease.scope(), lease.requestDigest(), lease.token(), null)
         );
     }
 
-    private record Entry(String requestDigest, UUID leaseToken, ToolExecutionResponse response) { }
+    private record Entry(
+        TenantProjectScope scope,
+        String requestDigest,
+        UUID leaseToken,
+        ToolExecutionResponse response
+    ) { }
 }

@@ -127,11 +127,16 @@ class ToolExecutionDurabilityFailureTest {
         }
 
         @Override
-        public Claim claim(ToolExecutionRequest request, String requestDigest) {
+        public Claim claim(
+            TenantProjectScope scope,
+            ToolExecutionRequest request,
+            String requestDigest
+        ) {
             if (failurePoint == FailurePoint.CLAIM) {
                 throw new IllegalStateException("receipt claim unavailable");
             }
             return Claim.claimed(new Lease(
+                scope,
                 request.executionId(),
                 requestDigest,
                 UUID.randomUUID()

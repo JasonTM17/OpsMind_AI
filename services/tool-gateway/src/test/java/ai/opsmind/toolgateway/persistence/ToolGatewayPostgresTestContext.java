@@ -5,9 +5,14 @@ import java.security.MessageDigest;
 import java.time.Clock;
 import java.time.Duration;
 import java.util.HexFormat;
+import java.util.function.Supplier;
 
 import javax.sql.DataSource;
 
+import ai.opsmind.toolgateway.application.TenantProjectScope;
+
+import com.zaxxer.hikari.HikariConfig;
+import com.zaxxer.hikari.HikariDataSource;
 import tools.jackson.databind.json.JsonMapper;
 
 import org.springframework.jdbc.core.JdbcTemplate;
@@ -20,7 +25,10 @@ final class ToolGatewayPostgresTestContext {
     private final DataSource runtimeDataSource;
     private final JdbcTemplate runtimeJdbc;
     private final JdbcTemplate migratorJdbc;
+    private final JdbcTemplate adminJdbc;
     private final TransactionTemplate transactions;
+    private final GatewayTenantContextSql tenantContext;
+    private final JdbcToolExecutionTransactionRunner transactionRunner;
     private final JsonMapper objectMapper;
 
     ToolGatewayPostgresTestContext() {
@@ -36,8 +44,18 @@ final class ToolGatewayPostgresTestContext {
             required("POSTGRES_TOOL_GATEWAY_MIGRATOR_USER"),
             required("POSTGRES_TOOL_GATEWAY_MIGRATOR_PASSWORD")
         ));
+        adminJdbc = new JdbcTemplate(dataSource(
+            url,
+            required("POSTGRES_USER"),
+            required("POSTGRES_PASSWORD")
+        ));
         transactions = new TransactionTemplate(
             new DataSourceTransactionManager(runtimeDataSource)
+        );
+        tenantContext = new GatewayTenantContextSql(runtimeJdbc);
+        transactionRunner = new JdbcToolExecutionTransactionRunner(
+            transactions,
+            tenantContext
         );
         objectMapper = JsonMapper.builder().findAndAddModules().build();
     }
@@ -48,6 +66,10 @@ final class ToolGatewayPostgresTestContext {
 
     JdbcTemplate migratorJdbc() {
         return migratorJdbc;
+    }
+
+    JdbcTemplate adminJdbc() {
+        return adminJdbc;
     }
 
     JdbcTemplate roleJdbc(String userVariable, String passwordVariable) {
@@ -65,10 +87,10 @@ final class ToolGatewayPostgresTestContext {
     JdbcExecutionReceiptStore receiptStore(Duration leaseDuration) {
         return new JdbcExecutionReceiptStore(
             runtimeJdbc,
-            transactions,
             objectMapper,
             131_072,
             leaseDuration,
+            Duration.ofSeconds(5),
             Clock.systemUTC()
         );
     }
@@ -78,12 +100,36 @@ final class ToolGatewayPostgresTestContext {
     }
 
     JdbcToolExecutionTransactionRunner transactionRunner() {
-        return new JdbcToolExecutionTransactionRunner(transactions);
+        return transactionRunner;
+    }
+
+    <T> T inScope(TenantProjectScope scope, Supplier<T> operation) {
+        return transactionRunner.required(scope, operation);
+    }
+
+    void inScope(TenantProjectScope scope, Runnable operation) {
+        transactionRunner.required(scope, () -> {
+            operation.run();
+            return Boolean.TRUE;
+        });
+    }
+
+    HikariDataSource singleConnectionRuntimePool(String poolName) {
+        HikariConfig configuration = new HikariConfig();
+        configuration.setPoolName(poolName);
+        configuration.setJdbcUrl(required("TOOL_GATEWAY_DATABASE_URL"));
+        configuration.setUsername(required("POSTGRES_TOOL_GATEWAY_USER"));
+        configuration.setPassword(required("POSTGRES_TOOL_GATEWAY_PASSWORD"));
+        configuration.setMaximumPoolSize(1);
+        configuration.setMinimumIdle(1);
+        configuration.setConnectionTimeout(3_000);
+        configuration.setInitializationFailTimeout(5_000);
+        return new HikariDataSource(configuration);
     }
 
     void cleanMutableState() {
-        migratorJdbc.update("DELETE FROM tool_gateway.execution_receipts");
-        migratorJdbc.update("DELETE FROM tool_gateway.capability_nonce_claims");
+        adminJdbc.update("DELETE FROM tool_gateway.execution_receipts");
+        adminJdbc.update("DELETE FROM tool_gateway.capability_nonce_claims");
     }
 
     static byte[] digestBytes(String value) {

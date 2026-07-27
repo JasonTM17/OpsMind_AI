@@ -10,7 +10,6 @@ import ai.opsmind.toolgateway.domain.ToolOutcome;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.core.Authentication;
-import org.springframework.security.oauth2.server.resource.authentication.JwtAuthenticationToken;
 import org.springframework.validation.annotation.Validated;
 import jakarta.validation.Valid;
 import org.springframework.web.bind.annotation.PostMapping;
@@ -40,20 +39,11 @@ public class ToolExecutionController {
         @RequestHeader(CAPABILITY_HEADER) String capabilityToken,
         @Valid @RequestBody ToolExecutionRequest request
     ) {
-        if (!isPlatformWorkload(authentication)) throw new GatewayCallerDeniedException();
+        if (!PlatformWorkloadAuthorization.matches(authentication, settings)) {
+            throw new GatewayCallerDeniedException();
+        }
         ToolExecutionResponse response = executionService.execute(capabilityToken, request);
         return ResponseEntity.status(httpStatus(response)).body(response);
-    }
-
-    private boolean isPlatformWorkload(Authentication authentication) {
-        if (!(authentication instanceof JwtAuthenticationToken jwtAuthentication)
-            || !authentication.isAuthenticated()) {
-            return false;
-        }
-        String clientId = jwtAuthentication.getToken().getClaimAsString("client_id");
-        String authorizedParty = jwtAuthentication.getToken().getClaimAsString("azp");
-        return settings.platformCallerId().equals(clientId)
-            || settings.platformCallerId().equals(authorizedParty);
     }
 
     private HttpStatus httpStatus(ToolExecutionResponse response) {

@@ -146,7 +146,8 @@ effective write requires target idempotency or discovery/reconciliation.
 | Identity mapping, tenants, projects | Platform PostgreSQL schema | Forced RLS plus application authorization |
 | Incidents, hypotheses, approvals, intents | Platform PostgreSQL schema | Optimistic version and append-only audit linkage |
 | Provider exchanges and budgets | AI Runtime schema or explicitly owned tables | Redacted and retention-bounded |
-| Connector execution receipts | Tool Gateway schema or explicitly owned tables | Idempotency and reconciliation authority |
+| Connector execution receipts and verified audit | Tool Gateway schema | Capability-derived scope, forced tenant/project RLS, idempotency, and reconciliation authority |
+| Unverified tool security decisions | Tool Gateway global audit lane | Insert-only and append-only; never accepts tenant/project fields from the request |
 | Bounded redacted evidence records | Platform PostgreSQL schema | Immutable canonical JSON, 64 KiB maximum, run/event linkage, forced RLS |
 | Large evidence bodies | Planned evidence object port | Lifecycle is not implemented |
 | Embeddings and retrieval metadata | Planned PostgreSQL/pgvector boundary | RAG is not implemented |
@@ -389,16 +390,40 @@ non-production. The `persistence` profile replaces them with PostgreSQL adapters
 in the separately owned `tool_gateway` schema. A fixed migration login owns the
 schema and Flyway history; the non-owner runtime login receives only the
 nonce/receipt DML and audit-append grants it needs. Platform and AI Runtime roles
-have no access.
+have no access. The runtime is fixed, non-owner, and `NOBYPASSRLS`; readiness
+also verifies schema usage, required grants, context functions, forced-RLS
+flags, and the exact single policy command/roles/`USING`/`WITH CHECK`
+definition rather than treating table existence or policy names as sufficient.
 
 Nonce values are SHA-256 hashed before storage. Execution identity is bound to
-tenant, project, incident, run, and canonical request digest. A short PostgreSQL
-transaction claims a database-clock lease; connector HTTP runs without a
-database transaction; a second transaction atomically appends the success audit
-and completes the fenced receipt. Expired leases are reclaimable, while stale
-tokens cannot finalize. Same ID/same digest replays the exact bounded canonical
-response and changed scope or digest conflicts. Audit rows reject update,
-delete, and truncate.
+tenant, project, incident, run, and canonical request digest. Tenant/project
+authority is constructed only from a returned verified capability, then bound
+to the checked-out PostgreSQL connection with transaction-local settings.
+Receipts and verified audit events use explicit scope predicates plus forced
+RLS. A short scoped transaction claims a database-clock lease; connector HTTP
+runs without a database transaction; a second scoped transaction atomically
+appends the success audit and completes the fenced receipt. Expired leases are
+reclaimable, while stale tokens cannot finalize. Same ID/same digest replays the
+exact bounded canonical response. Changed scope/digest and RLS-invisible
+foreign-ID collisions return the same non-enumerating conflict. Startup rejects
+configuration where the lease is shorter than the longest enabled connector
+duration plus the bounded completion margin, preventing a supported
+configuration from reclaiming while connector I/O is still active. The
+effective database expiry is the earlier of request deadline plus the
+completion margin and transaction time plus the configured lease. This preserves
+the signed execution bound while allowing the final scoped audit/receipt
+transaction to finish immediately after connector completion.
+
+Capability nonce claims remain a global one-use replay control. Failures before
+capability verification append to a separate global insert-only audit lane whose
+API and schema contain no tenant/project fields. Verified and unverified audit
+rows reject update, delete, and truncate. Historical V001/V002 audit rows keep
+their unknown attribution and are not exposed through runtime-scoped RLS.
+Canonical request digesting is inside the same fail-closed boundary.
+Authenticated platform-workload delivery failures caused by malformed bodies,
+validation, or a missing capability header also append tenant-free decisions;
+unauthenticated traffic cannot fill this lane.
+See [ADR-0004](./adr/ADR-0004-tool-gateway-tenant-project-isolation.md).
 
 The `prometheus` profile installs the first live read-only connector. The
 catalog, not the model or caller, selects one of two exact recording-rule
@@ -562,15 +587,24 @@ temporarily leave the complete tuple null during rolling deployment. Evaluation
 requires the complete tuple; values are written with the audit event and are not
 injected later by evaluation configuration.
 
+Tool Gateway V003 is a forward-only security boundary, not a mixed-writer
+expand window. It adds transaction-local tenant/project functions, forced RLS
+for receipts and verified audits, and the separate unverified audit lane. V002
+runtime must be drained before V003 because it cannot bind the required
+transaction context. The upgrade proof seeds V002 receipt and legacy audit
+state, applies V003, and requires preservation plus fail-closed runtime access.
+Recovery restores a V003-compatible runtime or adds a later migration; it never
+disables RLS or rewrites Flyway history.
+
 The disposable cross-service database creates two least-privilege roles:
 
 - `opsmind_evaluation_view_owner` is `NOLOGIN`, `NOINHERIT`, and
   `NOBYPASSRLS`; it owns security-barrier views and receives only allowlisted
-  source columns.
+  source columns. Its views remain subject to Tool Gateway forced RLS.
 - `opsmind_evaluator` is a read-only, non-inheriting login. It cannot select
   raw source tables or the allowlist table and can query views only after exact
-  transaction-local organization, project, incident, run, and actor scope is
-  set.
+  transaction-local organization, Tool Gateway tenant/project, incident, run,
+  and actor scope is set.
 
 The strict export admits one run, at most 128 events, 200 evidence metadata
 rows, 20 receipts, 21 invocations, and 4 MiB of JSON. Every accepted response

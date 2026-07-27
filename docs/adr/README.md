@@ -20,6 +20,7 @@ Every ADR includes status/date, context, decision, consequences, alternatives, v
 | [ADR-0001](./ADR-0001-platform-topology.md) | Initial deployables and infrastructure sequence | Accepted |
 | [ADR-0002](./ADR-0002-contract-and-repository-ownership.md) | Canonical repository, contract, migration, and naming ownership | Accepted |
 | [ADR-0003](./ADR-0003-evidence-artifact-storage.md) | Evidence artifact port and lifecycle contract | Accepted; G0.5 adapter and KMS baseline approved |
+| [ADR-0004](./ADR-0004-tool-gateway-tenant-project-isolation.md) | Capability-derived Tool Gateway scope, forced RLS, and split audit lanes | Accepted |
 
 ## Governance State
 

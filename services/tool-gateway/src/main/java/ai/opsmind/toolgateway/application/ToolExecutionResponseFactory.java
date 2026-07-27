@@ -3,6 +3,7 @@ package ai.opsmind.toolgateway.application;
 import java.util.EnumSet;
 import java.util.Set;
 import java.util.UUID;
+import java.util.function.Supplier;
 
 import ai.opsmind.toolgateway.audit.ToolAuditWriter;
 import ai.opsmind.toolgateway.audit.ToolExecutionProvenance;
@@ -24,12 +25,18 @@ public final class ToolExecutionResponseFactory {
     );
 
     private final ToolAuditWriter auditWriter;
+    private final ToolExecutionTransactionRunner transactionRunner;
 
-    public ToolExecutionResponseFactory(ToolAuditWriter auditWriter) {
+    public ToolExecutionResponseFactory(
+        ToolAuditWriter auditWriter,
+        ToolExecutionTransactionRunner transactionRunner
+    ) {
         this.auditWriter = auditWriter;
+        this.transactionRunner = transactionRunner;
     }
 
-    public ToolExecutionResponse denial(
+    public ToolExecutionResponse scopedDenial(
+        TenantProjectScope scope,
         UUID executionId,
         String requestDigest,
         String capabilityId,
@@ -38,15 +45,56 @@ public final class ToolExecutionResponseFactory {
         String policyVersion,
         DenialCode code
     ) {
+        if (scope == null) {
+            throw new IllegalArgumentException("Verified denial scope is required.");
+        }
+        return denial(
+            executionId,
+            requestDigest,
+            manifestVersion,
+            code,
+            () -> transactionRunner.required(
+                scope,
+                () -> auditWriter.recordScoped(
+                    scope, executionId, outcome(code), requestDigest, capabilityId,
+                    manifestVersion, provenance, null, policyVersion, code
+                )
+            )
+        );
+    }
+
+    public ToolExecutionResponse unverifiedDenial(
+        UUID executionId,
+        String requestDigest,
+        DenialCode code
+    ) {
+        return denial(
+            executionId,
+            requestDigest,
+            null,
+            code,
+            () -> auditWriter.recordUnverified(
+                executionId,
+                outcome(code),
+                requestDigest,
+                code
+            )
+        );
+    }
+
+    private ToolExecutionResponse denial(
+        UUID executionId,
+        String requestDigest,
+        String manifestVersion,
+        DenialCode code,
+        Supplier<UUID> auditAppend
+    ) {
         UUID auditId = null;
         DenialCode effectiveCode = code;
         ToolOutcome outcome = outcome(code);
         try {
             if (auditWriter.available()) {
-                auditId = auditWriter.record(
-                    executionId, outcome, requestDigest, capabilityId, manifestVersion,
-                    provenance, null, policyVersion, code
-                );
+                auditId = auditAppend.get();
             }
             else {
                 effectiveCode = DenialCode.AUDIT_UNAVAILABLE;
