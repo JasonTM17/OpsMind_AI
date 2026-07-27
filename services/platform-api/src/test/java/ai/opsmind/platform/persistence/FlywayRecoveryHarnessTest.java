@@ -20,6 +20,7 @@ class FlywayRecoveryHarnessTest {
 
     private static final String INCIDENT_INDEX = "incident_timeline_activity_order_idx";
     private static final String INVESTIGATION_INDEX = "investigation_run_events_activity_order_idx";
+    private static final String V009_HISTORY_VERSION = "009";
 
     @Test
     void repairsFailedV009AfterCapturingHistoryAndBothExactIndexes() throws Exception {
@@ -39,7 +40,7 @@ class FlywayRecoveryHarnessTest {
             FluentConfiguration flywayConfiguration = Flyway.configure()
                 .dataSource(settings.url(), settings.username(), settings.password())
                 .locations("classpath:db/migration")
-                .target("9");
+                .target(V009_HISTORY_VERSION);
             PostgreSQLConfigurationExtension postgresql =
                 flywayConfiguration.getConfigurationExtension(
                     PostgreSQLConfigurationExtension.class
@@ -122,7 +123,8 @@ class FlywayRecoveryHarnessTest {
     private static List<String> failedV009History(Connection connection) throws SQLException {
         return queryLines(connection,
             "SELECT installed_rank || ':' || coalesce(version, '') || ':' || success "
-                + "FROM flyway_schema_history WHERE version = '9' AND NOT success ORDER BY installed_rank"
+                + "FROM flyway_schema_history WHERE version = '" + V009_HISTORY_VERSION
+                + "' AND NOT success ORDER BY installed_rank"
         );
     }
 
