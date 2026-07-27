@@ -38,6 +38,7 @@ run_upgrade_database_file() {
   PGPASSWORD="$POSTGRES_PASSWORD" psql --no-password --no-psqlrc --quiet \
     --host "$PGHOST" --port "$PGPORT" --username "$POSTGRES_USER" \
     --dbname "$upgrade_database" --set ON_ERROR_STOP=1 \
+    --set AUTOCOMMIT=on \
     --file "$sql_file"
 }
 
@@ -48,6 +49,8 @@ seed_v009_ledgers() {
     >/dev/null
 
   local incident_rows investigation_rows
+  local incident_distractor_rows investigation_distractor_rows
+  local max_locks_per_transaction
   incident_rows="$(query_upgrade_database "
 SELECT count(*) FROM incident_timeline_events
  WHERE organization_id = '$V009_ORGANIZATION_ID'
@@ -58,10 +61,34 @@ SELECT count(*) FROM investigation_run_events
  WHERE organization_id = '$V009_ORGANIZATION_ID'
    AND project_id = '$V009_PROJECT_ID'
    AND incident_id = '$V009_INCIDENT_ID';")"
-  [[ "$incident_rows" -ge 50000 ]]
-  [[ "$investigation_rows" -ge 50000 ]]
-  printf 'V009SeedIncidentRows=%s\nV009SeedInvestigationRows=%s\n' \
-    "$incident_rows" "$investigation_rows"
+  incident_distractor_rows="$(query_upgrade_database "
+SELECT count(*) FROM incident_timeline_events
+ WHERE organization_id = '$V009_ORGANIZATION_ID'
+   AND project_id = '$V009_PROJECT_ID'
+   AND incident_id <> '$V009_INCIDENT_ID'
+   AND occurred_at >= '2032-01-01T00:00:00Z'
+   AND occurred_at < '2033-01-01T00:00:00Z';")"
+  investigation_distractor_rows="$(query_upgrade_database "
+SELECT count(*) FROM investigation_run_events
+ WHERE organization_id = '$V009_ORGANIZATION_ID'
+   AND project_id = '$V009_PROJECT_ID'
+   AND incident_id <> '$V009_INCIDENT_ID'
+   AND occurred_at >= '2032-01-01T00:00:00Z'
+   AND occurred_at < '2033-01-01T00:00:00Z';")"
+  max_locks_per_transaction="$(query_upgrade_database "
+SELECT current_setting('max_locks_per_transaction')::integer;")"
+  [[ "$incident_rows" == "50000" ]]
+  [[ "$investigation_rows" == "50000" ]]
+  [[ "$incident_distractor_rows" == "10000" ]]
+  [[ "$investigation_distractor_rows" == "10000" ]]
+  [[ "$max_locks_per_transaction" -ge 50 ]]
+  printf '%s\n' \
+    "V009SeedIncidentRows=$incident_rows" \
+    "V009SeedInvestigationRows=$investigation_rows" \
+    "V009SeedIncidentDistractorRows=$incident_distractor_rows" \
+    "V009SeedInvestigationDistractorRows=$investigation_distractor_rows" \
+    "V009SeedBatchSize=50" \
+    "V009SeedMaxLocksPerTransaction=$max_locks_per_transaction"
 }
 
 run_append_benchmark() {

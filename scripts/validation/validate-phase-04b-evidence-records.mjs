@@ -94,6 +94,13 @@ const v009EvidenceModule = requireMarkers(
     "IncidentActivityTimelinePlanHarnessTest",
     "assert_sample_count",
     "POSTGRES_APP_USER",
+    "--no-psqlrc",
+    "--set ON_ERROR_STOP=1",
+    "--set AUTOCOMMIT=on",
+    "V009SeedIncidentDistractorRows",
+    "V009SeedInvestigationDistractorRows",
+    "V009SeedBatchSize=50",
+    "V009SeedMaxLocksPerTransaction",
     '-Dsurefire.useFile=false',
     'V009EvidenceResult=PASS',
   ],
@@ -102,12 +109,53 @@ const v009Seed = requireMarkers(
   "scripts/validation/phase-04b-evidence-records/incident-timeline-v009-seed.sql",
   [
     "FOR event_version IN 1..49999 LOOP",
-    "generate_series(2, 50000)",
+    "generate_series(2, 50000, 50)",
+    "generate_series(1, 10000, 50)",
+    "LEAST(batch_start + 49, 50000)",
+    "LEAST(batch_start + 49, 10000)",
+    "\\gexec",
     "ANALYZE incident_timeline_events",
     "ANALYZE investigation_run_events",
     "70000000-0000-4000-8000-000000000018",
   ],
 );
+const v009SeedBatchExecutions = v009Seed.match(/^\\gexec$/gm) ?? [];
+if (v009SeedBatchExecutions.length !== 2) {
+  errors.push(
+    "V009 seed must autocommit exactly two bounded advisory-lock batch families.",
+  );
+}
+const v009SeedFirstBatch = v009Seed.indexOf("SELECT format($batch$");
+const v009SeedOuterCommit = v009Seed.indexOf("\nCOMMIT;\n");
+if (v009SeedOuterCommit < 0 || v009SeedOuterCommit > v009SeedFirstBatch) {
+  errors.push(
+    "V009 seed must close its outer transaction before advisory-lock batches.",
+  );
+}
+if (v009Seed.includes("ON COMMIT DROP")) {
+  errors.push(
+    "V009 distractor temp state must survive the autocommitted batch statements.",
+  );
+}
+if (/DISABLE\s+TRIGGER/iu.test(v009Seed)) {
+  errors.push("V009 evidence fixtures must not disable production triggers.");
+}
+const v009SeedBatchTail = v009Seed.slice(v009SeedFirstBatch);
+if (/^\s*BEGIN\s*;/imu.test(v009SeedBatchTail)) {
+  errors.push("V009 advisory-lock batches must remain outside an outer transaction.");
+}
+if (
+  v009EvidenceModule.includes("--single-transaction")
+  || /(^|\s)-1(\s|$)/u.test(v009EvidenceModule)
+) {
+  errors.push("V009 seed caller must preserve psql autocommit for bounded batches.");
+}
+if (
+  /^\\set\s+AUTOCOMMIT\s+(off|false|0)\s*$/imu.test(v009Seed)
+  || /AUTOCOMMIT=(off|false|0)/iu.test(v009EvidenceModule)
+) {
+  errors.push("V009 seed must not disable psql autocommit.");
+}
 const v009Query = requireMarkers(
   "services/platform-api/src/main/java/ai/opsmind/platform/incident/IncidentActivityTimelineQuery.java",
   [
