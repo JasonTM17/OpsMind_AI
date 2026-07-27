@@ -82,7 +82,7 @@ public final class JdbcExecutionReceiptStore implements ExecutionReceiptStore {
                 + "(execution_id, tenant_id, project_id, incident_id, run_id, request_digest, "
                 + "status, lease_token, lease_expires_at) "
                 + "VALUES (?, ?, ?, ?, ?, ?, 'IN_PROGRESS', ?, "
-                + "LEAST(? + (? * INTERVAL '1 millisecond'), "
+                + "LEAST(CAST(? AS timestamptz) + (? * INTERVAL '1 millisecond'), "
                 + "transaction_timestamp() + (? * INTERVAL '1 millisecond'))) "
                 + "ON CONFLICT (execution_id) DO NOTHING",
             request.executionId(), scope.tenantId(), scope.projectId(), request.incidentId(),
@@ -123,7 +123,7 @@ public final class JdbcExecutionReceiptStore implements ExecutionReceiptStore {
         int reclaimed = jdbc.update(
             "UPDATE tool_gateway.execution_receipts "
                 + "SET lease_token = ?, lease_expires_at = "
-                + "LEAST(? + (? * INTERVAL '1 millisecond'), "
+                + "LEAST(CAST(? AS timestamptz) + (? * INTERVAL '1 millisecond'), "
                 + "transaction_timestamp() + (? * INTERVAL '1 millisecond')), "
                 + "updated_at = transaction_timestamp() "
                 + "WHERE execution_id = ? AND status = 'IN_PROGRESS' "
