@@ -123,10 +123,12 @@ class IncidentActivityTimelineHttpIntegrationTest {
         );
         assertThat(transitioned.statusCode()).isEqualTo(200);
 
-        HttpResponse<String> first = send(
-            "GET", incidentPath(TENANT_A, PROJECT_A, incidentId), TOKEN_A, null, null, null, "1"
+        HttpResponse<String> first = sendActivity(
+            incidentPath(TENANT_A, PROJECT_A, incidentId), TOKEN_A, 1, null
         );
-        assertThat(first.statusCode()).isEqualTo(200);
+        assertThat(first.statusCode())
+            .as("unexpected first activity response: %s", first.body())
+            .isEqualTo(200);
         String cursor = jsonMapper.readTree(first.body()).get("nextPageToken").stringValue();
         JsonNode firstItem = jsonMapper.readTree(first.body()).get("items").get(0);
         assertThat(first.headers().firstValue("content-type").orElse(""))

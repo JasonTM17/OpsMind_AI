@@ -667,9 +667,22 @@ jobs:
           mkdir -p artifacts/verification/phase-03
           mvn --batch-mode --no-transfer-progress \
             -Dmaven.repo.local="$OPS_CACHE_ROOT/maven" \
-            -Dtest=TenantRlsPoolIntegrationTest,TransactionalOutboxIntegrationTest,TransactionalInboxIntegrationTest,PlatformUserStatusVerifierIntegrationTest,OutboxDispatcherWorkloadIntegrationTest,InvestigationPersistenceIntegrationTest,InvestigationPersistenceIntegrityIntegrationTest,InvestigationEvidencePersistenceIntegrationTest,InvestigationEvidenceRollbackIntegrationTest,InvestigationEvidenceReplayIntegrationTest,IncidentActivityTimelineHttpIntegrationTest \
+            -Dtest=TenantRlsPoolIntegrationTest,TransactionalOutboxIntegrationTest,TransactionalInboxIntegrationTest,PlatformUserStatusVerifierIntegrationTest,OutboxDispatcherWorkloadIntegrationTest,InvestigationPersistenceIntegrationTest,InvestigationPersistenceIntegrityIntegrationTest,InvestigationEvidencePersistenceIntegrationTest,InvestigationEvidenceRollbackIntegrationTest,InvestigationEvidenceReplayIntegrationTest \
             -f services/platform-api/pom.xml test \
             2>&1 | tee artifacts/verification/phase-03/authz-rls-pool-matrix.txt
+      - name: Prove incident activity HTTP contract in isolation
+        shell: bash
+        env:
+          OPSMIND_PHASE7_DB_INTEGRATION: "true"
+          SPRING_DATASOURCE_URL: jdbc:postgresql://127.0.0.1:5432/opsmind
+        run: |
+          set -euo pipefail
+          mkdir -p artifacts/verification/phase-04
+          mvn --batch-mode --no-transfer-progress \
+            -Dmaven.repo.local="$OPS_CACHE_ROOT/maven" \
+            -Dtest=IncidentActivityTimelineHttpIntegrationTest \
+            -f services/platform-api/pom.xml test \
+            2>&1 | tee artifacts/verification/phase-04/incident-activity-timeline.txt
       - name: Run alternating-tenant and append-only contract
         shell: bash
         run: |
@@ -686,6 +699,7 @@ jobs:
           path: |
             artifacts/verification/phase-03/
             artifacts/verification/phase-04/evidence-migration-upgrade.txt
+            artifacts/verification/phase-04/incident-activity-timeline.txt
             artifacts/verification/phase-07/tool-gateway-persistence.txt
           if-no-files-found: error
 
