@@ -1,15 +1,20 @@
 ---
-title: "Incident Activity Timeline Bridge"
-description: "Add a versioned incident activity timeline that unions incident and investigation metadata without breaking the current v1 route."
-status: in-progress
+title: Incident Activity Timeline Bridge
+description: >-
+  Add a versioned incident activity timeline that unions incident and
+  investigation metadata without breaking the current v1 route.
+status: pending
 priority: P1
 effort: 10-14h
-branch: "main"
-tags: [phase7, incident-timeline, investigation]
+branch: main
+tags:
+  - phase7
+  - incident-timeline
+  - investigation
 blockedBy: []
 blocks: []
-created: 2026-07-26
-createdBy: "ck:plan"
+created: 2026-07-26T00:00:00.000Z
+createdBy: 'ck:plan'
 source: skill
 ---
 
@@ -23,7 +28,7 @@ Close the remaining Phase 7 timeline gap without new parallel services or ledger
 
 | Phase | Name | Status |
 |-------|------|--------|
-| 1 | [Contract and Cursor Compatibility](./phase-01-contract-and-cursor-compatibility.md) | In Progress |
+| 1 | [Contract and Cursor Compatibility](./phase-01-contract-and-cursor-compatibility.md) | Completed |
 | 2 | [Unified Read Projection](./phase-02-unified-read-projection.md) | Pending |
 | 3 | [Verification and Gate Integration](./phase-03-verification-and-gate-integration.md) | Pending |
 
@@ -40,12 +45,13 @@ Close the remaining Phase 7 timeline gap without new parallel services or ledger
 - The vendor page unions `incident_timeline_events` and `investigation_run_events`, ordered by `(occurred_at, source_rank, event_id)`, with a strictly parsed v2 navigation cursor bound to incident ID, database-returned microsecond timestamp, source rank, and event ID. It is a forward-only live view, not a snapshot or lossless change feed.
 - V1 stays in the existing `READ` transaction; the vendor read uses the same hidden-denial transaction shape with `ANALYZE` scope/access (`services/platform-api/src/main/java/ai/opsmind/platform/incident/IncidentQueryService.java:84-107`, `services/platform-api/src/main/java/ai/opsmind/platform/incident/IncidentAnalysisAuthorizer.java:61-70`).
 - V009 contains only concurrent indexes and a per-script non-transactional Flyway config. Fresh and V008-to-V009 upgrades, query plans, invalid-index recovery, append latency, and storage overhead are release evidence; rollback is forward recovery, never destructive history editing.
+- Performance evidence is released only when a disposable high-cardinality fixture has at least 50,000 rows in each source ledger, 300 matched append samples per ledger (50 warm-up, 250 measured), and 100 warm vendor reads (50 warm-up, 50 measured). The vendor-read p95 and post-index append p95 must each be at most 500 ms, append p95 regression must be at most 20% versus the pre-index baseline, and the two V009 indexes together must be at most 256 bytes per source row and at most 100% of combined `pg_table_size` for the source ledgers. These are measurable release gates, not production-SLO claims.
 - Focused Platform API tests plus Phase 4/7 validators cover contract, query, RLS, migration, and compatibility gates.
 
 ## Rollback
 
 - Revert controller/query/repository/schema wiring for the vendor media type and keep `application/json` as the only served representation.
-- If valid V009 indexes meet the measured write/storage budget, leave them applied while the feature is disabled. If they do not, ship a new forward migration that drops them concurrently; never edit or delete an applied V009.
+- If valid V009 indexes meet the measured write/storage budget, leave them applied while the feature is disabled. If they do not, ship a new forward migration that drops them concurrently; never edit or delete an applied V009. A failed non-transactional V009 is recovered only after catalog/history evidence capture: inspect both V009-owned indexes, drop both exact names concurrently (valid or invalid), run the approved Flyway `repair` API/CLI operation, and retry. Never drop only the invalid half, use a blind history-row delete, or use `IF NOT EXISTS` to hide a wrong-definition index.
 
 ## Open Questions
 
@@ -59,7 +65,7 @@ None.
 
 | # | Finding | Severity | Disposition | Applied To |
 |---|---------|----------|-------------|------------|
-| 1 | Phase 1 could not serve real vendor data independently | High | Accept: do not advertise the route until code and OpenAPI land together in Phase 2 | Phases 1-2 |
+| 1 | Phase 1 could not serve real vendor data independently | High | Accept: do not advertise the route until code and OpenAPI land together in Phase 2 | Completed |
 | 2 | Timestamp keyset is not snapshot/lossless under late commits | High | Accept: document forward-only semantics | Plan, Phase 2 |
 | 3 | Public fields and free-text policy were undefined | High | Accept | Phases 1-3 |
 | 4 | Accept negotiation and cache separation were incomplete | High | Accept | Phases 1-2 |

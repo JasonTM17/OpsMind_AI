@@ -3,7 +3,7 @@ title: Phase 1 secret-scan history failure and repair
 date: 2026-07-27 06:22
 severity: High
 component: CI secret scan, governance fixtures, git history
-status: CI validation pending
+status: Resolved
 ---
 
 # Phase 1 Secret-Scan History Failure and Repair
@@ -34,8 +34,9 @@ This was annoying in the most predictable way: we fixed the file and then nearly
 ## Next
 
 - Preserve final integrated local proof: full-history scan `Findings=0` across `115` commits and `6,105,753` bytes; scanner self-test `26/26` with eight isolated near-miss histories; egress `40/40`; repository layout, Ruff, actionlint, and diff checks passing.
-- Require exact descendant CI from the fixed revision before closing the gate.
-- Record `HistoryCommits` from CI; one shallow commit is not sufficient evidence.
+- Exact descendant CI is now complete: PR quality `30228639783` and cross-service evaluation `30228639754` both succeeded on `1c399fe`.
+- The governance job checked out `fetch-depth: 0` and recorded `HistoryCommits=116`, `HistoryBytesScanned=6120086`, `Findings=0`, `Result=PASS`.
+- Keep recording `HistoryCommits`; one shallow commit is not sufficient evidence for this gate.
 - Do not broaden the exemption unless a later review proves a new immutable canary is required.
 
 ## Unresolved Questions

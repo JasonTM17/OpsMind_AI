@@ -1,7 +1,7 @@
 ---
 phase: 1
-title: "Contract and Cursor Compatibility"
-status: in-progress
+title: Contract and Cursor Compatibility
+status: completed
 priority: P1
 dependencies: []
 ---
@@ -99,7 +99,7 @@ Both successful representations set exact `Content-Type` and `Vary: Accept`; ven
 
 ## Success Criteria
 
-- [ ] `application/json` timeline behavior remains byte-compatible with the current route and v1 token.
-- [ ] Vendor representation v1 has closed internal records plus two new incident JSON Schemas and positive/negative fixtures, while the public OpenAPI route remains unchanged.
-- [ ] The exact field contract and v2 cursor are executable before runtime wiring; authorization, negotiation, cache behavior, and OpenAPI publication remain Phase 2 acceptance gates.
-- [ ] Invalid v2 tokens fail closed without introducing a new page-token class or treating the cursor as authorization.
+- [x] `application/json` timeline behavior remains byte-compatible with the current route and v1 token.
+- [x] Vendor representation v1 has closed internal records plus two new incident JSON Schemas and positive/negative fixtures, while the public OpenAPI route remains unchanged.
+- [x] The exact field contract and v2 cursor are executable before runtime wiring; authorization, negotiation, cache behavior, and OpenAPI publication remain Phase 2 acceptance gates.
+- [x] Invalid v2 tokens fail closed without introducing a new page-token class or treating the cursor as authorization.
