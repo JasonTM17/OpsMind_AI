@@ -64,6 +64,6 @@ Exact fix:
 
 None.
 
-Status: DONE_WITH_CONCERNS  
-Summary: Three P0-P2 blockers invalidate the current V009 release-evidence claim.  
+Status: DONE_WITH_CONCERNS
+Summary: Three P0-P2 blockers invalidate the current V009 release-evidence claim.
 Concerns/Blockers: Plan structural false-PASS, non-production timing/auth path, and CRLF shell portability.
