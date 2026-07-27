@@ -2,13 +2,18 @@ from datetime import UTC, datetime
 
 import pytest
 
-from opsmind_ai_runtime.config.settings import LEGACY_MODEL_RETIREMENT, RuntimeSettings
+from opsmind_ai_runtime.config.settings import (
+    DEFAULT_DEEPSEEK_API_BASE_URL,
+    LEGACY_MODEL_RETIREMENT,
+    RuntimeSettings,
+)
 
 
 def test_default_settings_are_disabled_and_use_flash() -> None:
     settings = RuntimeSettings.from_env()
     assert settings.provider == "disabled"
     assert settings.model == "deepseek-v4-flash"
+    assert settings.base_url == DEFAULT_DEEPSEEK_API_BASE_URL
     assert settings.provider_ready is False
 
 
