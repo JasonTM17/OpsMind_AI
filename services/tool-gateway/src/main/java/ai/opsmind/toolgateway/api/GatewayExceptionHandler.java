@@ -3,8 +3,18 @@ package ai.opsmind.toolgateway.api;
 import java.util.Map;
 import java.util.UUID;
 
+import ai.opsmind.toolgateway.application.RequestDigester;
+import ai.opsmind.toolgateway.audit.ToolAuditWriter;
+import ai.opsmind.toolgateway.config.GatewaySettings;
+import ai.opsmind.toolgateway.domain.DenialCode;
+import ai.opsmind.toolgateway.domain.ToolOutcome;
+
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
+import org.springframework.security.core.Authentication;
+import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.web.bind.MissingRequestHeaderException;
 import org.springframework.web.bind.annotation.ExceptionHandler;
 import org.springframework.web.bind.annotation.RestControllerAdvice;
@@ -14,21 +24,39 @@ import org.springframework.web.bind.MethodArgumentNotValidException;
 @RestControllerAdvice
 public class GatewayExceptionHandler {
 
+    private static final Logger LOGGER = LoggerFactory.getLogger(GatewayExceptionHandler.class);
+
+    private final ToolAuditWriter auditWriter;
+    private final GatewaySettings settings;
+
+    public GatewayExceptionHandler(ToolAuditWriter auditWriter, GatewaySettings settings) {
+        this.auditWriter = auditWriter;
+        this.settings = settings;
+    }
+
     @ExceptionHandler(HttpMessageNotReadableException.class)
     ResponseEntity<Map<String, Object>> malformedJson() {
-        return problem(HttpStatus.BAD_REQUEST, "request.invalid", "The tool request body is invalid.");
+        return auditedProblem(
+            HttpStatus.BAD_REQUEST,
+            DenialCode.REQUEST_INVALID,
+            "The tool request body is invalid."
+        );
     }
 
     @ExceptionHandler(MethodArgumentNotValidException.class)
     ResponseEntity<Map<String, Object>> invalidRequest() {
-        return problem(HttpStatus.BAD_REQUEST, "request.invalid", "The tool request body is invalid.");
+        return auditedProblem(
+            HttpStatus.BAD_REQUEST,
+            DenialCode.REQUEST_INVALID,
+            "The tool request body is invalid."
+        );
     }
 
     @ExceptionHandler(MissingRequestHeaderException.class)
     ResponseEntity<Map<String, Object>> missingHeader() {
-        return problem(
+        return auditedProblem(
             HttpStatus.FORBIDDEN,
-            "capability.invalid",
+            DenialCode.CAPABILITY_INVALID,
             "The delegated capability is required."
         );
     }
@@ -52,5 +80,45 @@ public class GatewayExceptionHandler {
                 "code", code,
                 "instance", "urn:opsmind:error:" + UUID.randomUUID()
             ));
+    }
+
+    private ResponseEntity<Map<String, Object>> auditedProblem(
+        HttpStatus status,
+        DenialCode code,
+        String title
+    ) {
+        if (!recordAuthenticatedDeliveryDenial(code)) {
+            return problem(
+                HttpStatus.SERVICE_UNAVAILABLE,
+                DenialCode.AUDIT_UNAVAILABLE.value(),
+                "Durable tool audit storage is unavailable."
+            );
+        }
+        return problem(status, code.value(), title);
+    }
+
+    private boolean recordAuthenticatedDeliveryDenial(DenialCode code) {
+        Authentication authentication = SecurityContextHolder.getContext().getAuthentication();
+        if (!PlatformWorkloadAuthorization.matches(authentication, settings)) {
+            return true;
+        }
+        try {
+            if (!auditWriter.available()) return false;
+            auditWriter.recordUnverified(
+                null,
+                ToolOutcome.DENIED,
+                RequestDigester.fallbackDigest("delivery-rejection:" + code.value()),
+                code
+            );
+            return true;
+        }
+        catch (RuntimeException exception) {
+            LOGGER.debug(
+                "Authenticated delivery rejection audit failed. code={} failureType={}",
+                code.value(),
+                exception.getClass().getSimpleName()
+            );
+            return false;
+        }
     }
 }

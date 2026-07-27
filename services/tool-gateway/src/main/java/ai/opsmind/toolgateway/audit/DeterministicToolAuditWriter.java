@@ -3,6 +3,7 @@ package ai.opsmind.toolgateway.audit;
 import java.nio.charset.StandardCharsets;
 import java.util.UUID;
 
+import ai.opsmind.toolgateway.application.TenantProjectScope;
 import ai.opsmind.toolgateway.domain.DenialCode;
 import ai.opsmind.toolgateway.domain.ToolOutcome;
 
@@ -10,7 +11,8 @@ import ai.opsmind.toolgateway.domain.ToolOutcome;
 public final class DeterministicToolAuditWriter implements ToolAuditWriter {
 
     @Override
-    public UUID record(
+    public UUID recordScoped(
+        TenantProjectScope scope,
         UUID executionId,
         ToolOutcome outcome,
         String requestDigest,
@@ -21,11 +23,23 @@ public final class DeterministicToolAuditWriter implements ToolAuditWriter {
         String policyVersion,
         DenialCode denialCode
     ) {
-        String material = executionId + "|" + outcome + "|" + requestDigest + "|"
+        String material = scope + "|" + executionId + "|" + outcome + "|" + requestDigest + "|"
             + String.valueOf(capabilityId) + "|" + String.valueOf(manifestVersion) + "|"
             + String.valueOf(provenance) + "|"
             + String.valueOf(resultDigest) + "|" + String.valueOf(policyVersion) + "|"
             + String.valueOf(denialCode);
+        return UUID.nameUUIDFromBytes(material.getBytes(StandardCharsets.UTF_8));
+    }
+
+    @Override
+    public UUID recordUnverified(
+        UUID executionId,
+        ToolOutcome outcome,
+        String requestDigest,
+        DenialCode denialCode
+    ) {
+        String material = "unverified|" + executionId + "|" + outcome + "|"
+            + requestDigest + "|" + denialCode;
         return UUID.nameUUIDFromBytes(material.getBytes(StandardCharsets.UTF_8));
     }
 }

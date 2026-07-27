@@ -42,6 +42,13 @@ public final class RequestDigester {
         catch (JacksonException exception) {
             throw new ToolDeniedException(DenialCode.REQUEST_INVALID, "Tool request is not canonicalizable.", exception);
         }
+        catch (RuntimeException exception) {
+            throw new ToolDeniedException(
+                DenialCode.REQUEST_INVALID,
+                "Tool request is not canonicalizable.",
+                exception
+            );
+        }
     }
 
     public static String sha256(byte[] value) {

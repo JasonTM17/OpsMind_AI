@@ -1,5 +1,6 @@
 package ai.opsmind.toolgateway.application;
 
+import java.time.Duration;
 import java.util.Collection;
 import java.util.HashMap;
 import java.util.Map;
@@ -37,6 +38,14 @@ public final class ToolManifestRegistry {
 
     public boolean hasEnabledActions() {
         return manifests.values().stream().anyMatch(ToolManifest::enabled);
+    }
+
+    public Duration maximumEnabledDuration() {
+        return manifests.values().stream()
+            .filter(ToolManifest::enabled)
+            .map(ToolManifest::maximumDuration)
+            .max(Duration::compareTo)
+            .orElse(Duration.ZERO);
     }
 
 }

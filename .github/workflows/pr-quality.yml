@@ -633,6 +633,16 @@ jobs:
           TOOL_GATEWAY_FLYWAY_ENABLED=true \
             java -jar services/tool-gateway/target/tool-gateway.jar \
               --spring.main.web-application-type=none
+      - name: Prove Tool Gateway V002 to V003 RLS upgrade
+        shell: bash
+        env:
+          OPSMIND_EPHEMERAL_DB: "true"
+          OPSMIND_TOOL_GATEWAY_UPGRADE_DATABASE: opsmind_tool_gateway_rls_${{ github.run_id }}
+        run: |
+          set -euo pipefail
+          mkdir -p artifacts/verification/phase-06
+          bash scripts/validation/run-tool-gateway-rls-migration-upgrade.sh \
+            2>&1 | tee artifacts/verification/phase-06/tool-gateway-rls-upgrade.txt
       - name: Prove durable Tool Gateway state and isolation
         shell: bash
         env:
@@ -643,7 +653,7 @@ jobs:
           mkdir -p artifacts/verification/phase-07
           mvn --batch-mode --no-transfer-progress \
             -Dmaven.repo.local="$OPS_CACHE_ROOT/maven" \
-            -Dtest=ToolGatewayPersistenceIntegrationTest,ToolGatewayPersistenceBoundaryIntegrationTest \
+            -Dtest=ToolGatewayPersistenceIntegrationTest,ToolGatewayPersistenceBoundaryIntegrationTest,ToolGatewayTenantRlsPoolIntegrationTest \
             -f services/tool-gateway/pom.xml test \
             2>&1 | tee artifacts/verification/phase-07/tool-gateway-persistence.txt
       - name: Prove V006 to V009 upgrade, recovery, and activity-index evidence
@@ -700,6 +710,7 @@ jobs:
             artifacts/verification/phase-03/
             artifacts/verification/phase-04/evidence-migration-upgrade.txt
             artifacts/verification/phase-04/incident-activity-timeline.txt
+            artifacts/verification/phase-06/tool-gateway-rls-upgrade.txt
             artifacts/verification/phase-07/tool-gateway-persistence.txt
           if-no-files-found: error
 

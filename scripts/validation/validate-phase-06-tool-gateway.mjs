@@ -185,6 +185,58 @@ if (!platformIssuerConformant) {
   errors.push("Platform API capability issuer conformance is incomplete or drifted");
 }
 
+const gatewayTenantIsolationConformant = sourceContains(
+  "services/tool-gateway/src/main/resources/db/migration/V003__tenant_project_row_security.sql",
+  [
+    "CREATE FUNCTION tool_gateway.set_tenant_context(",
+    "set_config(",
+    "CREATE TABLE tool_gateway.unverified_tool_audit_events",
+    "CREATE POLICY execution_receipts_tenant_project_isolation",
+    "CREATE POLICY tool_audit_events_tenant_project_isolation",
+    "ALTER TABLE tool_gateway.execution_receipts FORCE ROW LEVEL SECURITY",
+    "ALTER TABLE tool_gateway.tool_audit_events FORCE ROW LEVEL SECURITY",
+  ],
+) && sourceContains(
+  "services/tool-gateway/src/main/java/ai/opsmind/toolgateway/application/TenantProjectScope.java",
+  ["fromVerifiedCapability(", "scope.matches(request)"],
+) && sourceContains(
+  "services/tool-gateway/src/main/java/ai/opsmind/toolgateway/persistence/JdbcToolExecutionTransactionRunner.java",
+  ["tenantContext.apply(scope)", "transactions.execute("],
+) && sourceContains(
+  "services/tool-gateway/src/main/java/ai/opsmind/toolgateway/persistence/JdbcExecutionReceiptStore.java",
+  [
+    "AND tenant_id = ? AND project_id = ?",
+    "if (rows.isEmpty()) return Claim.of(ClaimStatus.CONFLICT);",
+    "completionMarginMilliseconds",
+    "LEAST(? + (? * INTERVAL '1 millisecond'),",
+  ],
+) && sourceContains(
+  "services/tool-gateway/src/main/java/ai/opsmind/toolgateway/audit/ToolAuditWriter.java",
+  ["recordScoped(", "recordUnverified("],
+) && sourceContains(
+  "services/tool-gateway/src/main/java/ai/opsmind/toolgateway/persistence/GatewayIsolationReadinessSql.java",
+  [
+    "has_schema_privilege(current_user, 'tool_gateway', 'USAGE')",
+    "EXPECTED_POLICY_EXPRESSION",
+    "count(*) = 1 AND COALESCE(bool_and(",
+  ],
+) && sourceContains(
+  "services/tool-gateway/src/main/java/ai/opsmind/toolgateway/persistence/GatewayPersistenceProperties.java",
+  ["LEASE_COMPLETION_MARGIN", "maximumEnabledActionDuration.plus("],
+) && sourceContains(
+  "services/tool-gateway/src/main/java/ai/opsmind/toolgateway/application/ToolExecutionService.java",
+  ['String stage = "request-digest"', "uncanonicalizable-tool-request"],
+) && sourceContains(
+  "services/tool-gateway/src/main/java/ai/opsmind/toolgateway/api/GatewayExceptionHandler.java",
+  ["recordAuthenticatedDeliveryDenial(", "recordUnverified("],
+) && sourceContains(
+  "scripts/validation/run-tool-gateway-rls-migration-upgrade.sh",
+  ["MigratorOwnerForcedRls=PASS", "SameTenantForeignProjectDeny=PASS"],
+);
+if (!gatewayTenantIsolationConformant) {
+  errors.push("Tool Gateway tenant/project isolation contract is incomplete or drifted");
+}
+
 const blockers = [
   "durable oversized-evidence artifact adapter is absent",
   "remaining bounded logs and traces connector families are absent",
