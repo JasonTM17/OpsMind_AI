@@ -30,7 +30,7 @@ The detailed executable plan is [plans/260719-1747-opsmind-ai-production-platfor
 | 4 | Incident control plane, evidence lifecycle, and audit | G2/G3 | In progress; checkpoint 4A local proof complete |
 | 5 | DeepSeek AI runtime and provider gateway | G3 | In progress; static checkpoint passed, exit gate blocked |
 | 6 | Safe Tool Gateway and read-only connectors | G3 | In progress; durable Prometheus checkpoint PASS, PhaseExitGate BLOCK |
-| 7 | Evidence-backed incident vertical slice | G3 | In progress; phases 1–4 complete, cross-service/UI exit BLOCK |
+| 7 | Evidence-backed incident vertical slice | G3 | In progress; metadata activity route and V009 CI fixture gates pass; external G3 blockers remain |
 | 8 | Simulator and evaluation baseline | A-Z G4 / roadmap G7 | In progress; Phase 8B complete, held-out/human/calibration evidence unavailable, exit BLOCK |
 | 9 | Durable Temporal investigation workflow | G4 | Pending; infrastructure may start, threshold freeze/exit waits for reviewed human pilot |
 | 10 | Permission-aware RAG and knowledge lifecycle | G5 | Pending |
@@ -94,15 +94,14 @@ provider-specific cancellation plus tenant-bulkhead proof remain open.
 
 Phase 7 now includes a pure command/event reducer, bounded in-process runner,
 fixture-only `metrics.query` path, cited-completion guard, duplicate/no-progress
-detection, budget terminal states, tenant/run projections, two canonical
-contracts, and two OpenAPI operations. Additive Flyway V006 persists run
+detection, budget terminal states, tenant/run projections, canonical contracts,
+and the investigation OpenAPI operations. Additive Flyway V006 persists run
 snapshots, contiguous immutable investigation events, and matching
 `investigation-audit-v1` rows with forced RLS and optimistic revision checks.
 The static and revision-bound validator reports `CheckpointResult=PASS` and
 `PhaseExit=PASS` for the local integration checkpoint; the PostgreSQL CI gate
 exercises migration, persistence, and direct SQL integrity tests. This is not
-G3: orchestration has no restart/resume semantics, events are not yet linked to
-`incident_timeline_events`; Platform now has the immutable
+G3: orchestration has no restart/resume semantics. Platform now has the immutable
 intent catalog, tool capability issuer, and bounded OAuth workload-token adapter,
 and the non-fixture investigation AI client now re-authorizes each round's
 evidence, publishes selector-only prompts, signs the exact canonical request,
@@ -115,8 +114,32 @@ reserve with a database-clock lease, execute HTTP outside transactions, and
 atomically finalize audit plus receipt. Revision-bound PostgreSQL/synthetic
 Prometheus evidence now passes for 100 warm runs with p95 below the local
 threshold. CK/Stitch UI/browser E2E also passes. G3 still requires a named live
-non-production connector, provider/legal conformance, incident-timeline
-linkage, and BFF/session proof.
+non-production connector, provider/legal conformance, and BFF/session proof.
+
+The current worktree closes the read-linkage implementation gap through an
+opt-in, ANALYZE-only metadata representation on the existing incident timeline
+route. Legacy JSON remains on the unchanged READ/version-cursor path. The
+vendor path unions both ledgers with exact organization/project/incident
+filters and exposes only eight possible entry fields; it reads no payload or
+free text. Its tuple cursor is a forward-only live view, so late backdated rows
+require a fresh traversal. No investigation event is copied into the incident
+ledger.
+
+V009 builds two ordering indexes concurrently and outside a Flyway transaction,
+before new application code is rolled out. Timeline-plan Phases 2 and 3 are
+completed for this plan slice by PR Quality run `30257587569`, PostgreSQL job
+`89950772823`, and artifact `8650178111`. Fresh/upgrade, failed-build recovery,
+bounded plans, 60,600/61,206 source rows, append/vendor latency, index storage,
+legacy writes, cleanup, and the 3/3 activity HTTP matrix pass. The measured
+fixture gates are not production SLO or rollout evidence. Migration-before-
+code and forward recovery remain mandatory.
+
+Active program blockers remain explicit: `B-004`
+(provider/legal), `B-005` (named live connector), `B-006` (evidence lifecycle),
+`B-007` (load/SLO), `B-008` (retention/deletion), `B-011` (RTO/restore),
+`B-012` (object-store supply chain), `B-013` (held-out/human evaluation),
+`B-015` (Dependabot disposition), and `B-016` (Tool Gateway tenant isolation).
+See [Blockers](./blockers.md) for accountable owners and unblock evidence.
 
 Phase 8B now implements three secret-free, training-ineligible contracts:
 Scenario A detects a deployment-correlated latency regression, Scenario B is
@@ -132,13 +155,12 @@ evaluation-eligible; contract enforcement waits for old-writer drain.
 Every accepted invocation contributes to run cost; durable audit/receipt/
 evidence digests are exact-bound. Scenario C is independent of evidence
 row/UUID order. Reparse-safe managed paths and cleanup-first secret/export
-deletion protect failure paths. The 52-test evaluation suite passes. PR-quality
-run `30209210001` and cross-service run `30209209999` are terminal green for
-revision `df462031`; fresh A/B/C score `PASS` on all eight metrics
-with samples `100/1/1` and `GitTree=0`. Artifact `8634029083` attests service and
-source hashes; tracked-source hashes independently match, and the preceding
-`5dfbc00` artifact ZIP hash was independently recomputed. Two blocking
-process-supervision reviews pass.
+deletion protect failure paths. The exact CI evaluation command passes 61/61.
+PR-quality run `30257587569` and cross-service run `30257587543` are terminal
+green for revision `a975f922`; fresh A/B/C score `PASS` on all eight metrics
+with samples `100/1/1` and `GitTree=0`. Artifact `8649696519` attests the run
+and preserves the Phase 7 regression. Two blocking process-supervision reviews
+pass.
 The earlier run `30200584275` on `134d63c` remains historical first-green
 evidence. Held-out governance, preregistered Wilson reporting, and the human
 protocol are implemented, but held-out payloads and qualified human records/

@@ -1,6 +1,6 @@
 # OpsMind AI Codebase Summary
 
-Last verified: 2026-07-26
+Last verified: 2026-07-27
 
 ## Purpose and Verification Basis
 
@@ -18,10 +18,11 @@ This summary is based on:
   [Progress](./progress.md), and [Roadmap](./project-roadmap.md).
 
 Generated local artifacts are evidence inputs, not source-of-truth
-documentation. Source code and canonical contracts take precedence.
-A Repomix refresh was intentionally not run because `D:` was below the
-repository's 20 GiB safety floor; direct verified files and revision-bound CI
-evidence are the authority for this update.
+documentation. Source code and canonical contracts take precedence. Repomix
+1.14.0 packed 4,632 files and 10,402,074 tokens on 2026-07-27; its security
+check reported no suspicious files. Claims below were still checked against
+the current code, OpenAPI, migrations, tests, and CI evidence rather than
+inferred from the compaction.
 
 ## Delivery State
 
@@ -33,15 +34,20 @@ evidence are the authority for this update.
 | Phase 4 | In progress; checkpoint 4A incident write ledger is locally complete. Full Phase 4 and G2/G3 are not complete. |
 | Phase 5 | In progress; provider-neutral analysis, DeepSeek adapter, egress guards, durable PostgreSQL state, V005 append-only probe audit, Platform API integration, and stream assembly exist. Static checkpoint passes; exit remains blocked by B-004 and missing rotated-key synthetic smoke. |
 | Phase 6 | In progress; durable PostgreSQL and synthetic Prometheus checkpoint passes revision-bound CI. Artifact/broader-connector exit remains blocked. |
-| Phase 7 | In progress; local cross-service trace, 100-warm-run latency, CK/Stitch UI, and browser E2E checkpoints pass. G3 remains blocked by live non-production connector/provider conformance, timeline linkage, and BFF/session proof. |
+| Phase 7 | In progress; cross-service trace, 100-warm-run fixture, CK/Stitch UI/browser E2E, and the metadata-only incident activity route plus V009 CI fixture gates pass. G3 remains blocked by live non-production connector/provider/legal conformance and BFF/session proof. |
 | Phase 8 | In progress; Phase 8B contracts, V008 binding, bounded projection, production-path A/B/C, artifact attestation, and blocking review pass. Parent exit remains blocked by unavailable held-out/human/calibration evidence. |
 | Later phases | Durable workflow, RAG, remediation, complete operator UX, and production-hardening outcomes remain pending. |
 
 Phase 7's local Operator Web and fixture-backed cross-service checkpoints are
-complete for the safe projection boundary; incident-timeline linkage, live
-provider/connector conformance, and the production BFF/session gate remain
-open. The revision-bound report contains 100 warm runs and binds its git head
-and clean-tree assertion to the tested commit.
+complete for the safe projection boundary. The activity representation now
+links incident and investigation metadata at read time without copying ledger
+rows. Live provider/connector/legal conformance and the production BFF/session
+gate remain open. Timeline-plan Phases 2/3 and V009 fixture gates are complete;
+no broader Phase 7/G3 or production performance completion is claimed. PR
+Quality run `30257587569` and
+PostgreSQL artifact `8650178111` prove the route/V009 gates; cross-service run
+`30257587543` and artifact `8649696519` preserve the Phase 7 regression and 100
+warm Scenario A runs. These are CI fixture/test gates, not production SLO proof.
 
 Historical Phase 3/4 workstation transcripts remain local/reference evidence
 and explicitly deny release status. Revision-bound GitHub Actions evidence is
@@ -112,7 +118,7 @@ The current controllers expose:
 | `POST /api/v1/organizations/{organizationId}/projects/{projectId}/incidents` | `IncidentController.create` |
 | `GET /api/v1/organizations/{organizationId}/projects/{projectId}/incidents/{incidentId}` | `IncidentController.detail` |
 | `POST /api/v1/organizations/{organizationId}/projects/{projectId}/incidents/{incidentId}/transitions` | `IncidentController.transition` |
-| `GET /api/v1/organizations/{organizationId}/projects/{projectId}/incidents/{incidentId}/timeline` | `IncidentController.timeline` |
+| `GET /api/v1/organizations/{organizationId}/projects/{projectId}/incidents/{incidentId}/timeline` | `IncidentController.timeline`; legacy JSON plus opt-in metadata-only activity representation |
 | `POST /api/v1/organizations/{organizationId}/projects/{projectId}/incidents/{incidentId}/investigations` | `InvestigationRunController.start` (feature flagged) |
 | `GET /api/v1/organizations/{organizationId}/projects/{projectId}/incidents/{incidentId}/investigations/{runId}` | `InvestigationRunController.get` (feature flagged) |
 
@@ -127,6 +133,24 @@ Incident and investigation detail reads additionally support the typed
 projection-class, redaction-version, and redaction-count assurances, is
 `no-store`, varies on `Accept`, and is scoped by organization/project/
 incident/run. Legacy JSON remains available for non-browser callers.
+
+The timeline route preserves the existing `application/json` READ path and v1
+incident-version cursor. Its opt-in
+`application/vnd.opsmind.incident-activity-timeline.v1+json` representation
+requires `incident:analyze` plus `ANALYZE`, returns `no-store`, and uses a
+strict v2 cursor over `(occurredAt, sourceRank, eventId)`. Negotiation uses the
+most-specific matching media range before quality; JSON wins ties. OpenAPI
+uses `x-opsmind-representation-security` because standard OpenAPI security
+requirements cannot vary by response representation, so generic tooling may
+not enforce that mapping.
+
+`JdbcIncidentTimelineRepository.listActivity` runs a parameterized `UNION ALL`
+with organization/project/incident predicates in both branches. It projects
+only `eventId`, `source`, `eventType`, `occurredAt`, `actorId`, and the source-
+specific `incidentVersion` or `investigationRunId` plus
+`investigationSequence`. It does not select JSON payloads or free text. The
+ordering cursor is a forward-only live view: a fresh traversal is required for
+rows committed later at or before an issued cursor.
 
 The canonical public contract is
 `packages/contracts/openapi/opsmind-v1.yaml` (OpenAPI 3.1.1, contract version
@@ -203,12 +227,25 @@ re-verifies content before returning the redacted AI-input projection. Event and
 audit JSON intentionally retain metadata only.
 
 This is persistence, not durable orchestration. The code does not resume an
-in-flight runner after process loss and does not append investigation events to
-`incident_timeline_events`. The capability-backed AI/Tool clients and loopback
+in-flight runner after process loss and does not append or copy investigation
+events to `incident_timeline_events`; the activity route reads both ledgers
+without changing either. The capability-backed AI/Tool clients and loopback
 synthetic Prometheus path run in the disposable cross-service harness; they do
 not establish a named live non-production connector or provider/legal
 conformance, so G3 remains open. The browser harness mirrors the typed Platform
 projection and rejects unassured or unclassified media.
+
+V009 adds concurrent ordering indexes on both activity sources and opts that
+script out of Flyway transactions. Rollout order is migration before code;
+failed builds use catalog/history capture, exact-name concurrent removal of
+both V009 indexes, Flyway repair, and retry rather than mutation of applied
+history. PR Quality run `30257587569`, PostgreSQL job `89950772823`, and
+artifact `8650178111` prove fresh/upgrade, recovery, bounded plans, legacy
+writes, cleanup, and the 3/3 activity HTTP matrix. Its 60,600 incident and
+61,206 investigation rows produced append p95 regressions of 11.66% and 4.02%,
+vendor p95 of 2.563/1.466/1.533 ms, and index cost of 95.70 bytes/source row
+and 10.76% of table bytes. All plan thresholds pass as CI fixture/test gates;
+they are not production latency or SLO claims.
 
 ## Phase 8B Evaluation Boundary
 
@@ -248,14 +285,14 @@ and semantic JSON carry separate typed, domain-separated SHA-256 digests.
 Reparse ancestors are rejected before writes; cleanup deletes credentials and
 raw exports first and aggregates failures.
 
-The current evaluation suite passes 52/52. The Phase 8 validator reports six
+The exact CI evaluation command passes 61/61. The Phase 8 validator reports six
 schemas, ten families/three implemented, held-out `UNAVAILABLE` with zero cases,
 human baseline `UNAVAILABLE` with zero cases, three canonical results, eight
 metrics, four negative cases, zero errors, checkpoint `PASS`, and phase exit
-`BLOCK`. Revision-bound PR-quality run `30209210001` and cross-service run
-`30209209999` are terminal green on
-`df4620313a3f39721ef1bb521a9cf7ddcac5929c`; A/B/C pass with samples `100/1/1`
-and `GitTree=0`. Artifact `8634029083` is evidence bound to that revision.
+`BLOCK`. Revision-bound PR-quality run `30257587569` and cross-service run
+`30257587543` are terminal green on
+`a975f922fcd93c71479b9e15563643a9ea1aa04f`; A/B/C pass with samples `100/1/1`
+and `GitTree=0`. Artifact `8649696519` is evidence bound to that revision.
 Two independent process-supervision reviews pass.
 
 ## Security and Failure Posture
@@ -286,10 +323,10 @@ See [Security Model](./security-model.md) for the complete threat model and
 | Platform API Maven suite | Pass | Local verification, including pgJDBC `42.7.13` and V005 migration contracts |
 | `scripts/validation/validate-phase-05-ai-runtime.mjs` | Static checkpoint PASS | Exit gate remains BLOCK: active B-004 plus absent passing rotated-key synthetic smoke |
 | `scripts/validation/validate-phase-06-tool-gateway.mjs` | Durable Prometheus connector checkpoint PASS with schemas, canonical fixtures, digest/manifest/OpenAPI/source abuse checks | Phase exit BLOCK: artifact adapter, remaining connector families, tenant bulkhead, and provider-specific cancellation proof |
-| `scripts/validation/validate-phase-07-investigation-slice.mjs` | CK/Stitch/browser plus 100-warm-run revision-bound cross-service checkpoint PASS | G3 still requires live provider/connector, timeline, and BFF/session proof |
+| `scripts/validation/validate-phase-07-investigation-slice.mjs` | Artifact `8649696519` records OperatorWorkspace/CrossService/Checkpoint/PhaseExit PASS; Scenario A has 100 warm runs | G3 still requires live provider/connector/legal and BFF/session proof |
 | `scripts/validation/validate-phase-08-evaluation-foundation.mjs` | Six schemas, ten families/three implemented, three results/eight metrics/four negative cases, zero errors, checkpoint PASS | Phase exit BLOCK; held-out and human inputs unavailable |
-| GitHub Actions `30209210001` | PASS on revision `df462031`: bootstrap, secrets, actionlint, service/UI suites, dependency security, PostgreSQL, Keycloak, Compose | CI non-production evidence; not staging/production conformance |
-| GitHub Actions `30209209999` | PASS on revision `df462031`: A/B/C samples `100/1/1`, all metrics PASS, `GitTree=0`, artifact `8634029083` | Deterministic authored smoke; not held-out quality, calibration, or human benefit |
+| GitHub Actions `30257587569` | PASS on revision `a975f922`: bootstrap, secrets, actionlint, service/UI suites, dependency security, PostgreSQL job `89950772823`, Keycloak, Compose; artifact `8650178111` proves V009/activity gates | CI fixture/non-production evidence; not production latency, SLO, or conformance |
+| GitHub Actions `30257587543` | PASS on revision `a975f922`: A/B/C samples `100/1/1`, all metrics PASS, `GitTree=0`, Phase 7 regression PASS, artifact `8649696519` | Deterministic authored smoke; not held-out quality, calibration, or human benefit |
 
 | Evidence | Verified result | Scope limitation |
 |---|---|---|

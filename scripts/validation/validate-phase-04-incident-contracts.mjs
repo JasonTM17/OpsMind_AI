@@ -60,6 +60,85 @@ const requiredSchemaPaths = [
   "packages/contracts/json-schema/incidents/incident-activity-timeline-page.schema.json",
   "packages/contracts/json-schema/audit/audit-event.schema.json",
 ];
+const activityTimelineFields = new Set([
+  "eventId",
+  "source",
+  "eventType",
+  "occurredAt",
+  "actorId",
+  "incidentVersion",
+  "investigationRunId",
+  "investigationSequence",
+]);
+const forbiddenActivityTimelineFields = new Set([
+  "payload",
+  "reason",
+  "externalTraceId",
+  "operationId",
+  "terminalReason",
+  "finalResponse",
+  "response",
+  "evidenceId",
+  "evidenceIds",
+  "toolId",
+  "toolCallId",
+  "canonicalContent",
+  "credential",
+  "credentials",
+  "prompt",
+  "reasoning",
+]);
+
+function sameMembers(actual, expected) {
+  return actual.size === expected.size
+    && [...actual].every((value) => expected.has(value));
+}
+
+function validateActivityTimelineSchemas(documents, schemaRoot, errors) {
+  const entryPath = path.join(
+    schemaRoot, "incidents", "incident-activity-timeline-entry.schema.json",
+  );
+  const pagePath = path.join(
+    schemaRoot, "incidents", "incident-activity-timeline-page.schema.json",
+  );
+  const entry = documents.get(entryPath);
+  const page = documents.get(pagePath);
+  if (!entry || !page) {
+    errors.push("incident activity timeline schemas are missing");
+    return;
+  }
+
+  const incident = entry.$defs?.incidentEntry;
+  const investigation = entry.$defs?.investigationEntry;
+  const incidentFields = new Set(Object.keys(incident?.properties ?? {}));
+  const investigationFields = new Set(Object.keys(investigation?.properties ?? {}));
+  const exposedFields = new Set([...incidentFields, ...investigationFields]);
+  const incidentRequired = new Set(incident?.required ?? []);
+  const investigationRequired = new Set(investigation?.required ?? []);
+  if (
+    entry.oneOf?.length !== 2
+    || incident?.additionalProperties !== false
+    || investigation?.additionalProperties !== false
+    || !sameMembers(incidentFields, incidentRequired)
+    || !sameMembers(investigationFields, investigationRequired)
+    || !sameMembers(exposedFields, activityTimelineFields)
+  ) {
+    errors.push("incident activity timeline entry is not the exact closed eight-field bridge");
+  }
+  if ([...forbiddenActivityTimelineFields].some((field) => exposedFields.has(field))) {
+    errors.push("incident activity timeline entry exposes a forbidden classified field");
+  }
+
+  const pageFields = new Set(Object.keys(page.properties ?? {}));
+  if (
+    page.additionalProperties !== false
+    || !sameMembers(pageFields, new Set(["items", "pageSize", "nextPageToken", "hasMore"]))
+    || page.properties?.items?.items?.$ref
+      !== "./incident-activity-timeline-entry.schema.json"
+  ) {
+    errors.push("incident activity timeline page is not closed over the activity entry schema");
+  }
+}
 
 const fileAccess = createContractFileAccess(repositoryRoot, errors);
 const schemaFiles = fileAccess.walkJsonFiles(schemaRoot);
@@ -87,6 +166,7 @@ inspectIncidentSchemas({
   requiredSchemaPaths,
   schemaRoot,
 });
+validateActivityTimelineSchemas(documents, schemaRoot, errors);
 try {
   inspectAuditPersistenceContracts({
     migration: fileAccess.readSafeFile(migrationPath),

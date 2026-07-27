@@ -3,6 +3,8 @@ package ai.opsmind.platform.incident;
 import java.sql.ResultSet;
 import java.sql.SQLException;
 import java.sql.Timestamp;
+import java.time.Instant;
+import java.time.temporal.ChronoUnit;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.UUID;
@@ -78,6 +80,48 @@ final class JdbcIncidentTimelineRepository implements IncidentTimelineRepository
         catch (DataAccessException exception) {
             throw persistenceProblem(exception);
         }
+    }
+
+    @Override
+    public List<IncidentActivityTimelineEntry> listActivity(
+        UUID organizationId,
+        UUID projectId,
+        UUID incidentId,
+        IncidentTimelinePageToken.ActivityCursor after,
+        int limit
+    ) {
+        IncidentActivityTimelineQuery.Prepared query = IncidentActivityTimelineQuery.build(
+            organizationId, projectId, incidentId, after, limit
+        );
+        try {
+            return jdbcTemplate.query(
+                query.sql(),
+                this::mapActivityEvent,
+                query.parameters().toArray()
+            );
+        }
+        catch (DataAccessException exception) {
+            throw persistenceProblem(exception);
+        }
+    }
+
+    private IncidentActivityTimelineEntry mapActivityEvent(
+        ResultSet resultSet,
+        int rowNumber
+    ) throws SQLException {
+        Instant occurredAt = resultSet.getTimestamp("occurred_at")
+            .toInstant()
+            .truncatedTo(ChronoUnit.MICROS);
+        return new IncidentActivityTimelineEntry(
+            resultSet.getObject("event_id", UUID.class),
+            resultSet.getString("source"),
+            resultSet.getString("event_type"),
+            occurredAt,
+            resultSet.getObject("actor_id", UUID.class),
+            resultSet.getObject("incident_version", Long.class),
+            resultSet.getObject("investigation_run_id", UUID.class),
+            resultSet.getObject("investigation_sequence", Long.class)
+        );
     }
 
     private IncidentTimelineEvent mapEvent(ResultSet resultSet, int rowNumber) throws SQLException {

@@ -74,7 +74,7 @@ query_upgrade_database() {
   local sql="$1"
   PGPASSWORD="$POSTGRES_PASSWORD" psql --no-password --no-psqlrc \
     --host "$PGHOST" --port "$PGPORT" --username "$POSTGRES_USER" \
-    --dbname "$upgrade_database" --tuples-only --no-align \
+    --dbname "$upgrade_database" --tuples-only --no-align --set ON_ERROR_STOP=1 \
     --command "$sql"
 }
 
@@ -422,8 +422,13 @@ WHERE event_id = '70000000-0000-4000-8000-000000000011'
 [[ "$invalid_abstain_rejected" == "t" ]]
 [[ "$rolling_legacy_write_count" == "1" ]]
 
-printf 'Database=%s\nVersionBefore=%s\nEvidenceTableBefore=%s\nVersionSeven=%s\nEvidenceTableAfterSeven=%s\nVersionEight=%s\nLegacyPayloadDigestStable=%s\nRollingLegacyWriteCount=%s\nInvalidAbstainRejected=%s\nUpgradeResult=PASS\n' \
+source "$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)/phase-04b-evidence-records/incident-timeline-v009-evidence.sh"
+run_incident_timeline_v009_evidence "$upgrade_database" "$database_url"
+version_nine="$(query_upgrade_database "SELECT max(version::integer) FROM flyway_schema_history WHERE success;")"
+[[ "$version_nine" == "9" ]]
+
+printf 'Database=%s\nVersionBefore=%s\nEvidenceTableBefore=%s\nVersionSeven=%s\nEvidenceTableAfterSeven=%s\nVersionEight=%s\nVersionNine=%s\nLegacyPayloadDigestStable=%s\nRollingLegacyWriteCount=%s\nInvalidAbstainRejected=%s\nUpgradeResult=PASS\n' \
   "$upgrade_database" "$version_before" "$table_before" \
-  "$version_seven" "$table_after_seven" "$version_eight" \
+  "$version_seven" "$table_after_seven" "$version_eight" "$version_nine" \
   "$([[ "$legacy_digest_after" == "$legacy_digest_before" ]] && printf true || printf false)" \
   "$rolling_legacy_write_count" "$invalid_abstain_rejected"

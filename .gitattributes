@@ -1,4 +1,6 @@
 # Raw-byte provenance and fixture digests must be identical on every checkout.
+*.sh text eol=lf
+scripts/validation/phase-04b-evidence-records/*.sql text eol=lf
 evaluation/**/*.json text eol=lf
 evaluation/**/*.yaml text eol=lf
 evaluation/**/*.mjs text eol=lf

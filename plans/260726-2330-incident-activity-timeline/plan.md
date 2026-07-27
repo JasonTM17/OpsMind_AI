@@ -3,10 +3,10 @@ title: Incident Activity Timeline Bridge
 description: >-
   Add a versioned incident activity timeline that unions incident and
   investigation metadata without breaking the current v1 route.
-status: pending
+status: completed
 priority: P1
 effort: 10-14h
-branch: main
+branch: feature/incident-activity-timeline-phase2
 tags:
   - phase7
   - incident-timeline
@@ -22,15 +22,19 @@ source: skill
 
 ## Overview
 
-Close the remaining Phase 7 timeline gap without new parallel services or ledger copies. Today `GET /.../timeline` returns only `incident_timeline_events` through `IncidentController.timeline` -> `IncidentQueryService.timeline` -> `IncidentTimelineRepository.list`, with a v1 incident-version cursor (`services/platform-api/src/main/java/ai/opsmind/platform/incident/IncidentController.java:130-141`, `services/platform-api/src/main/java/ai/opsmind/platform/incident/IncidentQueryService.java:71-107`, `services/platform-api/src/main/java/ai/opsmind/platform/incident/IncidentTimelineRepository.java:6-16`, `services/platform-api/src/main/java/ai/opsmind/platform/incident/IncidentTimelinePageToken.java:15-47`). Phase 7 still records that accepted investigation activity is not linked into `incident_timeline_events` and must not be copied there (`plans/260719-1747-opsmind-ai-production-platform/phase-07-thin-evidence-backed-incident-vertical-slice.md:66-80`, `plans/260719-1747-opsmind-ai-production-platform/phase-07-thin-evidence-backed-incident-vertical-slice.md:119-123`).
+At plan start, `GET /.../timeline` returned only
+`incident_timeline_events` through the legacy v1 incident-version cursor. This
+plan closed that read-linkage gap without a parallel service, ledger copy, or
+database view. Investigation rows remain in `investigation_run_events`; the
+opt-in ANALYZE-only representation unions both ledgers at read time.
 
 ## Phases
 
 | Phase | Name | Status |
 |-------|------|--------|
 | 1 | [Contract and Cursor Compatibility](./phase-01-contract-and-cursor-compatibility.md) | Completed |
-| 2 | [Unified Read Projection](./phase-02-unified-read-projection.md) | Pending |
-| 3 | [Verification and Gate Integration](./phase-03-verification-and-gate-integration.md) | Pending |
+| 2 | [Unified Read Projection](./phase-02-unified-read-projection.md) | Completed |
+| 3 | [Verification and Gate Integration](./phase-03-verification-and-gate-integration.md) | Completed |
 
 ## Dependencies
 
@@ -45,8 +49,35 @@ Close the remaining Phase 7 timeline gap without new parallel services or ledger
 - The vendor page unions `incident_timeline_events` and `investigation_run_events`, ordered by `(occurred_at, source_rank, event_id)`, with a strictly parsed v2 navigation cursor bound to incident ID, database-returned microsecond timestamp, source rank, and event ID. It is a forward-only live view, not a snapshot or lossless change feed.
 - V1 stays in the existing `READ` transaction; the vendor read uses the same hidden-denial transaction shape with `ANALYZE` scope/access (`services/platform-api/src/main/java/ai/opsmind/platform/incident/IncidentQueryService.java:84-107`, `services/platform-api/src/main/java/ai/opsmind/platform/incident/IncidentAnalysisAuthorizer.java:61-70`).
 - V009 contains only concurrent indexes and a per-script non-transactional Flyway config. Fresh and V008-to-V009 upgrades, query plans, invalid-index recovery, append latency, and storage overhead are release evidence; rollback is forward recovery, never destructive history editing.
-- Performance evidence is released only when a disposable high-cardinality fixture has at least 50,000 rows in each source ledger, 300 matched append samples per ledger (50 warm-up, 250 measured), and 100 warm vendor reads (50 warm-up, 50 measured). The vendor-read p95 and post-index append p95 must each be at most 500 ms, append p95 regression must be at most 20% versus the pre-index baseline, and the two V009 indexes together must be at most 256 bytes per source row and at most 100% of combined `pg_table_size` for the source ledgers. These are measurable release gates, not production-SLO claims.
+- Performance evidence is released only when a disposable high-cardinality fixture has at least 50,000 target rows in each source ledger plus same-tenant/project distractors; 300 matched append samples per ledger in each pre/post-index phase (50 warm-up, 250 measured; 600 total per ledger); and 300 vendor reads across initial, rank-0 cursor, and rank-1 cursor modes (50 warm-up and 50 measured per mode). The vendor-read p95 and post-index append p95 must each be at most 500 ms, append p95 regression must be at most 20% versus the pre-index baseline, and the two V009 indexes together must be at most 256 bytes per source row and at most 100% of combined `pg_table_size` for the source ledgers. These are measurable release gates, not production-SLO claims.
 - Focused Platform API tests plus Phase 4/7 validators cover contract, query, RLS, migration, and compatibility gates.
+
+## Immutable Completion Evidence
+
+Completion is bound to tested source
+`a975f922fcd93c71479b9e15563643a9ea1aa04f`.
+
+- PR Quality run `30257587569` completed successfully. PostgreSQL job
+  `89950772823` and artifact `8650178111` (`postgres-trust-contracts`) prove
+  V009 fresh/upgrade, invalid-index recovery, bounded query plans, legacy-write
+  compatibility, cleanup, 17/17 pooled tests, the alternating-tenant contract,
+  and the 3/3 activity HTTP matrix.
+- The high-cardinality fixture contains 60,600 incident rows and 61,206
+  investigation rows. Incident append p95 changed from 1.346 ms to 1.503 ms
+  (+11.66%); investigation append p95 changed from 2.265 ms to 2.356 ms
+  (+4.02%). Vendor read p95 was 2.563/1.466/1.533 ms for initial/rank-0/rank-1.
+- The two indexes occupy 11,657,216 bytes over 121,806 source rows:
+  95.70 bytes/row and 10.76% of 108,347,392 source-table bytes. All measured
+  fixture gates pass: append/vendor p95 <=500 ms, append regression <=20%,
+  index cost <=256 bytes/row, and index/table ratio <=100%.
+- Cross-service run `30257587543` and artifact `8649696519`
+  (`phase-08b-cross-service-evaluation`) are terminal green. Its Phase 7
+  regression records OperatorWorkspace/CrossService/Checkpoint/PhaseExit
+  `PASS`; A/B/C pass and Scenario A completes 100 warm runs.
+
+These are CI fixture/test gates, not production latency or SLO evidence. This
+completes only the Incident Activity Timeline Bridge plan slice; Phase 7, G3,
+the broader product roadmap, and release remain incomplete.
 
 ## Rollback
 

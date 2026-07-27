@@ -57,6 +57,8 @@ class IncidentControllerHttpTest {
         + "/projects/" + PROJECT_ID + "/incidents";
     private static final String TRANSITION_PATH = COLLECTION_PATH + "/" + INCIDENT_ID + "/transitions";
     private static final String TIMELINE_PATH = COLLECTION_PATH + "/" + INCIDENT_ID + "/timeline";
+    private static final String ACTIVITY_MEDIA_TYPE =
+        "application/vnd.opsmind.incident-activity-timeline.v1+json";
 
     private IncidentMutationService mutations;
     private IncidentQueryService queries;
@@ -321,6 +323,167 @@ class IncidentControllerHttpTest {
             .andExpect(jsonPath("$.pageSize").value(25))
             .andExpect(jsonPath("$.hasMore").value(false))
             .andExpect(jsonPath("$.nextPageToken").doesNotExist());
+    }
+
+    @Test
+    void vendorTimelineUsesExactMediaTypeNoStoreAndAnalyzeScope() throws Exception {
+        when(queries.activityTimeline(
+            any(), eq(ORGANIZATION_ID), eq(PROJECT_ID), eq(INCIDENT_ID), eq(25),
+            org.mockito.ArgumentMatchers.isNull()
+        )).thenReturn(new IncidentActivityTimelinePage(List.of(
+            new IncidentActivityTimelineEntry(
+                UUID.fromString("55555555-5555-4555-8555-555555555555"),
+                IncidentActivityTimelineEntry.INCIDENT,
+                IncidentTimelineEvent.CREATED,
+                Instant.parse("2030-01-01T00:00:00.123456Z"),
+                UUID.fromString("66666666-6666-4666-8666-666666666666"),
+                0L,
+                null,
+                null
+            )
+        ), 25, null, false));
+
+        mvc.perform(get(TIMELINE_PATH)
+                .principal(authentication(Set.of("incident:analyze")))
+                .header(HttpHeaders.ACCEPT, ACTIVITY_MEDIA_TYPE))
+            .andExpect(status().isOk())
+            .andExpect(content().contentType(ACTIVITY_MEDIA_TYPE))
+            .andExpect(header().string(HttpHeaders.VARY, "Accept"))
+            .andExpect(header().string(HttpHeaders.CACHE_CONTROL, "no-store"))
+            .andExpect(jsonPath("$.items[0].source").value("INCIDENT"))
+            .andExpect(jsonPath("$.items[0].incidentVersion").value(0))
+            .andExpect(jsonPath("$.items[0].investigationRunId").doesNotExist())
+            .andExpect(jsonPath("$.items[0].investigationSequence").doesNotExist());
+
+        verify(queries).activityTimeline(
+            any(), eq(ORGANIZATION_ID), eq(PROJECT_ID), eq(INCIDENT_ID), eq(25),
+            org.mockito.ArgumentMatchers.isNull()
+        );
+        verify(queries, never()).timeline(any(), any(), any(), any(), any(Integer.class), any());
+    }
+
+    @Test
+    void equalQualityAndMissingAcceptKeepLegacyJsonRepresentation() throws Exception {
+        when(queries.timeline(
+            any(), eq(ORGANIZATION_ID), eq(PROJECT_ID), eq(INCIDENT_ID), eq(25),
+            org.mockito.ArgumentMatchers.isNull()
+        )).thenReturn(new IncidentTimelinePage(List.of(), 25, null, false));
+
+        mvc.perform(get(TIMELINE_PATH)
+                .principal(authentication(Set.of("incident:read")))
+                .header(HttpHeaders.ACCEPT, ACTIVITY_MEDIA_TYPE + ";q=0.8, application/json;q=0.8"))
+            .andExpect(status().isOk())
+            .andExpect(content().contentType(MediaType.APPLICATION_JSON))
+            .andExpect(header().string(HttpHeaders.VARY, "Accept"))
+            .andExpect(header().doesNotExist(HttpHeaders.CACHE_CONTROL));
+
+        mvc.perform(get(TIMELINE_PATH)
+                .principal(authentication(Set.of("incident:read"))))
+            .andExpect(status().isOk())
+            .andExpect(content().contentType(MediaType.APPLICATION_JSON));
+
+        mvc.perform(get(TIMELINE_PATH)
+                .principal(authentication(Set.of("incident:read")))
+                .header(HttpHeaders.ACCEPT, "*/*"))
+            .andExpect(status().isOk())
+            .andExpect(content().contentType(MediaType.APPLICATION_JSON));
+    }
+
+    @Test
+    void unsupportedAndMalformedAcceptValuesReturn406() throws Exception {
+        for (String accept : List.of(
+            "text/plain",
+            ACTIVITY_MEDIA_TYPE + ";charset=utf-8",
+            ACTIVITY_MEDIA_TYPE + ";q=bogus",
+            "application/json;q=0",
+            "*/*;q=0"
+        )) {
+            mvc.perform(get(TIMELINE_PATH)
+                    .principal(authentication(Set.of("incident:read", "incident:analyze")))
+                    .header(HttpHeaders.ACCEPT, accept))
+                .andExpect(status().isNotAcceptable());
+        }
+        verify(queries, never()).timeline(any(), any(), any(), any(), any(Integer.class), any());
+        verify(queries, never()).activityTimeline(any(), any(), any(), any(), any(Integer.class), any());
+    }
+
+    @Test
+    void unacceptableTimelineReturnsProblemDetailsWhenClientAllowsTheErrorRepresentation()
+        throws Exception {
+        mvc.perform(get(TIMELINE_PATH)
+                .principal(authentication(Set.of("incident:read", "incident:analyze")))
+                .header(HttpHeaders.ACCEPT, "text/plain, application/problem+json"))
+            .andExpect(status().isNotAcceptable())
+            .andExpect(content().contentType(MediaType.APPLICATION_PROBLEM_JSON))
+            .andExpect(jsonPath("$.code")
+                .value("request.response-media-type-unacceptable"))
+            .andExpect(jsonPath("$.status").value(406));
+
+        verify(queries, never()).timeline(any(), any(), any(), any(), any(Integer.class), any());
+        verify(queries, never()).activityTimeline(any(), any(), any(), any(), any(Integer.class), any());
+    }
+
+    @Test
+    void vendorWinsOnlyWhenStrictlyHigherQualityAndUnsupportedCanFallbackToJson() throws Exception {
+        when(queries.timeline(
+            any(), eq(ORGANIZATION_ID), eq(PROJECT_ID), eq(INCIDENT_ID), eq(25),
+            org.mockito.ArgumentMatchers.isNull()
+        )).thenReturn(new IncidentTimelinePage(List.of(), 25, null, false));
+        when(queries.activityTimeline(
+            any(), eq(ORGANIZATION_ID), eq(PROJECT_ID), eq(INCIDENT_ID), eq(25),
+            org.mockito.ArgumentMatchers.isNull()
+        )).thenReturn(new IncidentActivityTimelinePage(List.of(), 25, null, false));
+
+        mvc.perform(get(TIMELINE_PATH)
+                .principal(authentication(Set.of("incident:analyze")))
+                .header(HttpHeaders.ACCEPT, ACTIVITY_MEDIA_TYPE + ";q=0.9, application/json;q=0.5"))
+            .andExpect(status().isOk())
+            .andExpect(content().contentType(ACTIVITY_MEDIA_TYPE));
+        mvc.perform(get(TIMELINE_PATH)
+                .principal(authentication(Set.of("incident:read")))
+                .header(HttpHeaders.ACCEPT, "text/plain, application/json"))
+            .andExpect(status().isOk())
+            .andExpect(content().contentType(MediaType.APPLICATION_JSON));
+    }
+
+    @Test
+    void specificityAndRejectedRangesSelectTheRemainingAcceptableRepresentation()
+        throws Exception {
+        when(queries.timeline(
+            any(), eq(ORGANIZATION_ID), eq(PROJECT_ID), eq(INCIDENT_ID), eq(25),
+            org.mockito.ArgumentMatchers.isNull()
+        )).thenReturn(new IncidentTimelinePage(List.of(), 25, null, false));
+        when(queries.activityTimeline(
+            any(), eq(ORGANIZATION_ID), eq(PROJECT_ID), eq(INCIDENT_ID), eq(25),
+            org.mockito.ArgumentMatchers.isNull()
+        )).thenReturn(new IncidentActivityTimelinePage(List.of(), 25, null, false));
+
+        assertTimelineRepresentation(
+            ACTIVITY_MEDIA_TYPE + ";q=0, application/json",
+            MediaType.APPLICATION_JSON_VALUE
+        );
+        assertTimelineRepresentation(
+            "application/json;q=0, */*;q=0.5",
+            ACTIVITY_MEDIA_TYPE
+        );
+        assertTimelineRepresentation(
+            "application/*;q=0.9, " + ACTIVITY_MEDIA_TYPE + ";q=0.8",
+            MediaType.APPLICATION_JSON_VALUE
+        );
+        assertTimelineRepresentation(
+            "application/*;q=0.5, " + ACTIVITY_MEDIA_TYPE + ";q=0.8",
+            ACTIVITY_MEDIA_TYPE
+        );
+        assertTimelineRepresentation("application/*", MediaType.APPLICATION_JSON_VALUE);
+    }
+
+    private void assertTimelineRepresentation(String accept, String expectedContentType)
+        throws Exception {
+        mvc.perform(get(TIMELINE_PATH)
+                .principal(authentication(Set.of("incident:read", "incident:analyze")))
+                .header(HttpHeaders.ACCEPT, accept))
+            .andExpect(status().isOk())
+            .andExpect(content().contentType(expectedContentType));
     }
 
     private void assertInvalidBody(String body, String idempotencyKey) throws Exception {

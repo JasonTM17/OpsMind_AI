@@ -646,7 +646,7 @@ jobs:
             -Dtest=ToolGatewayPersistenceIntegrationTest,ToolGatewayPersistenceBoundaryIntegrationTest \
             -f services/tool-gateway/pom.xml test \
             2>&1 | tee artifacts/verification/phase-07/tool-gateway-persistence.txt
-      - name: Prove V006 to V007 to V008 upgrade compatibility
+      - name: Prove V006 to V009 upgrade, recovery, and activity-index evidence
         shell: bash
         env:
           OPSMIND_EPHEMERAL_DB: "true"
@@ -679,6 +679,19 @@ jobs:
           OPSMIND_EPHEMERAL_DB=true \
             bash scripts/validation/run-phase-03-postgres-contract.sh > "$evidence" 2>&1
           cat "$evidence"
+      - name: Prove incident activity HTTP contract in isolation
+        shell: bash
+        env:
+          OPSMIND_PHASE7_DB_INTEGRATION: "true"
+          SPRING_DATASOURCE_URL: jdbc:postgresql://127.0.0.1:5432/opsmind
+        run: |
+          set -euo pipefail
+          mkdir -p artifacts/verification/phase-04
+          mvn --batch-mode --no-transfer-progress \
+            -Dmaven.repo.local="$OPS_CACHE_ROOT/maven" \
+            -Dtest=IncidentActivityTimelineHttpIntegrationTest \
+            -f services/platform-api/pom.xml test \
+            2>&1 | tee artifacts/verification/phase-04/incident-activity-timeline.txt
       - uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
         if: always()
         with:
@@ -686,6 +699,7 @@ jobs:
           path: |
             artifacts/verification/phase-03/
             artifacts/verification/phase-04/evidence-migration-upgrade.txt
+            artifacts/verification/phase-04/incident-activity-timeline.txt
             artifacts/verification/phase-07/tool-gateway-persistence.txt
           if-no-files-found: error
 

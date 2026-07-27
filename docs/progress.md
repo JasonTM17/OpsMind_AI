@@ -8,6 +8,53 @@
 - Record blockers explicitly and leave downstream phases pending.
 - Do not include secrets, raw credentials, or sensitive evidence.
 
+## 2026-07-27 — Incident activity timeline bridge evidence gate passed
+
+Implemented in the current worktree:
+
+- The existing incident timeline route retains legacy `application/json` as its
+  default READ/version-cursor representation. The opt-in
+  `application/vnd.opsmind.incident-activity-timeline.v1+json` representation
+  requires `incident:analyze` and `ANALYZE` access.
+- RFC-style `Accept` handling uses the most-specific matching range before
+  quality, retains JSON on ties, returns `406` for malformed, unsupported-only,
+  or parameterized vendor requests, sets `Vary: Accept` for both successful
+  representations, and sets `Cache-Control: no-store` for the vendor response.
+- The vendor view is a forward-only live `UNION ALL` of the incident and
+  investigation ledgers. Both branches filter organization/project/incident,
+  select only the eight metadata fields, and do not select JSON payloads or
+  free text. Late backdated commits require a new traversal; no row is copied
+  into the incident ledger.
+- V009 defines two concurrent ordering indexes and sets
+  `executeInTransaction=false`.
+
+Immutable evidence for source
+`a975f922fcd93c71479b9e15563643a9ea1aa04f`:
+
+- PR Quality run `30257587569` is terminal green. PostgreSQL job `89950772823`
+  and artifact `8650178111` (`postgres-trust-contracts`) prove V009
+  fresh/upgrade, invalid-index recovery, query-plan, legacy-write, cleanup, and
+  3/3 activity HTTP gates; pooled tests pass 17/17 and the alternating contract
+  records `Result=PASS`.
+- The fixture has 60,600 incident and 61,206 investigation rows. Append p95
+  pre/post is 1.346/1.503 ms (+11.66%) and 2.265/2.356 ms (+4.02%). Vendor
+  initial/rank-0/rank-1 p95 is 2.563/1.466/1.533 ms.
+- Combined indexes are 11,657,216 bytes over 121,806 rows and 108,347,392
+  table bytes: 95.70 bytes/row and 10.76%. All plan thresholds pass.
+- Cross-service run `30257587543` and artifact `8649696519`
+  (`phase-08b-cross-service-evaluation`) are terminal green. Phase 7 records
+  OperatorWorkspace/CrossService/Checkpoint/PhaseExit `PASS`; A/B/C pass,
+  Scenario A has 100 warm runs, and the exact CI evaluation command passes
+  61/61.
+
+These are CI fixture/test gates, not production latency, SLO, or rollout
+evidence. This closes only the Incident Activity Timeline Bridge plan slice.
+
+Still open: `B-004`, `B-005`, `B-006`, `B-007`, `B-008`, `B-011`, `B-012`,
+`B-013`, `B-015`, and `B-016`; see [Blockers](./blockers.md). The bridge does
+not close provider/legal, live connector, lifecycle, load/SLO, DR,
+held-out/human evaluation, dependency, or Tool Gateway tenant-isolation gates.
+
 ## 2026-07-26 — Phase 8B production-path evaluation delivered
 
 Implemented:

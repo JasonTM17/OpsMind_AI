@@ -134,6 +134,24 @@ concurrent membership revocation blocks until the authorized transaction ends
 and denies the next access. Invisible resource responses do not reflect scoped
 identifiers in either detail or `instance`.
 
+The timeline route has representation-specific authorization. Legacy
+`application/json` requires `incident:read` plus `READ` access and reads only
+`incident_timeline_events`. The opt-in activity representation requires
+`incident:analyze` plus `ANALYZE`; authorization completes before incident
+lookup. Its parameterized read union applies exact organization, project, and
+incident predicates to both ledgers. The closed projection exposes metadata
+only—never JSON payloads, free text, prompts/model prose, credentials,
+evidence/tool identifiers, or canonical evidence—and investigation rows remain
+separate rather than being copied into the incident ledger.
+
+V009 adds only concurrent ordering indexes for this read path. Migration is
+applied before code, outside a Flyway transaction, with session-level migration
+serialization and catalog/history-driven forward recovery. PR Quality run
+`30257587569`, PostgreSQL job `89950772823`, and artifact `8650178111` prove
+fresh/upgrade/recovery, scoped query plans, and 3/3 HTTP isolation/content
+checks on `a975f922`. These are CI fixture security/test gates, not production
+latency, SLO, or rollout evidence.
+
 The AI runtime uses a dedicated non-owner `NOBYPASSRLS` login and transaction-
 local tenant scope. This RLS boundary fails closed when application queries omit
 tenant predicates or a pooled connection is reused without scope. It does not
@@ -226,13 +244,14 @@ database to `database-team`, workflow to `workflow-team`, and provider spend to
 
 ## Verification Evidence
 
-Revision-bound PR-quality run `30209210001` on `df462031` passes repository secret scanning,
+Revision-bound PR-quality run `30257587569` on `a975f922` passes repository secret scanning,
 dependency security, Linux/Windows bootstrap, service/UI gates, PostgreSQL
 trust, Keycloak reference conformance, and Compose health. Cross-service run
-`30209209999` passes the bounded Tool Gateway/evaluation path and process-tree
-supervision review. These are non-production CI controls; they do not prove
-live provider/legal approval, a named live connector, object lifecycle, RAG,
-remediation, staging, DR, or release readiness.
+`30257587543` and artifact `8649696519` pass A/B/C plus the Phase 7
+OperatorWorkspace/CrossService/Checkpoint/PhaseExit regression. These are
+non-production CI controls; they do not prove live provider/legal approval, a
+named live connector, object lifecycle, RAG, remediation, staging, DR,
+production latency/SLOs, or release readiness.
 
 ## Remaining Security Gates
 

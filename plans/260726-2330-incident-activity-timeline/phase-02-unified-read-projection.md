@@ -1,7 +1,7 @@
 ---
 phase: 2
 title: "Unified Read Projection"
-status: pending
+status: completed
 priority: P1
 dependencies: [1]
 ---
@@ -10,7 +10,10 @@ dependencies: [1]
 
 ## Overview
 
-Implement the metadata-only bridge in the existing incident query stack. The current authorized transaction gates access before the timeline query runs (`services/platform-api/src/main/java/ai/opsmind/platform/incident/IncidentQueryService.java:84-107`); this phase keeps legacy JSON on `READ`, adds an ANALYZE-only vendor query in the same service/repository stack, and wires the contract created in Phase 1.
+This phase implemented the metadata-only bridge in the existing incident query
+stack. The authorized transaction gates access before the timeline query runs;
+legacy JSON remains on `READ`, while the opt-in vendor query uses `ANALYZE` in
+the same service/repository stack.
 
 ## Requirements
 
@@ -18,12 +21,12 @@ Implement the metadata-only bridge in the existing incident query stack. The cur
 - Functional: stable per-query order is `(occurred_at, source_rank, event_id)` with source rank `0` for incident and `1` for investigation. Pagination is a forward-only live view: rows committed later at or before the cursor may require a fresh traversal and no snapshot/lossless-feed claim is allowed.
 - Security: the vendor service path requires `ANALYZE_SCOPE` and `IncidentAccessMode.ANALYZE`; v1 stays on READ. SQL selects only the eight Phase 1 fields and never reads either JSON `payload`, evidence records, accepted response, reason/free text, tool/evidence IDs, or canonical content.
 - Non-functional: tenant context and hidden denial stay inside the existing transaction (`services/platform-api/src/main/java/ai/opsmind/platform/incident/JdbcIncidentAccessRepository.java:37-60`, `services/platform-api/src/main/java/ai/opsmind/platform/incident/JdbcIncidentAccessRepository.java:119-149`).
-- Non-functional: V009 uses concurrent indexes plus `V009__incident_activity_timeline_indexes.sql.conf` with `executeInTransaction=false`; deployment applies migration before mixed old/new application rollout (`services/platform-api/src/main/resources/db/migration/V003__incident_control_plane.sql:86-91`, `services/platform-api/src/main/resources/db/migration/V006__investigation_run_persistence.sql:199-208`).
-- Non-functional: release evidence uses at least 50,000 rows in each source ledger, 300 matched append samples per ledger (50 warm-up, 250 measured), and 100 warm vendor reads (50 warm-up, 50 measured). Vendor-read and post-index append p95 must each be at most 500 ms; append p95 regression must be at most 20% versus the pre-index baseline; combined V009 index bytes must be at most 256 bytes per source row and at most 100% of combined source-ledger `pg_table_size`. These values are test gates, not a claim about population production latency.
+- Non-functional: V009 uses concurrent indexes plus `V009__incident_activity_timeline_indexes.sql.conf` with `executeInTransaction=false`; the persistence profile and direct recovery harness select Flyway's session-level PostgreSQL advisory lock so the build cannot wait on Flyway's own transaction lock while migration runners remain serialized. Deployment applies migration before mixed old/new application rollout (`services/platform-api/src/main/resources/db/migration/V003__incident_control_plane.sql:86-91`, `services/platform-api/src/main/resources/db/migration/V006__investigation_run_persistence.sql:199-208`).
+- Non-functional: release evidence uses at least 50,000 target rows in each source ledger plus same-tenant/project distractors; 300 matched append samples per ledger in each pre/post-index phase (50 warm-up, 250 measured); and 300 vendor reads across initial, rank-0 cursor, and rank-1 cursor modes (50 warm-up, 50 measured per mode). Vendor-read and post-index append p95 must each be at most 500 ms; append p95 regression must be at most 20% versus the pre-index baseline; combined V009 index bytes must be at most 256 bytes per source row and at most 100% of combined source-ledger `pg_table_size`. These values are test gates, not a claim about population production latency.
 
 ## Data Flow
 
-1. `IncidentController.timeline` negotiates the Accept matrix from Phase 1: missing/blank/`*/*` selects JSON; JSON remains the tie-breaker when q-values are equal; the vendor is selected only when its nonzero q-value is strictly higher. Unsupported media types may be ignored when a valid JSON alternative remains. Vendor parameters other than `q`, malformed q-values, vendor q=0, JSON q=0 with no viable alternative, and supported-only requests with no positive q return 406. JSON calls existing `timeline`; the vendor calls a new `activityTimeline` method and sets exact `Content-Type`, `Vary: Accept`, and `Cache-Control: no-store`.
+1. `IncidentController.timeline` negotiates the Accept matrix from Phase 1 using RFC 9110 media-range precedence: the most-specific matching range determines each supported representation's quality. Missing/blank/`*/*` selects JSON; JSON remains the tie-breaker when the selected qualities are equal; the vendor is selected only when its selected quality is strictly higher and nonzero. A `q=0` range excludes only the representation for which it is the most-specific match, so another positive supported representation may still succeed. Unsupported media types may be ignored when a supported representation remains. Vendor parameters other than `q`, malformed q-values, or no positive supported representation return 406. JSON calls existing `timeline`; the vendor calls a new `activityTimeline` method and sets exact `Content-Type`, `Vary: Accept`, and `Cache-Control: no-store`.
 2. `IncidentQueryService.activityTimeline` validates ANALYZE scope, IDs, page size, and v2 token, then calls `JdbcIncidentAccessRepository.requireAccess(..., ANALYZE)` inside its transaction before incident existence/query (`services/platform-api/src/main/java/ai/opsmind/platform/incident/IncidentAnalysisAuthorizer.java:61-70`).
 3. `JdbcIncidentTimelineRepository` runs two branch-local filters with identical organization/project/incident predicates and branch-local tuple predicates, combines them with `UNION ALL`, orders once, and limits to `pageSize + 1`. It never selects `payload`.
 4. The repository maps the exact Phase 1 fields. The service encodes the next cursor from the last database-returned `(occurred_at, source_rank, event_id)` tuple after microsecond canonicalization.
@@ -55,7 +58,7 @@ Implement the metadata-only bridge in the existing incident query stack. The cur
 1. Extend the existing service/repository with `activityTimeline`/`listActivity`; keep current v1 signatures intact. Wire the controller and publish the matching OpenAPI route contract only now that both paths are real, then apply the Phase 1 negotiation matrix without a new helper class.
 2. Implement branch-local parameterized tuple predicates before `UNION ALL`. Project incident `event_id/event_kind/occurred_at/actor_id/incident_version` plus literals; project investigation `event_id/event_type/occurred_at/actor_id/run_id/sequence_no` plus literals. Select no JSON path and no other table.
 3. Apply identical organization/project/incident predicates to both branches even though RLS protects organization only. Treat the v2 cursor as an untrusted start position; strict parsing never replaces authorization.
-4. Add `incident_timeline_activity_order_idx` and `investigation_run_events_activity_order_idx` concurrently on `(organization_id, project_id, incident_id, occurred_at, event_id)` plus the matching `.sql.conf` `executeInTransaction=false`. On failure, stop rollout, capture Flyway history and both exact index catalog rows, drop both V009-owned indexes concurrently whether valid or invalid, invoke the approved Flyway `repair` seam, and retry; never modify applied migration bytes or repair by blind SQL deletion.
+4. Add `incident_timeline_activity_order_idx` and `investigation_run_events_activity_order_idx` concurrently on `(organization_id, project_id, incident_id, occurred_at, event_id)` plus the matching `.sql.conf` `executeInTransaction=false`. Select Flyway's session-level PostgreSQL advisory lock in Spring and any direct Flyway recovery seam; the default transaction-level advisory lock self-waits with `CREATE INDEX CONCURRENTLY`. On failure, stop rollout, capture Flyway history and both exact index catalog rows, drop both V009-owned indexes concurrently whether valid or invalid, invoke the approved Flyway `repair` seam, and retry; never modify applied migration bytes or repair by blind SQL deletion.
 5. Capture representative high-cardinality `EXPLAIN (ANALYZE, BUFFERS, FORMAT JSON)` evidence. Require branch-bounded index access, no ledger sequential scan, no unbounded full-ledger materialization, p95 thresholds from Requirements, and the exact index-byte budgets; revise SQL/index order if any gate fails.
 
 ## Validation
@@ -63,6 +66,15 @@ Implement the metadata-only bridge in the existing incident query stack. The cur
 - `mvn -f services/platform-api/pom.xml "-Dtest=IncidentQueryServiceTest,MigrationContractTest" test`
 - `$env:OPSMIND_PHASE4_DB_INTEGRATION='true'; $env:OPSMIND_PHASE7_DB_INTEGRATION='true'; mvn -f services/platform-api/pom.xml "-Dtest=IncidentActivityTimelineHttpIntegrationTest,IncidentHttpPersistenceIntegrationTest,InvestigationPersistenceIntegrationTest,InvestigationEvidencePersistenceIntegrationTest" test`
 - V008-to-V009 upgrade plus fresh migration run; record valid-index catalog state, query plan, migration duration, append p95 before/after/delta, vendor-read p95, row counts, index bytes, `pg_table_size`, and the evidence-gated recovery result.
+
+## Completion Evidence
+
+The immutable evidence block in [the plan](./plan.md#immutable-completion-evidence)
+binds this phase to source `a975f922fcd93c71479b9e15563643a9ea1aa04f`,
+successful PR Quality run `30257587569`, PostgreSQL artifact `8650178111`, and
+successful cross-service run `30257587543`. It proves the representation,
+authorization, isolation, V009 recovery/query-plan, latency, and storage gates.
+Those measurements are CI fixture/test evidence, not production SLO evidence.
 
 ## Risk Assessment
 
@@ -79,8 +91,8 @@ Implement the metadata-only bridge in the existing incident query stack. The cur
 
 ## Success Criteria
 
-- [ ] Vendor representation v1 returns only the eight-field contract, is ANALYZE-only, and uses the strictly parsed v2 live-view cursor.
-- [ ] The vendor media type and 406 response are published in OpenAPI only with the real controller/service/repository path; the legacy OpenAPI response remains compatible.
-- [ ] The current JSON route still reads only `incident_timeline_events` through the unchanged v1 path.
-- [ ] Same-tenant and cross-tenant negatives prove both branches stay scoped; forbidden sentinels are absent from response bytes.
-- [ ] V009 is online, forward-recoverable, fresh/upgrade tested, and its representative query plan/append/storage budgets pass without a ledger rewrite, copy, or view.
+- [x] Vendor representation v1 returns only the eight-field contract, is ANALYZE-only, and uses the strictly parsed v2 live-view cursor.
+- [x] The vendor media type and 406 response are published in OpenAPI only with the real controller/service/repository path; the legacy OpenAPI response remains compatible.
+- [x] The current JSON route still reads only `incident_timeline_events` through the unchanged v1 path.
+- [x] Same-tenant and cross-tenant negatives prove both branches stay scoped; forbidden sentinels are absent from response bytes.
+- [x] V009 is online, forward-recoverable, fresh/upgrade tested, and its representative query plan/append/storage budgets pass without a ledger rewrite, copy, or view.
