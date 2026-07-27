@@ -178,6 +178,76 @@ then proves incident, timeline, audit, and idempotency rows all rolled back.
 This checkpoint does not implement incident list/patch/assignment,
 postmortems, or the evidence-object lifecycle and does not close Phase 4 or G2.
 
+### Incident activity timeline representation
+
+`GET /api/v1/organizations/{organizationId}/projects/{projectId}/incidents/
+{incidentId}/timeline` now has two representations without changing the legacy
+JSON contract. Missing `Accept`, `*/*`, or an equal-quality choice selects
+`application/json`; that path still requires `incident:read` plus `READ`
+access, reads only `incident_timeline_events`, and uses the existing v1
+incident-version cursor and response schema.
+
+The opt-in
+`application/vnd.opsmind.incident-activity-timeline.v1+json` representation
+requires `incident:analyze` plus `ANALYZE` access. Inside the existing hidden-
+denial transaction, it authorizes before lookup and runs a parameterized
+`UNION ALL` over `incident_timeline_events` and `investigation_run_events`.
+Both branches filter the exact organization, project, and incident. The query
+projects only these eight possible entry fields:
+
+| Field | Availability |
+|---|---|
+| `eventId`, `source`, `eventType`, `occurredAt`, `actorId` | Both sources |
+| `incidentVersion` | Incident source only |
+| `investigationRunId`, `investigationSequence` | Investigation source only |
+
+The SQL never selects either ledger's JSON `payload` and exposes no reason,
+root-cause, resolution, prompt, model prose, credential, evidence/tool
+identifier, or other free text. Results order by
+`(occurred_at, source_rank, event_id)`, where incident is rank 0 and
+investigation is rank 1. The v2 cursor binds the incident and the exact
+database-returned microsecond timestamp, source rank, and event ID.
+
+This is a forward-only live view, not a snapshot or lossless change feed. A
+row committed later at or before an issued cursor can be absent from that
+continuation; callers must start a fresh traversal to discover late backdated
+rows. No investigation row is copied into `incident_timeline_events`.
+
+Negotiation uses RFC 9110 media-range specificity before quality. JSON wins
+ties for compatibility; the vendor type is selected only when its selected
+quality is strictly higher and nonzero. Unsupported ranges can coexist with a
+supported range, while malformed media types, unsupported-only choices, or
+vendor parameters other than `q` return `406`. Both successful responses set
+`Vary: Accept`; the vendor response also sets `Cache-Control: no-store`.
+
+OpenAPI 3.1 cannot attach a different standard security requirement to each
+response media type. The operation therefore lists both scopes and uses the
+`x-opsmind-representation-security` extension to record the per-
+representation scope/access-mode mapping. Generic OpenAPI generators may
+ignore this extension; runtime authorization and the checked contract tests
+remain authoritative.
+
+Platform V009 adds only the two concurrent ordering indexes
+`incident_timeline_activity_order_idx` and
+`investigation_run_events_activity_order_idx`; its script-level Flyway config
+sets `executeInTransaction=false`. The persistence profile sets
+`spring.flyway.postgresql.transactional-lock=false`: PostgreSQL concurrent
+index creation cannot wait on Flyway's own history-lock transaction, while the
+resulting session-level advisory lock still serializes migration runners.
+Deployment applies V009 before new code. If either concurrent build fails,
+operators capture Flyway history and both index catalog rows, drop both exact
+V009 index names concurrently, run the approved Flyway repair seam, and retry;
+applied migration bytes and history are never edited blindly.
+
+PR Quality run `30257587569`, PostgreSQL job `89950772823`, and artifact
+`8650178111` prove fresh/upgrade, failed-build recovery, branch-bounded query
+plans, legacy-write compatibility, cleanup, and the 3/3 activity HTTP matrix on
+`a975f922`. The 60,600/61,206-row fixture passed append/vendor latency and
+storage gates: append p95 regressions were 11.66%/4.02%; vendor initial/rank-0/
+rank-1 p95 was 2.563/1.466/1.533 ms; index cost was 95.70 bytes/source row and
+10.76% of source-table bytes. These are CI fixture/test gates, not production
+latency or SLO evidence.
+
 ## Consistency and Messaging
 
 - PostgreSQL transactions protect state and matching outbox records.
@@ -436,9 +506,11 @@ The row records Gateway audit/request identities, provenance, redaction,
 truncation, and duplicate-replay state. This bounded control plane does not
 provide object upload, hold, restore, purge, malware scanning, or residency.
 
-This checkpoint does **not** append to `incident_timeline_events` and does not
-provide workflow restart/resume semantics; the orchestrator is still synchronous
-and in-process. Fixture AI/Tool clients remain non-production and profile-bound.
+The investigation writer still does **not** append or copy rows into
+`incident_timeline_events`; the activity representation above links the two
+ledgers only at read time. The checkpoint does not provide workflow
+restart/resume semantics; the orchestrator is still synchronous and in-process.
+Fixture AI/Tool clients remain non-production and profile-bound.
 The non-fixture Tool Gateway port resolves the model's selector through the
 immutable Platform catalog before credential acquisition. It derives stable
 execution/evidence IDs, builds canonical server-owned request bytes, and caps
@@ -463,11 +535,11 @@ The phase validator requires the report schema, threshold, exact counts,
 completed samples, current git head, and a clean working tree.
 
 G3 stays blocked on a named live non-production connector, provider/legal
-conformance, incident-timeline linkage, and the later BFF/session proof. The
-CK/Stitch operator workspace has local unit, build, accessibility, responsive,
-and Chromium browser proof against the safe projection boundary. Durable Tool
-Gateway and synthetic Prometheus evidence establish the local integration
-checkpoint but do not by themselves establish G3 or production readiness.
+conformance, and the later BFF/session proof. The metadata-only activity route
+and its V009 CI fixture gates close this plan's read-linkage slice. The
+CK/Stitch operator workspace has unit, build, accessibility, responsive, and
+Chromium browser proof against the safe projection boundary. These checkpoints
+do not by themselves establish G3 or production readiness.
 
 ## Evaluation Projection Boundary (Phase 8B)
 
@@ -530,12 +602,11 @@ recursive removal.
 Scenario A proves the latency-regression contract, B requires `ABSTAINED` with
 zero tools, and C requires two opposing read-only evidence collections plus
 counter-evidence and cautious confidence. Revision-bound PR-quality run
-`30209210001` and cross-service run `30209209999` are terminal green on
-`df4620313a3f39721ef1bb521a9cf7ddcac5929c`. Fresh A/B/C score `PASS` across
-all eight metrics with samples `100/1/1` and `GitTree=0`. Artifact
-`8634029083` is 221,461 bytes, created 2026-07-26T16:01:34Z, and expires
-2026-10-24T15:54:25Z. Phase 8 remains blocked on unavailable held-out/human
-evidence, calibration, and human comparison.
+`30257587569` and cross-service run `30257587543` are terminal green on
+`a975f922fcd93c71479b9e15563643a9ea1aa04f`. Fresh A/B/C score `PASS` across
+all eight metrics with samples `100/1/1` and `GitTree=0`; artifact
+`8649696519` contains the executable evidence. Phase 8 remains blocked on
+unavailable held-out/human evidence, calibration, and human comparison.
 
 The reviewed harness supervises process trees with a Windows Job Object and
 Linux `setsid`/subreaper/pidfd. Terminal status is authenticated; EOF ownership
@@ -590,13 +661,17 @@ Every request carries trace, correlation, tenant-safe subject, incident, workflo
 
 Architecture claims become verified only through contract tests, provider conformance, tenant isolation suites, workflow replay, failure injection, evaluation, security review, and DR drills in later phases. Current Phase 3 evidence includes a live local PostgreSQL RLS/pool-reuse matrix, outbox/inbox crash-window recovery, API/dispatcher database-role separation, tenant-safe scheduling, SQL duplicate/order enforcement, static validation, Java tests, and a live local Keycloak 26.7 reference run. Checkpoint 4A adds live PostgreSQL create/read/transition, authorization-revocation serialization, idempotent replay, concurrency, rollback, semantic timeline/audit integrity, migration-upgrade, and append-only proofs.
 
-Revision-bound PR-quality run `30209210001` also proves Linux/Windows bootstrap,
+Revision-bound PR-quality run `30257587569` also proves Linux/Windows bootstrap,
 secret scan, actionlint, Compose health, AI Runtime, both Java services,
 Operator Web, dependency security, Keycloak reference conformance, and
-PostgreSQL trust. Cross-service run `30209209999` proves the Phase 8B A/B/C
-mechanical path. Neither run proves live DeepSeek/legal approval, a named live
-non-production connector, RAG, remediation, Temporal, object lifecycle,
-staging/production, DR, or release readiness.
+PostgreSQL trust on `a975f922`. PostgreSQL artifact `8650178111` proves the
+V009 recovery/catalog/query-plan/latency/storage/upgrade/cleanup gates and the
+3/3 activity timeline matrix. Cross-service run `30257587543` and artifact
+`8649696519` prove A/B/C plus the Phase 7 OperatorWorkspace/CrossService/
+Checkpoint/PhaseExit regression. Neither run proves live DeepSeek/legal
+approval, a named live non-production connector, RAG, remediation, Temporal,
+object lifecycle, staging/production, DR, production latency/SLOs, or release
+readiness.
 
 For the current AI Runtime checkpoint, the Python suite reports 159 passed and five
 PostgreSQL-gated tests skipped when that database gate is not enabled; Ruff and
