@@ -103,7 +103,7 @@ egress. The model identifier and base URL are verified against the
 
 Verification on the exact branch worktree:
 
-- AI Runtime suite: `167 passed, 5 skipped` (the skips require disposable
+- AI Runtime suite: `168 passed, 5 skipped` (the skips require disposable
   PostgreSQL).
 - Ruff: pass.
 - mypy: pass.
