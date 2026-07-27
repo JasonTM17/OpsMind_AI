@@ -29,7 +29,7 @@ The detailed executable plan is [plans/260719-1747-opsmind-ai-production-platfor
 | 3 | Contracts, data, identity, and tenant foundation | G2 | In progress |
 | 4 | Incident control plane, evidence lifecycle, and audit | G2/G3 | In progress; checkpoint 4A local proof complete |
 | 5 | DeepSeek AI runtime and provider gateway | G3 | In progress; static checkpoint passed, exit gate blocked |
-| 6 | Safe Tool Gateway and read-only connectors | G3 | In progress; V003 tenant-isolation implementation complete locally, immutable PostgreSQL evidence pending; PhaseExitGate BLOCK |
+| 6 | Safe Tool Gateway and read-only connectors | G3 | In progress; B-016 tenant isolation resolved by immutable CI, broader Phase 6 exit remains BLOCK |
 | 7 | Evidence-backed incident vertical slice | G3 | In progress; metadata activity route and V009 CI fixture gates pass; external G3 blockers remain |
 | 8 | Simulator and evaluation baseline | A-Z G4 / roadmap G7 | In progress; Phase 8B complete, held-out/human/calibration evidence unavailable, exit BLOCK |
 | 9 | Durable Temporal investigation workflow | G4 | Pending; infrastructure may start, threshold freeze/exit waits for reviewed human pilot |
@@ -95,8 +95,13 @@ The B-016 branch adds capability-derived tenant/project propagation, forced RLS
 for receipts and verified audits, a tenant-free pre-verification audit lane,
 exact-policy/schema-privilege readiness, lease-vs-manifest safety, authenticated
 delivery-rejection audit, single-connection pool-reuse tests, and a V002-to-V003
-upgrade proof. B-016
-remains active until those new gates pass at an immutable revision.
+upgrade proof. PR Quality run `30279072972` and cross-service run
+`30279067839` are terminal green for source
+`269bd39e626836607fe66ed7eb050e1aa309044a7`; PostgreSQL artifact `8658901958`
+and cross-service artifact `8658216777` are digest-recorded in
+[Progress](./progress.md). B-016 is resolved. This is not a Phase 6 exit:
+the large-evidence artifact adapter, remaining connector families, provider
+cancellation, and tenant-bulkhead proof remain open.
 
 Phase 7 now includes a pure command/event reducer, bounded in-process runner,
 fixture-only `metrics.query` path, cited-completion guard, duplicate/no-progress
@@ -144,7 +149,7 @@ Active program blockers remain explicit: `B-004`
 (provider/legal), `B-005` (named live connector), `B-006` (evidence lifecycle),
 `B-007` (load/SLO), `B-008` (retention/deletion), `B-011` (RTO/restore),
 `B-012` (object-store supply chain), `B-013` (held-out/human evaluation),
-`B-015` (Dependabot disposition), and `B-016` (Tool Gateway tenant isolation).
+and `B-015` (Dependabot disposition).
 See [Blockers](./blockers.md) for accountable owners and unblock evidence.
 
 Phase 8B now implements three secret-free, training-ineligible contracts:

@@ -1,6 +1,6 @@
 ---
 title: Forward-only RLS Migration
-status: in-progress
+status: completed
 ---
 
 # Phase 2: Forward-only RLS Migration
@@ -16,7 +16,7 @@ status: in-progress
 - [x] Enable and force RLS on receipts and verified audit events.
 - [x] Add exact tenant/project policies, indexes, comments, grants, and public
   revocations.
-- [ ] Verify fresh migration, V002-to-V003 upgrade, ownership, runtime
+- [x] Verify fresh migration, V002-to-V003 upgrade, ownership, runtime
   `NOBYPASSRLS`, and legacy row preservation.
 
 ## Files
@@ -30,6 +30,10 @@ status: in-progress
 - Owner/migrator cannot silently bypass forced RLS.
 - Runtime cannot read or mutate either audit lane.
 - Existing V001/V002 checksums remain unchanged.
+
+Immutable PR Quality PostgreSQL artifact `8658901958` for source
+`269bd39e626836607fe66ed7eb050e1aa309044a` proves the fresh/upgrade,
+ownership, forced-RLS, scoped-access, and legacy-preservation contract.
 
 ## Rollback
 

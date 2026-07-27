@@ -1,6 +1,6 @@
 ---
 title: Security Review, Evidence, and Documentation
-status: in-progress
+status: completed
 ---
 
 # Phase 4: Security Review, Evidence, and Documentation
@@ -14,9 +14,9 @@ status: in-progress
 - [x] Add an architecture decision recording scope authority, audit-lane split,
   global nonce/ID semantics, consequences, and forward-recovery trigger.
 - [x] Run local repository/phase validators; rerun docs validation after review.
-- [ ] Push branch, open PR, obtain immutable green PR Quality and cross-service
+- [x] Push branch, open PR, obtain immutable green PR Quality and cross-service
   evidence, then merge with exact-head guard.
-- [ ] Move B-016 to resolved only after the immutable PostgreSQL artifact proves
+- [x] Move B-016 to resolved only after the immutable PostgreSQL artifact proves
   the isolation matrix.
 
 ## Required Evidence
@@ -26,6 +26,10 @@ status: in-progress
 - Tool Gateway test counts and named isolation matrix results.
 - Cross-service run/artifact proving no execution regression.
 - Security review report with zero unresolved P0/P1 issues.
+
+Evidence: PR #20 source `269bd39e626836607fe66ed7eb050e1aa309044a`;
+PR Quality run `30279072972`, PostgreSQL job `90022080029`, artifact
+`8658901958`; cross-service run `30279067839`, artifact `8658216777`.
 
 ## Scope Guard
 
