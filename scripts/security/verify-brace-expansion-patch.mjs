@@ -12,7 +12,8 @@ assert.ok(
   todayUtc <= exceptionReviewBy,
   `GHSA-mh99-v99m-4gvg exception review expired on ${exceptionReviewBy}`,
 );
-const lockfile = readFileSync(path.join(repositoryRoot, "pnpm-lock.yaml"), "utf8");
+const lockfile = readFileSync(path.join(repositoryRoot, "pnpm-lock.yaml"), "utf8")
+  .replace(/\r\n/g, "\n");
 const packagesSection = lockfile.slice(
   lockfile.indexOf("\npackages:\n"),
   lockfile.indexOf("\nsnapshots:\n"),

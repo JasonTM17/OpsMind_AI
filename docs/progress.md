@@ -78,6 +78,19 @@ Independent review round three confirms zero unresolved P0/P1 findings.
 connector, lifecycle, SLO, DR, human evaluation, dependency, staging,
 production, or release blocker.
 
+## 2026-07-27 — B-015 dependency advisory disposition
+
+Dependabot alert #16 (`GHSA-mh99-v99m-4gvg`, CVE-2026-14257) is dismissed as
+`tolerable_risk` with a recorded compensating-control rationale. The repository
+still keeps the high finding visible to local audit policy: `pnpm audit` reports
+one ignored high finding, while the verifier
+`node scripts/security/verify-brace-expansion-patch.mjs` passes with the
+4,000,000-character bound and review date `2026-08-09`. The ESLint graph still
+requires CommonJS `minimatch@3`, so the patched `brace-expansion@1.1.16` and
+the `5.0.7` to `5.0.8` override remain until that graph can move safely.
+Dependency policy run `30282520687` is terminal green. This resolves B-015's
+alert-disposition gate, not the future dependency-upgrade follow-up.
+
 ## 2026-07-27 — Incident activity timeline bridge evidence gate passed
 
 Implemented in the current worktree:
