@@ -142,8 +142,9 @@ SELECT class.relname || ':' || index.indisvalid
      'investigation_run_events_activity_order_idx'
    )
  ORDER BY class.relname;")"
+  printf 'V009PostRecoveryIndexCatalog=%s\n' "${catalog_rows//$'\n'/,}"
   [[ "$catalog_rows" == \
-    $'incident_timeline_activity_order_idx:t\ninvestigation_run_events_activity_order_idx:t' ]]
+    $'incident_timeline_activity_order_idx:true\ninvestigation_run_events_activity_order_idx:true' ]]
 }
 
 assert_sample_count() {
