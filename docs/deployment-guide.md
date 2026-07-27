@@ -294,10 +294,11 @@ pre-production reconciliation gate.
 
 ## Active Release Blockers
 
-`B-004`, `B-005`, `B-006`, `B-007`, `B-008`, `B-011`, `B-012`, `B-013`,
-and `B-015` remain active. They respectively block provider/legal
+`B-004`, `B-005`, `B-006`, `B-007`, `B-008`, `B-011`, `B-012`, and `B-013`
+remain active. They respectively block provider/legal
 egress, live-connector proof, evidence lifecycle, load/SLO, data lifecycle,
 RTO/restore alignment, object-store supply-chain posture, held-out/human
-evaluation, and Dependabot disposition. B-016 tenant isolation is resolved by
-the immutable CI evidence recorded in [Progress](./progress.md), but no
+evaluation. B-015 dependency security is dispositioned with an explicit
+compensating control and review date; B-016 tenant isolation is resolved by the
+immutable CI evidence recorded in [Progress](./progress.md), but no
 deployment gate may treat this slice as resolving the remaining blockers.
