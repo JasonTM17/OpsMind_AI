@@ -318,61 +318,66 @@ SELECT incident_event_id,
        occurred_at
   FROM phase_v009_distractors;
 
-INSERT INTO investigation_runs (
-    run_id, organization_id, project_id, incident_id, actor_id, status,
-    max_rounds, max_tool_calls, max_evidence_items, max_tokens,
-    event_count, started_at, deadline_at
-)
-SELECT run_id,
-       '70000000-0000-4000-8000-000000000001',
-       '70000000-0000-4000-8000-000000000003',
-       incident_id,
-       '70000000-0000-4000-8000-000000000002',
-       'CREATED',
-       1, 0, 1, 1, 1,
-       occurred_at,
-       occurred_at + interval '5 minutes'
-  FROM phase_v009_distractors;
-
--- Distractor events use the same bounded transaction rule as target events.
+-- Each distractor batch inserts its snapshots and one-event ledgers atomically.
+-- This preserves the deferred event-count invariant while retaining the same
+-- bounded advisory-lock transaction rule as target events.
 SELECT format($batch$
+WITH runs AS (
+    INSERT INTO investigation_runs (
+        run_id, organization_id, project_id, incident_id, actor_id, status,
+        max_rounds, max_tool_calls, max_evidence_items, max_tokens,
+        event_count, started_at, deadline_at
+    )
+    SELECT run_id,
+           '70000000-0000-4000-8000-000000000001',
+           '70000000-0000-4000-8000-000000000003',
+           incident_id,
+           '70000000-0000-4000-8000-000000000002',
+           'CREATED',
+           1, 0, 1, 1, 1,
+           occurred_at,
+           occurred_at + interval '5 minutes'
+      FROM phase_v009_distractors
+     WHERE sample_no BETWEEN %s AND %s
+    RETURNING run_id, organization_id, project_id, incident_id, actor_id, started_at
+)
 INSERT INTO investigation_run_events (
     event_id, organization_id, project_id, incident_id, run_id, sequence_no,
     event_type, actor_id, occurred_at, payload
 )
-SELECT run_event_id,
-       '70000000-0000-4000-8000-000000000001',
-       '70000000-0000-4000-8000-000000000003',
-       incident_id,
-       run_id,
+SELECT fixture.run_event_id,
+       runs.organization_id,
+       runs.project_id,
+       runs.incident_id,
+       runs.run_id,
        1,
        'RUN_STARTED',
-       '70000000-0000-4000-8000-000000000002',
-       occurred_at,
+       runs.actor_id,
+       runs.started_at,
        jsonb_build_object(
-           'eventId', run_event_id,
-           'organizationId', '70000000-0000-4000-8000-000000000001',
-           'projectId', '70000000-0000-4000-8000-000000000003',
-           'incidentId', incident_id,
-           'runId', run_id,
+           'eventId', fixture.run_event_id,
+           'organizationId', runs.organization_id,
+           'projectId', runs.project_id,
+           'incidentId', runs.incident_id,
+           'runId', runs.run_id,
            'sequenceNo', 1,
            'eventType', 'RUN_STARTED',
-           'actorId', '70000000-0000-4000-8000-000000000002',
-           'occurredAt', occurred_at,
+           'actorId', runs.actor_id,
+           'occurredAt', runs.started_at,
            'details', jsonb_build_object(
-               'runId', run_id,
-               'incidentId', incident_id,
+               'runId', runs.run_id,
+               'incidentId', runs.incident_id,
                'budget', jsonb_build_object(
                    'maxRounds', 1,
                    'maxToolCalls', 0,
                    'maxEvidenceItems', 1,
                    'maxTokens', 1
                ),
-               'occurredAt', occurred_at
+               'occurredAt', runs.started_at
            )
        )
-  FROM phase_v009_distractors
- WHERE sample_no BETWEEN %s AND %s;
+  FROM runs
+  JOIN phase_v009_distractors fixture ON fixture.run_id = runs.run_id;
 $batch$, batch_start, LEAST(batch_start + 49, 10000))
   FROM generate_series(1, 10000, 50) AS batches(batch_start)
 \gexec
