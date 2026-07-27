@@ -187,6 +187,15 @@ INSERT INTO investigation_run_events (
     )
 );
 
+COMMIT;
+
+-- The production append trigger takes one transaction-scoped advisory lock per
+-- run. Keep every seed batch far below PostgreSQL's shared lock-table capacity
+-- and let psql autocommit each generated statement so those locks are released
+-- between batches. Fifty unique run locks stay below the PostgreSQL default
+-- max_locks_per_transaction value of 64. The trigger remains enabled for every
+-- fixture row.
+SELECT format($batch$
 WITH runs AS (
     INSERT INTO investigation_runs (
         run_id, organization_id, project_id, incident_id, actor_id, status,
@@ -205,7 +214,7 @@ WITH runs AS (
            '2031-01-01T00:00:00Z'::timestamptz
                + interval '5 minutes'
                + sample_no * interval '1 microsecond'
-      FROM generate_series(2, 50000) AS series(sample_no)
+      FROM generate_series(%s, %s) AS series(sample_no)
     RETURNING run_id, organization_id, project_id, incident_id, actor_id, started_at
 ), events AS (
     SELECT gen_random_uuid() AS event_id,
@@ -241,11 +250,14 @@ SELECT event_id, organization_id, project_id, incident_id, run_id, 1,
            )
        )
   FROM events;
+$batch$, batch_start, LEAST(batch_start + 49, 50000))
+  FROM generate_series(2, 50000, 50) AS batches(batch_start)
+\gexec
 
 -- Same-tenant, same-project distractors prove that the incident_id portion of
 -- each V009 index is selective. Their later timestamps keep target page
 -- assertions deterministic while still influencing planner statistics.
-CREATE TEMP TABLE phase_v009_distractors ON COMMIT DROP AS
+CREATE TEMP TABLE phase_v009_distractors AS
 SELECT sample_no,
        md5('v009-distractor-incident-' || sample_no)::uuid AS incident_id,
        md5('v009-distractor-incident-event-' || sample_no)::uuid AS incident_event_id,
@@ -322,6 +334,8 @@ SELECT run_id,
        occurred_at + interval '5 minutes'
   FROM phase_v009_distractors;
 
+-- Distractor events use the same bounded transaction rule as target events.
+SELECT format($batch$
 INSERT INTO investigation_run_events (
     event_id, organization_id, project_id, incident_id, run_id, sequence_no,
     event_type, actor_id, occurred_at, payload
@@ -357,8 +371,13 @@ SELECT run_event_id,
                'occurredAt', occurred_at
            )
        )
-  FROM phase_v009_distractors;
-COMMIT;
+  FROM phase_v009_distractors
+ WHERE sample_no BETWEEN %s AND %s;
+$batch$, batch_start, LEAST(batch_start + 49, 10000))
+  FROM generate_series(1, 10000, 50) AS batches(batch_start)
+\gexec
+
+DROP TABLE phase_v009_distractors;
 
 ANALYZE incident_timeline_events;
 ANALYZE investigation_run_events;
