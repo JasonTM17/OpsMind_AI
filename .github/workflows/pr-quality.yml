@@ -670,6 +670,15 @@ jobs:
             -Dtest=TenantRlsPoolIntegrationTest,TransactionalOutboxIntegrationTest,TransactionalInboxIntegrationTest,PlatformUserStatusVerifierIntegrationTest,OutboxDispatcherWorkloadIntegrationTest,InvestigationPersistenceIntegrationTest,InvestigationPersistenceIntegrityIntegrationTest,InvestigationEvidencePersistenceIntegrationTest,InvestigationEvidenceRollbackIntegrationTest,InvestigationEvidenceReplayIntegrationTest \
             -f services/platform-api/pom.xml test \
             2>&1 | tee artifacts/verification/phase-03/authz-rls-pool-matrix.txt
+      - name: Run alternating-tenant and append-only contract
+        shell: bash
+        run: |
+          set -euo pipefail
+          mkdir -p artifacts/verification/phase-03
+          evidence=artifacts/verification/phase-03/migration-and-rls.txt
+          OPSMIND_EPHEMERAL_DB=true \
+            bash scripts/validation/run-phase-03-postgres-contract.sh > "$evidence" 2>&1
+          cat "$evidence"
       - name: Prove incident activity HTTP contract in isolation
         shell: bash
         env:
@@ -683,15 +692,6 @@ jobs:
             -Dtest=IncidentActivityTimelineHttpIntegrationTest \
             -f services/platform-api/pom.xml test \
             2>&1 | tee artifacts/verification/phase-04/incident-activity-timeline.txt
-      - name: Run alternating-tenant and append-only contract
-        shell: bash
-        run: |
-          set -euo pipefail
-          mkdir -p artifacts/verification/phase-03
-          evidence=artifacts/verification/phase-03/migration-and-rls.txt
-          OPSMIND_EPHEMERAL_DB=true \
-            bash scripts/validation/run-phase-03-postgres-contract.sh > "$evidence" 2>&1
-          cat "$evidence"
       - uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
         if: always()
         with:
