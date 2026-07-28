@@ -217,13 +217,14 @@ class MigrationContractTest {
     }
 
     @Test
-    void workflowStartMigrationIsTheLatestTenantBoundHandoffContract() throws IOException {
+    void workflowStartMigrationDefinesTheInitialTenantBoundHandoffContract()
+        throws IOException {
         String migrationName = "V010__investigation_workflow_start_handoff.sql";
         assertThat(MigrationContractTest.class.getResource(
             "/db/migration/V009__incident_activity_timeline_indexes.sql"
         )).as("V009 predecessor migration must remain packaged").isNotNull();
         assertThat(MigrationContractTest.class.getResource("/db/migration/" + migrationName))
-            .as("latest platform migration must be packaged")
+            .as("initial workflow handoff migration must be packaged")
             .isNotNull();
         String migration = readMigration(migrationName);
 
@@ -288,5 +289,27 @@ class MigrationContractTest {
             .contains("GRANT EXECUTE ON FUNCTION public.opsmind_list_investigation_workflow_start_tenants(integer)")
             .contains("TO opsmind_dispatcher;")
             .doesNotContain("raw_prompt", "chain_of_thought", "api_key", "credential_ref");
+    }
+
+    @Test
+    void workflowDispatchExclusivityMigrationGuardsBothMembershipDirections()
+        throws IOException {
+        String migration = readMigration(
+            "V012__investigation_workflow_dispatch_exclusivity.sql"
+        );
+
+        assertThat(migration)
+            .contains("membership.member = role_row.oid")
+            .contains("membership.roleid = role_row.oid")
+            .contains("member_role.rolname <> session_user")
+            .contains("membership.admin_option")
+            .contains("membership.inherit_option")
+            .contains("membership.set_option")
+            .contains("CREATE OR REPLACE FUNCTION opsmind_has_unpublished_outbox_predecessor")
+            .contains("outbox predecessor lookup requires its bound tenant")
+            .contains("AS RESTRICTIVE")
+            .contains("CREATE OR REPLACE FUNCTION opsmind_claim_investigation_workflow_start")
+            .contains("workflow.ambiguous-retry-allowed")
+            .contains("workflow.reconciliation-required");
     }
 }

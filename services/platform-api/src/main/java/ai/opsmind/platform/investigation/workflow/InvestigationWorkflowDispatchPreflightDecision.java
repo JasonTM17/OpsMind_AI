@@ -4,7 +4,9 @@ import java.util.Arrays;
 
 enum InvestigationWorkflowDispatchPreflightDecision {
     ALLOW("workflow.preflight-allowed", false, false),
+    AMBIGUOUS_RETRY_ALLOWED("workflow.ambiguous-retry-allowed", false, false),
     LEASE_LOST("workflow.lease-lost", false, false),
+    RECONCILIATION_REQUIRED("workflow.reconciliation-required", false, false),
     AUTHORIZATION_REVOKED("workflow.authorization-revoked", true, false),
     DEADLINE_EXHAUSTED("workflow.deadline-exhausted", true, false),
     LEASE_WINDOW_EXHAUSTED("workflow.lease-window-exhausted", false, true),
@@ -34,6 +36,14 @@ enum InvestigationWorkflowDispatchPreflightDecision {
 
     boolean retryWithoutRpc() {
         return retryWithoutRpc;
+    }
+
+    boolean reconciliationRequired() {
+        return this == RECONCILIATION_REQUIRED;
+    }
+
+    boolean ambiguousRetryAllowed() {
+        return this == AMBIGUOUS_RETRY_ALLOWED;
     }
 
     static InvestigationWorkflowDispatchPreflightDecision fromCode(String code) {

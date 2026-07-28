@@ -564,6 +564,197 @@ WHERE oid = 'public.opsmind_settle_investigation_workflow_start(uuid,uuid,uuid,c
 [[ "$workflow_terminalizer_function_after_eleven" == "PRESENT" ]]
 [[ "$workflow_settlement_owner_after_eleven" == "opsmind_dispatch_resolver" ]]
 
+migrate_to 12
+version_twelve="$(query_upgrade_database "SELECT max(version::integer) FROM flyway_schema_history WHERE success;")"
+workflow_claim_function_after_twelve="$(query_upgrade_database "
+SELECT CASE
+  WHEN to_regprocedure(
+    'public.opsmind_claim_investigation_workflow_start(uuid,uuid,bigint)'
+  ) IS NULL THEN 'ABSENT'
+  ELSE 'PRESENT'
+END;
+")"
+workflow_claim_owner_after_twelve="$(query_upgrade_database "
+SELECT pg_get_userbyid(proowner)
+FROM pg_proc
+WHERE oid = 'public.opsmind_claim_investigation_workflow_start(uuid,uuid,bigint)'::regprocedure;
+")"
+workflow_claim_security_definer_after_twelve="$(query_upgrade_database "
+SELECT CASE WHEN prosecdef THEN 'TRUE' ELSE 'FALSE' END
+FROM pg_proc
+WHERE oid = 'public.opsmind_claim_investigation_workflow_start(uuid,uuid,bigint)'::regprocedure;
+")"
+workflow_claim_dispatcher_execute_after_twelve="$(query_upgrade_database "
+SELECT CASE WHEN has_function_privilege(
+  'opsmind_dispatcher',
+  'public.opsmind_claim_investigation_workflow_start(uuid,uuid,bigint)'::regprocedure,
+  'EXECUTE'
+) THEN 'GRANTED' ELSE 'REVOKED' END;
+")"
+workflow_claim_public_execute_after_twelve="$(query_upgrade_database "
+SELECT CASE WHEN EXISTS (
+  SELECT 1
+  FROM pg_proc proc
+  CROSS JOIN LATERAL aclexplode(
+    COALESCE(proc.proacl, acldefault('f', proc.proowner))
+  ) privilege
+  WHERE proc.oid = 'public.opsmind_claim_investigation_workflow_start(uuid,uuid,bigint)'::regprocedure
+    AND privilege.grantee = 0
+    AND privilege.privilege_type = 'EXECUTE'
+) THEN 'GRANTED' ELSE 'REVOKED' END;
+")"
+outbox_predecessor_function_after_twelve="$(query_upgrade_database "
+SELECT CASE
+  WHEN to_regprocedure(
+    'public.opsmind_has_unpublished_outbox_predecessor(uuid,character varying,uuid,bigint)'
+  ) IS NULL THEN 'ABSENT'
+  ELSE 'PRESENT'
+END;
+")"
+outbox_predecessor_owner_after_twelve="$(query_upgrade_database "
+SELECT pg_get_userbyid(proowner)
+FROM pg_proc
+WHERE oid = 'public.opsmind_has_unpublished_outbox_predecessor(uuid,character varying,uuid,bigint)'::regprocedure;
+")"
+outbox_predecessor_security_definer_after_twelve="$(query_upgrade_database "
+SELECT CASE WHEN prosecdef THEN 'TRUE' ELSE 'FALSE' END
+FROM pg_proc
+WHERE oid = 'public.opsmind_has_unpublished_outbox_predecessor(uuid,character varying,uuid,bigint)'::regprocedure;
+")"
+outbox_predecessor_dispatcher_execute_after_twelve="$(query_upgrade_database "
+SELECT CASE WHEN has_function_privilege(
+  'opsmind_dispatcher',
+  'public.opsmind_has_unpublished_outbox_predecessor(uuid,character varying,uuid,bigint)'::regprocedure,
+  'EXECUTE'
+) THEN 'GRANTED' ELSE 'REVOKED' END;
+")"
+outbox_predecessor_public_execute_after_twelve="$(query_upgrade_database "
+SELECT CASE WHEN EXISTS (
+  SELECT 1
+  FROM pg_proc proc
+  CROSS JOIN LATERAL aclexplode(
+    COALESCE(proc.proacl, acldefault('f', proc.proowner))
+  ) privilege
+  WHERE proc.oid = 'public.opsmind_has_unpublished_outbox_predecessor(uuid,character varying,uuid,bigint)'::regprocedure
+    AND privilege.grantee = 0
+    AND privilege.privilege_type = 'EXECUTE'
+) THEN 'GRANTED' ELSE 'REVOKED' END;
+")"
+dispatcher_role_after_twelve="$(query_upgrade_database "
+SELECT CASE WHEN rolcanlogin
+  AND NOT rolsuper
+  AND NOT rolbypassrls
+  AND NOT rolinherit
+  AND NOT EXISTS (
+    SELECT 1
+    FROM pg_auth_members membership
+    WHERE membership.member = pg_roles.oid
+  )
+  AND NOT EXISTS (
+    SELECT 1
+    FROM pg_auth_members membership
+    WHERE membership.roleid = pg_roles.oid
+  )
+THEN 'SAFE' ELSE 'UNSAFE' END
+FROM pg_roles
+WHERE rolname = 'opsmind_dispatcher';
+")"
+resolver_role_after_twelve="$(query_upgrade_database "
+SELECT CASE WHEN NOT rolcanlogin
+  AND NOT rolsuper
+  AND NOT rolbypassrls
+  AND NOT rolinherit
+  AND NOT EXISTS (
+    SELECT 1
+    FROM pg_auth_members membership
+    WHERE membership.member = pg_roles.oid
+  )
+  AND NOT EXISTS (
+    SELECT 1
+    FROM pg_auth_members membership
+    JOIN pg_roles member_role ON member_role.oid = membership.member
+    WHERE membership.roleid = pg_roles.oid
+      AND (
+        member_role.rolname <> session_user
+        OR membership.admin_option
+        OR NOT membership.inherit_option
+        OR NOT membership.set_option
+      )
+  )
+THEN 'SAFE' ELSE 'UNSAFE' END
+FROM pg_roles
+WHERE rolname = 'opsmind_dispatch_resolver';
+")"
+dispatcher_workflow_binding_privilege_after_twelve="$(query_upgrade_database "
+SELECT CASE WHEN NOT EXISTS (
+  SELECT 1
+  FROM information_schema.role_table_grants
+  WHERE grantee = 'opsmind_dispatcher'
+    AND table_schema = 'public'
+    AND table_name = 'investigation_workflow_bindings'
+  UNION ALL
+  SELECT 1
+  FROM information_schema.column_privileges
+  WHERE grantee = 'opsmind_dispatcher'
+    AND table_schema = 'public'
+    AND table_name = 'investigation_workflow_bindings'
+) THEN 'REVOKED' ELSE 'GRANTED' END;
+")"
+dispatcher_inbox_privilege_after_twelve="$(query_upgrade_database "
+SELECT CASE WHEN NOT EXISTS (
+  SELECT 1
+  FROM information_schema.role_table_grants
+  WHERE grantee = 'opsmind_dispatcher'
+    AND table_schema = 'public'
+    AND table_name = 'inbox_events'
+  UNION ALL
+  SELECT 1
+  FROM information_schema.column_privileges
+  WHERE grantee = 'opsmind_dispatcher'
+    AND table_schema = 'public'
+    AND table_name = 'inbox_events'
+) THEN 'REVOKED' ELSE 'GRANTED' END;
+")"
+dispatcher_workflow_exclusion_policy_after_twelve="$(query_upgrade_database "
+SELECT CASE WHEN EXISTS (
+  SELECT 1
+  FROM pg_policy policy
+  WHERE policy.polrelid = 'public.outbox_events'::regclass
+    AND policy.polname = 'outbox_events_dispatcher_excludes_investigation_workflow_start'
+    AND policy.polcmd = '*'
+    AND policy.polpermissive = false
+    AND 'opsmind_dispatcher'::regrole::oid = ANY(policy.polroles)
+) THEN 'PRESENT' ELSE 'ABSENT' END;
+")"
+workflow_preflight_owner_after_twelve="$(query_upgrade_database "
+SELECT pg_get_userbyid(proowner)
+FROM pg_proc
+WHERE oid = 'public.opsmind_preflight_investigation_workflow_start(uuid,uuid,uuid,bigint)'::regprocedure;
+")"
+workflow_tenant_selector_owner_after_twelve="$(query_upgrade_database "
+SELECT pg_get_userbyid(proowner)
+FROM pg_proc
+WHERE oid = 'public.opsmind_list_investigation_workflow_start_tenants(integer)'::regprocedure;
+")"
+[[ "$version_twelve" == "12" ]]
+[[ "$workflow_claim_function_after_twelve" == "PRESENT" ]]
+[[ "$workflow_claim_owner_after_twelve" == "opsmind_dispatch_resolver" ]]
+[[ "$workflow_claim_security_definer_after_twelve" == "TRUE" ]]
+[[ "$workflow_claim_dispatcher_execute_after_twelve" == "GRANTED" ]]
+[[ "$workflow_claim_public_execute_after_twelve" == "REVOKED" ]]
+[[ "$outbox_predecessor_function_after_twelve" == "PRESENT" ]]
+[[ "$outbox_predecessor_owner_after_twelve" == "opsmind_dispatch_resolver" ]]
+[[ "$outbox_predecessor_security_definer_after_twelve" == "TRUE" ]]
+[[ "$outbox_predecessor_dispatcher_execute_after_twelve" == "GRANTED" ]]
+[[ "$outbox_predecessor_public_execute_after_twelve" == "REVOKED" ]]
+[[ "$dispatcher_role_after_twelve" == "SAFE" ]]
+[[ "$resolver_role_after_twelve" == "SAFE" ]]
+[[ "$dispatcher_workflow_binding_privilege_after_twelve" == "REVOKED" ]]
+[[ "$dispatcher_inbox_privilege_after_twelve" == "REVOKED" ]]
+[[ "$dispatcher_workflow_exclusion_policy_after_twelve" == "PRESENT" ]]
+[[ "$workflow_preflight_owner_after_twelve" == "opsmind_context_resolver" ]]
+[[ "$workflow_tenant_selector_owner_after_twelve" == "opsmind_dispatch_resolver" ]]
+
 cutover_block_output="${TMPDIR:-/tmp}/opsmind-phase9-cutover-block-${upgrade_database}.txt"
 set +e
 PGPASSWORD="$POSTGRES_PASSWORD" psql --no-password --no-psqlrc \
@@ -637,13 +828,28 @@ WHERE run.status IN ('CREATED', 'ANALYZING', 'WAITING_FOR_EVIDENCE')
 ")"
 [[ "$nonterminal_orphans_after_reconciliation" == "0" ]]
 
-printf 'Database=%s\nVersionBefore=%s\nEvidenceTableBefore=%s\nVersionSeven=%s\nEvidenceTableAfterSeven=%s\nVersionEight=%s\nVersionNine=%s\nVersionTen=%s\nVersionEleven=%s\nWorkflowBindingTableAfterTen=%s\nWorkflowEventFunctionAfterTen=%s\nWorkflowPreflightFunctionAfterEleven=%s\nWorkflowSettlementFunctionAfterEleven=%s\nWorkflowTerminalizerFunctionAfterEleven=%s\nWorkflowSettlementOwnerAfterEleven=%s\nLegacyTerminalRunsAfterTen=%s\nLegacyBindingCountAfterTen=%s\nNonterminalOrphansAfterTen=%s\nCutoverBlockExit=%s\nNonterminalOrphansAfterReconciliation=%s\nLegacyPayloadDigestStable=%s\nRollingLegacyWriteCount=%s\nInvalidAbstainRejected=%s\nUpgradeResult=PASS\n' \
+printf 'Database=%s\nVersionBefore=%s\nEvidenceTableBefore=%s\nVersionSeven=%s\nEvidenceTableAfterSeven=%s\nVersionEight=%s\nVersionNine=%s\nVersionTen=%s\nVersionEleven=%s\nVersionTwelve=%s\nWorkflowBindingTableAfterTen=%s\nWorkflowEventFunctionAfterTen=%s\nWorkflowPreflightFunctionAfterEleven=%s\nWorkflowSettlementFunctionAfterEleven=%s\nWorkflowTerminalizerFunctionAfterEleven=%s\nWorkflowSettlementOwnerAfterEleven=%s\nWorkflowClaimFunctionAfterTwelve=%s\nWorkflowClaimOwnerAfterTwelve=%s\nWorkflowClaimSecurityDefinerAfterTwelve=%s\nWorkflowClaimDispatcherExecuteAfterTwelve=%s\nWorkflowClaimPublicExecuteAfterTwelve=%s\nOutboxPredecessorFunctionAfterTwelve=%s\nOutboxPredecessorOwnerAfterTwelve=%s\nOutboxPredecessorSecurityDefinerAfterTwelve=%s\nOutboxPredecessorDispatcherExecuteAfterTwelve=%s\nOutboxPredecessorPublicExecuteAfterTwelve=%s\nDispatcherRoleAfterTwelve=%s\nResolverRoleAfterTwelve=%s\nDispatcherWorkflowBindingPrivilegeAfterTwelve=%s\nDispatcherInboxPrivilegeAfterTwelve=%s\nDispatcherWorkflowExclusionPolicyAfterTwelve=%s\nWorkflowPreflightOwnerAfterTwelve=%s\nWorkflowTenantSelectorOwnerAfterTwelve=%s\nLegacyTerminalRunsAfterTen=%s\nLegacyBindingCountAfterTen=%s\nNonterminalOrphansAfterTen=%s\nCutoverBlockExit=%s\nNonterminalOrphansAfterReconciliation=%s\nLegacyPayloadDigestStable=%s\nRollingLegacyWriteCount=%s\nInvalidAbstainRejected=%s\nUpgradeResult=PASS\n' \
   "$upgrade_database" "$version_before" "$table_before" \
   "$version_seven" "$table_after_seven" "$version_eight" "$version_nine" \
-  "$version_ten" "$version_eleven" "$binding_table_after_ten" \
+  "$version_ten" "$version_eleven" "$version_twelve" "$binding_table_after_ten" \
   "$workflow_event_function_after_ten" "$workflow_preflight_function_after_eleven" \
   "$workflow_settlement_function_after_eleven" "$workflow_terminalizer_function_after_eleven" \
   "$workflow_settlement_owner_after_eleven" \
+  "$workflow_claim_function_after_twelve" "$workflow_claim_owner_after_twelve" \
+  "$workflow_claim_security_definer_after_twelve" \
+  "$workflow_claim_dispatcher_execute_after_twelve" \
+  "$workflow_claim_public_execute_after_twelve" \
+  "$outbox_predecessor_function_after_twelve" \
+  "$outbox_predecessor_owner_after_twelve" \
+  "$outbox_predecessor_security_definer_after_twelve" \
+  "$outbox_predecessor_dispatcher_execute_after_twelve" \
+  "$outbox_predecessor_public_execute_after_twelve" \
+  "$dispatcher_role_after_twelve" "$resolver_role_after_twelve" \
+  "$dispatcher_workflow_binding_privilege_after_twelve" \
+  "$dispatcher_inbox_privilege_after_twelve" \
+  "$dispatcher_workflow_exclusion_policy_after_twelve" \
+  "$workflow_preflight_owner_after_twelve" \
+  "$workflow_tenant_selector_owner_after_twelve" \
   "$legacy_terminal_runs_after_ten" "$legacy_binding_count_after_ten" \
   "$nonterminal_orphans_after_ten" "$cutover_block_status" \
   "$nonterminal_orphans_after_reconciliation" \

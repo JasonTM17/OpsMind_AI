@@ -4,6 +4,7 @@ import static org.assertj.core.api.Assertions.assertThat;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.mock;
+import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.verifyNoInteractions;
 import static org.mockito.Mockito.when;
@@ -20,6 +21,7 @@ import ai.opsmind.platform.incident.AuthorizedIncidentAnalysisEvidence;
 import ai.opsmind.platform.incident.IncidentSeverity;
 import ai.opsmind.platform.incident.IncidentStatus;
 import ai.opsmind.platform.investigation.domain.InvestigationCommand;
+import ai.opsmind.platform.messaging.EventEnvelope;
 import ai.opsmind.platform.messaging.OutboxLease;
 
 import org.junit.jupiter.api.Test;
@@ -37,7 +39,7 @@ class InvestigationWorkflowStartDispatcherTest {
             mock(InvestigationWorkflowDispatchTransactions.class);
         OutboxLease lease = lease(1);
         when(transactions.claim(
-            eq(lease.event().organizationId()), any(), eq(NOW), any()
+            eq(lease.event().organizationId()), any(), any()
         )).thenReturn(Optional.of(lease));
         when(transactions.preflight(
             lease, requiredRpcWindow()
@@ -72,7 +74,7 @@ class InvestigationWorkflowStartDispatcherTest {
             mock(InvestigationWorkflowDispatchTransactions.class);
         OutboxLease retryLease = lease(1);
         when(retryTransactions.claim(
-            eq(retryLease.event().organizationId()), any(), eq(NOW), any()
+            eq(retryLease.event().organizationId()), any(), any()
         )).thenReturn(Optional.of(retryLease));
         when(retryTransactions.preflight(
             retryLease, requiredRpcWindow()
@@ -92,7 +94,7 @@ class InvestigationWorkflowStartDispatcherTest {
             mock(InvestigationWorkflowDispatchTransactions.class);
         OutboxLease exhaustedLease = lease(8);
         when(exhaustedTransactions.claim(
-            eq(exhaustedLease.event().organizationId()), any(), eq(NOW), any()
+            eq(exhaustedLease.event().organizationId()), any(), any()
         )).thenReturn(Optional.of(exhaustedLease));
         when(exhaustedTransactions.preflight(
             exhaustedLease, requiredRpcWindow()
@@ -110,13 +112,96 @@ class InvestigationWorkflowStartDispatcherTest {
     }
 
     @Test
+    void finalOutcomeUncertainAttemptParksForReconciliation() {
+        InvestigationWorkflowDispatchTransactions transactions =
+            mock(InvestigationWorkflowDispatchTransactions.class);
+        OutboxLease lease = lease(8, NOW.plusMillis(1));
+        InvestigationWorkflowClient client = (request, digest) -> {
+            throw new RuntimeException("transport outcome is unknown");
+        };
+        when(transactions.claim(
+            eq(lease.event().organizationId()), any(), any()
+        )).thenReturn(Optional.of(lease));
+        when(transactions.preflight(
+            lease, requiredRpcWindow()
+        )).thenReturn(InvestigationWorkflowDispatchPreflightDecision.ALLOW);
+        when(transactions.releaseRetry(
+            lease,
+            "workflow.reconciliation-required",
+            Duration.ofMinutes(1)
+        )).thenReturn(InvestigationWorkflowDispatchSettlementResult.RETRY_SCHEDULED);
+
+        assertThat(dispatcher(transactions, client).dispatchTenant(
+            lease.event().organizationId()
+        )).isOne();
+
+        verify(transactions).releaseRetry(
+            lease,
+            "workflow.reconciliation-required",
+            Duration.ofMinutes(1)
+        );
+        verify(transactions, never()).reject(any(), any());
+    }
+
+    @Test
+    void ambiguousRetryWithinBudgetReachesDeterministicTemporalReconciliation() {
+        InvestigationWorkflowDispatchTransactions transactions =
+            mock(InvestigationWorkflowDispatchTransactions.class);
+        OutboxLease lease = lease(2);
+        InvestigationWorkflowClient client = mock(InvestigationWorkflowClient.class);
+        when(transactions.claim(
+            eq(lease.event().organizationId()), any(), any()
+        )).thenReturn(Optional.of(lease));
+        when(transactions.preflight(
+            lease, requiredRpcWindow()
+        )).thenReturn(
+            InvestigationWorkflowDispatchPreflightDecision.AMBIGUOUS_RETRY_ALLOWED
+        );
+        when(client.start(any(), any())).thenReturn(
+            new InvestigationWorkflowClient.StartResult("temporal-run-reconciled", true)
+        );
+        when(transactions.acknowledgeStarted(lease, "temporal-run-reconciled"))
+            .thenReturn(InvestigationWorkflowDispatchSettlementResult.STARTED);
+
+        assertThat(dispatcher(transactions, client).dispatchTenant(
+            lease.event().organizationId()
+        )).isOne();
+
+        verify(client).start(any(), any());
+        verify(transactions).acknowledgeStarted(lease, "temporal-run-reconciled");
+        verify(transactions, never()).releaseRetry(any(), any(), any());
+        verify(transactions, never()).reject(any(), any());
+    }
+
+    @Test
+    void corruptPayloadUsesWorkflowSettlementRejectWithoutCallingTemporal() {
+        InvestigationWorkflowDispatchTransactions transactions =
+            mock(InvestigationWorkflowDispatchTransactions.class);
+        OutboxLease corruptLease = corruptPayloadDigest(lease(1));
+        InvestigationWorkflowClient client = mock(InvestigationWorkflowClient.class);
+        when(transactions.claim(
+            eq(corruptLease.event().organizationId()), any(), any()
+        )).thenReturn(Optional.of(corruptLease));
+        when(transactions.reject(corruptLease, "workflow.event-payload-invalid"))
+            .thenReturn(InvestigationWorkflowDispatchSettlementResult.REJECTED);
+
+        assertThat(dispatcher(transactions, client).dispatchTenant(
+            corruptLease.event().organizationId()
+        )).isOne();
+
+        verifyNoInteractions(client);
+        verify(transactions).reject(corruptLease, "workflow.event-payload-invalid");
+        verify(transactions, never()).releaseRetry(any(), any(), any());
+    }
+
+    @Test
     void preflightTerminalDecisionRejectsWithoutInvokingWorkflowClient() {
         InvestigationWorkflowDispatchTransactions transactions =
             mock(InvestigationWorkflowDispatchTransactions.class);
         OutboxLease lease = lease(1);
         InvestigationWorkflowClient client = mock(InvestigationWorkflowClient.class);
         when(transactions.claim(
-            eq(lease.event().organizationId()), any(), eq(NOW), any()
+            eq(lease.event().organizationId()), any(), any()
         )).thenReturn(Optional.of(lease));
         when(transactions.preflight(
             lease, requiredRpcWindow()
@@ -139,7 +224,7 @@ class InvestigationWorkflowStartDispatcherTest {
         OutboxLease lease = lease(1);
         InvestigationWorkflowClient client = mock(InvestigationWorkflowClient.class);
         when(transactions.claim(
-            eq(lease.event().organizationId()), any(), eq(NOW), any()
+            eq(lease.event().organizationId()), any(), any()
         )).thenReturn(Optional.of(lease));
         when(transactions.preflight(
             lease, requiredRpcWindow()
@@ -159,13 +244,44 @@ class InvestigationWorkflowStartDispatcherTest {
     }
 
     @Test
+    void reconciliationRequiredParksWithoutInvokingWorkflowClient() {
+        InvestigationWorkflowDispatchTransactions transactions =
+            mock(InvestigationWorkflowDispatchTransactions.class);
+        OutboxLease lease = lease(8);
+        InvestigationWorkflowClient client = mock(InvestigationWorkflowClient.class);
+        when(transactions.claim(
+            eq(lease.event().organizationId()), any(), any()
+        )).thenReturn(Optional.of(lease));
+        when(transactions.preflight(
+            lease, requiredRpcWindow()
+        )).thenReturn(InvestigationWorkflowDispatchPreflightDecision.RECONCILIATION_REQUIRED);
+        when(transactions.releaseRetry(
+            lease,
+            "workflow.reconciliation-required",
+            Duration.ofMinutes(1)
+        )).thenReturn(InvestigationWorkflowDispatchSettlementResult.RETRY_SCHEDULED);
+
+        assertThat(dispatcher(transactions, client).dispatchTenant(
+            lease.event().organizationId()
+        )).isOne();
+
+        verifyNoInteractions(client);
+        verify(transactions).releaseRetry(
+            lease,
+            "workflow.reconciliation-required",
+            Duration.ofMinutes(1)
+        );
+        verify(transactions, never()).reject(any(), any());
+    }
+
+    @Test
     void stalePreflightSkipsWorkflowClientAndLeaseMutation() {
         InvestigationWorkflowDispatchTransactions transactions =
             mock(InvestigationWorkflowDispatchTransactions.class);
         OutboxLease lease = lease(1);
         InvestigationWorkflowClient client = mock(InvestigationWorkflowClient.class);
         when(transactions.claim(
-            eq(lease.event().organizationId()), any(), eq(NOW), any()
+            eq(lease.event().organizationId()), any(), any()
         )).thenReturn(Optional.of(lease));
         when(transactions.preflight(
             lease, requiredRpcWindow()
@@ -206,8 +322,12 @@ class InvestigationWorkflowStartDispatcherTest {
     }
 
     private OutboxLease lease(int attempt) {
+        return lease(attempt, NOW.plusSeconds(600));
+    }
+
+    private OutboxLease lease(int attempt, Instant deadlineAt) {
         JsonMapper mapper = JsonMapper.builder().findAndAddModules().build();
-        InvestigationCommand.Start command = command();
+        InvestigationCommand.Start command = command(deadlineAt);
         var prepared = new InvestigationWorkflowStartEnvelopeFactory(mapper).prepare(
             command, authorized(), workflowProperties()
         );
@@ -216,7 +336,37 @@ class InvestigationWorkflowStartDispatcherTest {
         );
     }
 
+    private OutboxLease corruptPayloadDigest(OutboxLease originalLease) {
+        EventEnvelope event = originalLease.event();
+        byte[] corruptDigest = event.payloadDigest();
+        corruptDigest[0] ^= 0x01;
+        EventEnvelope corruptEvent = new EventEnvelope(
+            event.eventId(),
+            event.organizationId(),
+            event.aggregateType(),
+            event.aggregateId(),
+            event.aggregateSequence(),
+            event.eventType(),
+            event.schemaVersion(),
+            event.causationId(),
+            event.correlationId(),
+            event.occurredAt(),
+            event.payloadJson(),
+            corruptDigest
+        );
+        return new OutboxLease(
+            corruptEvent,
+            originalLease.leaseToken(),
+            originalLease.leaseExpiresAt(),
+            originalLease.attempt()
+        );
+    }
+
     private InvestigationCommand.Start command() {
+        return command(NOW.plusSeconds(600));
+    }
+
+    private InvestigationCommand.Start command(Instant deadlineAt) {
         return new InvestigationCommand.Start(
             UUID.fromString("55555555-5555-4555-8555-555555555555"),
             UUID.fromString("11111111-1111-4111-8111-111111111111"),
@@ -224,7 +374,7 @@ class InvestigationWorkflowStartDispatcherTest {
             UUID.fromString("33333333-3333-4333-8333-333333333333"),
             UUID.fromString("44444444-4444-4444-8444-444444444444"),
             new InvestigationCommand.Budget(4, 2, 10, 1_000),
-            NOW, NOW.plusSeconds(600)
+            NOW, deadlineAt
         );
     }
 
