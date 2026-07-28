@@ -58,14 +58,6 @@ public final class InvestigationWorkflowStartDispatcher {
     }
 
     private boolean process(OutboxLease lease, Duration requiredRpcWindow) {
-        DecodedStart decoded;
-        try {
-            verifyPayloadIntegrity(lease);
-            decoded = eventCodec.decode(lease.event());
-        }
-        catch (InvestigationWorkflowStartException invalid) {
-            return transactions.reject(lease, invalid.code()).handled();
-        }
         InvestigationWorkflowDispatchPreflightDecision preflight = transactions.preflight(
             lease, requiredRpcWindow
         );
@@ -85,6 +77,14 @@ public final class InvestigationWorkflowStartDispatcher {
                 "workflow.reconciliation-required",
                 properties.retryDelay(lease.attempt())
             ).handled();
+        }
+        DecodedStart decoded;
+        try {
+            verifyPayloadIntegrity(lease);
+            decoded = eventCodec.decode(lease.event());
+        }
+        catch (InvestigationWorkflowStartException invalid) {
+            return transactions.reject(lease, invalid.code()).handled();
         }
         if (preflight.retryWithoutRpc()) {
             return handleFailure(
