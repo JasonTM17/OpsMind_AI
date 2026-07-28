@@ -66,6 +66,7 @@ Python.
 | 4 | [Crash-window replay and security evidence](./phase-04-crash-window-replay-and-security-evidence.md) | In Progress |
 | 5 | [CI documentation and ship](./phase-05-ci-documentation-and-ship.md) | In Progress |
 | 6 | [Post-audit authorization and dispatch hardening](./phase-06-post-audit-authorization-and-dispatch-hardening.md) | In Progress |
+| 7 | [Read-only exact workflow reconciliation](./phase-07-read-only-exact-workflow-reconciliation.md) | In Progress |
 
 ## Dependencies
 
@@ -142,6 +143,12 @@ source now covers V011 legacy ambiguity normalization and preflight-before-decod
 parking, but the capacity guard blocks its full runtime/upgrade execution. No
 full fresh/upgrade real-role, injected atomicity, latency, reconciliation-lane,
 exact-head CI, or disposable PostgreSQL result is claimed.
+
+Phase 7 now defines the implementation-ready B-017 contract: a separate
+database login and NOLOGIN owner, a one-item capability-only claim/settlement
+lane, a Java observer with no start surface, two-sample retention-bounded
+absence proof, and aggregate-only metrics/alerts. Implementation and mandatory
+runtime evidence remain in progress.
 
 ## Unresolved Questions
 
