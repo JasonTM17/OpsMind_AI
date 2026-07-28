@@ -18,6 +18,7 @@ Cleanup, credential rotation, production deployment, external writes, and other 
 | B-011 | Phase 16 production promotion | Approved 120-minute service RTO is shorter than the approved four-hour artifact restore target | Product + operations + platform owners | Timed tiered-restore proof within 120 minutes, or an explicitly approved contract/ADR change | Active |
 | B-012 | Production-readiness claim | Approved local MinIO adapter now has an archived upstream repository and no ongoing upstream maintenance commitment | Platform + security owners | Supported replacement/supply-chain decision or bounded local-only exception with pinned provenance and exit plan | Active |
 | B-013 | Phase 8 exit | No held-out payloads are registered and no qualified human reviewer records/adjudication exist; calibration and human comparison are unavailable | Product + evaluation owners | Governed held-out case evidence plus qualified paired-review/adjudication report | Active |
+| B-017 | Temporal admission and Phase 9/G4 enablement | V011 leaves inherited dispatcher direct DML on `investigation_workflow_bindings`, `inbox_events`, and `outbox_events`, bypassing the intended capability-only settlement boundary. A retryable post-RPC outcome may already be accepted remotely. | Platform + database + workflow owners | V012 real-role containment proved on fresh/upgrade paths, plus a separately authorized read-only exact-workflow reconciliation lane limited to Describe and first-history reads (no Start), with bounded `PENDING` aging/alert behavior | Active |
 
 ## Capacity Guard
 
@@ -65,5 +66,7 @@ No blocker remains for starting Phase 2. Local/reference IdP conformance is no
 longer open; production identity and later-phase conformance/release gates
 remain. Phase 9 infrastructure may proceed with provisional test-only values,
 but no-progress/budget thresholds cannot be frozen and Phase 9 cannot exit
-until the reviewed human pilot is available. An approved policy is not treated
-as proof of its implementation.
+until the reviewed human pilot is available. B-017 separately blocks Temporal
+admission and the roadmap G4 enablement until its containment and reconciliation
+evidence exists. An approved policy is not treated as proof of its
+implementation.

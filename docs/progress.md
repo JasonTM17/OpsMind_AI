@@ -8,18 +8,26 @@
 - Record blockers explicitly and leave downstream phases pending.
 - Do not include secrets, raw credentials, or sensitive evidence.
 
-## 2026-07-28 — Phase 9 Temporal start handoff implemented; evidence pending
+## 2026-07-28 — Phase 9 start-handoff source present; safety evidence pending
 
-Current worktree code adds default-off V010 atomic run/binding/outbox admission,
-additive `202 + Location`, a dedicated-datasource dispatcher role in the
-Platform API artifact, Temporal RPC outside the claim transaction, atomic
-post-RPC reconciliation, deterministic workflow identity, and exact
-`AlreadyStarted` verification. Inline remains the default `200` path.
+Current worktree source adds default-off V010 atomic run/binding/outbox
+admission, additive `202 + Location`, a dedicated-datasource dispatcher role
+in the Platform API artifact, Temporal RPC outside the claim transaction,
+deterministic workflow identity, and exact `AlreadyStarted` verification.
+Inline remains the default `200` path.
+
+V011 is not sufficient to enable this path: inherited dispatcher direct DML on
+the Phase 9 binding, inbox, and outbox bypasses the intended capability-only
+boundary. V012 real-role containment and a separately authorized read-only
+exact-workflow reconciliation lane (Describe plus first-history, never Start)
+are required but unproven. A retryable outcome after an RPC may already have
+been accepted remotely, so local retry/age/deadline exhaustion must retain
+bounded `PENDING` and alert for reconciliation, not assert `REJECTED`.
 
 This is start-handoff infrastructure only. No live Temporal cluster/namespace,
 Compose service, worker, or restart/resume execution exists; no legacy row is
 automatically backfilled. Exact-head CI and PostgreSQL evidence are missing.
-Phase 9 and roadmap G4 remain in progress; B-013 remains active.
+Phase 9 and roadmap G4 remain in progress; B-013 and B-017 remain active.
 
 ## 2026-07-28 — G1 and Phase 2 immutable clean-runner evidence complete
 
@@ -852,5 +860,6 @@ Production IdP, provider/legal, named live connector, evidence-object lifecycle,
 RAG, remediation, a live Temporal environment and restart/resume worker,
 staging/production, DR, and release conformance remain explicit gates. Phase 9
 handoff infrastructure is in progress with provisional test-only thresholds,
-but exact-head evidence, threshold freeze, and Phase 9 exit remain open;
-B-013 requires reviewed human pilot data. See [Blockers](./blockers.md).
+but exact-head evidence, threshold freeze, Temporal-admission containment/
+reconciliation proof, and Phase 9 exit remain open; B-013 requires reviewed
+human pilot data and B-017 blocks admission/G4. See [Blockers](./blockers.md).
