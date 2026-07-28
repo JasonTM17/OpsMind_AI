@@ -253,13 +253,15 @@ jobs:
               "${IMAGE}@${IMAGE_DIGEST}" >/dev/null
 
             ready=false
-            for attempt in $(seq 1 60); do
+            attempt=1
+            while [[ "$attempt" -le 60 ]]; do
               if curl --fail --silent \
                 "http://127.0.0.1:18080${HEALTH_PATH}" >/dev/null; then
                 ready=true
                 break
               fi
               sleep 2
+              attempt=$((attempt + 1))
             done
             docker logs "$container" 2>&1 || true
             docker rm --force "$container" >/dev/null 2>&1 || true
