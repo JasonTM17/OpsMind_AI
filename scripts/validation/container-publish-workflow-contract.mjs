@@ -11,8 +11,9 @@ const expectedPermissions = {
   authorize: { actions: "read", contents: "read" },
   "build-candidate": { contents: "read", packages: "write" },
   promote: {
+    "artifact-metadata": "write",
     attestations: "write",
-    contents: "read",
+    contents: "write",
     "id-token": "write",
     packages: "write",
   },
@@ -176,7 +177,7 @@ export function validateContainerPublishWorkflow(document) {
   });
   const allowedSecretOwners = new Set([
     "promote:Validate Docker Hub credentials",
-    "promote:Log in to Docker Hub",
+    "promote:Log in to Docker Hub for promotion and attestation",
   ]);
   if (
     dockerHubTokenOwners.length !== 2 ||

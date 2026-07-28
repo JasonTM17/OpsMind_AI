@@ -35,7 +35,6 @@ jobs:
     outputs:
       release_version: ${{ steps.version.outputs.release_version }}
       release_tag: ${{ steps.version.outputs.release_tag }}
-      major_minor: ${{ steps.version.outputs.major_minor }}
       is_prerelease: ${{ steps.version.outputs.is_prerelease }}
 
     steps:
@@ -142,7 +141,7 @@ jobs:
           images: ghcr.io/jasontm17/${{ matrix.image }}
           flavor: latest=false
           tags: |
-            type=raw,value=candidate-${{ github.sha }}-${{ github.run_attempt }}
+            type=raw,value=candidate-${{ github.sha }}-${{ github.run_id }}-${{ github.run_attempt }}
           labels: |
             org.opencontainers.image.source=${{ github.server_url }}/${{ github.repository }}
             org.opencontainers.image.revision=${{ github.sha }}
@@ -255,7 +254,7 @@ jobs:
             ready=false
             attempt=1
             while [[ "$attempt" -le 60 ]]; do
-              if curl --fail --silent \
+              if curl --fail --silent --connect-timeout 2 --max-time 5 \
                 "http://127.0.0.1:18080${HEALTH_PATH}" >/dev/null; then
                 ready=true
                 break
@@ -423,8 +422,9 @@ jobs:
     runs-on: ubuntu-latest
     timeout-minutes: 45
     permissions:
+      artifact-metadata: write
       attestations: write
-      contents: read
+      contents: write
       id-token: write
       packages: write
     environment:
@@ -448,6 +448,7 @@ jobs:
         shell: bash
         env:
           GH_TOKEN: ${{ github.token }}
+          RELEASE_VERSION: ${{ needs.authorize.outputs.release_version }}
         run: |
           set -euo pipefail
           mapfile -t receipts < <(
@@ -472,6 +473,29 @@ jobs:
               and ([.[].imageName] | unique | length == 4)
             ) then . else error("candidate release set is incomplete") end' \
             "${receipts[@]}" > artifacts/candidate-release-set.json
+
+          gh api "repos/${GITHUB_REPOSITORY}/immutable-releases" \
+            | jq -e '.enabled == true' >/dev/null
+          github_tag="v${RELEASE_VERSION}"
+          gh api --paginate --slurp \
+            "repos/${GITHUB_REPOSITORY}/releases?per_page=100" \
+            | jq -e \
+                --arg tag "$github_tag" \
+                '[.[][] | select(.tag_name == $tag)] | length == 0' \
+                >/dev/null
+          # GraphQL variables must remain literal in the query document.
+          # shellcheck disable=SC2016
+          gh api graphql \
+            -f query='
+              query($owner: String!, $name: String!, $ref: String!) {
+                repository(owner: $owner, name: $name) {
+                  ref(qualifiedName: $ref) { name }
+                }
+              }' \
+            -f owner="$GITHUB_REPOSITORY_OWNER" \
+            -f name="${GITHUB_REPOSITORY#*/}" \
+            -f ref="refs/tags/${github_tag}" \
+            | jq -e '.data.repository.ref == null' >/dev/null
 
           for image in \
             opsmind-platform-api \
@@ -536,30 +560,47 @@ jobs:
         with:
           version: 1.3.3
 
-      - name: Log in to GHCR
-        shell: bash
-        env:
-          GHCR_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-        run: |
-          set -euo pipefail
-          printf '%s' "$GHCR_TOKEN" \
-            | oras login ghcr.io --username "$GITHUB_ACTOR" --password-stdin
-
-      - name: Log in to Docker Hub
-        if: steps.targets.outputs.dockerhub_enabled == 'true'
-        shell: bash
-        env:
-          DOCKERHUB_USERNAME: ${{ vars.DOCKERHUB_USERNAME }}
-          DOCKERHUB_TOKEN: ${{ secrets.DOCKERHUB_TOKEN }}
-        run: |
-          set -euo pipefail
-          printf '%s' "$DOCKERHUB_TOKEN" \
-            | oras login docker.io \
-                --username "$DOCKERHUB_USERNAME" \
-                --password-stdin
-
       - name: Set up Docker Buildx
         uses: docker/setup-buildx-action@bb05f3f5519dd87d3ba754cc423b652a5edd6d2c # v4.2.0
+
+      - name: Prepare registry credential session
+        id: registry_credentials
+        shell: bash
+        run: |
+          set -euo pipefail
+          expected_home="$(
+            getent passwd "$(id -u)" | cut -d: -f6
+          )"
+          [[ -n "$expected_home" && "$HOME" == "$expected_home" ]]
+          config_dir="${HOME}/.docker"
+          config_file="${config_dir}/config.json"
+          backup_file="${RUNNER_TEMP}/opsmind-docker-config.backup"
+          [[ ! -e "$backup_file" ]]
+          had_config=false
+          if [[ -f "$config_file" ]]; then
+            cp -- "$config_file" "$backup_file"
+            chmod 600 "$backup_file"
+            had_config=true
+          fi
+          mkdir -p "$config_dir"
+          chmod 700 "$config_dir"
+          echo "opened=true" >> "$GITHUB_OUTPUT"
+          echo "had_config=${had_config}" >> "$GITHUB_OUTPUT"
+
+      - name: Log in to GHCR for promotion and attestation
+        uses: docker/login-action@abd2ef45e78c5afb21d64d4ca52ee8550d9572c7 # v4.5.1
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Log in to Docker Hub for promotion and attestation
+        if: steps.targets.outputs.dockerhub_enabled == 'true'
+        uses: docker/login-action@abd2ef45e78c5afb21d64d4ca52ee8550d9572c7 # v4.5.1
+        with:
+          registry: docker.io
+          username: ${{ vars.DOCKERHUB_USERNAME }}
+          password: ${{ secrets.DOCKERHUB_TOKEN }}
 
       - name: Promote tested digests
         shell: bash
@@ -606,6 +647,7 @@ jobs:
           subject-name: ghcr.io/jasontm17/opsmind-platform-api
           subject-digest: ${{ steps.release_set.outputs.platform_api_digest }}
           push-to-registry: true
+          create-storage-record: false
 
       - name: Attest AI Runtime on GHCR
         id: attest_ai_runtime
@@ -614,6 +656,7 @@ jobs:
           subject-name: ghcr.io/jasontm17/opsmind-ai-runtime
           subject-digest: ${{ steps.release_set.outputs.ai_runtime_digest }}
           push-to-registry: true
+          create-storage-record: false
 
       - name: Attest Tool Gateway on GHCR
         id: attest_tool_gateway
@@ -622,6 +665,7 @@ jobs:
           subject-name: ghcr.io/jasontm17/opsmind-tool-gateway
           subject-digest: ${{ steps.release_set.outputs.tool_gateway_digest }}
           push-to-registry: true
+          create-storage-record: false
 
       - name: Attest Operator Web on GHCR
         id: attest_operator_web
@@ -630,6 +674,7 @@ jobs:
           subject-name: ghcr.io/jasontm17/opsmind-operator-web
           subject-digest: ${{ steps.release_set.outputs.operator_web_digest }}
           push-to-registry: true
+          create-storage-record: false
 
       - name: Attest Platform API on Docker Hub
         if: steps.targets.outputs.dockerhub_enabled == 'true'
@@ -638,6 +683,7 @@ jobs:
           subject-name: docker.io/${{ steps.targets.outputs.dockerhub_namespace }}/opsmind-platform-api
           subject-digest: ${{ steps.release_set.outputs.platform_api_digest }}
           push-to-registry: true
+          create-storage-record: false
 
       - name: Attest AI Runtime on Docker Hub
         if: steps.targets.outputs.dockerhub_enabled == 'true'
@@ -646,6 +692,7 @@ jobs:
           subject-name: docker.io/${{ steps.targets.outputs.dockerhub_namespace }}/opsmind-ai-runtime
           subject-digest: ${{ steps.release_set.outputs.ai_runtime_digest }}
           push-to-registry: true
+          create-storage-record: false
 
       - name: Attest Tool Gateway on Docker Hub
         if: steps.targets.outputs.dockerhub_enabled == 'true'
@@ -654,6 +701,7 @@ jobs:
           subject-name: docker.io/${{ steps.targets.outputs.dockerhub_namespace }}/opsmind-tool-gateway
           subject-digest: ${{ steps.release_set.outputs.tool_gateway_digest }}
           push-to-registry: true
+          create-storage-record: false
 
       - name: Attest Operator Web on Docker Hub
         if: steps.targets.outputs.dockerhub_enabled == 'true'
@@ -662,8 +710,34 @@ jobs:
           subject-name: docker.io/${{ steps.targets.outputs.dockerhub_namespace }}/opsmind-operator-web
           subject-digest: ${{ steps.release_set.outputs.operator_web_digest }}
           push-to-registry: true
+          create-storage-record: false
 
-      - name: Verify staged digests before mutable tag activation
+      - name: Close registry credential session
+        if: ${{ always() && steps.registry_credentials.outputs.opened == 'true' }}
+        shell: bash
+        env:
+          HAD_CONFIG: ${{ steps.registry_credentials.outputs.had_config }}
+        run: |
+          set -euo pipefail
+          expected_home="$(
+            getent passwd "$(id -u)" | cut -d: -f6
+          )"
+          [[ -n "$expected_home" && "$HOME" == "$expected_home" ]]
+          config_dir="${HOME}/.docker"
+          config_file="${config_dir}/config.json"
+          backup_file="${RUNNER_TEMP}/opsmind-docker-config.backup"
+          docker logout ghcr.io >/dev/null 2>&1 || true
+          docker logout docker.io >/dev/null 2>&1 || true
+          if [[ "$HAD_CONFIG" == "true" ]]; then
+            [[ -f "$backup_file" ]]
+            mv -- "$backup_file" "$config_file"
+            chmod 600 "$config_file"
+          else
+            rm -f "$config_file"
+            rmdir "$config_dir" >/dev/null 2>&1 || true
+          fi
+
+      - name: Verify staged immutable release set
         shell: bash
         env:
           GH_TOKEN: ${{ github.token }}
@@ -733,52 +807,11 @@ jobs:
             find artifacts/candidates -type f -name receipt.json | sort
           )
 
-      - name: Activate mutable release tags
+      - name: Write observed immutable release receipt
         shell: bash
         env:
-          RELEASE_TAG: ${{ needs.authorize.outputs.release_tag }}
-          MAJOR_MINOR: ${{ needs.authorize.outputs.major_minor }}
-          IS_PRERELEASE: ${{ needs.authorize.outputs.is_prerelease }}
-          DOCKERHUB_ENABLED: ${{ steps.targets.outputs.dockerhub_enabled }}
-          DOCKERHUB_NAMESPACE: ${{ steps.targets.outputs.dockerhub_namespace }}
-        run: |
-          set -euo pipefail
-          if [[ "$IS_PRERELEASE" == "true" ]]; then
-            echo "Pre-release verified; mutable stable tags remain unchanged."
-            exit 0
-          fi
-          owner="${GITHUB_REPOSITORY_OWNER,,}"
-          while IFS= read -r receipt; do
-            image="$(jq -r .imageName "$receipt")"
-            digest="$(jq -r .digest "$receipt")"
-            targets=("ghcr.io/${owner}/${image}")
-            if [[ "$DOCKERHUB_ENABLED" == "true" ]]; then
-              targets+=("docker.io/${DOCKERHUB_NAMESPACE}/${image}")
-            fi
-            for target in "${targets[@]}"; do
-              oras cp --recursive \
-                "${target}:${RELEASE_TAG}" \
-                "${target}:${MAJOR_MINOR},latest"
-              for tag in "$MAJOR_MINOR" latest; do
-                observed="$(
-                  docker buildx imagetools inspect "${target}:${tag}" \
-                    --format '{{json .Manifest}}' | jq -r .digest
-                )"
-                [[ "$observed" == "$digest" ]]
-              done
-            done
-          done < <(
-            find artifacts/candidates -type f -name receipt.json | sort
-          )
-
-      - name: Verify promoted release set and write observed receipt
-        shell: bash
-        env:
-          GH_TOKEN: ${{ github.token }}
           RELEASE_VERSION: ${{ needs.authorize.outputs.release_version }}
           RELEASE_TAG: ${{ needs.authorize.outputs.release_tag }}
-          MAJOR_MINOR: ${{ needs.authorize.outputs.major_minor }}
-          IS_PRERELEASE: ${{ needs.authorize.outputs.is_prerelease }}
           DOCKERHUB_ENABLED: ${{ steps.targets.outputs.dockerhub_enabled }}
           DOCKERHUB_NAMESPACE: ${{ steps.targets.outputs.dockerhub_namespace }}
         run: |
@@ -792,34 +825,32 @@ jobs:
             image="$(jq -r .imageName "$receipt")"
             digest="$(jq -r .digest "$receipt")"
             ghcr="ghcr.io/${owner}/${image}"
-            tags=("$RELEASE_TAG")
-            if [[ "$IS_PRERELEASE" != "true" ]]; then
-              tags+=("$MAJOR_MINOR" latest)
-            fi
-            for tag in "${tags[@]}"; do
-              observed="$(
-                docker buildx imagetools inspect "${ghcr}:${tag}" \
-                  --format '{{json .Manifest}}' | jq -r .digest
-              )"
-              [[ "$observed" == "$digest" ]]
-            done
+            observed="$(
+              docker buildx imagetools inspect "${ghcr}:${RELEASE_TAG}" \
+                --format '{{json .Manifest}}' | jq -r .digest
+            )"
+            [[ "$observed" == "$digest" ]]
 
             dockerhub='{"published":false}'
             if [[ "$DOCKERHUB_ENABLED" == "true" ]]; then
               dockerhub_image="docker.io/${DOCKERHUB_NAMESPACE}/${image}"
-              for tag in "${tags[@]}"; do
-                observed="$(
-                  docker buildx imagetools inspect \
-                    "${dockerhub_image}:${tag}" \
-                    --format '{{json .Manifest}}' | jq -r .digest
-                )"
-                [[ "$observed" == "$digest" ]]
-              done
+              observed="$(
+                docker buildx imagetools inspect \
+                  "${dockerhub_image}:${RELEASE_TAG}" \
+                  --format '{{json .Manifest}}' | jq -r .digest
+              )"
+              [[ "$observed" == "$digest" ]]
               dockerhub="$(
                 jq -n \
                   --arg image "$dockerhub_image" \
                   --arg digest "$digest" \
-                  '{published:true, image:$image, digest:$digest}'
+                  --arg tag "$RELEASE_TAG" \
+                  '{
+                    published: true,
+                    image: $image,
+                    tag: $tag,
+                    digest: $digest
+                  }'
               )"
             fi
 
@@ -832,12 +863,14 @@ jobs:
               [[ -n "$package_url" ]]
               jq -n \
                 --arg image "$ghcr" \
+                --arg tag "$RELEASE_TAG" \
                 --arg digest "$digest" \
                 --arg packageUrl "$package_url" \
                 --argjson dockerHub "$dockerhub" \
                 --argjson scan "$scan" \
                 '{
                   image: $image,
+                  tag: $tag,
                   digest: $digest,
                   platforms: ["linux/amd64", "linux/arm64"],
                   sbom: "VERIFIED",
@@ -857,22 +890,14 @@ jobs:
             find artifacts/candidates -type f -name receipt.json | sort
           )
 
-          release_tags="$(jq -n --arg tag "$RELEASE_TAG" '[$tag]')"
-          if [[ "$IS_PRERELEASE" != "true" ]]; then
-            release_tags="$(
-              jq -n \
-                --arg version "$RELEASE_TAG" \
-                --arg minor "$MAJOR_MINOR" \
-                '[$version, $minor, "latest"]'
-            )"
-          fi
           jq -n \
-            --arg schemaVersion "opsmind-oci-publication-v2" \
+            --arg schemaVersion "opsmind-oci-publication-v3" \
             --arg repository "$GITHUB_REPOSITORY" \
             --arg sourceSha "$GITHUB_SHA" \
             --arg sourceRef "$GITHUB_REF" \
             --arg releaseVersion "$RELEASE_VERSION" \
-            --argjson releaseTags "$release_tags" \
+            --arg releaseTag "$RELEASE_TAG" \
+            --arg githubTag "v${RELEASE_VERSION}" \
             --arg runId "$GITHUB_RUN_ID" \
             --arg runAttempt "$GITHUB_RUN_ATTEMPT" \
             --argjson components "$components" \
@@ -883,7 +908,8 @@ jobs:
               sourceRef: $sourceRef,
               release: {
                 version: $releaseVersion,
-                tags: $releaseTags
+                componentTag: $releaseTag,
+                atomicMarkerTag: $githubTag
               },
               workflow: {runId: $runId, runAttempt: $runAttempt},
               components: $components,
@@ -905,11 +931,57 @@ jobs:
                 and .package.repositoryLinked == true
               )' \
             "$output_dir/release-receipt.json" >/dev/null
+          tar \
+            --sort=name \
+            --mtime='UTC 1970-01-01' \
+            --owner=0 \
+            --group=0 \
+            --numeric-owner \
+            -czf "$output_dir/publication-evidence.tar.gz" \
+            artifacts/candidate-release-set.json \
+            artifacts/candidates \
+            "$output_dir/verification"
 
-      - name: Upload publication receipt
+      - name: Attest aggregate release evidence
+        id: attest_release_evidence
+        uses: actions/attest@f7c74d28b9d84cb8768d0b8ca14a4bac6ef463e6 # v4.2.0
+        with:
+          subject-path: |
+            artifacts/container-publication/release-receipt.json
+            artifacts/container-publication/publication-evidence.tar.gz
+
+      - name: Verify aggregate release evidence attestation
+        shell: bash
+        env:
+          ATTESTATION_BUNDLE: ${{ steps.attest_release_evidence.outputs.bundle-path }}
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          set -euo pipefail
+          output_dir="artifacts/container-publication"
+          cp -- "$ATTESTATION_BUNDLE" \
+            "$output_dir/release-evidence-attestation.sigstore.json"
+          for subject in \
+            "$output_dir/release-receipt.json" \
+            "$output_dir/publication-evidence.tar.gz"; do
+            output="$output_dir/$(basename "$subject").verification.json"
+            gh attestation verify "$subject" \
+              --repo "$GITHUB_REPOSITORY" \
+              --format json > "$output"
+            jq -e 'length > 0' "$output" >/dev/null
+          done
+
+      - name: Upload publication evidence to workflow run
         uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
         with:
-          name: oci-publication-${{ github.sha }}-${{ github.run_attempt }}
+          name: oci-publication-${{ github.sha }}-${{ github.run_id }}-${{ github.run_attempt }}
           path: artifacts/container-publication
           if-no-files-found: error
           retention-days: 90
+
+      - name: Publish atomic GitHub release marker
+        shell: bash
+        env:
+          GH_TOKEN: ${{ github.token }}
+          RELEASE_VERSION: ${{ needs.authorize.outputs.release_version }}
+          IS_PRERELEASE: ${{ needs.authorize.outputs.is_prerelease }}
+        run: bash scripts/delivery/publish-atomic-github-release.sh

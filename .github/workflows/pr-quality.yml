@@ -128,6 +128,9 @@ jobs:
             node scripts/dev/install-pinned-actionlint.mjs --cache-root "$OPS_CACHE_ROOT"
             "$OPS_CACHE_ROOT/tools/actionlint/1.7.12/actionlint" -version
             "$OPS_CACHE_ROOT/tools/actionlint/1.7.12/actionlint" .github/workflows/*.yml
+            echo "Gate=shellcheck"
+            shellcheck --version
+            shellcheck scripts/delivery/*.sh
           )
           run_actionlint > "$evidence" 2>&1
           status=$?

@@ -97,7 +97,7 @@ const mutations = [
     "flow.promote-needs-all-candidates",
   ],
   [
-    "mutable tag before signature verification",
+    "mutable component tag during staging",
     (value) => {
       const step = value.jobs.promote.steps.find(
         (entry) => entry.name === "Promote tested digests",
@@ -105,6 +105,51 @@ const mutations = [
       step.run += '\noras cp "$source" "${target}:latest"\n';
     },
     "release.public-tag-order",
+  ],
+  [
+    "release marker before aggregate verification",
+    (value) => {
+      const steps = value.jobs.promote.steps;
+      const markerIndex = steps.findIndex(
+        (entry) => entry.name === "Publish atomic GitHub release marker",
+      );
+      const [marker] = steps.splice(markerIndex, 1);
+      const verifyIndex = steps.findIndex(
+        (entry) => entry.name === "Verify staged immutable release set",
+      );
+      steps.splice(verifyIndex, 0, marker);
+    },
+    "release.step-order",
+  ],
+  [
+    "immutable release preflight removed",
+    (value) => {
+      const step = value.jobs.promote.steps.find(
+        (entry) => entry.name === "Validate aggregate candidate release set",
+      );
+      step.run = step.run.replace(".enabled == true", ".enabled != false");
+    },
+    "release.immutability-preflight",
+  ],
+  [
+    "component attestation storage record enabled for user-owned package",
+    (value) => {
+      const step = value.jobs.promote.steps.find(
+        (entry) => entry.name === "Attest Platform API on GHCR",
+      );
+      step.with["create-storage-record"] = true;
+    },
+    "release.component-attestation-config",
+  ],
+  [
+    "registry credential cleanup loses failure path",
+    (value) => {
+      const step = value.jobs.promote.steps.find(
+        (entry) => entry.name === "Close registry credential session",
+      );
+      step.if = "success()";
+    },
+    "release.credential-lifecycle",
   ],
 ];
 
@@ -147,16 +192,16 @@ for (const value of [
 }
 
 console.log("OpsMind OCI publication workflow validation");
-console.log("EvidenceSchemaVersion=oci-publication-static-v2");
+console.log("EvidenceSchemaVersion=oci-publication-static-v3");
 console.log(
   `Workflow=${path.relative(repositoryRoot, workflowPath).replaceAll("\\", "/")}`,
 );
 console.log("Trigger=MANUAL_MAIN_ONLY");
 console.log("CandidateGate=BUILD_SCAN_SMOKE");
-console.log("PromotionGate=PROTECTED_AGGREGATE_DIGEST");
+console.log("PromotionGate=SIGNED_IMMUTABLE_RELEASE_SET");
 console.log("Images=4");
 console.log("Platforms=linux/amd64,linux/arm64");
-console.log("NegativeMutations=11");
+console.log("NegativeMutations=15");
 console.log(`Errors=${errors.length}`);
 for (const error of errors) console.error(`Error=${error}`);
 console.log(`Result=${errors.length === 0 ? "PASS" : "BLOCK"}`);

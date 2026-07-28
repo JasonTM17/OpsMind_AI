@@ -1,3 +1,6 @@
+import { validateAtomicRelease } from "./container-publish-atomic-release-contract.mjs";
+import { requirePromotionOrder } from "./container-publish-promotion-order-contract.mjs";
+
 function findStep(job, name) {
   return job?.steps?.find((step) => step.name === name);
 }
@@ -14,7 +17,7 @@ export function validateReleaseFlow(jobs, errors) {
 
   if (
     metadata?.with?.tags !==
-      "type=raw,value=candidate-${{ github.sha }}-${{ github.run_attempt }}\n" ||
+      "type=raw,value=candidate-${{ github.sha }}-${{ github.run_id }}-${{ github.run_attempt }}\n" ||
     build?.with?.tags !== "${{ steps.meta.outputs.tags }}" ||
     build?.with?.platforms !== "linux/amd64,linux/arm64" ||
     build?.with?.push !== true
@@ -32,13 +35,21 @@ export function validateReleaseFlow(jobs, errors) {
     "Scan amd64 vulnerabilities and secrets",
     "Scan arm64 vulnerabilities, secrets, and both license inventories",
     "Validate aggregate candidate release set",
+    "Prepare registry credential session",
+    "Log in to GHCR for promotion and attestation",
+    "Log in to Docker Hub for promotion and attestation",
     "Promote tested digests",
-    "Verify staged digests before mutable tag activation",
-    "Activate mutable release tags",
-    "Verify promoted release set and write observed receipt",
+    "Close registry credential session",
+    "Verify staged immutable release set",
+    "Write observed immutable release receipt",
+    "Attest aggregate release evidence",
+    "Verify aggregate release evidence attestation",
+    "Upload publication evidence to workflow run",
+    "Publish atomic GitHub release marker",
   ]) {
     requireStep(jobs, name, errors);
   }
+  requirePromotionOrder(jobs.promote, errors);
 
   const inspect = findStep(candidate, "Inspect candidate evidence")?.run ?? "";
   if (
@@ -58,7 +69,8 @@ export function validateReleaseFlow(jobs, errors) {
   const smoke = findStep(candidate, "Smoke-test candidate runtime")?.run ?? "";
   if (
     !smoke.includes("for architecture in amd64 arm64") ||
-    !smoke.includes('--platform "linux/${architecture}"')
+    !smoke.includes('--platform "linux/${architecture}"') ||
+    !smoke.includes("--connect-timeout 2 --max-time 5")
   ) {
     errors.push("candidate.dual-platform-smoke");
   }
@@ -89,10 +101,57 @@ export function validateReleaseFlow(jobs, errors) {
   ) {
     errors.push("release.public-tag-order");
   }
+  const aggregate =
+    findStep(
+      jobs.promote,
+      "Validate aggregate candidate release set",
+    )?.run ?? "";
+  if (
+    !aggregate.includes("/immutable-releases") ||
+    !aggregate.includes(".enabled == true") ||
+    !aggregate.includes("releases?per_page=100") ||
+    !aggregate.includes(".data.repository.ref == null")
+  ) {
+    errors.push("release.immutability-preflight");
+  }
+  const openCredentials =
+    findStep(jobs.promote, "Prepare registry credential session") ?? {};
+  const closeCredentials =
+    findStep(jobs.promote, "Close registry credential session") ?? {};
+  const ghcrLogin =
+    findStep(
+      jobs.promote,
+      "Log in to GHCR for promotion and attestation",
+    ) ?? {};
+  const dockerHubLogin =
+    findStep(
+      jobs.promote,
+      "Log in to Docker Hub for promotion and attestation",
+    ) ?? {};
+  if (
+    !openCredentials.run?.includes('config_file="${config_dir}/config.json"') ||
+    !openCredentials.run?.includes("getent passwd") ||
+    !closeCredentials.run?.includes("docker logout") ||
+    !closeCredentials.run?.includes('mv -- "$backup_file" "$config_file"') ||
+    !String(closeCredentials.if).includes("always()")
+  ) {
+    errors.push("release.credential-lifecycle");
+  }
+  if (
+    ghcrLogin.uses !==
+      "docker/login-action@abd2ef45e78c5afb21d64d4ca52ee8550d9572c7" ||
+    ghcrLogin.with?.registry !== "ghcr.io" ||
+    dockerHubLogin.uses !==
+      "docker/login-action@abd2ef45e78c5afb21d64d4ca52ee8550d9572c7" ||
+    dockerHubLogin.with?.registry !== "docker.io" ||
+    !String(dockerHubLogin.if).includes("dockerhub_enabled")
+  ) {
+    errors.push("release.registry-logins");
+  }
   const stageVerify =
     findStep(
       jobs.promote,
-      "Verify staged digests before mutable tag activation",
+      "Verify staged immutable release set",
     )?.run ?? "";
   if (
     !stageVerify.includes("gh attestation verify") ||
@@ -101,13 +160,20 @@ export function validateReleaseFlow(jobs, errors) {
   ) {
     errors.push("release.staged-verification");
   }
-  const activate =
-    findStep(jobs.promote, "Activate mutable release tags")?.run ?? "";
+  const receipt =
+    findStep(jobs.promote, "Write observed immutable release receipt")?.run ??
+    "";
   if (
-    !activate.includes(",latest") ||
-    !activate.includes("oras cp --recursive") ||
-    !activate.includes('IS_PRERELEASE" == "true')
+    !receipt.includes("opsmind-oci-publication-v3") ||
+    !receipt.includes("atomicMarkerTag") ||
+    receipt.includes("MAJOR_MINOR") ||
+    receipt.includes(" latest")
   ) {
-    errors.push("release.mutable-activation");
+    errors.push("release.immutable-receipt");
   }
+  const markerStep = findStep(
+    jobs.promote,
+    "Publish atomic GitHub release marker",
+  );
+  validateAtomicRelease(markerStep, errors);
 }

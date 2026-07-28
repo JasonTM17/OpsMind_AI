@@ -32,8 +32,9 @@ the protected username/token pair is configured.
 
 - All action dependencies are pinned to immutable commit SHAs.
 - Top-level permissions are empty. The authorizer alone adds `actions: read` to
-  prove exact-SHA CI; candidate and promotion jobs use only `contents: read`,
-  `packages: write`, `id-token: write`, and `attestations: write` where needed.
+  prove exact-SHA CI; candidates use `contents: read`/`packages: write`, while
+  protected promotion adds only `contents: write`, `packages: write`,
+  `id-token: write`, `attestations: write`, and `artifact-metadata: write`.
 - Four images build from their existing Dockerfiles without build-time secrets.
 - Each candidate has `mode=max` provenance, an attached SBOM, zero fixable
   HIGH/CRITICAL vulnerabilities or detected secrets, an observed license
@@ -44,13 +45,15 @@ the protected username/token pair is configured.
   both quality workflows passed on the exact source SHA.
 - Promotion requires all four candidate receipts, a protected environment
   approval, public repository-linked GHCR packages, and verified attestations.
-  Immutable version tags are staged first; `latest` activates only after every
-  stable-release digest and signature passes. Pre-releases never move stable
-  mutable tags.
+  Immutable version tags are staged first; a signed aggregate receipt and exact
+  GitHub Release marker activate the release set only after every digest and
+  signature passes. Repository-level immutable releases lock the marker/tag.
+  Receipt, Sigstore bundle, and evidence archive are draft assets verified
+  before publication. No mutable component channel is published.
 - Docker Hub promotion fails closed when either environment credential is
   absent; the token is never job-scoped.
 - Published registry digests, observed platforms, scan counts, health, package
-  visibility/linkage, and signatures are verified before `latest` activation.
+  visibility/linkage, and signatures are verified before the atomic marker.
 - PR quality, Compose build/health, actionlint, secret scanning, and static
   publication validation pass on the exact source revision.
 
@@ -58,8 +61,10 @@ the protected username/token pair is configured.
 
 Disable the workflow trigger or revoke `packages: write`; do not delete package
 versions until their digest references and release receipts are inventoried.
-Mutable tags may be repointed only to an already verified digest. Production
-promotion never consumes a tag without resolving and recording its digest.
+Never repoint an immutable component tag or existing release marker. Publish a
+new reviewed SemVer release whose signed receipt references the selected
+already-verified digests. Production promotion never consumes a tag without
+resolving and recording its digest.
 
 ## External Dependency
 
@@ -67,4 +72,4 @@ Docker Hub publication cannot execute until environment variable
 `DOCKERHUB_USERNAME` and environment secret `DOCKERHUB_TOKEN` exist in
 `oci-production`. Neither value is inferred, generated, or committed. Initial
 GHCR promotion also waits until the candidate packages are public and linked to
-this repository.
+this repository and immutable releases are enabled for the repository.
