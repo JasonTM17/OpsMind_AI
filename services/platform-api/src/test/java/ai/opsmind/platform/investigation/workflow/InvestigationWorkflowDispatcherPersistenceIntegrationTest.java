@@ -84,6 +84,8 @@ class InvestigationWorkflowDispatcherPersistenceIntegrationTest {
     @MockitoBean
     private InvestigationWorkflowAdmission admission;
     @MockitoBean
+    private InvestigationWorkflowStarterRunner workflowStarterRunner;
+    @MockitoBean
     private InvestigationWorkflowClient workflowClient;
     @MockitoBean
     private InvestigationAiRuntimeClient aiRuntimeClient;
