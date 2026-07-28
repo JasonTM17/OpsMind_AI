@@ -155,7 +155,7 @@ effective write requires target idempotency or discovery/reconciliation.
 | Connector execution receipts and verified audit | Tool Gateway schema | Capability-derived scope, forced tenant/project RLS, idempotency, and reconciliation authority |
 | Unverified tool security decisions | Tool Gateway global audit lane | Insert-only and append-only; never accepts tenant/project fields from the request |
 | Bounded redacted evidence records | Platform PostgreSQL schema | Immutable canonical JSON, 64 KiB maximum, run/event linkage, forced RLS |
-| Investigation workflow binding/start event | Platform PostgreSQL schema | V010 immutable target/request binding plus canonical outbox bytes; default off. V011 containment remains blocked by inherited dispatcher DML (B-017). |
+| Investigation workflow binding/start event | Platform PostgreSQL schema | V010 immutable target/request binding plus canonical outbox bytes; V012 removes direct dispatcher binding/inbox access and hides canonical workflow-start outbox rows. Default off pending full real-role/atomicity proof and reconciliation (B-017). |
 | Large evidence bodies | Planned evidence object port | Lifecycle is not implemented |
 | Embeddings and retrieval metadata | Planned PostgreSQL/pgvector boundary | RAG is not implemented |
 | Workflow histories | External Temporal boundary | Client/reconciliation code exists; no cluster, namespace, worker, or history is deployed |
@@ -289,10 +289,10 @@ latency or SLO evidence.
 - The dispatcher claim transaction commits before the Temporal RPC. The RPC is
   outside every database transaction; a later transaction atomically reconciles
   binding, inbox, and outbox state.
-- V011 adds Phase 9 preflight/settlement functions, but it leaves inherited
-  dispatcher direct DML on workflow bindings, inbox rows, and outbox rows. This
-  is not capability-only containment and cannot authorize Temporal admission;
-  V012 real-role containment remains required by B-017.
+- V012 wraps the V011 Phase 9 preflight/settlement path with a dedicated
+  workflow claim and direct-row containment. Full real-role fresh/upgrade and
+  atomicity proof plus the separate no-Start reconciliation/alert lane remain
+  required by B-017 before Temporal admission.
 - Future workflow code changes use version/build routing and golden-history replay.
 - External effects are never inferred only from message delivery; they use execution receipts and reconciliation.
 
@@ -594,20 +594,27 @@ also requires `RPC timeout + safety margin < lease duration`. Lease
 acknowledgement and release compare against PostgreSQL transaction time rather
 than the application clock.
 
-V011 is not a sufficient containment boundary. It adds narrow preflight and
-settlement functions while retaining inherited direct DML on
-`investigation_workflow_bindings`, `inbox_events`, and `outbox_events`; the
-dispatcher can therefore bypass the intended capability-only path. V012 must
-replace that authority with real-role containment, and its fresh/upgrade/runtime
-proof is pending. B-017 blocks Temporal admission and roadmap G4 enablement
-until that proof and the reconciliation lane below exist.
+V011 alone is not a sufficient containment boundary. V012 revokes direct
+dispatcher authority on workflow bindings and inbox rows, adds a restrictive
+policy that hides canonical workflow-start outbox rows from generic dispatcher
+DML, and exposes a one-item resolver-owned claim function. A resolver-owned
+predecessor predicate lets the generic outbox claim path continue to respect
+same-aggregate ordering even though the canonical predecessor is hidden.
+Protected dispatcher/resolver memberships are rejected in both membership
+directions. Static validation and rollback-only PostgreSQL probes pass; full
+fresh/upgrade real-role, rollback-atomicity, and latency proof is pending. B-017
+blocks Temporal admission and roadmap G4 enablement until that proof and the
+reconciliation lane below exist.
 
 After a possibly accepted Temporal RPC, an ambiguous retryable response cannot
 be converted to `REJECTED` merely because local retry attempts, age, or deadline
-budget is exhausted. The safe state is bounded `PENDING` plus reconciliation-
-required alerting. Only an outcome that is known before any RPC or independently
-verified against the exact remote workflow can be terminalized. Before admission
-opens, a separately authorized read-only lane must be able to Describe the exact
+budget is exhausted. V012 retries within those bounds, leaves the workflow
+binding `PENDING`, and sets the canonical event's `last_error` to
+`workflow.reconciliation-required`; normal selection excludes the parked row,
+preventing unbounded attempt churn or a second Start RPC. Only an outcome known
+before any RPC or independently verified against the exact remote workflow can
+be terminalized. Before admission opens,
+a separately authorized read-only lane must be able to Describe the exact
 workflow and read its first history input, without permission to Start a
 workflow. That lane must produce bounded `PENDING` aging/alert behavior when it
 cannot establish the remote outcome; it is required, not yet implemented or
@@ -773,9 +780,10 @@ PostgreSQL trust on `a975f922`. PostgreSQL artifact `8650178111` proves the
 V009 recovery/catalog/query-plan/latency/storage/upgrade/cleanup gates and the
 3/3 activity timeline matrix. Cross-service run `30257587543` and artifact
 `8649696519` prove A/B/C plus the Phase 7 OperatorWorkspace/CrossService/
-Checkpoint/PhaseExit regression. The Phase 9 handoff exists only in the current
-worktree; exact-head CI/PostgreSQL evidence and V012 real-role containment/
-no-Start reconciliation proof are missing. Neither historical run proves live
+Checkpoint/PhaseExit regression. The Phase 9 handoff and V012 containment source
+exist only on the current integration branch; exact-head CI/Flyway runtime,
+full real-role fresh/upgrade/atomicity, and no-Start reconciliation/alert proof
+are missing. Neither historical run proves live
 DeepSeek/legal approval, a named live non-production connector, RAG,
 remediation, a live Temporal cluster/worker or restart/resume, object lifecycle,
 staging/production, DR, production latency/SLOs, or release readiness.

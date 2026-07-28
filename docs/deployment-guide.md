@@ -11,13 +11,15 @@ staging, DR, and release evidence. Keycloak 26.7 remains non-production
 reference conformance and does not authorize a vendor or rollout.
 
 The current worktree adds a default-off Phase 9 Temporal start handoff in the
-Platform API artifact and Platform V010. V011 retains inherited dispatcher
-direct DML on the Phase 9 binding, inbox, and outbox paths, so B-017 blocks
-admission until V012 real-role containment and a no-Start exact-workflow
-reconciliation lane are proven. It has no exact-head CI/PostgreSQL evidence,
-production/live Temporal cluster or namespace, Compose service, compatible
-worker, or restart/resume execution. It is not deployable as a durable
-investigation workflow yet.
+Platform API artifact and Platform V010-V012. V012 removes the V011 direct-DML
+bypass for workflow-start state, introduces a dedicated claim capability, and
+parks exhausted ambiguous remote outcomes for reconciliation. Static and
+rollback-only PostgreSQL probes pass, but B-017 still blocks admission until
+full fresh/upgrade real-role and atomicity proof plus a no-Start exact-workflow
+reconciliation/alert lane exist. There is no exact-head CI/Flyway runtime
+evidence, production/live Temporal cluster or namespace, Compose service,
+compatible worker, or restart/resume execution. It is not deployable as a
+durable investigation workflow yet.
 
 G0.5 approves managed Kubernetes in `ap-southeast-1` with Singapore residency,
 an enterprise OIDC profile, MinIO locally, S3-compatible production storage
@@ -249,11 +251,11 @@ A failed gate cannot be converted to a warning solely to meet a schedule.
   Temporal client, workflow-start dispatcher, and dispatcher datasource remain
   disabled. V010 adds the immutable run/target/request binding and validates
   the canonical workflow-start outbox event; it does not backfill legacy runs.
-- Do not treat V011 as Temporal-admission authorization. Its new preflight and
-  settlement functions coexist with inherited dispatcher direct DML on
-  `investigation_workflow_bindings`, `inbox_events`, and `outbox_events`.
-  Apply and prove V012 under the real application and dispatcher roles before
-  enabling this path; source/static review alone is insufficient.
+- Do not treat V011 as Temporal-admission authorization. V012 removes its
+  inherited direct-DML bypass and adds a dedicated workflow-start claim, but
+  apply and prove V012 under the real application, dispatcher, resolver, and
+  migration roles on both fresh and V001-to-current upgrade paths before
+  enabling this path; source/static and rollback-only probes are insufficient.
 - Before Temporal admission, freeze new starts and run
   [the workflow cutover gate](./runbooks/investigation-workflow-cutover.md).
   Every nonterminal binding-less run requires explicit operator reconciliation;
@@ -262,8 +264,9 @@ A failed gate cannot be converted to a warning solely to meet a schedule.
   not a fifth deployable. It requires the dedicated dispatcher datasource
   authenticated exactly as `opsmind_dispatcher`; application credentials must
   never be reused. The application role creates the run/binding/outbox handoff.
-  V011 does not yet prove that the dispatcher is confined to capability-only
-  claim/inbox/reconciliation authority; B-017 requires V012 real-role proof.
+  V012 source confines canonical workflow-start claim/inbox/settlement to fixed
+  capabilities; B-017 still requires executable real-role proof on the deployed
+  migration history.
 - Temporal execution fails startup unless both the Temporal client and
   workflow-start scheduler are enabled. The configured Temporal RPC timeout
   plus starter safety margin must be strictly less than the starter lease
@@ -272,13 +275,14 @@ A failed gate cannot be converted to a warning solely to meet a schedule.
   poller with the exact required identity and build ID. This repository does not
   provide that worker or a Temporal service, so a repository-only rollout must
   remain disabled.
-- Admission also cannot open until B-017 has both proofs: V012 real-role
-  containment and a separately authorized, read-only exact-workflow
-  reconciliation lane limited to Describe plus first-history reads (never
-  Start). That lane must keep a potentially accepted post-RPC handoff
-  `PENDING` and alert within its configured bound when it cannot verify the
-  remote outcome; exhausted local retry, age, or deadline budget is not remote
-  rejection evidence.
+- Admission also cannot open until all B-017 proofs exist: V012 fresh and
+  V001-to-current real-role containment with atomic failure injection; a
+  predecessor-query `EXPLAIN` and accepted latency threshold; and a separately
+  authorized, read-only exact-workflow reconciliation lane limited to Describe
+  plus first-history reads (never Start). That lane must keep a potentially
+  accepted post-RPC handoff `PENDING` and alert within its configured bound when
+  it cannot verify the remote outcome; exhausted local retry, age, or deadline
+  budget is not remote rejection evidence.
 - When an approved external cluster, namespace, and compatible worker exist,
   enable the client and dispatcher role while starts stay frozen, verify the
   cutover, B-017 containment/reconciliation, and bounded pending-alert checks,
@@ -316,11 +320,12 @@ that selects `started` rows older than the retry interval without a matching
 - Preserve audit and incident evidence during rollback.
 - For Phase 9 rollback, freeze starts, restore
   `OPSMIND_INVESTIGATION_EXECUTION_MODE=inline`, and disable the Temporal client,
-  workflow-start dispatcher, and dispatcher datasource. Retain V010, bindings,
-  inbox rows, and outbox rows as immutable recovery evidence; do not reset a
-  genuinely terminal `REJECTED` binding or delete a pending handoff. A
-  retryable post-RPC ambiguity remains `PENDING` until the no-Start
-  reconciliation lane establishes its exact remote outcome.
+  workflow-start dispatcher, and dispatcher datasource. V010-V012 remain
+  applied; rollback is configuration-only. Retain bindings, inbox rows, and
+  outbox rows as immutable recovery evidence; do not reset a genuinely terminal
+  `REJECTED` binding or delete a pending handoff. A retryable post-RPC ambiguity
+  remains `PENDING` until the no-Start reconciliation lane establishes its exact
+  remote outcome.
 
 ## Disaster Recovery
 
