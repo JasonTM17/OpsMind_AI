@@ -285,6 +285,17 @@ The public repository About panel is synchronized from
 must publish the same signed multi-architecture digest to Docker Hub and GHCR,
 link the GHCR Package to this repository, and record immutable digests,
 SBOM/provenance, scan results, and registry parity in the release evidence.
+The checked-in
+[OCI publication workflow](./.github/workflows/container-publish.yml) provides
+that package path through build-once promotion: exact-SHA candidates are
+scanned, health-checked, and aggregated before the protected `oci-production`
+environment stages immutable version tags. It then signs and verifies the
+aggregate release receipt before creating one GitHub Release as the atomic
+activation marker. Repository-level release immutability must be enabled, so
+the marker, tag, signed receipt, Sigstore bundle, and evidence archive cannot
+later be changed. Per-image tags never move. Both architectures are scanned
+and runtime-probed. GHCR uses the scoped GitHub token. Docker Hub remains
+blocked until its username and token exist only in that protected environment.
 
 ## Unresolved Questions
 
