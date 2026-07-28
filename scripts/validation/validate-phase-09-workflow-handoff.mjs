@@ -98,6 +98,10 @@ const exclusivityMigration = requireMarkers(exclusivityMigrationPath, [
   "workflow.ambiguous-retry-allowed",
   "workflow.reconciliation-required",
   "workflow.temporal-outcome-ambiguous",
+  "SET last_error = 'workflow.temporal-outcome-ambiguous'",
+  "event_row.attempts > 0",
+  "event_row.last_error = 'workflow.temporal-unavailable'",
+  "event_row.last_error IN (",
   "event_row.last_error IS DISTINCT FROM 'workflow.reconciliation-required'",
 ]);
 if (!exclusivityMigration.includes("UPDATE (attempts) ON outbox_events")) {
@@ -319,6 +323,9 @@ requireMarkers("scripts/validation/run-phase-04b-migration-upgrade.sh", [
   "DispatcherWorkflowBindingPrivilegeAfterTwelve=%s",
   "DispatcherInboxPrivilegeAfterTwelve=%s",
   "DispatcherWorkflowExclusionPolicyAfterTwelve=%s",
+  "LegacyWorkflowMarkerAfterTwelve=%s",
+  "LegacyWorkflowPreflightAfterTwelve=%s",
+  "LegacyWorkflowParkedAfterTwelve=%s",
 ]);
 
 const requiredTests = {
@@ -342,6 +349,7 @@ const requiredTests = {
     "hiddenCanonicalPredecessorStillBlocksSameAggregateGenericClaim",
     "ambiguousTemporalOutcomeRetriesAndReconcilesWithinBudget",
     "finalAmbiguousTemporalAttemptParksWithoutASecondRpc",
+    "legacyV011AmbiguityCannotTakeTerminalDeadlineBranchAfterV012",
     "expiredLeaseCannotPartiallyAcknowledgeBindingInboxOrOutbox",
     "permanentFailureRejectsBindingInboxAndOutboxInOneTransaction",
     "moreThanOneHundredUnrelatedReadyTenantsCannotStarveWorkflowStarts",

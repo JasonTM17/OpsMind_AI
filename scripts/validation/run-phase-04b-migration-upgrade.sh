@@ -564,6 +564,107 @@ WHERE oid = 'public.opsmind_settle_investigation_workflow_start(uuid,uuid,uuid,c
 [[ "$workflow_terminalizer_function_after_eleven" == "PRESENT" ]]
 [[ "$workflow_settlement_owner_after_eleven" == "opsmind_dispatch_resolver" ]]
 
+query_upgrade_database "
+INSERT INTO service_accounts (
+  id, organization_id, name, credential_ref, allowed_audiences,
+  allowed_scopes, database_principal
+) VALUES (
+  '70000000-0000-4000-8000-000000000016',
+  '70000000-0000-4000-8000-000000000001',
+  'workflow-upgrade-dispatcher',
+  'secret-manager://upgrade/workflow-dispatcher',
+  '[\"opsmind-outbox-dispatcher\"]'::jsonb,
+  '[\"outbox:dispatch\"]'::jsonb,
+  'opsmind_dispatcher'
+);
+DO \$\$
+DECLARE
+  workflow_event_id uuid := public.opsmind_investigation_workflow_start_event_id(
+    '70000000-0000-4000-8000-000000000001',
+    '70000000-0000-4000-8000-000000000013'
+  );
+  request_digest bytea := digest(
+    convert_to('legacy-v011-workflow-request', 'UTF8'),
+    'sha256'
+  );
+  start_payload jsonb;
+  start_payload_bytes bytea;
+  start_payload_digest bytea;
+BEGIN
+  start_payload := jsonb_build_object(
+    'organization_id', '70000000-0000-4000-8000-000000000001',
+    'project_id', '70000000-0000-4000-8000-000000000003',
+    'incident_id', '70000000-0000-4000-8000-000000000004',
+    'run_id', '70000000-0000-4000-8000-000000000013',
+    'actor_id', '70000000-0000-4000-8000-000000000002',
+    'max_rounds', 2,
+    'max_tool_calls', 0,
+    'max_evidence_items', 1,
+    'max_tokens', 100,
+    'started_at', '2030-01-03T00:00:00Z',
+    'deadline_at', '2030-01-03T00:02:00Z',
+    'temporal_cluster_id', 'temporal-upgrade',
+    'temporal_namespace', 'opsmind-upgrade',
+    'workflow_id',
+      'opsmind-investigation/70000000-0000-4000-8000-000000000001/'
+        || '70000000-0000-4000-8000-000000000013',
+    'workflow_type', 'opsmind-investigation-v1',
+    'task_queue', 'opsmind-investigation-upgrade',
+    'authorization_revision', 0,
+    'request_digest', encode(request_digest, 'hex')
+  );
+  start_payload_bytes := convert_to(start_payload::text, 'UTF8');
+  start_payload_digest := digest(start_payload_bytes, 'sha256');
+
+  INSERT INTO investigation_workflow_bindings (
+    organization_id, run_id, project_id, incident_id, actor_id,
+    client_request_digest, start_payload_digest, start_event_id,
+    temporal_cluster_id, temporal_namespace, workflow_id, workflow_type,
+    task_queue, authorization_revision, started_at, deadline_at
+  ) VALUES (
+    '70000000-0000-4000-8000-000000000001',
+    '70000000-0000-4000-8000-000000000013',
+    '70000000-0000-4000-8000-000000000003',
+    '70000000-0000-4000-8000-000000000004',
+    '70000000-0000-4000-8000-000000000002',
+    request_digest,
+    start_payload_digest,
+    workflow_event_id,
+    'temporal-upgrade',
+    'opsmind-upgrade',
+    'opsmind-investigation/70000000-0000-4000-8000-000000000001/'
+      || '70000000-0000-4000-8000-000000000013',
+    'opsmind-investigation-v1',
+    'opsmind-investigation-upgrade',
+    0,
+    '2030-01-03T00:00:00Z',
+    '2030-01-03T00:02:00Z'
+  );
+
+  INSERT INTO outbox_events (
+    event_id, organization_id, aggregate_type, aggregate_id,
+    aggregate_sequence, event_type, schema_version, correlation_id,
+    occurred_at, payload, payload_bytes, payload_digest, attempts, last_error
+  ) VALUES (
+    workflow_event_id,
+    '70000000-0000-4000-8000-000000000001',
+    'investigation-workflow',
+    '70000000-0000-4000-8000-000000000013',
+    1,
+    'investigation.workflow-start.requested',
+    '1',
+    '70000000-0000-4000-8000-000000000013',
+    '2030-01-03T00:00:00Z',
+    start_payload,
+    start_payload_bytes,
+    start_payload_digest,
+    1,
+    'workflow.temporal-unavailable'
+  );
+END
+\$\$;
+"
+
 migrate_to 12
 version_twelve="$(query_upgrade_database "SELECT max(version::integer) FROM flyway_schema_history WHERE success;")"
 workflow_claim_function_after_twelve="$(query_upgrade_database "
@@ -736,6 +837,73 @@ SELECT pg_get_userbyid(proowner)
 FROM pg_proc
 WHERE oid = 'public.opsmind_list_investigation_workflow_start_tenants(integer)'::regprocedure;
 ")"
+legacy_workflow_marker_after_twelve="$(query_upgrade_database "
+SELECT count(*)
+FROM outbox_events
+WHERE organization_id = '70000000-0000-4000-8000-000000000001'
+  AND aggregate_id = '70000000-0000-4000-8000-000000000013'
+  AND event_type = 'investigation.workflow-start.requested'
+  AND schema_version = '1'
+  AND aggregate_type = 'investigation-workflow'
+  AND aggregate_sequence = 1
+  AND attempts = 1
+  AND last_error = 'workflow.temporal-outcome-ambiguous'
+  AND published_at IS NULL
+  AND poisoned_at IS NULL;
+")"
+legacy_workflow_claim_count_after_twelve="$(query_upgrade_database "
+SET SESSION AUTHORIZATION opsmind_dispatcher;
+SELECT count(*)
+FROM public.opsmind_claim_investigation_workflow_start(
+  '70000000-0000-4000-8000-000000000001',
+  '70000000-0000-4000-8000-000000000017',
+  300000
+);
+RESET SESSION AUTHORIZATION;
+")"
+legacy_workflow_preflight_after_twelve="$(query_upgrade_database "
+SET SESSION AUTHORIZATION opsmind_dispatcher;
+SELECT public.opsmind_preflight_investigation_workflow_start(
+  '70000000-0000-4000-8000-000000000001',
+  public.opsmind_investigation_workflow_start_event_id(
+    '70000000-0000-4000-8000-000000000001',
+    '70000000-0000-4000-8000-000000000013'
+  ),
+  '70000000-0000-4000-8000-000000000017',
+  600000
+);
+RESET SESSION AUTHORIZATION;
+")"
+legacy_workflow_park_after_twelve="$(query_upgrade_database "
+SET SESSION AUTHORIZATION opsmind_dispatcher;
+SELECT public.opsmind_settle_investigation_workflow_start(
+  '70000000-0000-4000-8000-000000000001',
+  public.opsmind_investigation_workflow_start_event_id(
+    '70000000-0000-4000-8000-000000000001',
+    '70000000-0000-4000-8000-000000000013'
+  ),
+  '70000000-0000-4000-8000-000000000017',
+  'RETRY',
+  NULL,
+  'workflow.reconciliation-required',
+  100
+);
+RESET SESSION AUTHORIZATION;
+")"
+legacy_workflow_parked_after_twelve="$(query_upgrade_database "
+SELECT count(*)
+FROM outbox_events event_row
+JOIN investigation_workflow_bindings binding_row
+  ON binding_row.organization_id = event_row.organization_id
+ AND binding_row.run_id = event_row.aggregate_id
+ AND binding_row.start_event_id = event_row.event_id
+WHERE event_row.organization_id = '70000000-0000-4000-8000-000000000001'
+  AND event_row.aggregate_id = '70000000-0000-4000-8000-000000000013'
+  AND event_row.last_error = 'workflow.reconciliation-required'
+  AND event_row.published_at IS NULL
+  AND event_row.poisoned_at IS NULL
+  AND binding_row.status = 'PENDING';
+")"
 [[ "$version_twelve" == "12" ]]
 [[ "$workflow_claim_function_after_twelve" == "PRESENT" ]]
 [[ "$workflow_claim_owner_after_twelve" == "opsmind_dispatch_resolver" ]]
@@ -754,6 +922,22 @@ WHERE oid = 'public.opsmind_list_investigation_workflow_start_tenants(integer)':
 [[ "$dispatcher_workflow_exclusion_policy_after_twelve" == "PRESENT" ]]
 [[ "$workflow_preflight_owner_after_twelve" == "opsmind_context_resolver" ]]
 [[ "$workflow_tenant_selector_owner_after_twelve" == "opsmind_dispatch_resolver" ]]
+[[ "$legacy_workflow_marker_after_twelve" == "1" ]]
+[[ "$legacy_workflow_claim_count_after_twelve" == "1" ]]
+[[ "$legacy_workflow_preflight_after_twelve" == "workflow.reconciliation-required" ]]
+[[ "$legacy_workflow_park_after_twelve" == "workflow.retry-scheduled" ]]
+[[ "$legacy_workflow_parked_after_twelve" == "1" ]]
+
+query_upgrade_database "
+DELETE FROM outbox_events
+WHERE organization_id = '70000000-0000-4000-8000-000000000001'
+  AND aggregate_id = '70000000-0000-4000-8000-000000000013';
+DELETE FROM investigation_workflow_bindings
+WHERE organization_id = '70000000-0000-4000-8000-000000000001'
+  AND run_id = '70000000-0000-4000-8000-000000000013';
+DELETE FROM service_accounts
+WHERE id = '70000000-0000-4000-8000-000000000016';
+"
 
 cutover_block_output="${TMPDIR:-/tmp}/opsmind-phase9-cutover-block-${upgrade_database}.txt"
 set +e
@@ -828,7 +1012,7 @@ WHERE run.status IN ('CREATED', 'ANALYZING', 'WAITING_FOR_EVIDENCE')
 ")"
 [[ "$nonterminal_orphans_after_reconciliation" == "0" ]]
 
-printf 'Database=%s\nVersionBefore=%s\nEvidenceTableBefore=%s\nVersionSeven=%s\nEvidenceTableAfterSeven=%s\nVersionEight=%s\nVersionNine=%s\nVersionTen=%s\nVersionEleven=%s\nVersionTwelve=%s\nWorkflowBindingTableAfterTen=%s\nWorkflowEventFunctionAfterTen=%s\nWorkflowPreflightFunctionAfterEleven=%s\nWorkflowSettlementFunctionAfterEleven=%s\nWorkflowTerminalizerFunctionAfterEleven=%s\nWorkflowSettlementOwnerAfterEleven=%s\nWorkflowClaimFunctionAfterTwelve=%s\nWorkflowClaimOwnerAfterTwelve=%s\nWorkflowClaimSecurityDefinerAfterTwelve=%s\nWorkflowClaimDispatcherExecuteAfterTwelve=%s\nWorkflowClaimPublicExecuteAfterTwelve=%s\nOutboxPredecessorFunctionAfterTwelve=%s\nOutboxPredecessorOwnerAfterTwelve=%s\nOutboxPredecessorSecurityDefinerAfterTwelve=%s\nOutboxPredecessorDispatcherExecuteAfterTwelve=%s\nOutboxPredecessorPublicExecuteAfterTwelve=%s\nDispatcherRoleAfterTwelve=%s\nResolverRoleAfterTwelve=%s\nDispatcherWorkflowBindingPrivilegeAfterTwelve=%s\nDispatcherInboxPrivilegeAfterTwelve=%s\nDispatcherWorkflowExclusionPolicyAfterTwelve=%s\nWorkflowPreflightOwnerAfterTwelve=%s\nWorkflowTenantSelectorOwnerAfterTwelve=%s\nLegacyTerminalRunsAfterTen=%s\nLegacyBindingCountAfterTen=%s\nNonterminalOrphansAfterTen=%s\nCutoverBlockExit=%s\nNonterminalOrphansAfterReconciliation=%s\nLegacyPayloadDigestStable=%s\nRollingLegacyWriteCount=%s\nInvalidAbstainRejected=%s\nUpgradeResult=PASS\n' \
+printf 'Database=%s\nVersionBefore=%s\nEvidenceTableBefore=%s\nVersionSeven=%s\nEvidenceTableAfterSeven=%s\nVersionEight=%s\nVersionNine=%s\nVersionTen=%s\nVersionEleven=%s\nVersionTwelve=%s\nWorkflowBindingTableAfterTen=%s\nWorkflowEventFunctionAfterTen=%s\nWorkflowPreflightFunctionAfterEleven=%s\nWorkflowSettlementFunctionAfterEleven=%s\nWorkflowTerminalizerFunctionAfterEleven=%s\nWorkflowSettlementOwnerAfterEleven=%s\nWorkflowClaimFunctionAfterTwelve=%s\nWorkflowClaimOwnerAfterTwelve=%s\nWorkflowClaimSecurityDefinerAfterTwelve=%s\nWorkflowClaimDispatcherExecuteAfterTwelve=%s\nWorkflowClaimPublicExecuteAfterTwelve=%s\nOutboxPredecessorFunctionAfterTwelve=%s\nOutboxPredecessorOwnerAfterTwelve=%s\nOutboxPredecessorSecurityDefinerAfterTwelve=%s\nOutboxPredecessorDispatcherExecuteAfterTwelve=%s\nOutboxPredecessorPublicExecuteAfterTwelve=%s\nDispatcherRoleAfterTwelve=%s\nResolverRoleAfterTwelve=%s\nDispatcherWorkflowBindingPrivilegeAfterTwelve=%s\nDispatcherInboxPrivilegeAfterTwelve=%s\nDispatcherWorkflowExclusionPolicyAfterTwelve=%s\nWorkflowPreflightOwnerAfterTwelve=%s\nWorkflowTenantSelectorOwnerAfterTwelve=%s\nLegacyWorkflowMarkerAfterTwelve=%s\nLegacyWorkflowClaimCountAfterTwelve=%s\nLegacyWorkflowPreflightAfterTwelve=%s\nLegacyWorkflowParkAfterTwelve=%s\nLegacyWorkflowParkedAfterTwelve=%s\nLegacyTerminalRunsAfterTen=%s\nLegacyBindingCountAfterTen=%s\nNonterminalOrphansAfterTen=%s\nCutoverBlockExit=%s\nNonterminalOrphansAfterReconciliation=%s\nLegacyPayloadDigestStable=%s\nRollingLegacyWriteCount=%s\nInvalidAbstainRejected=%s\nUpgradeResult=PASS\n' \
   "$upgrade_database" "$version_before" "$table_before" \
   "$version_seven" "$table_after_seven" "$version_eight" "$version_nine" \
   "$version_ten" "$version_eleven" "$version_twelve" "$binding_table_after_ten" \
@@ -850,6 +1034,11 @@ printf 'Database=%s\nVersionBefore=%s\nEvidenceTableBefore=%s\nVersionSeven=%s\n
   "$dispatcher_workflow_exclusion_policy_after_twelve" \
   "$workflow_preflight_owner_after_twelve" \
   "$workflow_tenant_selector_owner_after_twelve" \
+  "$legacy_workflow_marker_after_twelve" \
+  "$legacy_workflow_claim_count_after_twelve" \
+  "$legacy_workflow_preflight_after_twelve" \
+  "$legacy_workflow_park_after_twelve" \
+  "$legacy_workflow_parked_after_twelve" \
   "$legacy_terminal_runs_after_ten" "$legacy_binding_count_after_ten" \
   "$nonterminal_orphans_after_ten" "$cutover_block_status" \
   "$nonterminal_orphans_after_reconciliation" \
