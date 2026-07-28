@@ -39,15 +39,23 @@ still not claimed: a named live non-production connector, approved
 provider/legal conformance, BFF/session proof, and release-scale evidence
 remain open.
 
-Phase 9 is now in progress with a default-off Temporal start handoff. In
-`temporal` mode, one application transaction creates the initial run, immutable
-V010 workflow binding, and canonical outbox event; the API returns `202` with
-`Location`. Default `inline` execution still returns `200`. An opt-in dispatcher
-role in the Platform API artifact commits its database claim before the
-Temporal RPC, then atomically reconciles the binding, inbox, and outbox. The
-repository has no live Temporal cluster/namespace, Compose service, worker, or
+Phase 9 is in progress with a default-off Temporal start handoff. In `temporal`
+mode, one application transaction creates the initial run, immutable V010
+workflow binding, and canonical outbox event; the API returns `202` with
+`Location`. Default `inline` execution still returns `200`. The opt-in
+dispatcher claim commits before the Temporal RPC, then reconciliation updates
+the binding, inbox, and outbox.
+
+V011 is not an enablement proof: the dispatcher retains inherited direct DML on
+the Phase 9 binding, inbox, and outbox paths, bypassing the intended
+capability-only boundary. V012 real-role containment and a separately
+authorized, read-only exact-workflow reconciliation lane (`Describe` plus first
+history; never `Start`) are required and unverified. After a retryable post-RPC
+outcome, local retry/age/deadline exhaustion is not proof of remote rejection;
+the safe posture is bounded `PENDING` plus alert/reconciliation. The repository
+has no live Temporal cluster/namespace, Compose service, worker, or
 restart/resume execution, and exact-head CI/PostgreSQL evidence is still
-missing. Phase 9 and G4 remain in progress; B-013 remains active.
+missing. Phase 9 and G4 remain in progress; B-013 and B-017 remain active.
 
 Phase 8B now implements three deterministic, training-ineligible evaluation
 contracts: A detects a deployment-correlated latency regression, B terminates
@@ -267,7 +275,7 @@ node .\scripts\validation\validate-phase-09-workflow-handoff.mjs
 | Tool Gateway | Static contract, durable PostgreSQL receipt/audit state, synthetic Prometheus connector, workload OAuth boundary, dual-credential Platform execution client, and local V003 tenant-scope unit/static gates pass | V003 PostgreSQL/upgrade evidence, named live non-production connector, and production conformance pending |
 | Investigation | Bounded-record checkpoint 4B, ANALYZE-only activity view, V009 evidence, capability-backed AI rounds, CK/Stitch/browser proof, and Phase 7 regression PASS in artifact `8649696519` | G3 still requires a named live connector, provider/legal approval, and BFF/session proof |
 | Evaluation | Fresh disposable A/B/C score `PASS` on all eight metrics with samples `100/1/1`; exact CI command passes 61/61 | Held-out payloads, human adjudication, calibration, and comparison unavailable; Phase 8 exit is BLOCK |
-| Workflow handoff | V010 plus the default-off API/client/dispatcher source implements atomic admission and reconciled Temporal start | No exact-head CI/PostgreSQL evidence, live cluster/namespace, compatible worker, or restart/resume execution |
+| Workflow handoff | V010 plus default-off API/client/dispatcher source implements atomic admission and start-handoff mechanics; V011 still permits inherited dispatcher DML on Phase 9 settlement rows | B-017 blocks Temporal admission/G4 until V012 real-role containment and a no-`Start`, exact-workflow reconciliation lane are proven; no exact-head CI/PostgreSQL evidence, live cluster/namespace, compatible worker, or restart/resume execution |
 | Compose | All application images build, start, and pass health smoke in CI | Not staging/production deployment evidence |
 
 Historical local evidence marked `REFERENCE_CONFORMANCE_NOT_PRODUCTION` stays

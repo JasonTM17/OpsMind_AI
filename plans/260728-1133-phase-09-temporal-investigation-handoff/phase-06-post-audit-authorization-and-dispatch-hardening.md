@@ -14,9 +14,11 @@ dependsOn:
 ## Context
 
 The independent Phase 9 audit found four P1 production blockers and two P2
-reliability defects after the initial V010 implementation. This phase is a
-forward-only repair: V010 remains immutable after upgrade proof; any database
-change is introduced by V011 and both fresh and upgrade paths are re-proven.
+reliability defects after the initial V010 implementation. V011 adds a
+forward-only safety fence, but it still leaves inherited dispatcher direct DML
+on workflow bindings, inbox rows, and outbox rows. It cannot qualify Temporal
+admission. V010/V011 are immutable migrations; V012 is the required forward
+remediation and both fresh and upgrade paths still need real-role proof.
 
 ## Requirements
 
@@ -29,23 +31,30 @@ change is introduced by V011 and both fresh and upgrade paths are re-proven.
    active `opsmind_dispatcher` service account with the required audience and
    `outbox:dispatch` scope. It must not return `202` for a permanently
    unschedulable start.
-3. Add a narrow, SECURITY DEFINER dispatcher preflight in V011. It may return
-   a small decision code but may not grant the dispatcher broad reads of
+3. Keep the narrow V011 SECURITY DEFINER dispatcher preflight: it may return a
+   small decision code but may not grant the dispatcher broad reads of
    identity/membership tables. It verifies current binding authorization,
    active eligible dispatcher identity, lease token/liveness, pending status and
    database-clock deadline plus RPC safety margin immediately before RPC.
-4. Expired, revoked or ineligible events are terminally rejected/poisoned
-   without any Temporal call. The rejection state must remain tenant scoped and
-   lease fenced.
+4. Expired, revoked, or ineligible events detected before any Temporal call are
+   terminally rejected/poisoned with tenant-scoped, lease-fenced evidence. This
+   is never a rule for a potentially accepted post-RPC outcome.
 5. Treat ambiguous Temporal failures (`UNKNOWN`, `INTERNAL`, `CANCELLED`, and
-   status-less wrappers) as retryable under existing deadline/attempt limits so
-   deterministic `AlreadyStarted` reconciliation remains reachable. Explicit
-   contract/target/authorization failures remain terminal.
+   status-less wrappers) as retryable while bounded local budget remains, so
+   deterministic `AlreadyStarted` reconciliation remains reachable. If an RPC
+   may have been accepted, local attempt/age/deadline exhaustion must retain
+   `PENDING` and require exact-workflow reconciliation; it is not remote
+   rejection evidence. Explicit failures known before an RPC remain terminal.
 6. Use PostgreSQL `clock_timestamp()` for workflow-binding acknowledgement and
-   rejection timestamps so application clock skew cannot violate binding
-   constraints after a remote start.
+   evidence-backed terminal timestamps so application clock skew cannot violate
+   binding constraints after a remote start.
 7. Claim/process at most one Phase 9 workflow-start lease at a time. Generic
    outbox batching is unchanged.
+8. V012 must remove real dispatcher-role direct DML on the Phase 9 binding,
+   inbox, and outbox paths in favor of narrow capability functions. A separately
+   authorized read-only lane must Describe the exact workflow and inspect its
+   first history input without Start authority; its unavailable/inconclusive path
+   must keep `PENDING` and emit bounded alerts.
 
 ## Parallel Workstreams and Ownership
 
@@ -80,9 +89,11 @@ revoke/missing-account tests pass.
 - `scripts/validation/validate-phase-09-workflow-handoff.mjs`
 - `scripts/validation/run-phase-04b-migration-upgrade.sh`
 
-**Acceptance:** pre-RPC DB gate blocks revoked/expired/ineligible events before
-RPC, timestamps use DB time, one lease is processed per claim, and V011 passes
-fresh/upgrade validation.
+**Acceptance:** the V011 pre-RPC DB gate blocks revoked/expired/ineligible
+events before RPC, timestamps use DB time, and one lease is processed per claim.
+V012 must additionally prove real-role capability containment and the no-Start
+reconciliation lane on fresh/upgrade paths; no such runtime proof is currently
+claimed.
 
 ### C — Temporal ambiguity classification
 
@@ -112,11 +123,16 @@ reconciliation remains exact.
 
 ## Risks and Rollback
 
-- V011 is additive/forward-only; rollback disables Temporal mode and leaves
-  completed evidence immutable. Do not edit V010 after upgrade proof.
+- V011 is additive/forward-only but is not a Temporal-admission boundary;
+  rollback disables Temporal mode and leaves completed evidence immutable. Do
+  not edit V010/V011; apply V012 as the forward fix.
 - The dispatcher authorization callable exposes only decision codes and never
   raw identity/membership data. The database owner and grants must be checked
-  by the final reviewer.
+  by the final reviewer. Existing direct DML must be removed/contained before
+  enablement, not accepted because a callable also exists.
+- A retryable post-RPC result may already be accepted remotely. Local budget
+  exhaustion must alert and preserve `PENDING`; terminalizing it without exact
+  read-only reconciliation would create an unsafe false-negative record.
 - No live Temporal namespace/worker is created by this phase. B-013 and the
   master Phase 9 exit remain blocked by their named external evidence.
 
@@ -127,13 +143,16 @@ reconciliation remains exact.
 | In-transaction authorization | revocation integration test plus no persisted rows |
 | Admission eligibility | missing/inactive dispatcher account test returns 503 |
 | Pre-RPC safety | dispatcher unit + PostgreSQL test assert zero client calls |
-| Ambiguous response | client matrix + deterministic retry/reconciliation test |
+| Ambiguous response | client matrix plus exact-workflow `PENDING`/reconciliation test; no terminal state from local exhaustion |
 | DB clock | reverse-skew acknowledgement/rejection integration tests |
 | Batch safety | controlled multi-item dispatch test with only one claimed item |
-| Migration | V001–V011 fresh migration and V001–V009 upgrade, cutover/inventory proof |
+| Migration | V001–V012 fresh migration and V001–V011 upgrade once V012 lands; real-role containment and cutover/inventory proof |
 | No secret/history leak | Phase 9 validator, secret scanner and history-leak tests |
+| Runtime/upgrade execution | Pending: the capacity guard currently blocks heavy local verification; no result is inferred |
 
 ## Unresolved Questions
 
 - Production Temporal namespace/mTLS/worker topology remains external and is
   intentionally not solved by this hardening phase.
+- B-017 remains unresolved until V012 real-role containment and the separately
+  authorized no-Start reconciliation lane have runtime/upgrade evidence.
