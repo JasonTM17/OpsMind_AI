@@ -110,6 +110,11 @@ public final class TemporalInvestigationWorkflowClient implements InvestigationW
                 status, "workflow.temporal-rejected"
             );
         }
+        catch (TemporalException temporalFailure) {
+            throw TemporalTransportFailureClassifier.map(
+                temporalFailure, "workflow.temporal-rejected"
+            );
+        }
         catch (RuntimeException unverifiable) {
             throw TemporalTransportFailureClassifier.map(
                 unverifiable, "workflow.existing-contract-unverifiable"

@@ -3,7 +3,9 @@ package ai.opsmind.platform.investigation.workflow;
 import java.util.Optional;
 
 import io.grpc.Status;
+import io.grpc.StatusException;
 import io.grpc.StatusRuntimeException;
+import io.temporal.failure.TemporalException;
 
 final class TemporalTransportFailureClassifier {
 
@@ -16,9 +18,9 @@ final class TemporalTransportFailureClassifier {
         Throwable exception,
         String permanentCode
     ) {
-        if (findStatusCode(exception).filter(
-            TemporalTransportFailureClassifier::isRetryable
-        ).isPresent()) {
+        Optional<Status.Code> statusCode = findStatusCode(exception);
+        if (statusCode.filter(TemporalTransportFailureClassifier::isRetryable)
+            .isPresent() || isStatuslessTemporalFailure(exception, statusCode)) {
             return InvestigationWorkflowStartException.retryable(
                 "workflow.temporal-unavailable", exception
             );
@@ -38,6 +40,9 @@ final class TemporalTransportFailureClassifier {
             if (current instanceof StatusRuntimeException status) {
                 return Optional.of(status.getStatus().getCode());
             }
+            if (current instanceof StatusException status) {
+                return Optional.of(status.getStatus().getCode());
+            }
             Throwable cause = current.getCause();
             if (cause == current) {
                 break;
@@ -51,6 +56,34 @@ final class TemporalTransportFailureClassifier {
         return code == Status.Code.UNAVAILABLE
             || code == Status.Code.DEADLINE_EXCEEDED
             || code == Status.Code.RESOURCE_EXHAUSTED
-            || code == Status.Code.ABORTED;
+            || code == Status.Code.ABORTED
+            || code == Status.Code.UNKNOWN
+            || code == Status.Code.INTERNAL
+            || code == Status.Code.CANCELLED;
+    }
+
+    private static boolean isStatuslessTemporalFailure(
+        Throwable exception,
+        Optional<Status.Code> statusCode
+    ) {
+        if (statusCode.isPresent()) {
+            return false;
+        }
+        Throwable current = exception;
+        for (
+            int depth = 0;
+            current != null && depth < MAX_EXCEPTION_CAUSE_DEPTH;
+            depth++
+        ) {
+            if (current instanceof TemporalException) {
+                return true;
+            }
+            Throwable cause = current.getCause();
+            if (cause == current) {
+                break;
+            }
+            current = cause;
+        }
+        return false;
     }
 }
