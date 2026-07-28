@@ -26,7 +26,7 @@ public record InvestigationWorkflowStarterProperties(
         maximumBackoff = defaultDuration(maximumBackoff, Duration.ofMinutes(1));
         maximumAttempts = maximumAttempts == 0 ? 8 : maximumAttempts;
         tenantLimit = tenantLimit == 0 ? 25 : tenantLimit;
-        batchSize = batchSize == 0 ? 10 : batchSize;
+        batchSize = batchSize == 0 ? 1 : batchSize;
     }
 
     public void validate() {
@@ -40,7 +40,7 @@ public record InvestigationWorkflowStarterProperties(
             || maximumBackoff.compareTo(Duration.ofMinutes(15)) > 0
             || maximumAttempts < 1 || maximumAttempts > 100
             || tenantLimit < 1 || tenantLimit > 100
-            || batchSize < 1 || batchSize > 100) {
+            || batchSize != 1) {
             throw new IllegalStateException("Workflow starter configuration is outside policy.");
         }
     }
@@ -53,6 +53,11 @@ public record InvestigationWorkflowStarterProperties(
                 "Temporal RPC timeout and safety margin must fit inside the lease."
             );
         }
+    }
+
+    public Duration requiredRpcWindow(Duration rpcTimeout) {
+        validateRpcEnvelope(rpcTimeout);
+        return rpcTimeout.plus(rpcSafetyMargin);
     }
 
     public Duration retryDelay(int attempt) {
