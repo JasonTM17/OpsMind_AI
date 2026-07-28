@@ -527,6 +527,43 @@ WHERE run.status IN ('CREATED', 'ANALYZING', 'WAITING_FOR_EVIDENCE')
 [[ "$legacy_binding_count_after_ten" == "0" ]]
 [[ "$nonterminal_orphans_after_ten" == "1" ]]
 
+migrate_to 11
+version_eleven="$(query_upgrade_database "SELECT max(version::integer) FROM flyway_schema_history WHERE success;")"
+workflow_preflight_function_after_eleven="$(query_upgrade_database "
+SELECT CASE
+  WHEN to_regprocedure(
+    'public.opsmind_preflight_investigation_workflow_start(uuid,uuid,uuid,bigint)'
+  ) IS NULL THEN 'ABSENT'
+  ELSE 'PRESENT'
+END;
+")"
+workflow_settlement_function_after_eleven="$(query_upgrade_database "
+SELECT CASE
+  WHEN to_regprocedure(
+    'public.opsmind_settle_investigation_workflow_start(uuid,uuid,uuid,character varying,character varying,character varying,bigint)'
+  ) IS NULL THEN 'ABSENT'
+  ELSE 'PRESENT'
+END;
+")"
+workflow_terminalizer_function_after_eleven="$(query_upgrade_database "
+SELECT CASE
+  WHEN to_regprocedure(
+    'public.opsmind_terminalize_unclaimed_ineligible_workflow_starts(integer)'
+  ) IS NULL THEN 'ABSENT'
+  ELSE 'PRESENT'
+END;
+")"
+workflow_settlement_owner_after_eleven="$(query_upgrade_database "
+SELECT pg_get_userbyid(proowner)
+FROM pg_proc
+WHERE oid = 'public.opsmind_settle_investigation_workflow_start(uuid,uuid,uuid,character varying,character varying,character varying,bigint)'::regprocedure;
+")"
+[[ "$version_eleven" == "11" ]]
+[[ "$workflow_preflight_function_after_eleven" == "PRESENT" ]]
+[[ "$workflow_settlement_function_after_eleven" == "PRESENT" ]]
+[[ "$workflow_terminalizer_function_after_eleven" == "PRESENT" ]]
+[[ "$workflow_settlement_owner_after_eleven" == "opsmind_dispatch_resolver" ]]
+
 cutover_block_output="${TMPDIR:-/tmp}/opsmind-phase9-cutover-block-${upgrade_database}.txt"
 set +e
 PGPASSWORD="$POSTGRES_PASSWORD" psql --no-password --no-psqlrc \
@@ -600,10 +637,13 @@ WHERE run.status IN ('CREATED', 'ANALYZING', 'WAITING_FOR_EVIDENCE')
 ")"
 [[ "$nonterminal_orphans_after_reconciliation" == "0" ]]
 
-printf 'Database=%s\nVersionBefore=%s\nEvidenceTableBefore=%s\nVersionSeven=%s\nEvidenceTableAfterSeven=%s\nVersionEight=%s\nVersionNine=%s\nVersionTen=%s\nWorkflowBindingTableAfterTen=%s\nWorkflowEventFunctionAfterTen=%s\nLegacyTerminalRunsAfterTen=%s\nLegacyBindingCountAfterTen=%s\nNonterminalOrphansAfterTen=%s\nCutoverBlockExit=%s\nNonterminalOrphansAfterReconciliation=%s\nLegacyPayloadDigestStable=%s\nRollingLegacyWriteCount=%s\nInvalidAbstainRejected=%s\nUpgradeResult=PASS\n' \
+printf 'Database=%s\nVersionBefore=%s\nEvidenceTableBefore=%s\nVersionSeven=%s\nEvidenceTableAfterSeven=%s\nVersionEight=%s\nVersionNine=%s\nVersionTen=%s\nVersionEleven=%s\nWorkflowBindingTableAfterTen=%s\nWorkflowEventFunctionAfterTen=%s\nWorkflowPreflightFunctionAfterEleven=%s\nWorkflowSettlementFunctionAfterEleven=%s\nWorkflowTerminalizerFunctionAfterEleven=%s\nWorkflowSettlementOwnerAfterEleven=%s\nLegacyTerminalRunsAfterTen=%s\nLegacyBindingCountAfterTen=%s\nNonterminalOrphansAfterTen=%s\nCutoverBlockExit=%s\nNonterminalOrphansAfterReconciliation=%s\nLegacyPayloadDigestStable=%s\nRollingLegacyWriteCount=%s\nInvalidAbstainRejected=%s\nUpgradeResult=PASS\n' \
   "$upgrade_database" "$version_before" "$table_before" \
   "$version_seven" "$table_after_seven" "$version_eight" "$version_nine" \
-  "$version_ten" "$binding_table_after_ten" "$workflow_event_function_after_ten" \
+  "$version_ten" "$version_eleven" "$binding_table_after_ten" \
+  "$workflow_event_function_after_ten" "$workflow_preflight_function_after_eleven" \
+  "$workflow_settlement_function_after_eleven" "$workflow_terminalizer_function_after_eleven" \
+  "$workflow_settlement_owner_after_eleven" \
   "$legacy_terminal_runs_after_ten" "$legacy_binding_count_after_ten" \
   "$nonterminal_orphans_after_ten" "$cutover_block_status" \
   "$nonterminal_orphans_after_reconciliation" \

@@ -49,6 +49,17 @@ public final class InvestigationWorkflowStarterRunner {
     }
 
     private void dispatchReadyTenants() {
+        try {
+            dispatcher.terminalizeUnclaimedIneligibleStarts(
+                starterProperties.tenantLimit()
+            );
+        }
+        catch (RuntimeException exception) {
+            LOGGER.error(
+                "Workflow starter ineligible terminalizer failed with safe class {}.",
+                exception.getClass().getSimpleName()
+            );
+        }
         for (var organizationId : tenantScheduler.listReadyTenants(
             starterProperties.tenantLimit()
         )) {
