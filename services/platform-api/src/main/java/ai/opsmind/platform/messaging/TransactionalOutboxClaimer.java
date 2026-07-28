@@ -36,14 +36,11 @@ final class TransactionalOutboxClaimer {
                    AND candidate.next_attempt_at <= ?
                    AND (candidate.lease_expires_at IS NULL OR candidate.lease_expires_at <= ?)
                    %s
-                   AND NOT EXISTS (
-                       SELECT 1
-                         FROM outbox_events predecessor
-                        WHERE predecessor.organization_id = candidate.organization_id
-                          AND predecessor.aggregate_type = candidate.aggregate_type
-                          AND predecessor.aggregate_id = candidate.aggregate_id
-                          AND predecessor.aggregate_sequence < candidate.aggregate_sequence
-                          AND predecessor.published_at IS NULL
+                   AND NOT public.opsmind_has_unpublished_outbox_predecessor(
+                       candidate.organization_id,
+                       candidate.aggregate_type,
+                       candidate.aggregate_id,
+                       candidate.aggregate_sequence
                    )
                  ORDER BY candidate.occurred_at, candidate.event_id
                  FOR UPDATE SKIP LOCKED

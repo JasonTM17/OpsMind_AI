@@ -1,10 +1,12 @@
 package ai.opsmind.platform.investigation.workflow;
 
+import java.nio.charset.StandardCharsets;
 import java.time.Clock;
 import java.time.Duration;
 import java.time.Instant;
 import java.util.UUID;
 
+import ai.opsmind.platform.common.api.RequestDigest;
 import ai.opsmind.platform.investigation.workflow.InvestigationWorkflowStartEventCodec.DecodedStart;
 import ai.opsmind.platform.messaging.OutboxLease;
 
@@ -45,9 +47,8 @@ public final class InvestigationWorkflowStartDispatcher {
 
     public int dispatchTenant(UUID organizationId) {
         Duration requiredRpcWindow = properties.requiredRpcWindow(clientProperties.rpcTimeout());
-        Instant claimTime = Instant.now(clock);
         return transactions.claim(
-            organizationId, UUID.randomUUID(), claimTime, properties
+            organizationId, UUID.randomUUID(), properties
         ).filter(lease -> process(lease, requiredRpcWindow)).map(lease -> 1).orElse(0);
     }
 
@@ -59,6 +60,7 @@ public final class InvestigationWorkflowStartDispatcher {
     private boolean process(OutboxLease lease, Duration requiredRpcWindow) {
         DecodedStart decoded;
         try {
+            verifyPayloadIntegrity(lease);
             decoded = eventCodec.decode(lease.event());
         }
         catch (InvestigationWorkflowStartException invalid) {
@@ -69,6 +71,20 @@ public final class InvestigationWorkflowStartDispatcher {
         );
         if (preflight == InvestigationWorkflowDispatchPreflightDecision.LEASE_LOST) {
             return false;
+        }
+        if (preflight.reconciliationRequired()) {
+            return transactions.releaseRetry(
+                lease,
+                "workflow.reconciliation-required",
+                properties.retryDelay(lease.attempt())
+            ).handled();
+        }
+        if (preflight.ambiguousRetryAllowed() && !canRetryAmbiguousStart(lease)) {
+            return transactions.releaseRetry(
+                lease,
+                "workflow.reconciliation-required",
+                properties.retryDelay(lease.attempt())
+            ).handled();
         }
         if (preflight.retryWithoutRpc()) {
             return handleFailure(
@@ -96,9 +112,19 @@ public final class InvestigationWorkflowStartDispatcher {
             return handleFailure(
                 lease,
                 decoded.request(),
-                InvestigationWorkflowStartException.retryable(
-                    "workflow.starter-internal", unexpected
+                InvestigationWorkflowStartException.outcomeUncertain(
+                    "workflow.temporal-outcome-ambiguous", unexpected
                 )
+            );
+        }
+    }
+
+    private void verifyPayloadIntegrity(OutboxLease lease) {
+        byte[] payloadBytes = lease.event().payloadJson().getBytes(StandardCharsets.UTF_8);
+        byte[] actualDigest = RequestDigest.sha256(payloadBytes);
+        if (!RequestDigest.constantTimeEquals(actualDigest, lease.event().payloadDigest())) {
+            throw InvestigationWorkflowStartException.permanent(
+                "workflow.event-payload-invalid", null
             );
         }
     }
@@ -117,6 +143,13 @@ public final class InvestigationWorkflowStartDispatcher {
             && lease.attempt() < properties.maximumAttempts()
             && retryAt.isBefore(ageLimit)
             && retryAt.isBefore(deadlineLimit);
+        if (exception.outcomeUncertain()) {
+            return transactions.releaseRetry(
+                lease,
+                retry ? exception.code() : "workflow.reconciliation-required",
+                retryDelay
+            ).handled();
+        }
         if (retry) {
             return transactions.releaseRetry(
                 lease, exception.code(), retryDelay
@@ -126,6 +159,13 @@ public final class InvestigationWorkflowStartDispatcher {
             lease,
             terminalCode(exception, lease, failedAt, ageLimit)
         ).handled();
+    }
+
+    private boolean canRetryAmbiguousStart(OutboxLease lease) {
+        return lease.attempt() <= properties.maximumAttempts()
+            && Instant.now(clock).isBefore(
+                lease.event().occurredAt().plus(properties.maximumAge())
+            );
     }
 
     private String terminalCode(

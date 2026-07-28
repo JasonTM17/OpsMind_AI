@@ -78,9 +78,17 @@ public final class TemporalInvestigationWorkflowClient implements InvestigationW
         WorkflowExecutionAlreadyStarted exception
     ) {
         WorkflowExecution execution = exception.getExecution();
+        Optional<String> workflowType = exception.getWorkflowType();
         if (execution == null
-            || !request.workflowId().equals(execution.getWorkflowId())
-            || exception.getWorkflowType().filter(request.workflowType()::equals).isEmpty()) {
+            || execution.getWorkflowId().isBlank()
+            || execution.getRunId().isBlank()
+            || workflowType.filter(value -> !value.isBlank()).isEmpty()) {
+            throw InvestigationWorkflowStartException.outcomeUncertain(
+                "workflow.temporal-outcome-ambiguous", exception
+            );
+        }
+        if (!request.workflowId().equals(execution.getWorkflowId())
+            || !request.workflowType().equals(workflowType.orElseThrow())) {
             throw InvestigationWorkflowStartException.permanent(
                 "workflow.existing-contract-mismatch", exception
             );
@@ -106,18 +114,18 @@ public final class TemporalInvestigationWorkflowClient implements InvestigationW
             throw mapped;
         }
         catch (StatusRuntimeException status) {
-            throw TemporalTransportFailureClassifier.map(
-                status, "workflow.existing-contract-unverifiable"
+            throw InvestigationWorkflowStartException.outcomeUncertain(
+                "workflow.temporal-outcome-ambiguous", status
             );
         }
         catch (TemporalException temporalFailure) {
-            throw TemporalTransportFailureClassifier.map(
-                temporalFailure, "workflow.existing-contract-unverifiable"
+            throw InvestigationWorkflowStartException.outcomeUncertain(
+                "workflow.temporal-outcome-ambiguous", temporalFailure
             );
         }
         catch (RuntimeException unverifiable) {
-            throw TemporalTransportFailureClassifier.map(
-                unverifiable, "workflow.existing-contract-unverifiable"
+            throw InvestigationWorkflowStartException.outcomeUncertain(
+                "workflow.temporal-outcome-ambiguous", unverifiable
             );
         }
     }
@@ -133,6 +141,8 @@ public final class TemporalInvestigationWorkflowClient implements InvestigationW
             && request.taskQueue().equals(description.getTaskQueue())
             && startPayloadDigest.equals(storedDigest)
             && request.workflowId().equals(description.getExecution().getWorkflowId())
+            && !execution.getRunId().isBlank()
+            && !description.getExecution().getRunId().isBlank()
             && execution.getRunId().equals(description.getExecution().getRunId())
             && request.equals(readFirstStartInput(execution));
     }
@@ -176,8 +186,8 @@ public final class TemporalInvestigationWorkflowClient implements InvestigationW
 
     private StartResult result(WorkflowExecution execution, boolean alreadyStarted) {
         if (execution == null || execution.getRunId().isBlank()) {
-            throw InvestigationWorkflowStartException.permanent(
-                "workflow.temporal-run-id-missing", null
+            throw InvestigationWorkflowStartException.outcomeUncertain(
+                "workflow.temporal-outcome-ambiguous", null
             );
         }
         return new StartResult(execution.getRunId(), alreadyStarted);

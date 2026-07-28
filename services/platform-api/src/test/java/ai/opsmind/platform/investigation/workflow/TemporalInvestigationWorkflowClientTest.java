@@ -166,7 +166,87 @@ class TemporalInvestigationWorkflowClientTest {
             temporalClient(sdkClient, namespace),
             request,
             true,
-            "workflow.temporal-unavailable"
+            "workflow.temporal-outcome-ambiguous"
+        );
+    }
+
+    @Test
+    void incompleteExecutionReturnedAfterStartRequiresReconciliation() {
+        String namespace = "temporal-test-namespace";
+        InvestigationWorkflowStartRequest request = request(namespace);
+        WorkflowClient sdkClient = mock(WorkflowClient.class);
+        WorkflowStub startStub = mock(WorkflowStub.class);
+        when(sdkClient.newUntypedWorkflowStub(
+            eq(WORKFLOW_TYPE), any(WorkflowOptions.class)
+        )).thenReturn(startStub);
+        when(startStub.start(any(Object[].class))).thenReturn(
+            WorkflowExecution.newBuilder()
+                .setWorkflowId(request.workflowId())
+                .build()
+        );
+
+        assertMappedFailure(
+            temporalClient(sdkClient, namespace),
+            request,
+            true,
+            "workflow.temporal-outcome-ambiguous"
+        );
+    }
+
+    @Test
+    void incompleteAlreadyStartedIdentityRequiresReconciliation() {
+        String namespace = "temporal-test-namespace";
+        InvestigationWorkflowStartRequest request = request(namespace);
+        WorkflowExecution incompleteExecution = WorkflowExecution.newBuilder()
+            .setWorkflowId(request.workflowId())
+            .build();
+        WorkflowClient sdkClient = mock(WorkflowClient.class);
+        WorkflowStub startStub = mock(WorkflowStub.class);
+        when(sdkClient.newUntypedWorkflowStub(
+            eq(WORKFLOW_TYPE), any(WorkflowOptions.class)
+        )).thenReturn(startStub);
+        when(startStub.start(any(Object[].class))).thenThrow(
+            new WorkflowExecutionAlreadyStarted(
+                incompleteExecution,
+                WORKFLOW_TYPE,
+                Status.ALREADY_EXISTS.asRuntimeException()
+            )
+        );
+
+        assertMappedFailure(
+            temporalClient(sdkClient, namespace),
+            request,
+            true,
+            "workflow.temporal-outcome-ambiguous"
+        );
+    }
+
+    @Test
+    void verifiedAlreadyStartedIdentityCollisionRemainsPermanent() {
+        String namespace = "temporal-test-namespace";
+        InvestigationWorkflowStartRequest request = request(namespace);
+        WorkflowExecution conflictingExecution = WorkflowExecution.newBuilder()
+            .setWorkflowId("opsmind-investigation/conflicting")
+            .setRunId("temporal-run-conflicting")
+            .build();
+        WorkflowClient sdkClient = mock(WorkflowClient.class);
+        WorkflowStub startStub = mock(WorkflowStub.class);
+        when(sdkClient.newUntypedWorkflowStub(
+            eq(WORKFLOW_TYPE), any(WorkflowOptions.class)
+        )).thenReturn(startStub);
+        when(startStub.start(any(Object[].class))).thenThrow(
+            new WorkflowExecutionAlreadyStarted(
+                conflictingExecution,
+                WORKFLOW_TYPE,
+                Status.ALREADY_EXISTS.asRuntimeException()
+            )
+        );
+
+        assertMappedFailure(
+            temporalClient(sdkClient, namespace),
+            request,
+            false,
+            "workflow.existing-contract-mismatch"
         );
     }
 
@@ -209,7 +289,7 @@ class TemporalInvestigationWorkflowClientTest {
             client,
             request,
             true,
-            "workflow.temporal-unavailable"
+            "workflow.temporal-outcome-ambiguous"
         );
 
         InvestigationWorkflowClient.StartResult duplicate =
@@ -311,51 +391,51 @@ class TemporalInvestigationWorkflowClientTest {
 
     @ParameterizedTest
     @MethodSource("ambiguousTransportFailureCases")
-    void ambiguousTransportFailureWhileDescribingExistingIsRetryable(
+    void ambiguousTransportFailureWhileDescribingExistingIsOutcomeUncertain(
         TransportFailureCase failureCase
     ) {
         assertReconciliationFailure(
             true,
             failureCase::failure,
             true,
-            "workflow.temporal-unavailable"
+            "workflow.temporal-outcome-ambiguous"
         );
     }
 
     @ParameterizedTest
     @MethodSource("ambiguousTransportFailureCases")
-    void ambiguousTransportFailureWhileReadingHistoryIsRetryable(
+    void ambiguousTransportFailureWhileReadingHistoryIsOutcomeUncertain(
         TransportFailureCase failureCase
     ) {
         assertReconciliationFailure(
             false,
             failureCase::failure,
             true,
-            "workflow.temporal-unavailable"
+            "workflow.temporal-outcome-ambiguous"
         );
     }
 
     @ParameterizedTest
-    @MethodSource("permanentReconciliationFailureCases")
-    void permanentReconciliationFailureUsesUnverifiableCode(
+    @MethodSource("reconciliationVerificationFailureCases")
+    void reconciliationVerificationFailureRequiresReconciliation(
         boolean failDescribe,
         Status.Code statusCode
     ) {
         assertReconciliationFailure(
             failDescribe,
             execution -> wrappedServiceFailure(execution, statusCode),
-            false,
-            "workflow.existing-contract-unverifiable"
+            true,
+            "workflow.temporal-outcome-ambiguous"
         );
     }
 
     @Test
-    void statuslessLocalFailureDuringReconciliationRemainsPermanent() {
+    void rawRuntimeFailureDuringReconciliationRequiresReconciliation() {
         assertReconciliationFailure(
             false,
             TemporalInvestigationWorkflowClientTest::statuslessLocalServiceFailure,
-            false,
-            "workflow.existing-contract-unverifiable"
+            true,
+            "workflow.temporal-outcome-ambiguous"
         );
     }
 
@@ -435,6 +515,9 @@ class TemporalInvestigationWorkflowClientTest {
                     assertThat(exception.retryable()).isEqualTo(retryable);
                     assertThat(exception.code()).isEqualTo(code);
                     assertThat(exception.getMessage()).isEqualTo(code);
+                    assertThat(exception.outcomeUncertain()).isEqualTo(
+                        "workflow.temporal-outcome-ambiguous".equals(code)
+                    );
                 }
             );
     }
@@ -595,7 +678,7 @@ class TemporalInvestigationWorkflowClientTest {
             });
     }
 
-    private static Stream<Arguments> permanentReconciliationFailureCases() {
+    private static Stream<Arguments> reconciliationVerificationFailureCases() {
         return Stream.of(
             Arguments.of(true, Status.Code.NOT_FOUND),
             Arguments.of(true, Status.Code.PERMISSION_DENIED),

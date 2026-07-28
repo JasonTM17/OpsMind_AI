@@ -68,19 +68,68 @@ if (hardeningMigration.includes("opsmind_current_tenant_id")) {
   errors.push("V011 preflight must not require or establish a tenant context");
 }
 
+const exclusivityMigrationPath =
+  "services/platform-api/src/main/resources/db/migration/"
+  + "V012__investigation_workflow_dispatch_exclusivity.sql";
+const exclusivityMigration = requireMarkers(exclusivityMigrationPath, [
+  "REVOKE ALL ON TABLE public.investigation_workflow_bindings FROM opsmind_dispatcher",
+  "REVOKE ALL ON TABLE public.inbox_events FROM opsmind_dispatcher",
+  "pg_catalog.pg_auth_members",
+  "membership.roleid = role_row.oid",
+  "member_role.rolname <> session_user",
+  "membership.admin_option",
+  "membership.inherit_option",
+  "membership.set_option",
+  "unsafe attributes or role memberships",
+  "status, temporal_run_id, rejection_code, updated_at, temporal_started_at, rejected_at",
+  "status, processed_at, attempts, last_error",
+  "CREATE POLICY outbox_events_dispatcher_excludes_investigation_workflow_start",
+  "AS RESTRICTIVE",
+  "FOR ALL TO opsmind_dispatcher",
+  "CREATE OR REPLACE FUNCTION opsmind_has_unpublished_outbox_predecessor",
+  "outbox predecessor identity is invalid",
+  "outbox predecessor lookup requires its bound tenant",
+  "CREATE OR REPLACE FUNCTION opsmind_claim_investigation_workflow_start",
+  "CREATE OR REPLACE FUNCTION opsmind_list_investigation_workflow_start_tenants",
+  "OWNER TO opsmind_dispatch_resolver",
+  "REVOKE ALL ON FUNCTION public.opsmind_claim_investigation_workflow_start",
+  "GRANT EXECUTE ON FUNCTION public.opsmind_claim_investigation_workflow_start",
+  "GRANT SELECT (last_error) ON outbox_events TO opsmind_context_resolver",
+  "workflow.ambiguous-retry-allowed",
+  "workflow.reconciliation-required",
+  "workflow.temporal-outcome-ambiguous",
+  "event_row.last_error IS DISTINCT FROM 'workflow.reconciliation-required'",
+]);
+if (!exclusivityMigration.includes("UPDATE (attempts) ON outbox_events")) {
+  errors.push("V012 resolver claim must receive only its attempt update capability");
+}
+for (const column of [
+  "causation_id",
+  "correlation_id",
+  "payload_bytes",
+  "payload_digest",
+  "lease_token",
+  "attempts",
+]) {
+  if (!exclusivityMigration.includes(column)) {
+    errors.push(`V012 resolver claim is missing required envelope column: ${column}`);
+  }
+}
+
 const migrationDirectory = path.join(
   repositoryRoot,
   "services/platform-api/src/main/resources/db/migration",
 );
 const workflowMigrations = fs.readdirSync(migrationDirectory)
-  .filter((name) => /workflow.*(?:handoff|safety)|(?:handoff|safety).*workflow/iu.test(name))
+  .filter((name) => /^V01[0-2]__investigation_workflow_/u.test(name))
   .sort();
 if (
-  workflowMigrations.length !== 2
+  workflowMigrations.length !== 3
   || workflowMigrations[0] !== "V010__investigation_workflow_start_handoff.sql"
   || workflowMigrations[1] !== "V011__investigation_workflow_dispatch_safety_fence.sql"
+  || workflowMigrations[2] !== "V012__investigation_workflow_dispatch_exclusivity.sql"
 ) {
-  errors.push("the workflow handoff must have exactly V010 and V011 migration owners");
+  errors.push("the workflow handoff must have exactly V010, V011, and V012 migration owners");
 }
 
 const pom = requireMarkers("services/platform-api/pom.xml", [
@@ -184,20 +233,58 @@ requireMarkers(
     "WORKFLOW_ID_CONFLICT_POLICY_FAIL",
     "readFirstStartInput",
     "streamHistory",
-    "workflow.existing-contract-unverifiable",
+    "workflow.temporal-outcome-ambiguous",
+    "workflow.existing-contract-mismatch",
   ],
 );
-requireMarkers(
+const dispatchTransactions = requireMarkers(
   "services/platform-api/src/main/java/ai/opsmind/platform/investigation/"
     + "workflow/InvestigationWorkflowDispatchTransactions.java",
   [
     "dispatcherTransactionManager",
+    "opsmind_claim_investigation_workflow_start",
     "opsmind_preflight_investigation_workflow_start",
     "opsmind_settle_investigation_workflow_start",
     "opsmind_terminalize_unclaimed_ineligible_workflow_starts",
     "Workflow starter must not claim more than one lease per transaction.",
     "private <T> T inDispatcher",
-    "private <T> T inTenant",
+  ],
+);
+for (const forbiddenGenericClaimPath of [
+  "OutboxLeaseRepository",
+  "OutboxDispatcherTenantContextSql",
+  "claimBatchForEventType",
+]) {
+  if (dispatchTransactions.includes(forbiddenGenericClaimPath)) {
+    errors.push(`workflow dispatcher retains generic claim path: ${forbiddenGenericClaimPath}`);
+  }
+}
+requireMarkers(
+  "services/platform-api/src/main/java/ai/opsmind/platform/messaging/"
+    + "TransactionalOutboxClaimer.java",
+  ["opsmind_has_unpublished_outbox_predecessor"],
+);
+requireMarkers(
+  "services/platform-api/src/main/java/ai/opsmind/platform/investigation/"
+    + "workflow/InvestigationWorkflowStartLeaseRowMapper.java",
+  ["implements RowMapper<OutboxLease>", "payload_bytes", "payload_digest"],
+);
+requireMarkers(
+  "services/platform-api/src/main/java/ai/opsmind/platform/investigation/"
+    + "workflow/TemporalTransportFailureClassifier.java",
+  ["outcomeUncertain", "workflow.temporal-outcome-ambiguous"],
+);
+requireMarkers(
+  "services/platform-api/src/main/java/ai/opsmind/platform/investigation/"
+    + "workflow/InvestigationWorkflowStartDispatcher.java",
+  [
+    "outcomeUncertain",
+    "reconciliationRequired",
+    "ambiguousRetryAllowed",
+    "workflow.temporal-outcome-ambiguous",
+    "workflow.reconciliation-required",
+    "verifyPayloadIntegrity",
+    "workflow.event-payload-invalid",
   ],
 );
 
@@ -214,11 +301,24 @@ requireMarkers(
 requireMarkers("scripts/validation/run-phase-04b-migration-upgrade.sh", [
   "migrate_to 10",
   "migrate_to 11",
+  "migrate_to 12",
   "CutoverBlockExit=%s",
   "NonterminalOrphansAfterReconciliation=%s",
   "VersionEleven=%s",
+  "VersionTwelve=%s",
   "WorkflowSettlementFunctionAfterEleven=%s",
   "WorkflowSettlementOwnerAfterEleven=%s",
+  "WorkflowClaimFunctionAfterTwelve=%s",
+  "WorkflowClaimOwnerAfterTwelve=%s",
+  "WorkflowClaimSecurityDefinerAfterTwelve=%s",
+  "OutboxPredecessorFunctionAfterTwelve=%s",
+  "OutboxPredecessorOwnerAfterTwelve=%s",
+  "OutboxPredecessorSecurityDefinerAfterTwelve=%s",
+  "OutboxPredecessorDispatcherExecuteAfterTwelve=%s",
+  "OutboxPredecessorPublicExecuteAfterTwelve=%s",
+  "DispatcherWorkflowBindingPrivilegeAfterTwelve=%s",
+  "DispatcherInboxPrivilegeAfterTwelve=%s",
+  "DispatcherWorkflowExclusionPolicyAfterTwelve=%s",
 ]);
 
 const requiredTests = {
@@ -237,6 +337,11 @@ const requiredTests = {
     "suspendedAccountPreservesAmbiguousRetryForReconciliation",
     "terminalizerPoisonsAnUnclaimedStartWithNoEligibleDispatcher",
     "claimProcessesOnlyOneLeasePerTransaction",
+    "dispatcherRoleCannotDirectlyMutateBindingOrInboxAndCannotSeeCanonicalOutbox",
+    "genericClaimSkipsEarlierCanonicalWorkflowStart",
+    "hiddenCanonicalPredecessorStillBlocksSameAggregateGenericClaim",
+    "ambiguousTemporalOutcomeRetriesAndReconcilesWithinBudget",
+    "finalAmbiguousTemporalAttemptParksWithoutASecondRpc",
     "expiredLeaseCannotPartiallyAcknowledgeBindingInboxOrOutbox",
     "permanentFailureRejectsBindingInboxAndOutboxInOneTransaction",
     "moreThanOneHundredUnrelatedReadyTenantsCannotStarveWorkflowStarts",
@@ -245,10 +350,15 @@ const requiredTests = {
     + "workflow/InvestigationWorkflowStartDispatcherTest.java"]: [
     "preflightTerminalDecisionRejectsWithoutInvokingWorkflowClient",
     "stalePreflightSkipsWorkflowClientAndLeaseMutation",
+    "finalOutcomeUncertainAttemptParksForReconciliation",
+    "ambiguousRetryWithinBudgetReachesDeterministicTemporalReconciliation",
+    "corruptPayloadUsesWorkflowSettlementRejectWithoutCallingTemporal",
+    "reconciliationRequiredParksWithoutInvokingWorkflowClient",
   ],
   ["services/platform-api/src/test/java/ai/opsmind/platform/investigation/"
     + "workflow/TemporalInvestigationWorkflowClientTest.java"]: [
     "matchingMemoCannotHideDifferentFirstStartInput",
+    "rawRuntimeFailureDuringReconciliationRequiresReconciliation",
   ],
   ["services/platform-api/src/test/java/ai/opsmind/platform/investigation/"
     + "workflow/TemporalInvestigationWorkflowHistoryLeakTest.java"]: [
@@ -260,6 +370,10 @@ const requiredTests = {
   ["services/platform-api/src/test/java/ai/opsmind/platform/investigation/"
     + "application/DurableInvestigationExecutionStarterTest.java"]: [
     "exactExistingBindingRemainsReadableWhenWorkerReadinessIsLost",
+  ],
+  ["services/platform-api/src/test/java/ai/opsmind/platform/"
+    + "persistence/MigrationContractTest.java"]: [
+    "workflowDispatchExclusivityMigrationGuardsBothMembershipDirections",
   ],
 };
 for (const [relativePath, markers] of Object.entries(requiredTests)) {
@@ -306,6 +420,7 @@ const lines = [
   "OpsMind Phase 9 workflow handoff validation",
   `MigrationOwner=${path.basename(migrationPath)}`,
   `HardeningMigrationOwner=${path.basename(hardeningMigrationPath)}`,
+  `ExclusivityMigrationOwner=${path.basename(exclusivityMigrationPath)}`,
   `TemporalVersionPins=${temporalVersionDeclarations.length}`,
   `SerializedPayloadFields=${serializedFields.length}`,
   `RequiredTestFiles=${Object.keys(requiredTests).length}`,
