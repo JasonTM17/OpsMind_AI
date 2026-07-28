@@ -154,5 +154,6 @@ reconciliation remains exact.
 
 - Production Temporal namespace/mTLS/worker topology remains external and is
   intentionally not solved by this hardening phase.
-- B-017 remains unresolved until V012 real-role containment and the separately
-  authorized no-Start reconciliation lane have runtime/upgrade evidence.
+- B-017 remains unresolved until V012 has full real-role fresh/upgrade and
+  atomicity evidence and the separately authorized no-Start reconciliation/
+  alert lane is implemented and proven.

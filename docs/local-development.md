@@ -162,7 +162,7 @@ Use either launcher consistently:
 | `dev` | Build and run the Compose `application` profile in the foreground. |
 | `up` | Build and run the profile detached, waiting for health checks. |
 | `down` | Stop the profile; remains available when capacity is below threshold. |
-| `migrate` | Applies the current Platform Flyway sequence through V010 using the supplied migration-role datasource; it does not start the web server. |
+| `migrate` | Applies the current Platform Flyway sequence through V012 using the supplied migration-role datasource; it does not start the web server. |
 | `seed` | Exit 3 until deterministic seed data has an owning phase. |
 | `evaluate` | Run evaluation tests/contracts, then score an existing managed Phase 7 trace for Scenario A, B, or C; it does not generate a trace and exits non-zero when projection, revision binding, or storage policy is incomplete. |
 
@@ -477,7 +477,7 @@ toolchain; do not weaken a version file to match an incidental host runtime.
 - `OPS_ARTIFACT_ROOT/verification/phase-03/identity-delegation-failure.txt` (failure diagnostics only)
 - `OPS_ARTIFACT_ROOT/verification/phase-04/` (revision `a975f922` PostgreSQL activity/V009 artifact `8650178111`)
 - `OPS_ARTIFACT_ROOT/verification/phase-08b/` (revision `a975f922` cross-service artifact `8649696519`)
-- `OPS_ARTIFACT_ROOT/verification/phase-09-workflow-handoff/` (current-worktree static/unit evidence only; exact-head CI/PostgreSQL evidence missing)
+- `OPS_ARTIFACT_ROOT/verification/phase-09-workflow-handoff/` (intended root for revision-bound Phase 9 evidence; current V012 results are session/review records, while exact-head CI/full Flyway runtime artifacts are missing)
 - `OPS_ARTIFACT_ROOT/evaluation/phase-08/` (local scorer output; reference only)
 - Phase 2 Windows and portable command-surface test results
 - dependency-check reports under each Java service's ignored `target/` tree
@@ -489,5 +489,5 @@ Linux and Windows runners. The local object-store implementation remains
 blocked by B-012 pending a supported backend decision. GitHub Dependabot still
 reports one high finding; dependency/security success in this run does not
 silently close that separate alert. Phase 9 also remains in progress: B-013,
-exact-head CI/PostgreSQL evidence, and a live compatible Temporal environment
-are still open.
+B-017 reconciliation/runtime proof, exact-head CI/full Flyway evidence, and a
+live compatible Temporal environment are still open.

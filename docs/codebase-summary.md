@@ -35,7 +35,7 @@ than inferred from the compaction.
 | Phase 6 | In progress; durable PostgreSQL and synthetic Prometheus checkpoint passes revision-bound CI. Artifact/broader-connector exit remains blocked. |
 | Phase 7 | In progress; cross-service trace, 100-warm-run fixture, CK/Stitch UI/browser E2E, and the metadata-only incident activity route plus V009 CI fixture gates pass. G3 remains blocked by live non-production connector/provider/legal conformance and BFF/session proof. |
 | Phase 8 | In progress; Phase 8B contracts, V008 binding, bounded projection, production-path A/B/C, artifact attestation, and blocking review pass. Parent exit remains blocked by unavailable held-out/human/calibration evidence. |
-| Phase 9 | In progress; default-off atomic workflow-start handoff exists. B-017 blocks admission pending V012 real-role containment and a no-Start exact-workflow reconciliation lane; exact-head CI/PostgreSQL evidence, a compatible worker, and restart/resume remain open. B-013 is active. |
+| Phase 9 | In progress; default-off atomic workflow-start handoff and V012 capability-only dispatcher containment exist. Static and rollback-only PostgreSQL probes pass. B-017 still blocks admission pending full fresh/upgrade real-role and atomicity proof plus a no-Start exact-workflow reconciliation/alert lane; exact-head CI/Flyway runtime evidence, a compatible worker, and restart/resume remain open. B-013 is active. |
 | Later phases | RAG, remediation, complete operator UX, and production-hardening outcomes remain pending. |
 
 Phase 7's local Operator Web and fixture-backed cross-service checkpoints are
@@ -259,22 +259,26 @@ binding, and canonical workflow-start outbox event. V010 fixes the workflow ID
 as `opsmind-investigation/{organizationId}/{runId}` and binds exact payload
 bytes/digest, client request digest, authorization revision, logical cluster,
 namespace, workflow type, and task queue. It grants the app insert/select
-authority while V010/V011 reserve settlement fields for `opsmind_dispatcher`.
+authority while V011/V012 route dispatcher mutation through fixed capabilities.
 
 The opt-in workflow-start scheduler lives in the Platform API artifact and uses
 a dedicated dispatcher datasource. Each tenant claim transaction commits before
 `TemporalInvestigationWorkflowClient.start`; the RPC is explicitly rejected
-inside a database transaction. V011 adds preflight/settlement functions, but
-the dispatcher still has inherited direct DML on
-`investigation_workflow_bindings`, `inbox_events`, and `outbox_events`. This
-bypasses the intended capability-only path, so V011 is not an enablement proof;
-V012 real-role containment is required and unverified.
+inside a database transaction. V012 revokes direct dispatcher authority on
+workflow bindings and inbox rows, hides canonical workflow-start outbox rows
+from generic dispatcher DML, and exposes a one-item resolver-owned claim
+function. Because those rows are hidden from the generic claim path, a
+resolver-owned predecessor check preserves same-aggregate ordering for visible
+successor events.
 
 `AlreadyStarted` converges only after exact workflow/type/task-queue/execution
 identity, memo digest, and first start-history input verification. A retryable
-post-RPC result may have been accepted remotely. Exhausting a local attempt,
-age, or deadline budget must retain bounded `PENDING` and require exact-workflow
-reconciliation, rather than unconditionally record `REJECTED`. B-017 requires
+post-RPC result may have been accepted remotely. V012 retries ambiguity inside
+the bounded policy and then retains `PENDING` with
+`workflow.reconciliation-required` at attempt, age, deadline, authorization, or
+lease exhaustion rather than recording `REJECTED`. Attempted V011 legacy
+`workflow.temporal-unavailable` rows are normalized conservatively, and durable
+ambiguity preflight precedes payload validation/decode. B-017 still requires
 a separately authorized read-only lane limited to Describe and first-history
 reads, with no Start authority and bounded `PENDING` alerts; this lane is not
 implemented or proven.
@@ -283,8 +287,12 @@ This checkpoint implements the start handoff only. There is no production/live
 Temporal cluster or namespace, Compose service, workflow worker, or
 restart/resume execution. V010 performs no legacy backfill; nonterminal
 binding-less runs block Temporal admission pending operator reconciliation.
-Exact-head CI and PostgreSQL evidence are missing. Master Phase 9 and roadmap
-G4 remain in progress, and B-013 and B-017 remain active.
+The Phase 9 static gate and rollback-only PostgreSQL probes pass on the
+integration source, including canonical-row invisibility, predecessor blocking,
+and unsafe role-membership rejection. Exact-head CI, full Flyway fresh/upgrade
+execution, real-role denial/success matrices, atomic failure injection, and
+latency evidence are missing. Master Phase 9 and roadmap G4 remain in progress,
+and B-013 and B-017 remain active.
 
 ## Phase 8B Evaluation Boundary
 
@@ -352,9 +360,10 @@ Two independent process-supervision reviews pass.
 - The web database role cannot lease or acknowledge outbox rows. The dispatcher
   role cannot access incident tables and sees no tenant payload before bounded
   workload binding.
-- For Phase 9 settlement, the current V011 grants do not yet enforce
-  capability-only DML; direct dispatcher access to binding/inbox/outbox rows is
-  the active B-017 containment gap.
+- For Phase 9 settlement, V012 removes direct dispatcher access to workflow
+  binding/inbox rows and canonical workflow-start outbox rows. B-017 remains
+  active because full real-role fresh/upgrade and atomicity proof plus the
+  separate reconciliation/alert lane are still absent.
 - Evidence, model output, connector content, and request bodies are untrusted
   inputs. Runtime secrets belong in process/secret-manager channels, not source,
   fixtures, evidence, or documentation.
@@ -375,7 +384,7 @@ See [Security Model](./security-model.md) for the complete threat model and
 | `scripts/validation/validate-phase-06-tool-gateway.mjs` | Durable Prometheus connector checkpoint PASS with schemas, canonical fixtures, digest/manifest/OpenAPI/source abuse checks | Phase exit BLOCK: artifact adapter, remaining connector families, tenant bulkhead, and provider-specific cancellation proof |
 | `scripts/validation/validate-phase-07-investigation-slice.mjs` | Artifact `8649696519` records OperatorWorkspace/CrossService/Checkpoint/PhaseExit PASS; Scenario A has 100 warm runs | G3 still requires live provider/connector/legal and BFF/session proof |
 | `scripts/validation/validate-phase-08-evaluation-foundation.mjs` | Six schemas, ten families/three implemented, three results/eight metrics/four negative cases, zero errors, checkpoint PASS | Phase exit BLOCK; held-out and human inputs unavailable |
-| `scripts/validation/validate-phase-09-workflow-handoff.mjs` | Current-worktree static gate PASS with V010, one Temporal pin, 18 payload fields, five required test files, and zero errors | Does not prove B-017: V012 real-role containment, no-Start exact-workflow reconciliation, exact-head CI/PostgreSQL, live Temporal, worker, and restart/resume proof remain absent |
+| `scripts/validation/validate-phase-09-workflow-handoff.mjs` | Integration-worktree static gate PASS with V010/V011/V012, one Temporal pin, 18 payload fields, seven required test files, and zero errors | Does not prove B-017: full real-role fresh/upgrade and atomicity execution, no-Start exact-workflow reconciliation/alerts, exact-head CI/Flyway runtime, live Temporal, worker, and restart/resume proof remain absent |
 | GitHub Actions `30257587569` | PASS on revision `a975f922`: bootstrap, secrets, actionlint, service/UI suites, dependency security, PostgreSQL job `89950772823`, Keycloak, Compose; artifact `8650178111` proves V009/activity gates | CI fixture/non-production evidence; not production latency, SLO, or conformance |
 | GitHub Actions `30257587543` | PASS on revision `a975f922`: A/B/C samples `100/1/1`, all metrics PASS, `GitTree=0`, Phase 7 regression PASS, artifact `8649696519` | Deterministic authored smoke; not held-out quality, calibration, or human benefit |
 
@@ -424,10 +433,11 @@ semantics.
   remediation, and production object storage/lifecycle. The default-off
   Temporal start handoff, bounded Operator workspace, and real
   Platform-to-Tool-Gateway read-only path are implemented checkpoints.
-- Phase 9 V012 real-role containment and separately authorized read-only
-  exact-workflow reconciliation. Until they are proven, potentially accepted
-  post-RPC starts stay `PENDING` with bounded alerting rather than becoming
-  `REJECTED` from local budget exhaustion.
+- Full Phase 9 V012 real-role fresh/upgrade/atomicity proof and the separately
+  authorized read-only exact-workflow reconciliation/alert lane. V012 already
+  parks potentially accepted post-RPC starts as `PENDING` with
+  `workflow.reconciliation-required`; the component that resolves and alerts
+  those rows is not implemented.
 - Production IdP/federation/session/break-glass conformance.
 - Measured load/SLO proof, DR proof, or a production release.
 

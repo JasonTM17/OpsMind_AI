@@ -8,26 +8,31 @@
 - Record blockers explicitly and leave downstream phases pending.
 - Do not include secrets, raw credentials, or sensitive evidence.
 
-## 2026-07-28 — Phase 9 start-handoff source present; safety evidence pending
+## 2026-07-28 — Phase 9 V012 containment source integrated; runtime proof pending
 
-Current worktree source adds default-off V010 atomic run/binding/outbox
+Current integration source adds default-off V010 atomic run/binding/outbox
 admission, additive `202 + Location`, a dedicated-datasource dispatcher role
 in the Platform API artifact, Temporal RPC outside the claim transaction,
 deterministic workflow identity, and exact `AlreadyStarted` verification.
 Inline remains the default `200` path.
 
-V011 is not sufficient to enable this path: inherited dispatcher direct DML on
-the Phase 9 binding, inbox, and outbox bypasses the intended capability-only
-boundary. V012 real-role containment and a separately authorized read-only
-exact-workflow reconciliation lane (Describe plus first-history, never Start)
-are required but unproven. A retryable outcome after an RPC may already have
-been accepted remotely, so local retry/age/deadline exhaustion must retain
-bounded `PENDING` and alert for reconciliation, not assert `REJECTED`.
+V012 removes the V011 inherited direct-DML bypass for workflow-start binding,
+inbox, and canonical outbox state; claims exactly one canonical event through a
+resolver-owned function; preserves hidden-predecessor ordering; and rejects
+unsafe protected-role memberships. Ambiguous post-RPC results retry within the
+bounded policy, then remain `PENDING` with
+`workflow.reconciliation-required`. V012 conservatively normalizes attempted
+V011 legacy ambiguity markers, and durable preflight now runs before payload
+validation/decode. The current integration source passes the Phase 9 static
+validator; focused rollback-only PostgreSQL probes passed for migration shape,
+row visibility, predecessor blocking, and membership rejection.
 
 This is start-handoff infrastructure only. No live Temporal cluster/namespace,
 Compose service, worker, or restart/resume execution exists; no legacy row is
-automatically backfilled. Exact-head CI and PostgreSQL evidence are missing.
-Phase 9 and roadmap G4 remain in progress; B-013 and B-017 remain active.
+automatically backfilled. Full Flyway fresh/upgrade real-role, atomicity,
+performance, and exact-head CI evidence are missing. The separately authorized
+read-only exact-workflow reconciliation/alert lane is not implemented. Phase 9
+and roadmap G4 remain in progress; B-013 and B-017 remain active.
 
 ## 2026-07-28 — G1 and Phase 2 immutable clean-runner evidence complete
 

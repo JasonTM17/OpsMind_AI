@@ -16,46 +16,41 @@ Both repository media files are review-gated by
 secret scanner verifies their exact path, SHA-256 digest, byte size, media
 signature, and dimensions; every other binary continues to fail closed.
 
-Phases 1-2 and gate G1 are complete; Phases 3-9 are advancing through evidence gates.
-The repository now contains a pinned polyglot workspace, cross-platform CI,
+Phases 1-2 and gate G1 are complete; Phases 3-9 are advancing through evidence
+gates. The repository contains a pinned polyglot workspace, cross-platform CI,
 fail-closed OIDC and tenant/RLS foundations, an incident timeline/audit ledger,
-a provider-neutral AI Runtime with DeepSeek adapter, and an isolated Tool
-Gateway contract.
+a provider-neutral AI Runtime with DeepSeek adapter, and an isolated Tool Gateway.
 
-Phase 7 adds a pure bounded investigation reducer, feature-flagged inline runner,
-tenant-scoped PostgreSQL snapshots/events, and immutable bounded evidence. The
-opt-in ANALYZE-only incident activity representation read-unions the incident
-and investigation ledgers without copying rows or exposing payloads, free text,
-credentials, or evidence/tool identifiers.
-The non-fixture investigation AI port now re-authorizes every evidence set,
-assembles a selector-only bounded prompt, signs the exact canonical body, and
-reuses the existing AI Runtime transport. The Platform Tool Gateway client
-resolves only immutable catalog selectors, derives deterministic identities,
-sends independent workload and one-use capability credentials, and accepts
-only fully verified inline evidence. Durable Gateway stores, the loopback
-synthetic Prometheus connector, CK/Stitch operator UI/browser E2E, and a
-revision-bound 100-warm-run cross-service trace have passing evidence. G3 is
-still not claimed: a named live non-production connector, approved
-provider/legal conformance, BFF/session proof, and release-scale evidence
-remain open.
+Phase 7 adds a bounded investigation reducer, feature-flagged inline runner,
+tenant-scoped PostgreSQL state, and immutable bounded evidence. Its ANALYZE-only
+activity view read-unions ledgers without exposing payloads, free text,
+credentials, or evidence/tool IDs. The AI port re-authorizes evidence, builds a
+selector-only prompt, signs the canonical body, and reuses the AI Runtime
+transport. The Tool Gateway client resolves immutable selectors, derives
+deterministic identities, separates workload/capability credentials, and accepts
+only verified inline evidence. Durable stores, synthetic Prometheus, CK/Stitch
+UI/browser E2E, and a 100-warm-run cross-service trace pass. G3 still requires a
+named live connector, provider/legal conformance, BFF/session proof, and
+release-scale evidence.
 
-Phase 9 is in progress with a default-off Temporal start handoff. In `temporal`
-mode, one application transaction creates the initial run, immutable V010
-workflow binding, and canonical outbox event; the API returns `202` with
-`Location`. Default `inline` execution still returns `200`. The opt-in
-dispatcher claim commits before the Temporal RPC, then reconciliation updates
-the binding, inbox, and outbox.
+Phase 9 adds a default-off Temporal start handoff. One transaction creates the
+run, immutable V010 binding, and canonical outbox event; `temporal` returns
+`202 + Location`, while default `inline` remains `200`. The claim commits before
+the RPC, then reconciliation updates binding, inbox, and outbox.
 
-V011 is not an enablement proof: the dispatcher retains inherited direct DML on
-the Phase 9 binding, inbox, and outbox paths, bypassing the intended
-capability-only boundary. V012 real-role containment and a separately
-authorized, read-only exact-workflow reconciliation lane (`Describe` plus first
-history; never `Start`) are required and unverified. After a retryable post-RPC
-outcome, local retry/age/deadline exhaustion is not proof of remote rejection;
-the safe posture is bounded `PENDING` plus alert/reconciliation. The repository
-has no live Temporal cluster/namespace, Compose service, worker, or
-restart/resume execution, and exact-head CI/PostgreSQL evidence is still
-missing. Phase 9 and G4 remain in progress; B-013 and B-017 remain active.
+V012 revokes direct workflow binding/inbox authority, hides canonical start rows
+behind a dedicated `SECURITY DEFINER` claim, and preserves generic outbox order
+through a resolver-owned predecessor check. Static and rollback-only PostgreSQL
+probes cover migration shape, row visibility, predecessor blocking, and unsafe
+role membership; full fresh/upgrade real-role, atomicity, and latency evidence
+is pending.
+
+Ambiguous post-RPC exhaustion parks the handoff `PENDING` with
+`workflow.reconciliation-required`, not remote rejection. B-017 remains active
+until a separate read-only exact-workflow reconciliation/alert lane exists
+(`Describe` plus first history; never `Start`). There is no live Temporal
+cluster/worker, restart/resume execution, or exact-head CI/Flyway runtime proof.
+Phase 9/G4 remain in progress; B-013 and B-017 remain active.
 
 Phase 8B now implements three deterministic, training-ineligible evaluation
 contracts: A detects a deployment-correlated latency regression, B terminates
@@ -275,7 +270,7 @@ node .\scripts\validation\validate-phase-09-workflow-handoff.mjs
 | Tool Gateway | Static contract, durable PostgreSQL receipt/audit state, synthetic Prometheus connector, workload OAuth boundary, dual-credential Platform execution client, and local V003 tenant-scope unit/static gates pass | V003 PostgreSQL/upgrade evidence, named live non-production connector, and production conformance pending |
 | Investigation | Bounded-record checkpoint 4B, ANALYZE-only activity view, V009 evidence, capability-backed AI rounds, CK/Stitch/browser proof, and Phase 7 regression PASS in artifact `8649696519` | G3 still requires a named live connector, provider/legal approval, and BFF/session proof |
 | Evaluation | Fresh disposable A/B/C score `PASS` on all eight metrics with samples `100/1/1`; exact CI command passes 61/61 | Held-out payloads, human adjudication, calibration, and comparison unavailable; Phase 8 exit is BLOCK |
-| Workflow handoff | V010 plus default-off API/client/dispatcher source implements atomic admission and start-handoff mechanics; V011 still permits inherited dispatcher DML on Phase 9 settlement rows | B-017 blocks Temporal admission/G4 until V012 real-role containment and a no-`Start`, exact-workflow reconciliation lane are proven; no exact-head CI/PostgreSQL evidence, live cluster/namespace, compatible worker, or restart/resume execution |
+| Workflow handoff | V010-V012 plus default-off API/client/dispatcher source implement atomic admission, capability-only workflow claiming, direct-row containment, ordering preservation, and a durable ambiguous-outcome hold; static and rollback-only PostgreSQL probes pass | B-017 blocks Temporal admission/G4 until full fresh/upgrade real-role and atomicity proof plus a no-`Start`, exact-workflow reconciliation/alert lane exist; no exact-head CI/Flyway runtime evidence, live cluster/namespace, compatible worker, or restart/resume execution |
 | Compose | All application images build, start, and pass health smoke in CI | Not staging/production deployment evidence |
 
 Historical local evidence marked `REFERENCE_CONFORMANCE_NOT_PRODUCTION` stays
@@ -292,16 +287,13 @@ Provider credentials are runtime secrets. DeepSeek configuration will enter thro
 The public About panel is synchronized from
 [`.github/repository-metadata.yml`](./.github/repository-metadata.yml). See
 [CONTRIBUTING.md](./CONTRIBUTING.md), [SECURITY.md](./SECURITY.md), and
-[SUPPORT.md](./SUPPORT.md) for workflow, private vulnerability reporting, and
-support. The checked-in
-[OCI publication workflow](./.github/workflows/container-publish.yml) builds
-and verifies exact-SHA multi-architecture candidates before protected
-promotion. Final release still requires immutable Docker Hub/GHCR digest
-parity, signatures, SBOM/provenance, scans, repository-linked GHCR packages,
-and an immutable aggregate GitHub Release. Docker Hub remains blocked until
-its credentials exist only in the protected environment.
+[SUPPORT.md](./SUPPORT.md). The checked-in
+[OCI publication workflow](./.github/workflows/container-publish.yml) verifies
+exact-SHA multi-architecture candidates before protected promotion. Release
+still requires Docker Hub/GHCR digest parity, signatures, SBOM/provenance,
+scans, linked packages, and an immutable GitHub Release. Docker Hub credentials
+must exist only in the protected environment.
 
 ## Unresolved Questions
 
-No G0.5 decision remains unresolved. Later-phase conformance and release gates
-are maintained in [Blockers](./docs/blockers.md).
+No G0.5 decision remains unresolved; later-phase conformance and release gates are maintained in [Blockers](./docs/blockers.md).

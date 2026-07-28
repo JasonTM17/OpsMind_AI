@@ -6,18 +6,21 @@ Use this gate before changing `OPSMIND_INVESTIGATION_EXECUTION_MODE` from
 ## Current status
 
 This is a required future cutover procedure, not authorization to enable
-Temporal today. V011 leaves inherited dispatcher direct DML on
-`investigation_workflow_bindings`, `inbox_events`, and `outbox_events`, so B-017
-blocks admission. V012 real-role containment and the separately authorized
-read-only reconciliation lane described below are not yet proven.
+Temporal today. V012 source removes V011's inherited direct-DML bypass for
+canonical workflow-start state, and focused static/rollback-only PostgreSQL
+probes pass. B-017 still blocks admission because full fresh/upgrade real-role
+and atomicity proof plus the separately authorized read-only reconciliation/
+alert lane described below do not yet exist.
 
 ## Preconditions
 
-Temporal admission remains disabled until both B-017 conditions have evidence:
+Temporal admission remains disabled until all B-017 conditions have evidence:
 
-- V012 proves containment on fresh and upgrade paths with the real application
-  and dispatcher roles; the dispatcher cannot bypass the intended
-  capability-only binding/inbox/outbox settlement path.
+- V012 proves containment on fresh and V001-to-current upgrade paths with the
+  real application, dispatcher, resolver, and migration roles; the dispatcher
+  cannot bypass the intended capability-only binding/inbox/outbox path.
+- Injected settlement failure proves binding/inbox/outbox atomic rollback, and
+  predecessor-query `EXPLAIN` plus latency evidence meets an accepted threshold.
 - A separately authorized reconciliation lane can Describe exactly the bound
   workflow and read its first history input, but cannot Start a workflow. Its
   failure path keeps the binding `PENDING` and emits a bounded aging/alert
@@ -163,8 +166,8 @@ available.
 Freeze starts, restore `OPSMIND_INVESTIGATION_EXECUTION_MODE=inline`, and set
 `OPSMIND_INVESTIGATION_TEMPORAL_CLIENT_ENABLED=false`,
 `OPSMIND_INVESTIGATION_WORKFLOW_STARTER_ENABLED=false`, and
-`OPSMIND_DISPATCHER_ENABLED=false`. V010 remains applied. Do not delete pending
-or rejected bindings, inbox rows, or outbox rows; they are durable recovery
-evidence for a forward fix. A possibly accepted post-RPC handoff remains
-`PENDING` and reconciliation-required; it is never made `REJECTED` solely by
-local budget exhaustion.
+`OPSMIND_DISPATCHER_ENABLED=false`. V010-V012 remain applied; rollback is
+configuration-only. Do not delete pending or rejected bindings, inbox rows, or
+outbox rows; they are durable recovery evidence for a forward fix. A possibly
+accepted post-RPC handoff remains `PENDING` and reconciliation-required; it is
+never made `REJECTED` solely by local budget exhaustion.

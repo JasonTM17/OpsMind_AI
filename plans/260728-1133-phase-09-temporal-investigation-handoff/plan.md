@@ -39,8 +39,9 @@ This is Phase 9 infrastructure, not the Phase 9 exit. The existing Java
 execution remains compatible, and Temporal admission remains compile/runtime
 guarded until a compatible worker is observable on the bound task queue. B-013
 still blocks threshold freeze and the full Phase 9 exit. B-017 separately blocks
-Temporal admission and roadmap G4 enablement until V012 proves real-role
-containment and an independently authorized no-Start reconciliation lane exists.
+Temporal admission and roadmap G4 enablement until V012 has full fresh/upgrade
+real-role and atomicity proof and an independently authorized no-Start
+reconciliation/alert lane exists.
 
 ## Decision
 
@@ -85,9 +86,9 @@ Python.
   pre-start, post-start/pre-ack, lease-expiry, and duplicate-delivery crashes.
 - Claim and acknowledgement are tenant-scoped, lease-fenced, and compatible with
   a named secondary datasource authenticated as the existing separate dispatcher
-  database role. V011's inherited direct DML on workflow bindings, inbox rows,
-  and outbox rows is not acceptable containment; V012 must prove a
-  capability-only path under the real roles.
+  database role. V012 source removes V011's inherited direct DML on workflow
+  bindings, inbox rows, and canonical workflow-start outbox rows; fresh and
+  upgrade tests must still prove the capability-only path under the real roles.
 - An unknown schema/event type or inconsistent binding found before an RPC is
   quarantined with a bounded safe error code and visible terminal state; no
   external call occurs. This rule never converts a possibly accepted post-RPC
@@ -133,10 +134,14 @@ Python.
 
 ## Current Verification Status
 
-V010/V011 source-level behavior is not runtime or upgrade proof. The capacity
-guard currently blocks heavy local runtime/upgrade verification, so no V012
-real-role containment result, reconciliation-lane result, exact-head CI result,
-or disposable PostgreSQL result is claimed.
+V010-V012 source is integrated. The current integration source passes the
+Phase 9 static validator; focused rollback-only PostgreSQL probes pass for V012
+migration application, canonical row visibility, hidden-predecessor ordering,
+unsafe role-membership rejection, and V012 transaction application. Regression
+source now covers V011 legacy ambiguity normalization and preflight-before-decode
+parking, but the capacity guard blocks its full runtime/upgrade execution. No
+full fresh/upgrade real-role, injected atomicity, latency, reconciliation-lane,
+exact-head CI, or disposable PostgreSQL result is claimed.
 
 ## Unresolved Questions
 
@@ -144,8 +149,9 @@ or disposable PostgreSQL result is claimed.
   topology remain deployment-owner decisions. Defaults must stay local-invalid
   or disabled until those decisions are recorded.
 - B-013 still blocks production threshold freeze and the Phase 9 exit.
-- B-017 blocks Temporal admission/G4 until V012 containment and read-only
-  exact-workflow reconciliation have runtime evidence.
+- B-017 blocks Temporal admission/G4 until V012 has full real-role
+  fresh/upgrade and atomicity evidence and read-only exact-workflow
+  reconciliation/alerts are implemented and proven.
 
 ## Red Team Review
 
@@ -157,7 +163,7 @@ or disposable PostgreSQL result is claimed.
 | # | Finding | Severity | Disposition | Applied To |
 |---|---|---|---|---|
 | 1 | Production dispatcher role has no datasource/process wiring | Critical | Accept | Completed |
-| 2 | Generic outbox permits forged workflow-start identity | Critical | Accept | In Progress |
+| 2 | Generic outbox permits forged workflow-start identity | Critical | Accept | Completed |
 | 3 | Temporal namespace/cluster is not immutable | Critical | Accept | Phases 2-4 |
 | 4 | HTTP retry is not idempotent through the current plain insert | High | Accept | Phases 2, 4 |
 | 5 | Temporal mode silently changes POST completion semantics | High | Accept | Phases 2, 5 |
@@ -186,8 +192,9 @@ or disposable PostgreSQL result is claimed.
   V005 migration, obsolete Python `app/**` workflow, unrestricted
   `USE_EXISTING`, single-datasource, or documentation-only worker-guard claim in
   this plan.
-- B-017 is an explicit unresolved safety condition: V011 direct DML is not
-  capability containment, and a retryable post-RPC outcome cannot become
-  `REJECTED` from local budget exhaustion. Production cluster identity, mTLS
-  ownership, compatible worker implementation, B-013, and B-017 remain explicit
-  external/downstream gates.
+- B-017 is an explicit unresolved safety condition: V012 removes the V011
+  direct-DML bypass and prevents ambiguous post-RPC exhaustion from becoming
+  `REJECTED`, but full real-role runtime/upgrade/atomicity proof and the
+  reconciliation/alert owner are still absent. Production cluster identity,
+  mTLS ownership, compatible worker implementation, B-013, and B-017 remain
+  explicit external/downstream gates.
