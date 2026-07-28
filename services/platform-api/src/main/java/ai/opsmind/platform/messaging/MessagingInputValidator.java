@@ -11,6 +11,9 @@ final class MessagingInputValidator {
     private static final Pattern ERROR_CODE_PATTERN = Pattern.compile(
         "[a-z0-9][a-z0-9._-]{0,159}"
     );
+    private static final Pattern EVENT_TYPE_PATTERN = Pattern.compile(
+        "[A-Za-z0-9][A-Za-z0-9._:/-]{0,159}"
+    );
 
     private MessagingInputValidator() {
     }
@@ -33,5 +36,12 @@ final class MessagingInputValidator {
             throw new IllegalArgumentException("Messaging error code is invalid.");
         }
         return errorCode;
+    }
+
+    static String requireEventType(String eventType) {
+        if (eventType == null || !EVENT_TYPE_PATTERN.matcher(eventType).matches()) {
+            throw new IllegalArgumentException("Outbox event type is invalid.");
+        }
+        return eventType;
     }
 }

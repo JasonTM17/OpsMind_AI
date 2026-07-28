@@ -96,6 +96,14 @@ jobs:
               scripts/validation/cross-service/test-cross-service-path-safety.ps1
             node scripts/validation/validate-phase-08-evaluation-foundation.mjs
           } | tee "$evidence"
+      - name: Validate Phase 9 workflow handoff contracts
+        shell: bash
+        run: |
+          set -euo pipefail
+          evidence_root=artifacts/verification/phase-09-workflow-handoff
+          mkdir -p "$evidence_root"
+          node scripts/validation/validate-phase-09-workflow-handoff.mjs \
+            | tee "$evidence_root/static-contracts.txt"
       - name: Test Java security tooling
         run: |
           node --test \
@@ -663,7 +671,7 @@ jobs:
             -Dtest=ToolGatewayPersistenceIntegrationTest,ToolGatewayPersistenceBoundaryIntegrationTest,ToolGatewayTenantRlsPoolIntegrationTest \
             -f services/tool-gateway/pom.xml test \
             2>&1 | tee artifacts/verification/phase-07/tool-gateway-persistence.txt
-      - name: Prove V006 to V009 upgrade, recovery, and activity-index evidence
+      - name: Prove V006 to V010 upgrade, recovery, and activity-index evidence
         shell: bash
         env:
           OPSMIND_EPHEMERAL_DB: "true"
@@ -709,6 +717,48 @@ jobs:
             -Dtest=IncidentActivityTimelineHttpIntegrationTest \
             -f services/platform-api/pom.xml test \
             2>&1 | tee artifacts/verification/phase-04/incident-activity-timeline.txt
+      - name: Prove Phase 9 workflow handoff persistence and dispatcher fences
+        shell: bash
+        env:
+          OPSMIND_PHASE9_DB_INTEGRATION: "true"
+        run: |
+          set -euo pipefail
+          evidence_root=artifacts/verification/phase-09-workflow-handoff
+          phase9_database="opsmind_phase9_${GITHUB_RUN_ID}"
+          cleanup_phase9_database() {
+            PGPASSWORD="$POSTGRES_PASSWORD" dropdb --if-exists --force --no-password \
+              --host "$PGHOST" --port "$PGPORT" --username "$POSTGRES_USER" \
+              "$phase9_database"
+          }
+          trap cleanup_phase9_database EXIT
+          mkdir -p "$evidence_root"
+          PGPASSWORD="$POSTGRES_PASSWORD" createdb --no-password \
+            --host "$PGHOST" --port "$PGPORT" --username "$POSTGRES_USER" \
+            "$phase9_database"
+          export PGDATABASE="$phase9_database"
+          export SPRING_DATASOURCE_URL="jdbc:postgresql://${PGHOST}:${PGPORT}/${phase9_database}"
+          SPRING_PROFILES_ACTIVE=persistence \
+          SPRING_DATASOURCE_USERNAME="$POSTGRES_USER" \
+          SPRING_DATASOURCE_PASSWORD="$POSTGRES_PASSWORD" \
+          OPSMIND_FLYWAY_ENABLED=true \
+            java -jar services/platform-api/target/platform-api.jar \
+              --spring.main.web-application-type=none \
+              --opsmind.persistence.enabled=false
+          mvn --batch-mode --no-transfer-progress \
+            -Dmaven.repo.local="$OPS_CACHE_ROOT/maven" \
+            -Dtest=InvestigationWorkflowHandoffPersistenceIntegrationTest,InvestigationWorkflowDispatcherPersistenceIntegrationTest \
+            -Dsurefire.failIfNoSpecifiedTests=true \
+            -f services/platform-api/pom.xml test \
+            2>&1 | tee "$evidence_root/postgres-contracts.txt"
+          grep -F 'Running ai.opsmind.platform.investigation.application.InvestigationWorkflowHandoffPersistenceIntegrationTest' \
+            "$evidence_root/postgres-contracts.txt"
+          grep -F 'Running ai.opsmind.platform.investigation.workflow.InvestigationWorkflowDispatcherPersistenceIntegrationTest' \
+            "$evidence_root/postgres-contracts.txt"
+          if grep -Eq 'Tests run: [0-9]+, Failures: [0-9]+, Errors: [0-9]+, Skipped: [1-9][0-9]*' \
+            "$evidence_root/postgres-contracts.txt"; then
+            echo 'Phase 9 PostgreSQL evidence cannot contain skipped tests.' >&2
+            exit 1
+          fi
       - uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
         if: always()
         with:
@@ -719,6 +769,7 @@ jobs:
             artifacts/verification/phase-04/incident-activity-timeline.txt
             artifacts/verification/phase-06/tool-gateway-rls-upgrade.txt
             artifacts/verification/phase-07/tool-gateway-persistence.txt
+            artifacts/verification/phase-09-workflow-handoff/postgres-contracts.txt
           if-no-files-found: error
 
   identity-conformance:

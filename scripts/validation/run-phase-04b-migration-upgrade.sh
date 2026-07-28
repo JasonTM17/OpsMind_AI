@@ -75,7 +75,7 @@ query_upgrade_database() {
   PGPASSWORD="$POSTGRES_PASSWORD" psql --no-password --no-psqlrc \
     --host "$PGHOST" --port "$PGPORT" --username "$POSTGRES_USER" \
     --dbname "$upgrade_database" --tuples-only --no-align --set ON_ERROR_STOP=1 \
-    --command "$sql"
+    --command "$sql" | tr -d '\r'
 }
 
 migrate_to 6
@@ -427,8 +427,185 @@ run_incident_timeline_v009_evidence "$upgrade_database" "$database_url"
 version_nine="$(query_upgrade_database "SELECT max(version::integer) FROM flyway_schema_history WHERE success;")"
 [[ "$version_nine" == "9" ]]
 
-printf 'Database=%s\nVersionBefore=%s\nEvidenceTableBefore=%s\nVersionSeven=%s\nEvidenceTableAfterSeven=%s\nVersionEight=%s\nVersionNine=%s\nLegacyPayloadDigestStable=%s\nRollingLegacyWriteCount=%s\nInvalidAbstainRejected=%s\nUpgradeResult=PASS\n' \
+query_upgrade_database "
+BEGIN;
+INSERT INTO investigation_runs (
+  run_id, organization_id, project_id, incident_id, actor_id, status,
+  max_rounds, max_tool_calls, max_evidence_items, max_tokens, event_count,
+  started_at, deadline_at
+) VALUES (
+  '70000000-0000-4000-8000-000000000013',
+  '70000000-0000-4000-8000-000000000001',
+  '70000000-0000-4000-8000-000000000003',
+  '70000000-0000-4000-8000-000000000004',
+  '70000000-0000-4000-8000-000000000002',
+  'CREATED', 2, 0, 1, 100, 1,
+  '2030-01-03T00:00:00Z', '2030-01-03T00:02:00Z'
+);
+INSERT INTO investigation_run_events (
+  event_id, organization_id, project_id, incident_id, run_id, sequence_no,
+  event_type, actor_id, occurred_at, payload
+) VALUES (
+  '70000000-0000-4000-8000-000000000014',
+  '70000000-0000-4000-8000-000000000001',
+  '70000000-0000-4000-8000-000000000003',
+  '70000000-0000-4000-8000-000000000004',
+  '70000000-0000-4000-8000-000000000013',
+  1, 'RUN_STARTED',
+  '70000000-0000-4000-8000-000000000002',
+  '2030-01-03T00:00:00Z',
+  jsonb_build_object(
+    'eventId', '70000000-0000-4000-8000-000000000014',
+    'organizationId', '70000000-0000-4000-8000-000000000001',
+    'projectId', '70000000-0000-4000-8000-000000000003',
+    'incidentId', '70000000-0000-4000-8000-000000000004',
+    'runId', '70000000-0000-4000-8000-000000000013',
+    'sequenceNo', 1,
+    'eventType', 'RUN_STARTED',
+    'actorId', '70000000-0000-4000-8000-000000000002',
+    'occurredAt', '2030-01-03T00:00:00Z',
+    'details', jsonb_build_object(
+      'runId', '70000000-0000-4000-8000-000000000013',
+      'incidentId', '70000000-0000-4000-8000-000000000004',
+      'budget', jsonb_build_object(
+        'maxRounds', 2, 'maxToolCalls', 0, 'maxEvidenceItems', 1, 'maxTokens', 100
+      ),
+      'occurredAt', '2030-01-03T00:00:00Z'
+    )
+  )
+);
+COMMIT;
+"
+
+migrate_to 10
+version_ten="$(query_upgrade_database "SELECT max(version::integer) FROM flyway_schema_history WHERE success;")"
+binding_table_after_ten="$(query_upgrade_database "
+SELECT CASE
+  WHEN to_regclass('public.investigation_workflow_bindings') IS NULL
+    THEN 'ABSENT'
+  ELSE 'PRESENT'
+END;
+")"
+workflow_event_function_after_ten="$(query_upgrade_database "
+SELECT CASE
+  WHEN to_regprocedure(
+    'public.opsmind_investigation_workflow_start_event_id(uuid,uuid)'
+  ) IS NULL THEN 'ABSENT'
+  ELSE 'PRESENT'
+END;
+")"
+legacy_terminal_runs_after_ten="$(query_upgrade_database "
+SELECT count(*)
+FROM investigation_runs
+WHERE run_id IN (
+  '70000000-0000-4000-8000-000000000005',
+  '70000000-0000-4000-8000-000000000009'
+)
+  AND status = 'ABSTAINED';
+")"
+legacy_binding_count_after_ten="$(query_upgrade_database "
+SELECT count(*)
+FROM investigation_workflow_bindings
+WHERE run_id IN (
+  '70000000-0000-4000-8000-000000000005',
+  '70000000-0000-4000-8000-000000000009'
+);
+")"
+nonterminal_orphans_after_ten="$(query_upgrade_database "
+SELECT count(*)
+FROM investigation_runs run
+LEFT JOIN investigation_workflow_bindings binding
+  ON binding.organization_id = run.organization_id
+ AND binding.run_id = run.run_id
+WHERE run.status IN ('CREATED', 'ANALYZING', 'WAITING_FOR_EVIDENCE')
+  AND binding.run_id IS NULL;
+")"
+[[ "$version_ten" == "10" ]]
+[[ "$binding_table_after_ten" == "PRESENT" ]]
+[[ "$workflow_event_function_after_ten" == "PRESENT" ]]
+[[ "$legacy_terminal_runs_after_ten" == "2" ]]
+[[ "$legacy_binding_count_after_ten" == "0" ]]
+[[ "$nonterminal_orphans_after_ten" == "1" ]]
+
+cutover_block_output="${TMPDIR:-/tmp}/opsmind-phase9-cutover-block-${upgrade_database}.txt"
+set +e
+PGPASSWORD="$POSTGRES_PASSWORD" psql --no-password --no-psqlrc \
+  --host "$PGHOST" --port "$PGPORT" --username "$POSTGRES_USER" \
+  --dbname "$upgrade_database" \
+  --file scripts/operations/investigation-workflow-cutover-inventory.sql \
+  > "$cutover_block_output" 2>&1
+cutover_block_status=$?
+set -e
+cat "$cutover_block_output"
+rm -f "$cutover_block_output"
+[[ "$cutover_block_status" == "3" ]]
+
+query_upgrade_database "
+BEGIN;
+UPDATE investigation_runs
+SET status = 'FAILED',
+    revision = revision + 1,
+    event_count = event_count + 1,
+    terminal_reason = 'Phase 9 upgrade proof reconciled the legacy orphan.',
+    ended_at = '2030-01-03T00:01:00Z'
+WHERE organization_id = '70000000-0000-4000-8000-000000000001'
+  AND run_id = '70000000-0000-4000-8000-000000000013'
+  AND status = 'CREATED'
+  AND revision = 0
+  AND event_count = 1;
+INSERT INTO investigation_run_events (
+  event_id, organization_id, project_id, incident_id, run_id, sequence_no,
+  event_type, actor_id, occurred_at, payload
+) VALUES (
+  '70000000-0000-4000-8000-000000000015',
+  '70000000-0000-4000-8000-000000000001',
+  '70000000-0000-4000-8000-000000000003',
+  '70000000-0000-4000-8000-000000000004',
+  '70000000-0000-4000-8000-000000000013',
+  2,
+  'FAILED',
+  '70000000-0000-4000-8000-000000000002',
+  '2030-01-03T00:01:00Z',
+  jsonb_build_object(
+    'eventId', '70000000-0000-4000-8000-000000000015',
+    'organizationId', '70000000-0000-4000-8000-000000000001',
+    'projectId', '70000000-0000-4000-8000-000000000003',
+    'incidentId', '70000000-0000-4000-8000-000000000004',
+    'runId', '70000000-0000-4000-8000-000000000013',
+    'sequenceNo', 2,
+    'eventType', 'FAILED',
+    'actorId', '70000000-0000-4000-8000-000000000002',
+    'occurredAt', '2030-01-03T00:01:00Z',
+    'details', jsonb_build_object(
+      'runId', '70000000-0000-4000-8000-000000000013',
+      'reason', 'Phase 9 upgrade proof reconciled the legacy orphan.',
+      'occurredAt', '2030-01-03T00:01:00Z'
+    )
+  )
+);
+COMMIT;
+"
+PGPASSWORD="$POSTGRES_PASSWORD" psql --no-password --no-psqlrc \
+  --host "$PGHOST" --port "$PGPORT" --username "$POSTGRES_USER" \
+  --dbname "$upgrade_database" \
+  --file scripts/operations/investigation-workflow-cutover-inventory.sql
+nonterminal_orphans_after_reconciliation="$(query_upgrade_database "
+SELECT count(*)
+FROM investigation_runs run
+LEFT JOIN investigation_workflow_bindings binding
+  ON binding.organization_id = run.organization_id
+ AND binding.run_id = run.run_id
+WHERE run.status IN ('CREATED', 'ANALYZING', 'WAITING_FOR_EVIDENCE')
+  AND binding.run_id IS NULL;
+")"
+[[ "$nonterminal_orphans_after_reconciliation" == "0" ]]
+
+printf 'Database=%s\nVersionBefore=%s\nEvidenceTableBefore=%s\nVersionSeven=%s\nEvidenceTableAfterSeven=%s\nVersionEight=%s\nVersionNine=%s\nVersionTen=%s\nWorkflowBindingTableAfterTen=%s\nWorkflowEventFunctionAfterTen=%s\nLegacyTerminalRunsAfterTen=%s\nLegacyBindingCountAfterTen=%s\nNonterminalOrphansAfterTen=%s\nCutoverBlockExit=%s\nNonterminalOrphansAfterReconciliation=%s\nLegacyPayloadDigestStable=%s\nRollingLegacyWriteCount=%s\nInvalidAbstainRejected=%s\nUpgradeResult=PASS\n' \
   "$upgrade_database" "$version_before" "$table_before" \
   "$version_seven" "$table_after_seven" "$version_eight" "$version_nine" \
+  "$version_ten" "$binding_table_after_ten" "$workflow_event_function_after_ten" \
+  "$legacy_terminal_runs_after_ten" "$legacy_binding_count_after_ten" \
+  "$nonterminal_orphans_after_ten" "$cutover_block_status" \
+  "$nonterminal_orphans_after_reconciliation" \
   "$([[ "$legacy_digest_after" == "$legacy_digest_before" ]] && printf true || printf false)" \
   "$rolling_legacy_write_count" "$invalid_abstain_rejected"

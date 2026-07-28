@@ -57,10 +57,42 @@ opsmind:
     max-json-body-bytes: ${OPSMIND_MAX_JSON_BODY_BYTES:65536}
   dispatcher:
     enabled: ${OPSMIND_DISPATCHER_ENABLED:false}
+    datasource:
+      url: ${OPSMIND_DISPATCHER_DB_URL:disabled}
+      username: ${OPSMIND_DISPATCHER_DB_USERNAME:disabled}
+      password: ${OPSMIND_DISPATCHER_DB_PASSWORD:}
+      maximum-pool-size: ${OPSMIND_DISPATCHER_DB_POOL_MAX:4}
+      connection-timeout-ms: ${OPSMIND_DISPATCHER_DB_CONNECTION_TIMEOUT_MS:3000}
   investigation:
     enabled: ${OPSMIND_INVESTIGATION_V1_ENABLED:false}
     fixture: ${OPSMIND_INVESTIGATION_FIXTURE:false}
     store: ${OPSMIND_INVESTIGATION_STORE:postgres}
+    execution-mode: ${OPSMIND_INVESTIGATION_EXECUTION_MODE:inline}
+    workflow:
+      cluster-id: ${OPSMIND_INVESTIGATION_TEMPORAL_CLUSTER_ID:disabled}
+      namespace: ${OPSMIND_INVESTIGATION_TEMPORAL_NAMESPACE:disabled}
+      workflow-type: ${OPSMIND_INVESTIGATION_TEMPORAL_WORKFLOW_TYPE:opsmind-investigation-v1}
+      task-queue: ${OPSMIND_INVESTIGATION_TEMPORAL_TASK_QUEUE:disabled}
+    temporal-client:
+      enabled: ${OPSMIND_INVESTIGATION_TEMPORAL_CLIENT_ENABLED:false}
+      cluster-id: ${OPSMIND_INVESTIGATION_TEMPORAL_CLUSTER_ID:disabled}
+      target: ${OPSMIND_INVESTIGATION_TEMPORAL_TARGET:disabled}
+      tls-enabled: ${OPSMIND_INVESTIGATION_TEMPORAL_TLS_ENABLED:true}
+      allow-local-cleartext: ${OPSMIND_INVESTIGATION_TEMPORAL_ALLOW_LOCAL_CLEARTEXT:false}
+      rpc-timeout: ${OPSMIND_INVESTIGATION_TEMPORAL_RPC_TIMEOUT:PT5S}
+      required-worker-identity: ${OPSMIND_INVESTIGATION_TEMPORAL_WORKER_IDENTITY:disabled}
+      required-worker-build-id: ${OPSMIND_INVESTIGATION_TEMPORAL_WORKER_BUILD_ID:disabled}
+    workflow-starter:
+      enabled: ${OPSMIND_INVESTIGATION_WORKFLOW_STARTER_ENABLED:false}
+      poll-interval: ${OPSMIND_INVESTIGATION_WORKFLOW_STARTER_POLL_INTERVAL:PT1S}
+      lease-duration: ${OPSMIND_INVESTIGATION_WORKFLOW_STARTER_LEASE_DURATION:PT30S}
+      rpc-safety-margin: ${OPSMIND_INVESTIGATION_WORKFLOW_STARTER_RPC_MARGIN:PT5S}
+      maximum-age: ${OPSMIND_INVESTIGATION_WORKFLOW_STARTER_MAX_AGE:PT1H}
+      initial-backoff: ${OPSMIND_INVESTIGATION_WORKFLOW_STARTER_INITIAL_BACKOFF:PT1S}
+      maximum-backoff: ${OPSMIND_INVESTIGATION_WORKFLOW_STARTER_MAX_BACKOFF:PT1M}
+      maximum-attempts: ${OPSMIND_INVESTIGATION_WORKFLOW_STARTER_MAX_ATTEMPTS:8}
+      tenant-limit: ${OPSMIND_INVESTIGATION_WORKFLOW_STARTER_TENANT_LIMIT:25}
+      batch-size: ${OPSMIND_INVESTIGATION_WORKFLOW_STARTER_BATCH_SIZE:10}
   tool-gateway:
     client:
       enabled: ${OPSMIND_TOOL_GATEWAY_CLIENT_ENABLED:false}

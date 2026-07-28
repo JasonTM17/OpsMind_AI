@@ -1,6 +1,6 @@
 # OpsMind AI Codebase Summary
 
-Last verified: 2026-07-27
+Last verified: 2026-07-28
 
 ## Purpose and Verification Basis
 
@@ -19,24 +19,24 @@ This summary is based on:
 
 Generated local artifacts are evidence inputs, not source-of-truth
 documentation. Source code and canonical contracts take precedence. Repomix
-1.14.0 packed 4,632 files and 10,402,074 tokens on 2026-07-27; its security
-check reported no suspicious files. Claims below were still checked against
-the current code, OpenAPI, migrations, tests, and CI evidence rather than
-inferred from the compaction.
+1.14.0 packed 4,714 files on 2026-07-28. Claims below were still checked
+against the current code, OpenAPI, migrations, tests, and CI evidence rather
+than inferred from the compaction.
 
 ## Delivery State
 
 | Area | Verified state |
 |---|---|
 | Phase 1 | Complete; operating-envelope and governance gates passed. |
-| Phase 2 | In progress; pinned polyglot workspace, launchers, Compose, and cross-platform quality-gate checkpoint pass current CI. |
+| Phase 2 | Complete; immutable clean-runner evidence closes G1. |
 | Phase 3 | In progress; identity, tenant/RLS, persistence, and messaging substrate exists. Production-authorized IdP conformance remains open. |
 | Phase 4 | In progress; checkpoint 4A incident write ledger is locally complete. Full Phase 4 and G2/G3 are not complete. |
 | Phase 5 | In progress; provider-neutral analysis, DeepSeek adapter, egress guards, durable PostgreSQL state, V005 append-only probe audit, Platform API integration, and stream assembly exist. Static checkpoint passes; exit remains blocked by B-004 and missing rotated-key synthetic smoke. |
 | Phase 6 | In progress; durable PostgreSQL and synthetic Prometheus checkpoint passes revision-bound CI. Artifact/broader-connector exit remains blocked. |
 | Phase 7 | In progress; cross-service trace, 100-warm-run fixture, CK/Stitch UI/browser E2E, and the metadata-only incident activity route plus V009 CI fixture gates pass. G3 remains blocked by live non-production connector/provider/legal conformance and BFF/session proof. |
 | Phase 8 | In progress; Phase 8B contracts, V008 binding, bounded projection, production-path A/B/C, artifact attestation, and blocking review pass. Parent exit remains blocked by unavailable held-out/human/calibration evidence. |
-| Later phases | Durable workflow, RAG, remediation, complete operator UX, and production-hardening outcomes remain pending. |
+| Phase 9 | In progress; default-off atomic workflow-start handoff exists. Exact-head CI/PostgreSQL evidence, a compatible worker, and restart/resume remain open; B-013 is active. |
+| Later phases | RAG, remediation, complete operator UX, and production-hardening outcomes remain pending. |
 
 Phase 7's local Operator Web and fixture-backed cross-service checkpoints are
 complete for the safe projection boundary. The activity representation now
@@ -59,9 +59,9 @@ claimed.
 | Path | Current responsibility |
 |---|---|
 | `apps/operator-web/` | Next.js server-rendered operator investigation workspace with a server-only Platform client, versioned safe-projection parser, degraded states, and Playwright coverage. |
-| `services/platform-api/` | Spring Boot control plane for OIDC identity, tenant/project access, persistence, messaging primitives, checkpoint 4A incidents, and the Phase 7 deterministic plus PostgreSQL persistence checkpoint. |
+| `services/platform-api/` | Spring Boot control plane for OIDC identity, tenant/project access, persistence, messaging, incidents, deterministic investigation, and the default-off Phase 9 Temporal client/dispatcher handoff. |
 | `services/ai-runtime/` | FastAPI bounded analysis runtime with provider-neutral contracts, DeepSeek adapter, shared PostgreSQL replay/accounting, startup/periodic capability probe, `/health` liveness, and `/ready` readiness; live egress remains disabled. |
-| `services/tool-gateway/` | Spring Boot fail-closed Tool Gateway: separated workload/delegated JWT trust, capability-derived tenant/project scope, exact-policy forced-RLS receipt/verified-audit state, a tenant-free unverified audit lane, lease-vs-manifest safety validation, bounded DLP execution, and exact read-only Prometheus query-range connector. Default profiles remain fail closed; the new V003 isolation evidence is pending immutable CI. |
+| `services/tool-gateway/` | Spring Boot fail-closed Tool Gateway: separated workload/delegated JWT trust, capability-derived tenant/project scope, exact-policy forced-RLS receipt/verified-audit state, tenant-free unverified audit, lease safety, bounded DLP, and read-only Prometheus. Default profiles remain fail closed; V003 isolation has immutable CI evidence. |
 | `evaluation/` | Versioned, training-ineligible A/B/C smoke contracts; strict export/projector, scorer, held-out and human-input validators, schemas, and regression fixtures. Production-path smoke passes; release-scale held-out/human evidence is unavailable. |
 | `packages/contracts/` | Canonical OpenAPI, JSON Schema, and synthetic fixtures. |
 | `scripts/dev/` | Shared command dispatcher and PowerShell/portable launchers. |
@@ -119,7 +119,7 @@ The current controllers expose:
 | `GET /api/v1/organizations/{organizationId}/projects/{projectId}/incidents/{incidentId}` | `IncidentController.detail` |
 | `POST /api/v1/organizations/{organizationId}/projects/{projectId}/incidents/{incidentId}/transitions` | `IncidentController.transition` |
 | `GET /api/v1/organizations/{organizationId}/projects/{projectId}/incidents/{incidentId}/timeline` | `IncidentController.timeline`; legacy JSON plus opt-in metadata-only activity representation |
-| `POST /api/v1/organizations/{organizationId}/projects/{projectId}/incidents/{incidentId}/investigations` | `InvestigationRunController.start` (feature flagged) |
+| `POST /api/v1/organizations/{organizationId}/projects/{projectId}/incidents/{incidentId}/investigations` | `InvestigationRunController.start` (feature flagged); default inline `200`, Temporal `202 + Location` |
 | `GET /api/v1/organizations/{organizationId}/projects/{projectId}/incidents/{incidentId}/investigations/{runId}` | `InvestigationRunController.get` (feature flagged) |
 
 The incident controller is enabled only when persistence is enabled. Create
@@ -226,14 +226,13 @@ incident/run set, preserves caller order, hides missing or foreign records, and
 re-verifies content before returning the redacted AI-input projection. Event and
 audit JSON intentionally retain metadata only.
 
-This is persistence, not durable orchestration. The code does not resume an
-in-flight runner after process loss and does not append or copy investigation
-events to `incident_timeline_events`; the activity route reads both ledgers
-without changing either. The capability-backed AI/Tool clients and loopback
-synthetic Prometheus path run in the disposable cross-service harness; they do
-not establish a named live non-production connector or provider/legal
-conformance, so G3 remains open. The browser harness mirrors the typed Platform
-projection and rejects unassured or unclassified media.
+V006/V007 are persistence, not durable orchestration. The current code still
+does not resume an in-flight reducer after process loss and does not append or
+copy investigation events to `incident_timeline_events`; the activity route
+reads both ledgers without changing either. The capability-backed AI/Tool
+clients and loopback synthetic Prometheus path run in the disposable
+cross-service harness; they do not establish a named live non-production
+connector or provider/legal conformance, so G3 remains open.
 
 V009 adds concurrent ordering indexes on both activity sources and opts that
 script out of Flyway transactions. Rollout order is migration before code;
@@ -246,6 +245,38 @@ writes, cleanup, and the 3/3 activity HTTP matrix. Its 60,600 incident and
 vendor p95 of 2.563/1.466/1.533 ms, and index cost of 95.70 bytes/source row
 and 10.76% of table bytes. All plan thresholds pass as CI fixture/test gates;
 they are not production latency or SLO claims.
+
+## Phase 9 Temporal Start Handoff
+
+Execution mode defaults to `inline`, preserving synchronous `200` start
+responses. In explicit `temporal` mode, admission validates the configured
+target and requires a task-queue workflow poller with the exact configured
+identity and build ID. A new start returns `202` with `Location`.
+
+`JdbcInvestigationWorkflowHandoffRepository` opens one tenant/actor-bound
+application transaction for the initial run/event/audit state, immutable V010
+binding, and canonical workflow-start outbox event. V010 fixes the workflow ID
+as `opsmind-investigation/{organizationId}/{runId}` and binds exact payload
+bytes/digest, client request digest, authorization revision, logical cluster,
+namespace, workflow type, and task queue. It grants the app insert/select
+authority but reserves bounded reconciliation updates for
+`opsmind_dispatcher`.
+
+The opt-in workflow-start scheduler lives in the Platform API artifact and uses
+a dedicated dispatcher datasource. Each tenant claim transaction commits before
+`TemporalInvestigationWorkflowClient.start`; the RPC is explicitly rejected
+inside a database transaction. A later tenant transaction atomically changes
+the binding to `STARTED`, processes the inbox, and publishes the outbox, or
+changes it to `REJECTED` and poisons both message records. `AlreadyStarted`
+converges only after exact workflow/type/task-queue/execution identity, memo
+digest, and first start-history input verification.
+
+This checkpoint implements the start handoff only. There is no production/live
+Temporal cluster or namespace, Compose service, workflow worker, or
+restart/resume execution. V010 performs no legacy backfill; nonterminal
+binding-less runs block Temporal admission pending operator reconciliation.
+Exact-head CI and PostgreSQL evidence are missing. Master Phase 9 and roadmap
+G4 remain in progress, and B-013 remains active.
 
 ## Phase 8B Evaluation Boundary
 
@@ -333,6 +364,7 @@ See [Security Model](./security-model.md) for the complete threat model and
 | `scripts/validation/validate-phase-06-tool-gateway.mjs` | Durable Prometheus connector checkpoint PASS with schemas, canonical fixtures, digest/manifest/OpenAPI/source abuse checks | Phase exit BLOCK: artifact adapter, remaining connector families, tenant bulkhead, and provider-specific cancellation proof |
 | `scripts/validation/validate-phase-07-investigation-slice.mjs` | Artifact `8649696519` records OperatorWorkspace/CrossService/Checkpoint/PhaseExit PASS; Scenario A has 100 warm runs | G3 still requires live provider/connector/legal and BFF/session proof |
 | `scripts/validation/validate-phase-08-evaluation-foundation.mjs` | Six schemas, ten families/three implemented, three results/eight metrics/four negative cases, zero errors, checkpoint PASS | Phase exit BLOCK; held-out and human inputs unavailable |
+| `scripts/validation/validate-phase-09-workflow-handoff.mjs` | Current-worktree static gate PASS with V010, one Temporal pin, 18 payload fields, five required test files, and zero errors | No exact-head CI/PostgreSQL, live Temporal, worker, or restart/resume proof |
 | GitHub Actions `30257587569` | PASS on revision `a975f922`: bootstrap, secrets, actionlint, service/UI suites, dependency security, PostgreSQL job `89950772823`, Keycloak, Compose; artifact `8650178111` proves V009/activity gates | CI fixture/non-production evidence; not production latency, SLO, or conformance |
 | GitHub Actions `30257587543` | PASS on revision `a975f922`: A/B/C samples `100/1/1`, all metrics PASS, `GitTree=0`, Phase 7 regression PASS, artifact `8649696519` | Deterministic authored smoke; not held-out quality, calibration, or human benefit |
 
@@ -376,10 +408,11 @@ semantics.
 
 - Full Phase 4: incident list/patch/assignment, postmortems, and governed
   evidence upload/read/tombstone/restore/purge/reconciliation.
-- Live provider egress, a named live non-production connector, Temporal
-  workflows, RAG, remediation, and production object storage/lifecycle. The
-  bounded Operator workspace and real Platform-to-Tool-Gateway read-only path
-  are implemented checkpoints, not remaining gaps.
+- Live provider egress, a named live non-production connector, a live Temporal
+  cluster/namespace, workflow worker, restart/resume execution, RAG,
+  remediation, and production object storage/lifecycle. The default-off
+  Temporal start handoff, bounded Operator workspace, and real
+  Platform-to-Tool-Gateway read-only path are implemented checkpoints.
 - Production IdP/federation/session/break-glass conformance.
 - Measured load/SLO proof, DR proof, or a production release.
 

@@ -37,12 +37,12 @@ class InvestigationRunServiceTest {
     private static final UUID RUN_ID = UUID.fromString("55555555-5555-4555-8555-555555555555");
 
     @Test
-    void passesVerifiedPrincipalAndAuthorizedSnapshotIntoSynchronousRunner() {
+    void passesVerifiedPrincipalAndAuthorizedSnapshotIntoExecutionStarter() {
         IncidentAnalysisAuthorizer authorizer = mock(IncidentAnalysisAuthorizer.class);
-        InvestigationOrchestrator orchestrator = mock(InvestigationOrchestrator.class);
+        InvestigationExecutionStarter executionStarter = mock(InvestigationExecutionStarter.class);
         InvestigationRunStore store = mock(InvestigationRunStore.class);
         InvestigationRunService service = new InvestigationRunService(
-            authorizer, orchestrator, store, new InvestigationProjectionAssembler(),
+            authorizer, executionStarter, store, new InvestigationProjectionAssembler(),
             Clock.fixed(NOW, ZoneOffset.UTC)
         );
         OpsMindPrincipal principal = principal();
@@ -50,12 +50,15 @@ class InvestigationRunServiceTest {
         when(authorizer.requireEvidence(
             principal, ORGANIZATION_ID, PROJECT_ID, INCIDENT_ID
         )).thenReturn(authorized);
-        when(orchestrator.run(any(), any())).thenAnswer(invocation -> {
+        when(executionStarter.start(any(), any())).thenAnswer(invocation -> {
             InvestigationCommand.Start command = invocation.getArgument(0);
-            return InvestigationStateMachine.start(command).state();
+            return new InvestigationExecutionStarter.StartResult(
+                InvestigationStateMachine.start(command).state(),
+                true
+            );
         });
 
-        service.start(
+        InvestigationStartResult result = service.start(
             principal, ORGANIZATION_ID, PROJECT_ID, INCIDENT_ID,
             new StartInvestigationRequest(
                 RUN_ID, 4, 2, 10, 1_000, NOW.plusSeconds(120)
@@ -66,10 +69,12 @@ class InvestigationRunServiceTest {
             ArgumentCaptor.forClass(InvestigationCommand.Start.class);
         ArgumentCaptor<InvestigationExecutionContext> context =
             ArgumentCaptor.forClass(InvestigationExecutionContext.class);
-        verify(orchestrator).run(command.capture(), context.capture());
+        verify(executionStarter).start(command.capture(), context.capture());
         assertThat(command.getValue().actorId()).isEqualTo(ACTOR_ID);
         assertThat(context.getValue().principal()).isSameAs(principal);
         assertThat(context.getValue().initialIncident()).isSameAs(authorized);
+        assertThat(result.asynchronous()).isTrue();
+        assertThat(result.investigation().runId()).isEqualTo(RUN_ID);
         verify(authorizer).requireEvidence(
             eq(principal), eq(ORGANIZATION_ID), eq(PROJECT_ID), eq(INCIDENT_ID)
         );
@@ -78,10 +83,10 @@ class InvestigationRunServiceTest {
     @Test
     void readsOnlyThroughReadAuthorizationAndFullyScopedStoreLookup() {
         IncidentAnalysisAuthorizer authorizer = mock(IncidentAnalysisAuthorizer.class);
-        InvestigationOrchestrator orchestrator = mock(InvestigationOrchestrator.class);
+        InvestigationExecutionStarter executionStarter = mock(InvestigationExecutionStarter.class);
         InvestigationRunStore store = mock(InvestigationRunStore.class);
         InvestigationRunService service = new InvestigationRunService(
-            authorizer, orchestrator, store, new InvestigationProjectionAssembler(),
+            authorizer, executionStarter, store, new InvestigationProjectionAssembler(),
             Clock.fixed(NOW, ZoneOffset.UTC)
         );
         OpsMindPrincipal principal = new OpsMindPrincipal(

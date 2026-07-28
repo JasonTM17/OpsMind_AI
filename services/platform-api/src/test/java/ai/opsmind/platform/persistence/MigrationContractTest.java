@@ -215,4 +215,78 @@ class MigrationContractTest {
             .doesNotContain("CREATE TABLE", "CREATE VIEW", "IF NOT EXISTS", "DROP ");
         assertThat(config.trim()).isEqualTo("executeInTransaction=false");
     }
+
+    @Test
+    void workflowStartMigrationIsTheLatestTenantBoundHandoffContract() throws IOException {
+        String migrationName = "V010__investigation_workflow_start_handoff.sql";
+        assertThat(MigrationContractTest.class.getResource(
+            "/db/migration/V009__incident_activity_timeline_indexes.sql"
+        )).as("V009 predecessor migration must remain packaged").isNotNull();
+        assertThat(MigrationContractTest.class.getResource("/db/migration/" + migrationName))
+            .as("latest platform migration must be packaged")
+            .isNotNull();
+        String migration = readMigration(migrationName);
+
+        assertThat(migration)
+            .contains("CREATE TABLE investigation_workflow_bindings")
+            .contains("PRIMARY KEY (organization_id, run_id)")
+            .contains("FOREIGN KEY (organization_id, run_id)")
+            .contains("client_request_digest bytea NOT NULL")
+            .contains("CHECK (octet_length(client_request_digest) = 32)")
+            .contains("start_payload_digest  bytea NOT NULL")
+            .contains("CHECK (octet_length(start_payload_digest) = 32)")
+            .contains("start_event_id        uuid NOT NULL UNIQUE")
+            .contains("set_byte(bytes, 6, (get_byte(bytes, 6) & 15) | 48)")
+            .contains("8, (get_byte(bytes, 8) & 63) | 128")
+            .contains("CHECK (workflow_id =")
+            .contains("'opsmind-investigation/' || organization_id::text || '/' || run_id::text")
+            .contains("CHECK (status IN ('PENDING', 'STARTED', 'REJECTED'))")
+            .contains("temporal_run_id")
+            .contains("rejection_code")
+            .contains("temporal_started_at")
+            .contains("rejected_at")
+            .contains("CREATE UNIQUE INDEX investigation_workflow_bindings_temporal_target_idx")
+            .contains("CREATE OR REPLACE FUNCTION opsmind_validate_investigation_workflow_binding")
+            .contains("workflow binding insert requires the bound tenant and actor")
+            .contains("workflow binding requires the initial CREATED reducer state")
+            .contains("session_user <> 'opsmind_dispatcher'")
+            .contains("workflow binding has no legal reconciliation transition")
+            .contains("CREATE TRIGGER investigation_workflow_bindings_validate_write")
+            .contains("CREATE OR REPLACE FUNCTION opsmind_validate_investigation_workflow_start_outbox")
+            .contains("'investigation.workflow-start.requested'")
+            .contains("NEW.schema_version IS DISTINCT FROM '1'")
+            .contains("NEW.aggregate_type IS DISTINCT FROM 'investigation-workflow'")
+            .contains("NEW.aggregate_sequence IS DISTINCT FROM 1")
+            .contains("'organization_id', 'project_id', 'incident_id', 'run_id', 'actor_id'")
+            .contains("'authorization_revision',")
+            .contains("'request_digest'")
+            .contains("NEW.payload_digest IS DISTINCT FROM binding_row.start_payload_digest")
+            .contains("opsmind_json_object_has_exact_keys(NEW.payload, expected_keys)")
+            .contains("CREATE TRIGGER outbox_events_validate_investigation_workflow_start")
+            .contains("CREATE OR REPLACE FUNCTION opsmind_list_investigation_workflow_start_tenants")
+            .contains("p_limit IS NULL OR p_limit < 1 OR p_limit > 100")
+            .contains("event_row.published_at IS NULL")
+            .contains("event_row.poisoned_at IS NULL")
+            .contains("event_row.lease_expires_at <= statement_timestamp()")
+            .contains("FROM public.outbox_events predecessor")
+            .contains("CREATE INDEX outbox_investigation_workflow_start_ready_idx")
+            .contains("REVOKE ALL ON investigation_workflow_bindings FROM opsmind_app, opsmind_dispatcher, PUBLIC;")
+            .contains("GRANT SELECT, INSERT ON investigation_workflow_bindings TO opsmind_app;")
+            .contains("GRANT SELECT ON investigation_workflow_bindings TO opsmind_dispatcher;")
+            .contains("GRANT UPDATE (")
+            .contains("TO opsmind_dispatcher;")
+            .contains("GRANT SELECT, INSERT ON inbox_events TO opsmind_dispatcher;")
+            .contains("GRANT UPDATE (status, processed_at, attempts, last_error)")
+            .contains("ON inbox_events TO opsmind_dispatcher;")
+            .contains("GRANT SELECT (event_id, event_type, schema_version)")
+            .contains("ON outbox_events TO opsmind_dispatch_resolver;")
+            .contains("ALTER TABLE investigation_workflow_bindings FORCE ROW LEVEL SECURITY")
+            .contains("CREATE POLICY investigation_workflow_bindings_tenant_isolation")
+            .contains("REVOKE ALL ON FUNCTION public.opsmind_list_investigation_workflow_start_tenants(integer)")
+            .contains("GRANT EXECUTE ON FUNCTION public.opsmind_investigation_workflow_start_event_id(uuid, uuid)")
+            .contains("TO opsmind_app;")
+            .contains("GRANT EXECUTE ON FUNCTION public.opsmind_list_investigation_workflow_start_tenants(integer)")
+            .contains("TO opsmind_dispatcher;")
+            .doesNotContain("raw_prompt", "chain_of_thought", "api_key", "credential_ref");
+    }
 }

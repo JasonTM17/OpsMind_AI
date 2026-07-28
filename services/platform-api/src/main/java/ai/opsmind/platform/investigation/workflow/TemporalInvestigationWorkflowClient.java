@@ -1,0 +1,181 @@
+package ai.opsmind.platform.investigation.workflow;
+
+import java.util.Map;
+import java.util.Optional;
+
+import io.grpc.StatusRuntimeException;
+import io.temporal.api.common.v1.WorkflowExecution;
+import io.temporal.api.enums.v1.EventType;
+import io.temporal.api.enums.v1.WorkflowIdConflictPolicy;
+import io.temporal.api.enums.v1.WorkflowIdReusePolicy;
+import io.temporal.api.history.v1.HistoryEvent;
+import io.temporal.client.WorkflowClient;
+import io.temporal.client.WorkflowExecutionAlreadyStarted;
+import io.temporal.client.WorkflowExecutionDescription;
+import io.temporal.client.WorkflowOptions;
+import io.temporal.client.WorkflowStub;
+import io.temporal.failure.TemporalException;
+
+public final class TemporalInvestigationWorkflowClient implements InvestigationWorkflowClient {
+
+    static final String PAYLOAD_DIGEST_MEMO_KEY = "opsmind_start_payload_digest";
+    private static final String SHA_256_HEX = "[0-9a-f]{64}";
+
+    private final WorkflowClient workflowClient;
+    private final InvestigationTemporalClientProperties clientProperties;
+    private final InvestigationWorkflowProperties workflowProperties;
+
+    public TemporalInvestigationWorkflowClient(
+        WorkflowClient workflowClient,
+        InvestigationTemporalClientProperties clientProperties,
+        InvestigationWorkflowProperties workflowProperties
+    ) {
+        this.workflowClient = workflowClient;
+        this.clientProperties = clientProperties;
+        this.workflowProperties = workflowProperties;
+    }
+
+    @Override
+    public StartResult start(
+        InvestigationWorkflowStartRequest request,
+        String startPayloadDigest
+    ) {
+        requireExpectedTarget(request, startPayloadDigest);
+        WorkflowOptions options = WorkflowOptions.newBuilder()
+            .setWorkflowId(request.workflowId())
+            .setTaskQueue(request.taskQueue())
+            .setWorkflowIdReusePolicy(
+                WorkflowIdReusePolicy.WORKFLOW_ID_REUSE_POLICY_REJECT_DUPLICATE
+            )
+            .setWorkflowIdConflictPolicy(
+                WorkflowIdConflictPolicy.WORKFLOW_ID_CONFLICT_POLICY_FAIL
+            )
+            .setMemo(Map.of(PAYLOAD_DIGEST_MEMO_KEY, startPayloadDigest))
+            .build();
+        WorkflowStub stub = workflowClient.newUntypedWorkflowStub(request.workflowType(), options);
+        try {
+            WorkflowExecution execution = stub.start(request);
+            return result(execution, false);
+        }
+        catch (WorkflowExecutionAlreadyStarted exception) {
+            return reconcileExisting(request, startPayloadDigest, exception);
+        }
+        catch (StatusRuntimeException exception) {
+            throw TemporalTransportFailureClassifier.map(
+                exception, "workflow.temporal-rejected"
+            );
+        }
+        catch (TemporalException exception) {
+            throw TemporalTransportFailureClassifier.map(
+                exception, "workflow.temporal-rejected"
+            );
+        }
+    }
+
+    private StartResult reconcileExisting(
+        InvestigationWorkflowStartRequest request,
+        String startPayloadDigest,
+        WorkflowExecutionAlreadyStarted exception
+    ) {
+        WorkflowExecution execution = exception.getExecution();
+        if (execution == null
+            || !request.workflowId().equals(execution.getWorkflowId())
+            || exception.getWorkflowType().filter(request.workflowType()::equals).isEmpty()) {
+            throw InvestigationWorkflowStartException.permanent(
+                "workflow.existing-contract-mismatch", exception
+            );
+        }
+        try {
+            WorkflowStub existing = workflowClient.newUntypedWorkflowStub(
+                execution,
+                Optional.of(request.workflowType())
+            );
+            WorkflowExecutionDescription description = existing.describe();
+            Object storedDigest =
+                description.getMemo(PAYLOAD_DIGEST_MEMO_KEY, String.class);
+            if (!matchesExistingExecution(
+                request, startPayloadDigest, execution, description, storedDigest
+            )) {
+                throw InvestigationWorkflowStartException.permanent(
+                    "workflow.existing-contract-mismatch", exception
+                );
+            }
+            return result(description.getExecution(), true);
+        }
+        catch (InvestigationWorkflowStartException mapped) {
+            throw mapped;
+        }
+        catch (StatusRuntimeException status) {
+            throw TemporalTransportFailureClassifier.map(
+                status, "workflow.temporal-rejected"
+            );
+        }
+        catch (RuntimeException unverifiable) {
+            throw TemporalTransportFailureClassifier.map(
+                unverifiable, "workflow.existing-contract-unverifiable"
+            );
+        }
+    }
+
+    private boolean matchesExistingExecution(
+        InvestigationWorkflowStartRequest request,
+        String startPayloadDigest,
+        WorkflowExecution execution,
+        WorkflowExecutionDescription description,
+        Object storedDigest
+    ) {
+        return request.workflowType().equals(description.getWorkflowType())
+            && request.taskQueue().equals(description.getTaskQueue())
+            && startPayloadDigest.equals(storedDigest)
+            && request.workflowId().equals(description.getExecution().getWorkflowId())
+            && execution.getRunId().equals(description.getExecution().getRunId())
+            && request.equals(readFirstStartInput(execution));
+    }
+
+    private InvestigationWorkflowStartRequest readFirstStartInput(
+        WorkflowExecution execution
+    ) {
+        HistoryEvent firstEvent = workflowClient.streamHistory(
+            execution.getWorkflowId(), execution.getRunId()
+        ).findFirst().orElseThrow(() ->
+            new IllegalStateException("Existing workflow has no start history.")
+        );
+        if (firstEvent.getEventType() != EventType.EVENT_TYPE_WORKFLOW_EXECUTION_STARTED
+            || !firstEvent.hasWorkflowExecutionStartedEventAttributes()
+            || !firstEvent.getWorkflowExecutionStartedEventAttributes().hasInput()) {
+            throw new IllegalStateException("Existing workflow start history is invalid.");
+        }
+        return workflowClient.getOptions().getDataConverter().fromPayloads(
+            0,
+            Optional.of(firstEvent.getWorkflowExecutionStartedEventAttributes().getInput()),
+            InvestigationWorkflowStartRequest.class,
+            InvestigationWorkflowStartRequest.class
+        );
+    }
+
+    private void requireExpectedTarget(
+        InvestigationWorkflowStartRequest request,
+        String startPayloadDigest
+    ) {
+        clientProperties.validate(workflowProperties);
+        if (!clientProperties.clusterId().equals(request.temporalClusterId())
+            || !workflowProperties.namespace().equals(request.temporalNamespace())
+            || !workflowProperties.workflowType().equals(request.workflowType())
+            || !workflowProperties.taskQueue().equals(request.taskQueue())
+            || startPayloadDigest == null || !startPayloadDigest.matches(SHA_256_HEX)) {
+            throw InvestigationWorkflowStartException.permanent(
+                "workflow.target-mismatch", null
+            );
+        }
+    }
+
+    private StartResult result(WorkflowExecution execution, boolean alreadyStarted) {
+        if (execution == null || execution.getRunId().isBlank()) {
+            throw InvestigationWorkflowStartException.permanent(
+                "workflow.temporal-run-id-missing", null
+            );
+        }
+        return new StartResult(execution.getRunId(), alreadyStarted);
+    }
+
+}

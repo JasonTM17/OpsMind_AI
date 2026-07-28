@@ -6,10 +6,8 @@ OpsMind AI is an evidence-first AI SRE/DevSecOps platform. It is designed to hel
 
 ![OpsMind evidence-backed investigation workspace](./docs/media/operator-investigation-workspace.png)
 
-The operator workspace exposes a deliberately constrained projection: cited
-durable evidence remains visible, while raw prompts, provider reasoning,
-credentials, and unreviewed model-authored prose stay behind the server-side
-trust boundary.
+The operator workspace exposes cited durable evidence while raw prompts,
+provider reasoning, credentials, and unreviewed model prose stay server-side.
 
 ![OpsMind operator investigation walkthrough](./docs/media/operator-investigation-workspace-walkthrough.gif)
 
@@ -18,23 +16,17 @@ Both repository media files are review-gated by
 secret scanner verifies their exact path, SHA-256 digest, byte size, media
 signature, and dimensions; every other binary continues to fail closed.
 
-Phase 1 governance is complete; Phases 2-7 are advancing through evidence gates.
+Phases 1-2 and gate G1 are complete; Phases 3-9 are advancing through evidence gates.
 The repository now contains a pinned polyglot workspace, cross-platform CI,
 fail-closed OIDC and tenant/RLS foundations, an incident timeline/audit ledger,
 a provider-neutral AI Runtime with DeepSeek adapter, and an isolated Tool
 Gateway contract.
 
-Phase 7 adds a pure bounded investigation reducer and feature-flagged runner.
-Flyway V006 provides tenant-scoped PostgreSQL run snapshots, a contiguous
-immutable investigation-event ledger, same-transaction audit-chain writes,
-forced RLS, and optimistic concurrency. This is durable data, not a durable
-workflow. V007 adds immutable bounded canonical evidence records, exact replay,
-authorized reads, and full transaction rollback; revision-bound CI passes its
-fresh/upgrade and 13-case PostgreSQL gate. Restart/resume remains Phase 9, and
-investigation events remain separate from `incident_timeline_events`. The
-opt-in ANALYZE-only incident activity representation read-unions both ledgers
-as a forward-only live metadata view; it does not copy rows or expose payloads,
-free text, credentials, or evidence/tool identifiers.
+Phase 7 adds a pure bounded investigation reducer, feature-flagged inline runner,
+tenant-scoped PostgreSQL snapshots/events, and immutable bounded evidence. The
+opt-in ANALYZE-only incident activity representation read-unions the incident
+and investigation ledgers without copying rows or exposing payloads, free text,
+credentials, or evidence/tool identifiers.
 The non-fixture investigation AI port now re-authorizes every evidence set,
 assembles a selector-only bounded prompt, signs the exact canonical body, and
 reuses the existing AI Runtime transport. The Platform Tool Gateway client
@@ -46,6 +38,16 @@ revision-bound 100-warm-run cross-service trace have passing evidence. G3 is
 still not claimed: a named live non-production connector, approved
 provider/legal conformance, BFF/session proof, and release-scale evidence
 remain open.
+
+Phase 9 is now in progress with a default-off Temporal start handoff. In
+`temporal` mode, one application transaction creates the initial run, immutable
+V010 workflow binding, and canonical outbox event; the API returns `202` with
+`Location`. Default `inline` execution still returns `200`. An opt-in dispatcher
+role in the Platform API artifact commits its database claim before the
+Temporal RPC, then atomically reconciles the binding, inbox, and outbox. The
+repository has no live Temporal cluster/namespace, Compose service, worker, or
+restart/resume execution, and exact-head CI/PostgreSQL evidence is still
+missing. Phase 9 and G4 remain in progress; B-013 remains active.
 
 Phase 8B now implements three deterministic, training-ineligible evaluation
 contracts: A detects a deployment-correlated latency regression, B terminates
@@ -103,7 +105,7 @@ flowchart LR
     API --> WF["Temporal - Phase 9"]
 ```
 
-The first implementation uses four deployables: Operator Web, Platform API, AI Runtime, and Tool Gateway. PostgreSQL is the source of transactional truth. Redis is optional. Transactional outbox/inbox precedes Kafka. Temporal is introduced only after the deterministic investigation state machine and evaluation baseline are proven.
+The first implementation uses four deployables: Operator Web, Platform API, AI Runtime, and Tool Gateway. PostgreSQL is the source of transactional truth. Redis is optional. Transactional outbox/inbox precedes Kafka. The default-off Temporal client and dispatcher role live in the Platform API artifact; no Temporal service or worker is included.
 
 See [System Architecture](./docs/system-architecture.md) and [ADR-0001](./docs/adr/ADR-0001-platform-topology.md).
 
@@ -252,11 +254,12 @@ artifacts are authoritative for the checked commit. The main gates are:
 .\scripts\dev\opsmind.ps1 security
 node .\scripts\validation\validate-phase-07-investigation-slice.mjs
 node .\scripts\validation\validate-phase-08-evaluation-foundation.mjs
+node .\scripts\validation\validate-phase-09-workflow-handoff.mjs
 ```
 
 | Checkpoint | Current evidence | Scope limit |
 |---|---|---|
-| Governance/foundation | Secret scan, layout, portable surface, actionlint, Ubuntu/Windows bootstrap pass | G1 remains broader than one run |
+| Governance/foundation | PR Quality run `30327014212` on tree `25d83c9a` proves zero-finding secret/layout/actionlint checks, clean Ubuntu and Windows bootstrap, Keycloak reference conformance, and Compose build/health/cleanup | G1 and Phase 2 complete; this is developer-platform evidence, not staging/production proof |
 | PostgreSQL trust | V001-V009, pooled tenant/RLS, messaging recovery, investigation persistence/evidence, and V009 recovery/query-plan/latency/storage gates pass in job `89950772823`, artifact `8650178111` | CI fixture gates; production database/DR, SLO, and large-object lifecycle not proven |
 | Identity | Keycloak 26.7 conformance passes locally and in Linux CI | Not production-authorized enterprise IdP proof |
 | Incident control | CRUD subset, rollback/concurrency, timeline and audit-chain gates pass | Full Phase 4 remains open |
@@ -264,6 +267,7 @@ node .\scripts\validation\validate-phase-08-evaluation-foundation.mjs
 | Tool Gateway | Static contract, durable PostgreSQL receipt/audit state, synthetic Prometheus connector, workload OAuth boundary, dual-credential Platform execution client, and local V003 tenant-scope unit/static gates pass | V003 PostgreSQL/upgrade evidence, named live non-production connector, and production conformance pending |
 | Investigation | Bounded-record checkpoint 4B, ANALYZE-only activity view, V009 evidence, capability-backed AI rounds, CK/Stitch/browser proof, and Phase 7 regression PASS in artifact `8649696519` | G3 still requires a named live connector, provider/legal approval, and BFF/session proof |
 | Evaluation | Fresh disposable A/B/C score `PASS` on all eight metrics with samples `100/1/1`; exact CI command passes 61/61 | Held-out payloads, human adjudication, calibration, and comparison unavailable; Phase 8 exit is BLOCK |
+| Workflow handoff | V010 plus the default-off API/client/dispatcher source implements atomic admission and reconciled Temporal start | No exact-head CI/PostgreSQL evidence, live cluster/namespace, compatible worker, or restart/resume execution |
 | Compose | All application images build, start, and pass health smoke in CI | Not staging/production deployment evidence |
 
 Historical local evidence marked `REFERENCE_CONFORMANCE_NOT_PRODUCTION` stays
@@ -277,25 +281,17 @@ Provider credentials are runtime secrets. DeepSeek configuration will enter thro
 
 ## Repository and release governance
 
-The public repository About panel is synchronized from
-[`.github/repository-metadata.yml`](./.github/repository-metadata.yml). Use
-[CONTRIBUTING.md](./CONTRIBUTING.md) for the CK development workflow,
-[SECURITY.md](./SECURITY.md) for private vulnerability reporting, and
-[SUPPORT.md](./SUPPORT.md) for questions and troubleshooting. Final releases
-must publish the same signed multi-architecture digest to Docker Hub and GHCR,
-link the GHCR Package to this repository, and record immutable digests,
-SBOM/provenance, scan results, and registry parity in the release evidence.
-The checked-in
-[OCI publication workflow](./.github/workflows/container-publish.yml) provides
-that package path through build-once promotion: exact-SHA candidates are
-scanned, health-checked, and aggregated before the protected `oci-production`
-environment stages immutable version tags. It then signs and verifies the
-aggregate release receipt before creating one GitHub Release as the atomic
-activation marker. Repository-level release immutability must be enabled, so
-the marker, tag, signed receipt, Sigstore bundle, and evidence archive cannot
-later be changed. Per-image tags never move. Both architectures are scanned
-and runtime-probed. GHCR uses the scoped GitHub token. Docker Hub remains
-blocked until its username and token exist only in that protected environment.
+The public About panel is synchronized from
+[`.github/repository-metadata.yml`](./.github/repository-metadata.yml). See
+[CONTRIBUTING.md](./CONTRIBUTING.md), [SECURITY.md](./SECURITY.md), and
+[SUPPORT.md](./SUPPORT.md) for workflow, private vulnerability reporting, and
+support. The checked-in
+[OCI publication workflow](./.github/workflows/container-publish.yml) builds
+and verifies exact-SHA multi-architecture candidates before protected
+promotion. Final release still requires immutable Docker Hub/GHCR digest
+parity, signatures, SBOM/provenance, scans, repository-linked GHCR packages,
+and an immutable aggregate GitHub Release. Docker Hub remains blocked until
+its credentials exist only in the protected environment.
 
 ## Unresolved Questions
 

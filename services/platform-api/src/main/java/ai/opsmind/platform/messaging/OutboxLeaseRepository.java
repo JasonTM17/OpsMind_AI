@@ -15,6 +15,15 @@ public interface OutboxLeaseRepository {
         int limit
     );
 
+    List<OutboxLease> claimBatchForEventType(
+        UUID organizationId,
+        UUID leaseToken,
+        Instant now,
+        Duration leaseDuration,
+        int limit,
+        String eventType
+    );
+
     boolean markPublished(
         UUID organizationId,
         UUID eventId,

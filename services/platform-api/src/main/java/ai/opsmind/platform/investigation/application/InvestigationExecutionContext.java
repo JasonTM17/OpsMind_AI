@@ -3,7 +3,7 @@ package ai.opsmind.platform.investigation.application;
 import ai.opsmind.platform.identity.OpsMindPrincipal;
 import ai.opsmind.platform.incident.AuthorizedIncidentAnalysisEvidence;
 
-/** Verified caller and immutable incident snapshot captured before a synchronous run starts. */
+/** Verified caller and immutable incident snapshot captured before execution admission. */
 public record InvestigationExecutionContext(
     OpsMindPrincipal principal,
     AuthorizedIncidentAnalysisEvidence initialIncident

@@ -8,6 +8,7 @@ import java.util.Comparator;
 import java.util.List;
 import java.util.UUID;
 
+import org.springframework.beans.factory.annotation.Qualifier;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
 import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.stereotype.Repository;
@@ -22,13 +23,15 @@ public final class TransactionalOutboxLeaseStore implements OutboxLeaseRepositor
         .thenComparing(lease -> lease.event().eventId());
 
     private final JdbcTemplate jdbcTemplate;
+    private final TransactionalOutboxClaimer claimer;
     private final EventPayloadIntegrity payloadIntegrity;
 
     public TransactionalOutboxLeaseStore(
-        JdbcTemplate jdbcTemplate,
+        @Qualifier("dispatcherJdbcTemplate") JdbcTemplate jdbcTemplate,
         EventPayloadIntegrity payloadIntegrity
     ) {
         this.jdbcTemplate = jdbcTemplate;
+        this.claimer = new TransactionalOutboxClaimer(jdbcTemplate);
         this.payloadIntegrity = payloadIntegrity;
     }
 
@@ -40,47 +43,42 @@ public final class TransactionalOutboxLeaseStore implements OutboxLeaseRepositor
         Duration leaseDuration,
         int limit
     ) {
+        return claimValidatedBatch(
+            organizationId, leaseToken, now, leaseDuration, limit, null
+        );
+    }
+
+    @Override
+    public List<OutboxLease> claimBatchForEventType(
+        UUID organizationId,
+        UUID leaseToken,
+        Instant now,
+        Duration leaseDuration,
+        int limit,
+        String eventType
+    ) {
+        return claimValidatedBatch(
+            organizationId,
+            leaseToken,
+            now,
+            leaseDuration,
+            limit,
+            MessagingInputValidator.requireEventType(eventType)
+        );
+    }
+
+    private List<OutboxLease> claimValidatedBatch(
+        UUID organizationId,
+        UUID leaseToken,
+        Instant now,
+        Duration leaseDuration,
+        int limit,
+        String eventType
+    ) {
         MessagingTransactionGuard.requireActive();
         requireClaimArguments(organizationId, leaseToken, now, leaseDuration, limit);
-        Instant leaseExpiresAt = now.plus(leaseDuration);
-
-        List<OutboxLease> claimed = jdbcTemplate.query(
-            """
-            WITH candidates AS (
-                SELECT candidate.event_id
-                  FROM outbox_events candidate
-                 WHERE candidate.organization_id = ?
-                   AND candidate.published_at IS NULL
-                   AND candidate.poisoned_at IS NULL
-                   AND candidate.next_attempt_at <= ?
-                   AND (candidate.lease_expires_at IS NULL OR candidate.lease_expires_at <= ?)
-                   AND NOT EXISTS (
-                       SELECT 1
-                         FROM outbox_events predecessor
-                        WHERE predecessor.organization_id = candidate.organization_id
-                          AND predecessor.aggregate_type = candidate.aggregate_type
-                          AND predecessor.aggregate_id = candidate.aggregate_id
-                          AND predecessor.aggregate_sequence < candidate.aggregate_sequence
-                          AND predecessor.published_at IS NULL
-                   )
-                 ORDER BY candidate.occurred_at, candidate.event_id
-                 FOR UPDATE SKIP LOCKED
-                 LIMIT ?
-            )
-            UPDATE outbox_events claimed
-               SET lease_token = ?, lease_expires_at = ?, attempts = attempts + 1, last_error = NULL
-              FROM candidates
-             WHERE claimed.event_id = candidates.event_id
-            RETURNING claimed.*
-            """,
-            OutboxLeaseRowMapper.INSTANCE,
-            organizationId,
-            Timestamp.from(now),
-            Timestamp.from(now),
-            limit,
-            leaseToken,
-            Timestamp.from(leaseExpiresAt)
-        );
+        List<OutboxLease> claimed =
+            claimer.claim(organizationId, leaseToken, now, leaseDuration, limit, eventType);
 
         List<OutboxLease> valid = new ArrayList<>(claimed.size());
         for (OutboxLease lease : claimed) {
@@ -118,6 +116,7 @@ public final class TransactionalOutboxLeaseStore implements OutboxLeaseRepositor
         return jdbcTemplate.update(
             "UPDATE outbox_events SET published_at = ?, lease_token = NULL, lease_expires_at = NULL, "
                 + "last_error = NULL WHERE organization_id = ? AND event_id = ? AND lease_token = ? "
+                + "AND lease_expires_at > transaction_timestamp() "
                 + "AND published_at IS NULL AND poisoned_at IS NULL",
             Timestamp.from(publishedAt),
             organizationId,
@@ -148,6 +147,7 @@ public final class TransactionalOutboxLeaseStore implements OutboxLeaseRepositor
                 + "next_attempt_at = CAST(? AS timestamptz), "
                 + "poisoned_at = CASE WHEN ? THEN CAST(? AS timestamptz) ELSE NULL::timestamptz END "
                 + "WHERE organization_id = ? AND event_id = ? AND lease_token = ? "
+                + "AND lease_expires_at > transaction_timestamp() "
                 + "AND published_at IS NULL AND poisoned_at IS NULL",
             safeErrorCode,
             Timestamp.from(nextAttemptAt),

@@ -22,7 +22,13 @@ flowchart TB
     API --> TEMPORAL["Planned Temporal service - Phase 9"]
 ```
 
-Dashed future concerns are intentionally not represented as current runtime behavior. Temporal enters in Phase 9. G0.5 approves managed Kubernetes in Singapore, enterprise OIDC, MinIO locally, S3-compatible production evidence storage, and read-only Prometheus against synthetic non-production metrics; later phases must implement and verify them.
+Dashed future concerns are intentionally not represented as current runtime
+behavior. Phase 9 now provides a default-off Temporal client and workflow-start
+handoff inside the Platform API artifact, but no Temporal service, namespace,
+worker, or live execution environment is deployed. G0.5 approves managed
+Kubernetes in Singapore, enterprise OIDC, MinIO locally, S3-compatible
+production evidence storage, and read-only Prometheus against synthetic
+non-production metrics; later phases must implement and verify them.
 
 ## Initial Deployables
 
@@ -149,9 +155,10 @@ effective write requires target idempotency or discovery/reconciliation.
 | Connector execution receipts and verified audit | Tool Gateway schema | Capability-derived scope, forced tenant/project RLS, idempotency, and reconciliation authority |
 | Unverified tool security decisions | Tool Gateway global audit lane | Insert-only and append-only; never accepts tenant/project fields from the request |
 | Bounded redacted evidence records | Platform PostgreSQL schema | Immutable canonical JSON, 64 KiB maximum, run/event linkage, forced RLS |
+| Investigation workflow binding/start event | Platform PostgreSQL schema | V010 immutable target/request binding plus canonical outbox bytes; default off |
 | Large evidence bodies | Planned evidence object port | Lifecycle is not implemented |
 | Embeddings and retrieval metadata | Planned PostgreSQL/pgvector boundary | RAG is not implemented |
-| Workflow histories | Planned Temporal boundary | Phase 9; not implemented |
+| Workflow histories | External Temporal boundary | Client/reconciliation code exists; no cluster, namespace, worker, or history is deployed |
 
 Each service owns its migrations. Shared tables without a single owner are prohibited.
 
@@ -277,7 +284,11 @@ latency or SLO evidence.
   Rolled-back claims disappear, committed `received` orphans can be reclaimed,
   and `processed`/`poisoned` records deny duplicate handling.
 - Kafka is deferred until measured throughput or independent ownership justifies it.
-- Planned Temporal workflow start has one outbox-driven owner and a deterministic workflow ID.
+- Temporal workflow start has one default-off outbox-driven owner and the
+  deterministic ID `opsmind-investigation/{organizationId}/{runId}`.
+- The dispatcher claim transaction commits before the Temporal RPC. The RPC is
+  outside every database transaction; a later transaction atomically reconciles
+  binding, inbox, and outbox state.
 - Future workflow code changes use version/build routing and golden-history replay.
 - External effects are never inferred only from message delivery; they use execution receipts and reconciliation.
 
@@ -453,7 +464,8 @@ commands, immutable events, bounded state and visible terminal outcomes. It has
 no network, persistence, time, or UUID side effects. `InvestigationOrchestrator`
 is the replaceable in-process runner: it calls AI and Tool Gateway ports, applies
 validated commands to the reducer, and saves each state through a run-store port.
-Phase 9 can replace the runner with Temporal without replacing the domain model.
+The Phase 9 handoff reuses this domain model; no Temporal worker currently
+executes or resumes the reducer.
 
 The non-fixture AI port receives the verified principal and the immutable
 incident snapshot captured by the initial authorization transaction. Before
@@ -533,9 +545,8 @@ provide object upload, hold, restore, purge, malware scanning, or residency.
 
 The investigation writer still does **not** append or copy rows into
 `incident_timeline_events`; the activity representation above links the two
-ledgers only at read time. The checkpoint does not provide workflow
-restart/resume semantics; the orchestrator is still synchronous and in-process.
-Fixture AI/Tool clients remain non-production and profile-bound.
+ledgers only at read time. Default `inline` execution remains synchronous and
+in-process. Fixture AI/Tool clients remain non-production and profile-bound.
 The non-fixture Tool Gateway port resolves the model's selector through the
 immutable Platform catalog before credential acquisition. It derives stable
 execution/evidence IDs, builds canonical server-owned request bytes, and caps
@@ -550,6 +561,49 @@ and one non-truncated inline evidence envelope become `CollectedEvidence`.
 Unknown fields, media types, statuses, denial codes, artifacts, unsafe content,
 or identity drift fail closed. A shared canonical fixture proves byte parity
 between Platform signing and Gateway digest verification.
+
+### Phase 9 Temporal start handoff
+
+`OPSMIND_INVESTIGATION_EXECUTION_MODE` defaults to `inline`; an accepted start
+finishes in-process and returns `200`. In explicit `temporal` mode, admission
+requires valid client/target configuration and a task-queue workflow poller
+whose identity and build ID exactly match configuration. A new start then
+returns `202` with the investigation `Location`.
+
+The application role performs one tenant/actor-bound transaction that creates
+the initial run/event/audit state, immutable
+`investigation_workflow_bindings` row, and canonical
+`investigation.workflow-start.requested` outbox event. V010 binds exact payload
+bytes and SHA-256 digest to run, request digest, authorization revision, logical
+cluster, namespace, workflow type, task queue, and deterministic workflow ID.
+The payload excludes prompts, evidence bodies, tokens, capabilities, provider
+requests, and credentials. Conflicting reuse of a run ID returns `409`; exact
+retry loads the existing `PENDING` or `STARTED` run even after its deadline,
+while a new start first observed after its deadline returns `408`.
+
+The scheduled workflow-start dispatcher is an opt-in role in the existing
+Platform API artifact. It has a dedicated datasource authenticated exactly as
+`opsmind_dispatcher`. The app role may insert/select bindings but cannot
+reconcile them; the dispatcher can update only reconciliation fields and uses
+tenant/workload-bound outbox and inbox grants. Its claim commits before the
+Temporal call, and code rejects an RPC attempted inside a database transaction.
+Temporal execution fails application startup when the client or starter is
+disabled, and startup also requires `RPC timeout + safety margin < lease
+duration`. Lease acknowledgement and release compare against PostgreSQL
+transaction time rather than the application clock.
+After the RPC, a new tenant-bound transaction atomically records `STARTED` plus
+the Temporal run ID, marks the inbox processed, and publishes the outbox. A
+terminal failure instead atomically records `REJECTED`, poisons the inbox, and
+poisons the outbox.
+
+An `AlreadyStarted` response is success only after exact verification of
+workflow ID/type, task queue, execution/run identity, memo payload digest, and
+the first workflow-start history input. An unverifiable or mismatched existing
+execution is rejected. This closes the start-handoff crash window only: the
+repository contains no production/live Temporal cluster or namespace, Compose
+service, workflow implementation/worker, or restart/resume execution. V010
+performs no legacy backfill; nonterminal binding-less runs block new Temporal
+admission until operator reconciliation.
 
 The local fixture-backed cross-service checkpoint now proves the complete
 Operator/Platform -> AI Runtime -> Platform -> Tool Gateway -> Prometheus ->
@@ -702,10 +756,11 @@ PostgreSQL trust on `a975f922`. PostgreSQL artifact `8650178111` proves the
 V009 recovery/catalog/query-plan/latency/storage/upgrade/cleanup gates and the
 3/3 activity timeline matrix. Cross-service run `30257587543` and artifact
 `8649696519` prove A/B/C plus the Phase 7 OperatorWorkspace/CrossService/
-Checkpoint/PhaseExit regression. Neither run proves live DeepSeek/legal
-approval, a named live non-production connector, RAG, remediation, Temporal,
-object lifecycle, staging/production, DR, production latency/SLOs, or release
-readiness.
+Checkpoint/PhaseExit regression. The Phase 9 handoff exists only in the current
+worktree; exact-head CI and PostgreSQL evidence are missing. Neither historical
+run proves live DeepSeek/legal approval, a named live non-production connector,
+RAG, remediation, a live Temporal cluster/worker or restart/resume, object
+lifecycle, staging/production, DR, production latency/SLOs, or release readiness.
 
 For the current AI Runtime checkpoint, the Python suite reports 159 passed and five
 PostgreSQL-gated tests skipped when that database gate is not enabled; Ruff and

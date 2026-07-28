@@ -10,6 +10,12 @@ provider/legal terms, a named live non-production connector, object lifecycle,
 staging, DR, and release evidence. Keycloak 26.7 remains non-production
 reference conformance and does not authorize a vendor or rollout.
 
+The current worktree adds a default-off Phase 9 Temporal start handoff in the
+Platform API artifact and Platform V010. It has no exact-head CI/PostgreSQL
+evidence, production/live Temporal cluster or namespace, Compose service,
+compatible worker, or restart/resume execution. It is not deployable as a
+durable investigation workflow yet.
+
 G0.5 approves managed Kubernetes in `ap-southeast-1` with Singapore residency,
 an enterprise OIDC profile, MinIO locally, S3-compatible production storage
 behind `production-kms`, and explicit recovery targets. Specific cloud
@@ -236,6 +242,32 @@ A failed gate cannot be converted to a warning solely to meet a schedule.
   V009-owned indexes concurrently, repair through the approved Flyway seam,
   then retry and capture the resulting artifact. Do not alter applied migration
   bytes or delete Flyway history blindly.
+- Apply Platform V010 while investigation execution remains `inline` and the
+  Temporal client, workflow-start dispatcher, and dispatcher datasource remain
+  disabled. V010 adds the immutable run/target/request binding and validates
+  the canonical workflow-start outbox event; it does not backfill legacy runs.
+- Before Temporal admission, freeze new starts and run
+  [the workflow cutover gate](./runbooks/investigation-workflow-cutover.md).
+  Every nonterminal binding-less run requires explicit operator reconciliation;
+  similar-looking reducer state is not authority for automatic backfill.
+- The workflow-start scheduler is an opt-in role in the `platform-api` artifact,
+  not a fifth deployable. It requires the dedicated dispatcher datasource
+  authenticated exactly as `opsmind_dispatcher`; application credentials must
+  never be reused. The application role creates the run/binding/outbox handoff,
+  while the dispatcher has only bounded claim/inbox/reconciliation authority.
+- Temporal execution fails startup unless both the Temporal client and
+  workflow-start scheduler are enabled. The configured Temporal RPC timeout
+  plus starter safety margin must be strictly less than the starter lease
+  duration; reject the rollout instead of allowing an RPC to outlive its claim.
+- Admission cannot open until the configured task queue exposes a workflow
+  poller with the exact required identity and build ID. This repository does not
+  provide that worker or a Temporal service, so a repository-only rollout must
+  remain disabled.
+- When an approved external cluster, namespace, and compatible worker exist,
+  enable the client and dispatcher role while starts stay frozen, verify the
+  cutover and rejected-binding checks, switch execution mode to `temporal`,
+  then release the ingress freeze. Inline remains the compatibility rollback
+  mode and returns `200`; Temporal admission returns `202` plus `Location`.
 - Schema compatibility covers the rolling window used by deployment.
 - Destructive transformations use expand/migrate/contract and verified backup/restore evidence.
 - Temporal workflows use version/build routing; golden histories replay before worker promotion.
@@ -265,6 +297,11 @@ that selects `started` rows older than the retry interval without a matching
 - Prefer forward-fix for already-applied data migrations unless a tested rollback path exists.
 - Quarantine a model alias rather than deleting lineage evidence.
 - Preserve audit and incident evidence during rollback.
+- For Phase 9 rollback, freeze starts, restore
+  `OPSMIND_INVESTIGATION_EXECUTION_MODE=inline`, and disable the Temporal client,
+  workflow-start dispatcher, and dispatcher datasource. Retain V010, bindings,
+  inbox rows, and outbox rows as immutable recovery evidence; do not reset a
+  `REJECTED` binding or delete a pending handoff.
 
 ## Disaster Recovery
 
@@ -314,6 +351,10 @@ conformance, and Compose build/health on
 `a975f922fcd93c71479b9e15563643a9ea1aa04f`. PostgreSQL artifact `8650178111`
 adds the V009/activity evidence above. This is CI fixture/checkpoint evidence,
 not production identity, latency, SLO, or deployment proof.
+
+Phase 9 source/static checks do not replace the missing exact-head PR-quality
+and disposable PostgreSQL evidence. No rollout may infer a live Temporal
+cluster, namespace, poller, workflow history, or restart/resume proof from them.
 
 Evidence schema v2 now binds the source/profile manifest and packaged Platform
 API JAR digests, verifies cleanup before atomic publication, and has a separate

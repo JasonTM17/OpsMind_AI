@@ -8,6 +8,56 @@
 - Record blockers explicitly and leave downstream phases pending.
 - Do not include secrets, raw credentials, or sensitive evidence.
 
+## 2026-07-28 — Phase 9 Temporal start handoff implemented; evidence pending
+
+Current worktree code adds default-off V010 atomic run/binding/outbox admission,
+additive `202 + Location`, a dedicated-datasource dispatcher role in the
+Platform API artifact, Temporal RPC outside the claim transaction, atomic
+post-RPC reconciliation, deterministic workflow identity, and exact
+`AlreadyStarted` verification. Inline remains the default `200` path.
+
+This is start-handoff infrastructure only. No live Temporal cluster/namespace,
+Compose service, worker, or restart/resume execution exists; no legacy row is
+automatically backfilled. Exact-head CI and PostgreSQL evidence are missing.
+Phase 9 and roadmap G4 remain in progress; B-013 remains active.
+
+## 2026-07-28 — G1 and Phase 2 immutable clean-runner evidence complete
+
+PR #23 feature head `a3cd81b8912b288b340a82b6b31aecf8cc22dffd`
+and squash merge `659ba823a1dd8bc867a6fe9cca5187f475dec979`
+resolve to the same Git tree
+`25d83c9a19669542c94ca915ed96b20fe3bea8ac`; the merge therefore preserves the
+exact source state that passed review.
+
+PR #23 reports 13 passing checks: 12 successful jobs in PR Quality run
+`30327014212` plus the successful Cross-service workflow. Downloaded immutable
+artifacts prove:
+
+- foundation artifact `8676036033`
+  (`sha256:bd85d9d33e89fd136711bd3a77c9a59927a5af2473bd69777afeb72f920d32e9`):
+  repository layout `Errors=0`, working-tree/history secret findings `0`,
+  actionlint 1.7.12 and ShellCheck `PASS`;
+- Linux bootstrap artifact `8676068747`
+  (`sha256:af3d41d4edac784377fb47a64db8fa29888a8fcf096682780d8c93e089e9eea3`):
+  capacity/storage roots and clean setup finish `Result=PASS`;
+- Windows bootstrap artifact `8676105801`
+  (`sha256:bbbb05f49dfa80f50e7f9f5b5107ab4bd369fa4a63a020553ceed7e1b8447ff8`):
+  storage governance, setup, and secret tests finish `Result=PASS`;
+- Compose artifact `8676138049`
+  (`sha256:ab3daed1fcb01e31e9a4e27af58479d4b1d4ea23826d5ccf951fdd721276fe5d`):
+  all application services become healthy and cleanup finishes
+  `CleanupResult=PASS`;
+- identity artifact `8676144021`
+  (`sha256:d3639aed8a3a8e4dfc8b5f74fce753055869404b97e8ba9c5431ac26be3449b7`):
+  the pinned non-production Keycloak reference conformance job passes.
+
+Cross-service run `30327014218` is also green on the same source state. The
+clean-runner and Compose evidence that kept Phase 2 open now exists, so Phase 2
+and G1 are complete. Phase 3+, production IdP, DeepSeek/legal egress, live
+connector, evidence-object lifecycle, held-out/human evaluation, Temporal
+workflow, RAG, remediation, staging/production, DR, and final release remain
+open exactly as tracked in their owning gates.
+
 ## 2026-07-27 — Tool Gateway tenant-isolation immutable evidence passed
 
 Implemented in the current branch:
@@ -799,7 +849,8 @@ BLOCK.
 ## Unresolved Questions
 
 Production IdP, provider/legal, named live connector, evidence-object lifecycle,
-RAG, remediation, Temporal, staging/production, DR, and release conformance
-remain explicit gates. Phase 9 infrastructure may start with provisional
-test-only thresholds, but threshold freeze and Phase 9 exit require reviewed
-human pilot data; see [Blockers](./blockers.md).
+RAG, remediation, a live Temporal environment and restart/resume worker,
+staging/production, DR, and release conformance remain explicit gates. Phase 9
+handoff infrastructure is in progress with provisional test-only thresholds,
+but exact-head evidence, threshold freeze, and Phase 9 exit remain open;
+B-013 requires reviewed human pilot data. See [Blockers](./blockers.md).

@@ -128,6 +128,11 @@ $nestedDependencyParent = Join-Path $isolatedRepository 'apps\operator-web\node_
 $nestedDependencyLink = Join-Path $nestedDependencyParent 'fixture-package'
 $externalArtifactRoot = Join-Path $evidenceRoot 'external-artifacts'
 $externalArtifactCanaryPath = Join-Path $externalArtifactRoot "external-canary-$suffix.txt"
+$linkedWorktreeRoot = Join-Path $evidenceRoot 'linked-worktree'
+$linkedWorktreeBranch = "test/linked-secret-scan-$suffix"
+$linkedWorktreeArtifactCanaryPath = Join-Path $isolatedRepository "artifacts\\linked-worktree-artifact-$suffix.txt"
+$linkedWorktreeStagedCanaryPath = Join-Path $linkedWorktreeRoot "linked-worktree-staged-$suffix.txt"
+$linkedWorktreeHistoryCanaryPath = Join-Path $linkedWorktreeRoot "linked-worktree-history-$suffix.txt"
 $isolatedEvidenceRoot = Join-Path $isolatedRepository 'artifacts\verification'
 $encoding = New-Object Text.UTF8Encoding($false)
 $previousArtifactRoot = $env:OPS_ARTIFACT_ROOT
@@ -337,6 +342,64 @@ try {
     Remove-Item -LiteralPath $externalArtifactCanaryPath -Force
     $env:OPS_ARTIFACT_ROOT = $previousArtifactRoot
 
+    & git -C $isolatedRepository worktree add --quiet -b $linkedWorktreeBranch $linkedWorktreeRoot HEAD
+    if ($LASTEXITCODE -ne 0) { throw 'Unable to create linked worktree secret-scan fixture.' }
+    if (Test-Path -LiteralPath (Join-Path $linkedWorktreeRoot 'artifacts')) {
+        throw 'Linked worktree fixture unexpectedly materialized its own artifact root.'
+    }
+
+    $linkedBaselineEvidence = Join-Path $isolatedEvidenceRoot 'linked-worktree-baseline.txt'
+    Invoke-SecretScan -ScannerPath $scannerPath -RepositoryRoot $linkedWorktreeRoot `
+        -EvidencePath $linkedBaselineEvidence -ExpectedExitCode 0
+    foreach ($unexpectedRule in @('artifact-root-unavailable', 'git-index-snapshot-failed')) {
+        if (Select-String -LiteralPath $linkedBaselineEvidence -SimpleMatch "Rule=$unexpectedRule" -Quiet) {
+            throw "Linked worktree baseline retained the regression finding: $unexpectedRule"
+        }
+    }
+
+    [IO.File]::WriteAllText($linkedWorktreeArtifactCanaryPath, "LINKED_ARTIFACT_TOKEN=$providerCanary", $encoding)
+    $linkedArtifactEvidence = Join-Path $isolatedEvidenceRoot 'linked-worktree-artifact-secret.txt'
+    Invoke-SecretScan -ScannerPath $scannerPath -RepositoryRoot $linkedWorktreeRoot `
+        -EvidencePath $linkedArtifactEvidence -ExpectedExitCode 7 -ExpectedRule 'generic-provider-key'
+    $linkedArtifactDisplayPath = 'FindingPath=configured-artifacts/{0};Rule=generic-provider-key' -f
+        [IO.Path]::GetFileName($linkedWorktreeArtifactCanaryPath)
+    if (-not (Select-String -LiteralPath $linkedArtifactEvidence -SimpleMatch $linkedArtifactDisplayPath -Quiet)) {
+        throw 'Expected linked-worktree artifact secret finding was not recorded.'
+    }
+    Remove-Item -LiteralPath $linkedWorktreeArtifactCanaryPath -Force
+
+    [IO.File]::WriteAllText($linkedWorktreeStagedCanaryPath, "LINKED_STAGED_TOKEN=$providerCanary", $encoding)
+    & git -C $linkedWorktreeRoot add -- ([IO.Path]::GetFileName($linkedWorktreeStagedCanaryPath))
+    if ($LASTEXITCODE -ne 0) { throw 'Unable to stage linked worktree index canary.' }
+    [IO.File]::WriteAllText($linkedWorktreeStagedCanaryPath, 'LINKED_STAGED_TOKEN=example-placeholder', $encoding)
+    $linkedStagedEvidence = Join-Path $isolatedEvidenceRoot 'linked-worktree-staged-index-secret.txt'
+    Invoke-SecretScan -ScannerPath $scannerPath -RepositoryRoot $linkedWorktreeRoot `
+        -EvidencePath $linkedStagedEvidence -ExpectedExitCode 7 -ExpectedRule 'generic-provider-key'
+    $linkedStagedDisplayPath = 'FindingPath=git-index/{0};Rule=generic-provider-key' -f
+        [IO.Path]::GetFileName($linkedWorktreeStagedCanaryPath)
+    if (-not (Select-String -LiteralPath $linkedStagedEvidence -SimpleMatch $linkedStagedDisplayPath -Quiet)) {
+        throw 'Expected linked-worktree staged-index-only secret finding was not recorded.'
+    }
+    & git -C $linkedWorktreeRoot rm --cached --quiet --force -- ([IO.Path]::GetFileName($linkedWorktreeStagedCanaryPath))
+    if ($LASTEXITCODE -ne 0) { throw 'Unable to clear linked worktree staged canary.' }
+    Remove-Item -LiteralPath $linkedWorktreeStagedCanaryPath -Force
+
+    [IO.File]::WriteAllText($linkedWorktreeHistoryCanaryPath, ('LINKED_HISTORY_TOKEN={0}' -f $providerCanary), $encoding)
+    & git -C $linkedWorktreeRoot add -- ([IO.Path]::GetFileName($linkedWorktreeHistoryCanaryPath))
+    if ($LASTEXITCODE -ne 0) { throw 'Unable to stage linked worktree history canary.' }
+    & git -C $linkedWorktreeRoot commit --quiet -m 'test linked worktree history scanning'
+    if ($LASTEXITCODE -ne 0) { throw 'Unable to commit linked worktree history canary.' }
+    & git -C $linkedWorktreeRoot rm --quiet -- ([IO.Path]::GetFileName($linkedWorktreeHistoryCanaryPath))
+    if ($LASTEXITCODE -ne 0) { throw 'Unable to remove linked worktree history canary.' }
+    & git -C $linkedWorktreeRoot commit --quiet -m 'remove linked worktree history canary'
+    if ($LASTEXITCODE -ne 0) { throw 'Unable to commit linked worktree history-canary removal.' }
+    $linkedHistoryEvidence = Join-Path $isolatedEvidenceRoot 'linked-worktree-history-secret.txt'
+    Invoke-SecretScan -ScannerPath $scannerPath -RepositoryRoot $linkedWorktreeRoot `
+        -EvidencePath $linkedHistoryEvidence -ExpectedExitCode 7 -ExpectedRule 'generic-provider-key'
+    if (-not (Select-String -LiteralPath $linkedHistoryEvidence -SimpleMatch 'FindingPath=git-history;Rule=generic-provider-key' -Quiet)) {
+        throw 'Expected linked-worktree history-only secret finding was not recorded against git-history.'
+    }
+
     [IO.File]::WriteAllText($stagedCanaryPath, "STAGED_TOKEN=$providerCanary", $encoding)
     & git -C $isolatedRepository add -- ([IO.Path]::GetFileName($stagedCanaryPath))
     if ($LASTEXITCODE -ne 0) { throw 'Unable to stage isolated index canary.' }
@@ -421,16 +484,20 @@ try {
         -EvidencePath (Join-Path $isolatedEvidenceRoot 'binary-history.txt') `
         -ExpectedExitCode 7 -ExpectedRule 'binary-history-unscanned'
 
-    Write-Output 'Project secret-scan tests: PASS (26/26)'
+    Write-Output 'Project secret-scan tests: PASS (30/30)'
 }
 finally {
     $env:OPS_ARTIFACT_ROOT = $previousArtifactRoot
-    foreach ($path in @($ignoredEnvironmentPath, $extensionlessPath, $utf32Path, $genericCredentialPath, $knownNonSecretDatabaseUrlPath, $benignTokenSourcePath, $emptyTextPath, $historyCanaryPath, $binaryCanaryPath, $stagedCanaryPath, $historicalSensitivePath, $externalArtifactCanaryPath)) {
+    foreach ($path in @($ignoredEnvironmentPath, $extensionlessPath, $utf32Path, $genericCredentialPath, $knownNonSecretDatabaseUrlPath, $benignTokenSourcePath, $emptyTextPath, $historyCanaryPath, $binaryCanaryPath, $stagedCanaryPath, $historicalSensitivePath, $externalArtifactCanaryPath, $linkedWorktreeArtifactCanaryPath, $linkedWorktreeStagedCanaryPath, $linkedWorktreeHistoryCanaryPath)) {
         if (Test-Path -LiteralPath $path -PathType Leaf) {
             Remove-Item -LiteralPath $path -Force
         }
     }
     Remove-VerifiedJunction -Path $nestedDependencyLink -AllowedParent $nestedDependencyParent
+    if (Test-Path -LiteralPath $linkedWorktreeRoot -PathType Container) {
+        & git -C $isolatedRepository worktree remove --force $linkedWorktreeRoot
+        if ($LASTEXITCODE -ne 0) { throw 'Unable to remove linked worktree secret-scan fixture.' }
+    }
     if (Test-Path -LiteralPath $evidenceRoot -PathType Container) {
         $resolvedEvidenceRoot = [IO.Path]::GetFullPath($evidenceRoot)
         $allowedPrefix = [IO.Path]::GetFullPath((Join-Path $repositoryRoot '.opsmind\secret-scan-tests'))
