@@ -51,14 +51,14 @@ Accepted scope remains full A-to-Z, but delivery is gate-driven: the approved G0
 | Phase | Name | Status |
 |-------|------|--------|
 | 1 | [Operating Envelope and Architecture Governance](./phase-01-operating-envelope-and-architecture-governance.md) | Completed |
-| 2 | [Monorepo and Developer Platform Foundation](./phase-02-monorepo-and-developer-platform-foundation.md) | In Progress |
+| 2 | [Monorepo and Developer Platform Foundation](./phase-02-monorepo-and-developer-platform-foundation.md) | Completed |
 | 3 | [Contracts Data Identity and Tenant Foundation](./phase-03-contracts-data-identity-and-tenant-foundation.md) | In Progress |
 | 4 | [Incident Control Plane and Audit Ledger](./phase-04-incident-control-plane-and-audit-ledger.md) ([4B evidence ingress](./phase-04b-bounded-evidence-record-ingress.md)) | In Progress — 4A and bounded-record checkpoint 4B complete; large/raw artifact lifecycle still open |
 | 5 | [DeepSeek AI Runtime and Model Gateway](./phase-05-deepseek-ai-runtime-and-model-gateway.md) | In Progress — static checkpoint PASS; PhaseExitGate BLOCK |
 | 6 | [Safe Tool Gateway and Read-only Connectors](./phase-06-safe-tool-gateway-and-read-only-connectors.md) | In progress — checkpoint PASS; PhaseExitGate BLOCK |
 | 7 | [Thin Evidence-backed Incident Vertical Slice](./phase-07-thin-evidence-backed-incident-vertical-slice.md) | In progress — durable persistence checkpoint PASS; PhaseExitGate BLOCK |
 | 8 | [Simulator and Evaluation Baseline](./phase-08-simulator-and-evaluation-baseline.md) ([8B production-path evaluation](../260726-1004-phase-08b-production-path-evaluation/plan.md)) | In Progress — Phase 8B implementation/local contracts present; production-path CI pending; PhaseExit BLOCK |
-| 9 | [Durable Investigation Workflow](./phase-09-durable-investigation-workflow.md) | Pending |
+| 9 | [Durable Investigation Workflow](./phase-09-durable-investigation-workflow.md) | In Progress |
 | 10 | [Permission-aware RAG and Knowledge Lifecycle](./phase-10-permission-aware-rag-and-knowledge-lifecycle.md) | Pending |
 | 11 | [Exact-action Approval and Reversible Remediation](./phase-11-exact-action-approval-and-reversible-remediation.md) | Pending |
 | 12 | [Operator Web Experience Completion](./phase-12-operator-web-experience-completion.md) | Pending |

@@ -14,14 +14,15 @@ import org.springframework.http.HttpStatus;
 import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.stereotype.Repository;
 import org.springframework.transaction.PlatformTransactionManager;
+import org.springframework.transaction.support.TransactionSynchronizationManager;
 import org.springframework.transaction.support.TransactionTemplate;
 
 @Repository
 @Profile("persistence")
 @ConditionalOnProperty(prefix = "opsmind.investigation", name = "store", havingValue = "postgres")
 @ConditionalOnProperty(prefix = "opsmind.persistence", name = "enabled", havingValue = "true")
-public final class JdbcInvestigationRunStore implements InvestigationRunStore {
-
+public final class JdbcInvestigationRunStore
+    implements InvestigationRunStore, InvestigationInitialRunWriter {
     private final JdbcTemplate jdbcTemplate;
     private final TenantContextSql tenantContextSql;
     private final TransactionTemplate transactions;
@@ -30,7 +31,6 @@ public final class JdbcInvestigationRunStore implements InvestigationRunStore {
     private final JdbcInvestigationRunReader reader;
     private final InvestigationEventLedger eventLedger;
     private final InvestigationReplayVerifier replayVerifier;
-
     public JdbcInvestigationRunStore(
         JdbcTemplate jdbcTemplate,
         TenantContextSql tenantContextSql,
@@ -49,29 +49,40 @@ public final class JdbcInvestigationRunStore implements InvestigationRunStore {
         this.eventLedger = eventLedger;
         this.replayVerifier = replayVerifier;
     }
-
     @Override
     public void create(InvestigationStateMachine.Step initial) {
         InvestigationStateMachine.State state = initial.state();
-        if (state.revision() != 0 || state.eventCount() != initial.events().size()) {
-            throw new IllegalArgumentException("Initial investigation persistence version is invalid.");
-        }
         execute(state.organizationId(), state.actorId(), () -> {
-            jdbcTemplate.update(
-                "INSERT INTO investigation_runs (run_id, organization_id, project_id, incident_id, "
-                    + "actor_id, status, max_rounds, max_tool_calls, max_evidence_items, max_tokens, "
-                    + "revision, event_count, rounds, tool_calls, total_tokens, "
-                    + "requested_fingerprints_state, evidence_ids_state, pending_intents_state, "
-                    + "final_response, terminal_reason, started_at, deadline_at, ended_at) "
-                    + "VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, CAST(? AS jsonb), "
-                    + "CAST(? AS jsonb), CAST(? AS jsonb), CAST(? AS jsonb), ?, ?, ?, ?)",
-                sqlMapper.insertParameters(state)
-            );
-            eventLedger.append(state, initial.events(), 1);
+            if (!createIfAbsentInCurrentTransaction(initial)) {
+                throw conflict(null);
+            }
             return null;
         });
     }
-
+    @Override
+    public boolean createIfAbsentInCurrentTransaction(InvestigationStateMachine.Step initial) {
+        if (!TransactionSynchronizationManager.isActualTransactionActive()) {
+            throw new IllegalStateException("Investigation creation requires an active transaction.");
+        }
+        InvestigationStateMachine.State state = initial.state();
+        requireInitial(initial);
+        int inserted = jdbcTemplate.update(
+            "INSERT INTO investigation_runs (run_id, organization_id, project_id, incident_id, "
+                + "actor_id, status, max_rounds, max_tool_calls, max_evidence_items, max_tokens, "
+                + "revision, event_count, rounds, tool_calls, total_tokens, "
+                + "requested_fingerprints_state, evidence_ids_state, pending_intents_state, "
+                + "final_response, terminal_reason, started_at, deadline_at, ended_at) "
+                + "VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, CAST(? AS jsonb), "
+                + "CAST(? AS jsonb), CAST(? AS jsonb), CAST(? AS jsonb), ?, ?, ?, ?) "
+                + "ON CONFLICT (organization_id, run_id) DO NOTHING",
+            sqlMapper.insertParameters(state)
+        );
+        if (inserted != 1) {
+            return false;
+        }
+        eventLedger.append(state, initial.events(), 1);
+        return true;
+    }
     @Override
     public void save(
         InvestigationStateMachine.State previous,
@@ -101,14 +112,12 @@ public final class JdbcInvestigationRunStore implements InvestigationRunStore {
             return null;
         });
     }
-
     @Override
     public InvestigationStateMachine.State require(UUID organizationId, UUID actorId, UUID runId) {
         return execute(organizationId, actorId, () -> reader.require(
             "WHERE organization_id = ? AND run_id = ?", organizationId, runId
         ));
     }
-
     @Override
     public InvestigationStateMachine.State requireScoped(
         UUID organizationId,
@@ -122,7 +131,6 @@ public final class JdbcInvestigationRunStore implements InvestigationRunStore {
             organizationId, projectId, incidentId, runId
         ));
     }
-
     private <T> T execute(UUID organizationId, UUID actorId, Work<T> work) {
         try {
             T result = transactions.execute(status -> {
@@ -141,7 +149,6 @@ public final class JdbcInvestigationRunStore implements InvestigationRunStore {
             throw unavailable(exception);
         }
     }
-
     private void requireSuccessor(
         InvestigationStateMachine.State previous,
         InvestigationStateMachine.State next,
@@ -154,6 +161,13 @@ public final class JdbcInvestigationRunStore implements InvestigationRunStore {
             || next.eventCount() != previous.eventCount() + emittedEvents
             || emittedEvents < 1) {
             throw new IllegalArgumentException("Investigation persistence successor is invalid.");
+        }
+    }
+
+    private void requireInitial(InvestigationStateMachine.Step initial) {
+        InvestigationStateMachine.State state = initial.state();
+        if (state.revision() != 0 || state.eventCount() != initial.events().size()) {
+            throw new IllegalArgumentException("Initial investigation persistence version is invalid.");
         }
     }
 

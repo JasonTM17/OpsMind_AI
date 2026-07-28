@@ -12,10 +12,13 @@ RLS, pooled-connection, user-deprovisioning, and messaging crash-window
 boundaries. It also proves API/dispatcher database-role separation and
 tenant-safe scheduling. Local Windows and current Linux CI Keycloak 26.7
 reference profiles pass; production IdP selection/conformance remains open and
-no external publish loop is enabled. Incident control, bounded Tool Gateway/
-synthetic Prometheus, and the Operator workspace are delivered checkpoints.
-Live DeepSeek, a named live non-production connector, evidence-object lifecycle,
-RAG, remediation, Temporal, and production behavior remain later work.
+no external publish loop is enabled by default. Incident control, bounded Tool
+Gateway/synthetic Prometheus, and the Operator workspace are delivered
+checkpoints. Phase 9 adds a default-off Temporal start handoff and opt-in
+dispatcher role in the Platform API artifact; no local/live Temporal service,
+namespace, worker, or restart/resume execution exists. Live DeepSeek, a named
+live non-production connector, evidence-object lifecycle, RAG, remediation, and
+production behavior remain later work.
 Compose publishes local service ports on `127.0.0.1` only; it does not expose
 the unauthenticated Phase 2 health scaffolds to the workstation LAN.
 The incident timeline route now preserves its legacy `incident:read` + `READ`
@@ -159,7 +162,7 @@ Use either launcher consistently:
 | `dev` | Build and run the Compose `application` profile in the foreground. |
 | `up` | Build and run the profile detached, waiting for health checks. |
 | `down` | Stop the profile; remains available when capacity is below threshold. |
-| `migrate` | Applies the current Platform Flyway sequence through V009 using the supplied migration-role datasource; it does not start the web server. |
+| `migrate` | Applies the current Platform Flyway sequence through V010 using the supplied migration-role datasource; it does not start the web server. |
 | `seed` | Exit 3 until deterministic seed data has an owning phase. |
 | `evaluate` | Run evaluation tests/contracts, then score an existing managed Phase 7 trace for Scenario A, B, or C; it does not generate a trace and exits non-zero when projection, revision binding, or storage policy is incomplete. |
 
@@ -292,8 +295,30 @@ target inside the interval fails closed, so a genuine signing-key rotation can
 temporarily reject a token until the interval elapses.
 
 `OPSMIND_DISPATCHER_ENABLED=false` remains the safe application default. Phase
-3 proves the database identity, permissions, scheduler, and lease repository;
-it does not start a polling loop or publish to any external system.
+9 adds the workflow-start polling role, but Compose does not enable it. When
+enabled in the Platform API artifact, it creates a separate datasource that
+must authenticate exactly as `opsmind_dispatcher`; application credentials are
+rejected.
+
+The Phase 9 flags are independent and default off:
+
+| Variable | Safe default | Boundary |
+|---|---|---|
+| `OPSMIND_INVESTIGATION_EXECUTION_MODE` | `inline` | Keeps synchronous `200` behavior; `temporal` uses durable admission and returns `202` plus `Location`. |
+| `OPSMIND_INVESTIGATION_STORE` | `in-memory` in `.env.example` | Temporal mode requires `postgres` plus the persistence profile. |
+| `OPSMIND_INVESTIGATION_TEMPORAL_CLIENT_ENABLED` | `false` | Creates the external Temporal client only after its target policy validates. |
+| `OPSMIND_INVESTIGATION_WORKFLOW_STARTER_ENABLED` | `false` | Enables the scheduled workflow-start claim/RPC/reconciliation loop. Temporal execution fails startup while this remains disabled. |
+| `OPSMIND_INVESTIGATION_TEMPORAL_RPC_TIMEOUT`, `OPSMIND_INVESTIGATION_WORKFLOW_STARTER_RPC_MARGIN`, `OPSMIND_INVESTIGATION_WORKFLOW_STARTER_LEASE_DURATION` | `PT5S`, `PT5S`, `PT30S` | Startup requires `RPC timeout + safety margin < lease duration`, so an in-flight start cannot outlive its claim. |
+| `OPSMIND_DISPATCHER_ENABLED` | `false` | Creates the dedicated dispatcher datasource; required by the starter. |
+| `OPSMIND_DISPATCHER_DB_URL`, `OPSMIND_DISPATCHER_DB_USERNAME`, `OPSMIND_DISPATCHER_DB_PASSWORD` | disabled/blank | Must identify PostgreSQL as exact `opsmind_dispatcher` with a runtime secret. |
+| `OPSMIND_INVESTIGATION_TEMPORAL_*` | disabled | Binds cluster, namespace, target, workflow type, task queue, TLS, and required poller identity/build. |
+
+Do not enable these flags from this checkout alone. Admission requires an
+external compatible task-queue poller, but the repository has no Temporal
+Compose service or worker implementation. Before any approved environment
+cutover, follow the
+[investigation workflow cutover runbook](./runbooks/investigation-workflow-cutover.md);
+V010 intentionally performs no automatic legacy backfill.
 
 With the Compose persistence profile, authenticated API requests also resolve
 the issuer/subject against the platform user table on every request. Local
@@ -452,6 +477,7 @@ toolchain; do not weaken a version file to match an incidental host runtime.
 - `OPS_ARTIFACT_ROOT/verification/phase-03/identity-delegation-failure.txt` (failure diagnostics only)
 - `OPS_ARTIFACT_ROOT/verification/phase-04/` (revision `a975f922` PostgreSQL activity/V009 artifact `8650178111`)
 - `OPS_ARTIFACT_ROOT/verification/phase-08b/` (revision `a975f922` cross-service artifact `8649696519`)
+- `OPS_ARTIFACT_ROOT/verification/phase-09-workflow-handoff/` (current-worktree static/unit evidence only; exact-head CI/PostgreSQL evidence missing)
 - `OPS_ARTIFACT_ROOT/evaluation/phase-08/` (local scorer output; reference only)
 - Phase 2 Windows and portable command-surface test results
 - dependency-check reports under each Java service's ignored `target/` tree
@@ -462,4 +488,6 @@ Revision-bound PR-quality run `30257587569` passes clean-bootstrap lanes on host
 Linux and Windows runners. The local object-store implementation remains
 blocked by B-012 pending a supported backend decision. GitHub Dependabot still
 reports one high finding; dependency/security success in this run does not
-silently close that separate alert.
+silently close that separate alert. Phase 9 also remains in progress: B-013,
+exact-head CI/PostgreSQL evidence, and a live compatible Temporal environment
+are still open.

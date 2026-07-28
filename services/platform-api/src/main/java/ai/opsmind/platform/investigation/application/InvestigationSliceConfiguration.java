@@ -99,4 +99,5 @@ public class InvestigationSliceConfiguration {
     ) {
         return new InvestigationOrchestrator(store, aiRuntime, toolGateway, investigationClock);
     }
+
 }

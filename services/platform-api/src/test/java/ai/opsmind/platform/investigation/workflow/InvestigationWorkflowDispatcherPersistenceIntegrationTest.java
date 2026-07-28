@@ -1,0 +1,416 @@
+package ai.opsmind.platform.investigation.workflow;
+
+import static ai.opsmind.platform.testing.PostgresTenantFixtures.PROJECT_A;
+import static ai.opsmind.platform.testing.PostgresTenantFixtures.TENANT_A;
+import static ai.opsmind.platform.testing.PostgresTenantFixtures.TENANT_B;
+import static ai.opsmind.platform.testing.PostgresTenantFixtures.USER_A;
+import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.assertThatThrownBy;
+
+import java.nio.charset.StandardCharsets;
+import java.sql.Timestamp;
+import java.time.Instant;
+import java.util.List;
+import java.util.UUID;
+
+import ai.opsmind.platform.common.api.RequestDigest;
+import ai.opsmind.platform.incident.AuthorizedIncidentAnalysisEvidence;
+import ai.opsmind.platform.incident.IncidentSeverity;
+import ai.opsmind.platform.incident.IncidentStatus;
+import ai.opsmind.platform.investigation.domain.InvestigationCommand;
+import ai.opsmind.platform.investigation.integration.InvestigationAiRuntimeClient;
+import ai.opsmind.platform.investigation.integration.InvestigationToolGatewayClient;
+import ai.opsmind.platform.messaging.DispatcherDatabaseIdentity;
+import ai.opsmind.platform.messaging.OutboxLease;
+import ai.opsmind.platform.testing.PostgresIntegrationEnvironment;
+import ai.opsmind.platform.testing.PostgresTenantFixtures;
+
+import org.junit.jupiter.api.BeforeEach;
+import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.condition.EnabledIfEnvironmentVariable;
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.beans.factory.annotation.Qualifier;
+import org.springframework.boot.test.context.SpringBootTest;
+import org.springframework.jdbc.core.JdbcTemplate;
+import org.springframework.jdbc.datasource.DriverManagerDataSource;
+import org.springframework.test.context.ActiveProfiles;
+import org.springframework.test.context.DynamicPropertyRegistry;
+import org.springframework.test.context.DynamicPropertySource;
+import org.springframework.test.context.bean.override.mockito.MockitoBean;
+
+@ActiveProfiles("persistence")
+@EnabledIfEnvironmentVariable(named = "OPSMIND_PHASE9_DB_INTEGRATION", matches = "true")
+@SpringBootTest(properties = {
+    "opsmind.investigation.enabled=true",
+    "opsmind.investigation.store=postgres",
+    "opsmind.investigation.execution-mode=temporal",
+    "opsmind.investigation.workflow.cluster-id=temporal-primary",
+    "opsmind.investigation.workflow.namespace=opsmind-test",
+    "opsmind.investigation.workflow.workflow-type=opsmind-investigation-v1",
+    "opsmind.investigation.workflow.task-queue=opsmind-investigation-test",
+    "opsmind.investigation.workflow-starter.enabled=true",
+    "opsmind.investigation.workflow-starter.poll-interval=PT1M",
+    "opsmind.dispatcher.enabled=true"
+})
+class InvestigationWorkflowDispatcherPersistenceIntegrationTest {
+
+    private static final Instant NOW = Instant.parse("2030-01-01T00:00:00Z");
+
+    @Autowired
+    private InvestigationWorkflowHandoffRepository handoff;
+    @Autowired
+    private InvestigationWorkflowDispatchTransactions dispatchTransactions;
+    @Autowired
+    private InvestigationWorkflowStartTenantScheduler tenantScheduler;
+    @Autowired
+    private InvestigationWorkflowStarterProperties starterProperties;
+    @Autowired
+    private DispatcherDatabaseIdentity dispatcherIdentity;
+    @Autowired
+    private JdbcTemplate appJdbc;
+    @Autowired
+    @Qualifier("dispatcherJdbcTemplate")
+    private JdbcTemplate dispatcherJdbc;
+    @MockitoBean
+    private InvestigationWorkflowAdmission admission;
+    @MockitoBean
+    private InvestigationWorkflowClient workflowClient;
+    @MockitoBean
+    private InvestigationAiRuntimeClient aiRuntimeClient;
+    @MockitoBean
+    private InvestigationToolGatewayClient toolGatewayClient;
+
+    private JdbcTemplate admin;
+    private UUID incidentId;
+
+    @DynamicPropertySource
+    static void persistenceProperties(DynamicPropertyRegistry properties) {
+        properties.add("spring.datasource.url", () -> required("SPRING_DATASOURCE_URL"));
+        properties.add("spring.datasource.username", () -> required("POSTGRES_APP_USER"));
+        properties.add("spring.datasource.password", () -> required("POSTGRES_APP_PASSWORD"));
+        properties.add("spring.flyway.enabled", () -> "false");
+        properties.add("opsmind.persistence.enabled", () -> "true");
+        properties.add("opsmind.dispatcher.datasource.url", () -> required("SPRING_DATASOURCE_URL"));
+        properties.add(
+            "opsmind.dispatcher.datasource.username",
+            () -> required("POSTGRES_DISPATCHER_USER")
+        );
+        properties.add(
+            "opsmind.dispatcher.datasource.password",
+            () -> required("POSTGRES_DISPATCHER_PASSWORD")
+        );
+    }
+
+    @BeforeEach
+    void seed() throws Exception {
+        PostgresIntegrationEnvironment environment = PostgresIntegrationEnvironment.fromProcess();
+        PostgresTenantFixtures.seed(environment);
+        admin = new JdbcTemplate(new DriverManagerDataSource(
+            environment.jdbcUrl(), environment.adminUser(), environment.adminPassword()
+        ));
+        quarantinePreviousWorkflowHandoffs();
+        incidentId = UUID.randomUUID();
+        admin.update(
+            "INSERT INTO incidents (id, organization_id, project_id, title, description, severity, "
+                + "status, created_by, updated_by, created_at, updated_at, version) "
+                + "VALUES (?, ?, ?, 'Latency', 'Synthetic', 'SEV2', 'OPEN', ?, ?, ?, ?, 0)",
+            incidentId, TENANT_A, PROJECT_A, USER_A, USER_A,
+            Timestamp.from(NOW), Timestamp.from(NOW)
+        );
+    }
+
+    @Test
+    void distinctDispatcherRoleClaimsOnlyWorkflowEventAndAcknowledgesAtomically() {
+        InvestigationCommand.Start command = createHandoff();
+        UUID unrelatedEvent = insertUnrelatedEvent();
+        assertThat(dispatcherIdentity.sessionUser()).isEqualTo("opsmind_dispatcher");
+        assertThat(appJdbc.queryForObject("SELECT session_user", String.class))
+            .isEqualTo("opsmind_app");
+        assertThat(dispatcherJdbc.queryForObject("SELECT session_user", String.class))
+            .isEqualTo("opsmind_dispatcher");
+        assertThat(tenantScheduler.listReadyTenants(10)).contains(TENANT_A);
+
+        List<OutboxLease> claimed = dispatchTransactions.claim(
+            TENANT_A, UUID.randomUUID(), NOW, starterProperties
+        );
+
+        assertThat(claimed).hasSize(1);
+        OutboxLease lease = claimed.getFirst();
+        assertThat(lease.event().eventType())
+            .isEqualTo(InvestigationWorkflowStartEnvelopeFactory.EVENT_TYPE);
+        assertThat(dispatchTransactions.leaseIsLive(lease)).isTrue();
+        assertThat(admin.queryForObject(
+            "SELECT lease_token IS NULL FROM outbox_events WHERE event_id = ?",
+            Boolean.class, unrelatedEvent
+        )).isTrue();
+        assertThat(dispatchTransactions.claim(
+            TENANT_B, UUID.randomUUID(), NOW, starterProperties
+        )).isEmpty();
+
+        dispatchTransactions.acknowledgeStarted(
+            lease, "temporal-run-success", NOW.plusSeconds(1)
+        );
+
+        assertThat(admin.queryForObject(
+            "SELECT status FROM investigation_workflow_bindings "
+                + "WHERE organization_id = ? AND run_id = ?",
+            String.class, TENANT_A, command.runId()
+        )).isEqualTo("STARTED");
+        assertThat(admin.queryForObject(
+            "SELECT status FROM inbox_events WHERE organization_id = ? AND event_id = ? "
+                + "AND consumer = ?",
+            String.class, TENANT_A, lease.event().eventId(),
+            InvestigationWorkflowDispatchTransactions.CONSUMER
+        )).isEqualTo("processed");
+        assertThat(admin.queryForObject(
+            "SELECT published_at IS NOT NULL FROM outbox_events WHERE event_id = ?",
+            Boolean.class, lease.event().eventId()
+        )).isTrue();
+    }
+
+    @Test
+    void databaseClockRatherThanCallerClockFencesAcknowledgement() {
+        InvestigationCommand.Start command = createHandoff();
+        OutboxLease lease = dispatchTransactions.claim(
+            TENANT_A, UUID.randomUUID(), NOW, starterProperties
+        ).getFirst();
+        admin.update(
+            "UPDATE outbox_events SET lease_expires_at = transaction_timestamp() "
+                + "+ interval '1 hour' WHERE event_id = ?",
+            lease.event().eventId()
+        );
+
+        // The fixture clock is years ahead of the database clock. A live lease
+        // must still acknowledge because the database owns lease validity.
+        dispatchTransactions.acknowledgeStarted(
+            lease, "temporal-run-skew-safe", NOW.plusSeconds(1)
+        );
+
+        assertThat(admin.queryForObject(
+            "SELECT status FROM investigation_workflow_bindings "
+                + "WHERE organization_id = ? AND run_id = ?",
+            String.class, TENANT_A, command.runId()
+        )).isEqualTo("STARTED");
+        assertThat(admin.queryForObject(
+            "SELECT published_at IS NOT NULL FROM outbox_events WHERE event_id = ?",
+            Boolean.class, lease.event().eventId()
+        )).isTrue();
+    }
+
+    @Test
+    void expiredLeaseCannotPartiallyAcknowledgeBindingInboxOrOutbox() {
+        InvestigationCommand.Start command = createHandoff();
+        OutboxLease lease = dispatchTransactions.claim(
+            TENANT_A, UUID.randomUUID(), NOW, starterProperties
+        ).getFirst();
+        admin.update(
+            "UPDATE outbox_events SET lease_expires_at = transaction_timestamp() "
+                + "- interval '1 second' WHERE event_id = ?",
+            lease.event().eventId()
+        );
+
+        assertThatThrownBy(() -> dispatchTransactions.acknowledgeStarted(
+            lease, "temporal-run-stale", NOW
+        )).isInstanceOf(IllegalStateException.class);
+
+        assertThat(admin.queryForObject(
+            "SELECT status FROM investigation_workflow_bindings "
+                + "WHERE organization_id = ? AND run_id = ?",
+            String.class, TENANT_A, command.runId()
+        )).isEqualTo("PENDING");
+        assertThat(admin.queryForObject(
+            "SELECT count(*) FROM inbox_events WHERE organization_id = ? AND event_id = ?",
+            Integer.class, TENANT_A, lease.event().eventId()
+        )).isZero();
+        assertThat(admin.queryForObject(
+            "SELECT published_at IS NULL FROM outbox_events WHERE event_id = ?",
+            Boolean.class, lease.event().eventId()
+        )).isTrue();
+    }
+
+    @Test
+    void permanentFailureRejectsBindingInboxAndOutboxInOneTransaction() {
+        InvestigationCommand.Start command = createHandoff();
+        OutboxLease lease = dispatchTransactions.claim(
+            TENANT_A, UUID.randomUUID(), NOW, starterProperties
+        ).getFirst();
+
+        dispatchTransactions.reject(lease, "workflow.event-contract-invalid", NOW);
+
+        assertThat(admin.queryForObject(
+            "SELECT status FROM investigation_workflow_bindings "
+                + "WHERE organization_id = ? AND run_id = ?",
+            String.class, TENANT_A, command.runId()
+        )).isEqualTo("REJECTED");
+        assertThat(admin.queryForObject(
+            "SELECT status FROM inbox_events WHERE organization_id = ? AND event_id = ? "
+                + "AND consumer = ?",
+            String.class, TENANT_A, lease.event().eventId(),
+            InvestigationWorkflowDispatchTransactions.CONSUMER
+        )).isEqualTo("poisoned");
+        assertThat(admin.queryForObject(
+            "SELECT poisoned_at IS NOT NULL AND last_error = ? "
+                + "FROM outbox_events WHERE event_id = ?",
+            Boolean.class, "workflow.event-contract-invalid", lease.event().eventId()
+        )).isTrue();
+    }
+
+    @Test
+    void expiredLeaseCannotReleaseOrPoisonAClaimOwnedByAnotherAttempt() {
+        InvestigationCommand.Start command = createHandoff();
+        OutboxLease lease = dispatchTransactions.claim(
+            TENANT_A, UUID.randomUUID(), NOW, starterProperties
+        ).getFirst();
+        admin.update(
+            "UPDATE outbox_events SET lease_expires_at = transaction_timestamp() "
+                + "- interval '1 second' WHERE event_id = ?",
+            lease.event().eventId()
+        );
+
+        assertThat(dispatchTransactions.releaseRetry(
+            lease,
+            "workflow.temporal-unavailable",
+            NOW,
+            NOW.plusSeconds(1)
+        )).isFalse();
+
+        assertThat(admin.queryForObject(
+            "SELECT status FROM investigation_workflow_bindings "
+                + "WHERE organization_id = ? AND run_id = ?",
+            String.class, TENANT_A, command.runId()
+        )).isEqualTo("PENDING");
+        assertThat(admin.queryForObject(
+            "SELECT lease_token = ? AND last_error IS NULL AND poisoned_at IS NULL "
+                + "FROM outbox_events WHERE event_id = ?",
+            Boolean.class, lease.leaseToken(), lease.event().eventId()
+        )).isTrue();
+    }
+
+    @Test
+    void moreThanOneHundredUnrelatedReadyTenantsCannotStarveWorkflowStarts() {
+        InvestigationCommand.Start command = createHandoff();
+        insertUnrelatedReadyTenants(101);
+        try {
+            assertThat(tenantScheduler.listReadyTenants(10))
+                .contains(TENANT_A)
+                .doesNotContain(TENANT_B);
+            assertThat(dispatchTransactions.claim(
+                TENANT_A, UUID.randomUUID(), NOW, starterProperties
+            )).singleElement().satisfies(lease ->
+                assertThat(lease.event().aggregateId()).isEqualTo(command.runId())
+            );
+        }
+        finally {
+            deleteUnrelatedReadyTenants();
+        }
+    }
+
+    private InvestigationCommand.Start createHandoff() {
+        InvestigationCommand.Start command = new InvestigationCommand.Start(
+            UUID.randomUUID(), TENANT_A, PROJECT_A, incidentId, USER_A,
+            new InvestigationCommand.Budget(4, 4, 20, 8_000),
+            NOW, NOW.plusSeconds(600)
+        );
+        handoff.createOrLoad(
+            command,
+            new AuthorizedIncidentAnalysisEvidence(
+                command.organizationId(), command.projectId(), command.incidentId(),
+                command.actorId(), "Latency", "Synthetic", IncidentSeverity.SEV2,
+                IncidentStatus.INVESTIGATING, null, null, 0
+            )
+        );
+        return command;
+    }
+
+    private UUID insertUnrelatedEvent() {
+        UUID eventId = UUID.randomUUID();
+        UUID aggregateId = UUID.randomUUID();
+        String payload = "{\"kind\":\"unrelated\"}";
+        byte[] payloadBytes = payload.getBytes(StandardCharsets.UTF_8);
+        admin.update(
+            "INSERT INTO outbox_events "
+                + "(event_id, organization_id, aggregate_type, aggregate_id, aggregate_sequence, "
+                + "event_type, schema_version, correlation_id, occurred_at, payload, "
+                + "payload_bytes, payload_digest) "
+                + "VALUES (?, ?, 'unrelated', ?, 1, 'unrelated.event', '1', ?, ?, "
+                + "CAST(? AS jsonb), ?, ?)",
+            eventId, TENANT_A, aggregateId, aggregateId, Timestamp.from(NOW),
+            payload, payloadBytes, RequestDigest.sha256(payloadBytes)
+        );
+        return eventId;
+    }
+
+    private void quarantinePreviousWorkflowHandoffs() {
+        admin.update(
+            "UPDATE outbox_events SET poisoned_at = COALESCE(poisoned_at, statement_timestamp()), "
+                + "last_error = COALESCE(last_error, 'test.previous-handoff'), "
+                + "lease_token = NULL, lease_expires_at = NULL "
+                + "WHERE organization_id = ? "
+                + "AND event_type = ? AND published_at IS NULL",
+            TENANT_A,
+            InvestigationWorkflowStartEnvelopeFactory.EVENT_TYPE
+        );
+    }
+
+    private void insertUnrelatedReadyTenants(int count) {
+        admin.update(
+            "INSERT INTO organizations (id, slug, name) "
+                + "SELECT md5('phase9-unrelated-org-' || item)::uuid, "
+                + "'phase9-unrelated-' || item, 'Phase 9 unrelated ' || item "
+                + "FROM generate_series(1, ?) item ON CONFLICT (id) DO NOTHING",
+            count
+        );
+        admin.update(
+            "INSERT INTO service_accounts "
+                + "(id, organization_id, name, credential_ref, allowed_audiences, "
+                + "allowed_scopes, database_principal) "
+                + "SELECT md5('phase9-unrelated-account-' || item)::uuid, "
+                + "md5('phase9-unrelated-org-' || item)::uuid, 'outbox-dispatcher', "
+                + "'secret-manager://phase9/unrelated/' || item, "
+                + "'[\"opsmind-outbox-dispatcher\"]'::jsonb, "
+                + "'[\"outbox:dispatch\"]'::jsonb, 'opsmind_dispatcher' "
+                + "FROM generate_series(1, ?) item ON CONFLICT (id) DO NOTHING",
+            count
+        );
+        admin.update(
+            "INSERT INTO outbox_events "
+                + "(event_id, organization_id, aggregate_type, aggregate_id, "
+                + "aggregate_sequence, event_type, schema_version, correlation_id, "
+                + "occurred_at, payload, payload_bytes, payload_digest) "
+                + "SELECT md5('phase9-unrelated-event-' || item)::uuid, "
+                + "md5('phase9-unrelated-org-' || item)::uuid, 'unrelated', "
+                + "md5('phase9-unrelated-aggregate-' || item)::uuid, 1, "
+                + "'unrelated.event', '1', "
+                + "md5('phase9-unrelated-aggregate-' || item)::uuid, ?, "
+                + "'{\"kind\":\"unrelated\"}'::jsonb, "
+                + "convert_to('{\"kind\":\"unrelated\"}', 'UTF8'), "
+                + "digest(convert_to('{\"kind\":\"unrelated\"}', 'UTF8'), 'sha256') "
+                + "FROM generate_series(1, ?) item ON CONFLICT (event_id) DO NOTHING",
+            Timestamp.from(NOW.minusSeconds(60)), count
+        );
+    }
+
+    private void deleteUnrelatedReadyTenants() {
+        admin.update(
+            "DELETE FROM outbox_events "
+                + "WHERE event_id IN (SELECT md5('phase9-unrelated-event-' || item)::uuid "
+                + "FROM generate_series(1, 101) item)"
+        );
+        admin.update(
+            "DELETE FROM service_accounts "
+                + "WHERE id IN (SELECT md5('phase9-unrelated-account-' || item)::uuid "
+                + "FROM generate_series(1, 101) item)"
+        );
+        admin.update(
+            "DELETE FROM organizations "
+                + "WHERE id IN (SELECT md5('phase9-unrelated-org-' || item)::uuid "
+                + "FROM generate_series(1, 101) item)"
+        );
+    }
+
+    private static String required(String name) {
+        String value = System.getenv(name);
+        if (value == null || value.isBlank()) throw new IllegalStateException(name + " is required.");
+        return value;
+    }
+}

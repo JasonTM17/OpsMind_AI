@@ -411,7 +411,20 @@ paths:
               $ref: '#/components/schemas/StartInvestigationRequest'
       responses:
         '200':
-          description: Bounded investigation projection with cited structured analysis
+          description: Synchronously completed bounded investigation projection
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/InvestigationView'
+        '202':
+          description: Durable investigation start accepted for asynchronous execution
+          headers:
+            Location:
+              description: Tenant-scoped URL of the accepted investigation
+              required: true
+              schema:
+                type: string
+                format: uri-reference
           content:
             application/json:
               schema:
@@ -426,6 +439,8 @@ paths:
           $ref: '#/components/responses/NotFound'
         '408':
           $ref: '#/components/responses/RequestTimeout'
+        '409':
+          $ref: '#/components/responses/Conflict'
         '503':
           $ref: '#/components/responses/ServiceUnavailable'
   /organizations/{organizationId}/projects/{projectId}/incidents/{incidentId}/investigations/{runId}:

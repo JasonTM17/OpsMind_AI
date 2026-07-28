@@ -1,7 +1,7 @@
 ---
 phase: 9
 title: "Durable Investigation Workflow"
-status: pending
+status: in-progress
 priority: P1
 dependencies: [4, 5, 6, 7, 8]
 effort: "2-3 weeks"

@@ -1,5 +1,6 @@
 package ai.opsmind.platform.investigation.api;
 
+import java.net.URI;
 import java.util.UUID;
 
 import ai.opsmind.platform.common.api.PlatformProblemException;
@@ -7,6 +8,7 @@ import ai.opsmind.platform.common.api.OperatorProjection;
 import ai.opsmind.platform.identity.JwtPrincipalMapper;
 import ai.opsmind.platform.identity.OpsMindPrincipal;
 import ai.opsmind.platform.investigation.application.InvestigationRunService;
+import ai.opsmind.platform.investigation.application.InvestigationStartResult;
 import ai.opsmind.platform.investigation.projection.InvestigationRunReadModel;
 import ai.opsmind.platform.investigation.projection.OperatorInvestigationProjection;
 
@@ -40,14 +42,35 @@ public final class InvestigationRunController {
     }
 
     @PostMapping
-    InvestigationRunReadModel start(
+    ResponseEntity<InvestigationRunReadModel> start(
         Authentication authentication,
         @PathVariable UUID organizationId,
         @PathVariable UUID projectId,
         @PathVariable UUID incidentId,
         @RequestBody StartInvestigationRequest request
     ) {
-        return service.start(principal(authentication), organizationId, projectId, incidentId, request);
+        InvestigationStartResult result =
+            service.start(principal(authentication), organizationId, projectId, incidentId, request);
+        if (!result.asynchronous()) {
+            return ResponseEntity.ok(result.investigation());
+        }
+        return ResponseEntity.accepted()
+            .location(investigationLocation(organizationId, projectId, incidentId, request.runId()))
+            .body(result.investigation());
+    }
+
+    private URI investigationLocation(
+        UUID organizationId,
+        UUID projectId,
+        UUID incidentId,
+        UUID runId
+    ) {
+        return URI.create(
+            "/api/v1/organizations/" + organizationId
+                + "/projects/" + projectId
+                + "/incidents/" + incidentId
+                + "/investigations/" + runId
+        );
     }
 
     @GetMapping(

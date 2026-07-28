@@ -481,6 +481,34 @@ function Read-GitOutputBounded {
     }
 }
 
+function Get-RepositoryStorageRoot {
+    param([Parameter(Mandatory = $true)][string]$RepositoryRoot)
+
+    $previousErrorActionPreference = $ErrorActionPreference
+    $gitCommonDirOutput = @()
+    $gitCommonDirExitCode = -1
+    try {
+        $ErrorActionPreference = 'Continue'
+        $gitCommonDirOutput = @(& git -C $RepositoryRoot rev-parse --path-format=absolute --git-common-dir 2>$null)
+        $gitCommonDirExitCode = [int]$LASTEXITCODE
+    }
+    catch {
+        $gitCommonDirExitCode = -1
+    }
+    finally {
+        $ErrorActionPreference = $previousErrorActionPreference
+    }
+
+    if ($gitCommonDirExitCode -eq 0 -and $gitCommonDirOutput.Count -eq 1) {
+        $gitCommonDir = [IO.Path]::GetFullPath(([string]$gitCommonDirOutput[0]).Trim())
+        if ([IO.Path]::GetFileName($gitCommonDir).Equals('.git', $pathStringComparison)) {
+            return [IO.Path]::GetDirectoryName($gitCommonDir).TrimEnd('\', '/')
+        }
+    }
+
+    return $RepositoryRoot
+}
+
 $repositoryRoot = if ([string]::IsNullOrWhiteSpace($RepositoryRoot)) {
     [IO.Path]::GetFullPath((Join-Path $PSScriptRoot '..\..')).TrimEnd('\', '/')
 }
@@ -493,9 +521,11 @@ else {
 if (-not (Test-Path -LiteralPath $repositoryRoot -PathType Container)) {
     throw "RepositoryRoot is unavailable: $repositoryRoot"
 }
+$repositoryStorageRoot = Get-RepositoryStorageRoot -RepositoryRoot $repositoryRoot
 $evidencePathWasExplicit = -not [string]::IsNullOrWhiteSpace($EvidencePath)
-$artifactRoot = if ([string]::IsNullOrWhiteSpace($env:OPS_ARTIFACT_ROOT)) {
-    Join-Path $repositoryRoot 'artifacts'
+$artifactRootWasDefault = [string]::IsNullOrWhiteSpace($env:OPS_ARTIFACT_ROOT)
+$artifactRoot = if ($artifactRootWasDefault) {
+    Join-Path $repositoryStorageRoot 'artifacts'
 }
 else {
     if (-not [IO.Path]::IsPathRooted($env:OPS_ARTIFACT_ROOT)) {
@@ -595,9 +625,15 @@ foreach ($file in @($workingTree.Files)) {
 
 $repositoryPrefix = $repositoryRoot.TrimEnd('\', '/') + [IO.Path]::DirectorySeparatorChar
 $artifactRootNormalized = [IO.Path]::GetFullPath($artifactRoot).TrimEnd('\', '/')
-$artifactInsideRepository = $artifactRootNormalized.Equals($repositoryRoot, $pathStringComparison) -or
-    $artifactRootNormalized.StartsWith($repositoryPrefix, $pathStringComparison)
+$artifactConfiguredBoundaryRoot = if ($artifactRootWasDefault) { $repositoryStorageRoot } else { $repositoryRoot }
+$artifactConfiguredBoundaryPrefix = $artifactConfiguredBoundaryRoot.TrimEnd('\', '/') + [IO.Path]::DirectorySeparatorChar
+$artifactInsideConfiguredBoundary = $artifactRootNormalized.Equals($artifactConfiguredBoundaryRoot, $pathStringComparison) -or
+    $artifactRootNormalized.StartsWith($artifactConfiguredBoundaryPrefix, $pathStringComparison)
 $repositoryInsideArtifact = $repositoryRoot.StartsWith(
+    $artifactRootNormalized + [IO.Path]::DirectorySeparatorChar,
+    $pathStringComparison
+)
+$repositoryStorageInsideArtifact = $repositoryStorageRoot.StartsWith(
     $artifactRootNormalized + [IO.Path]::DirectorySeparatorChar,
     $pathStringComparison
 )
@@ -609,13 +645,15 @@ elseif (Test-PathContainsAnyReparsePoint -Path $artifactRootNormalized) {
     $findings += [pscustomobject]@{ Path = 'artifact-root'; Rule = 'artifact-root-reparse-path' }
 }
 elseif ($artifactRootNormalized.Equals($repositoryRoot, $pathStringComparison) -or
+    $artifactRootNormalized.Equals($repositoryStorageRoot, $pathStringComparison) -or
     $repositoryInsideArtifact -or
+    $repositoryStorageInsideArtifact -or
     $artifactRootNormalized -eq [IO.Path]::GetPathRoot($artifactRootNormalized).TrimEnd('\', '/')) {
     $findings += [pscustomobject]@{ Path = 'external-artifacts'; Rule = 'unsafe-artifact-scan-root' }
 }
 else {
     $artifactRootUsable = $true
-    $artifactDisplayPrefix = if ($artifactInsideRepository) { 'configured-artifacts' } else { 'external-artifacts' }
+    $artifactDisplayPrefix = if ($artifactInsideConfiguredBoundary) { 'configured-artifacts' } else { 'external-artifacts' }
     $artifactTree = Get-TreeCandidateFiles -Root $artifactRootNormalized -DisplayPrefix $artifactDisplayPrefix -Tracked $false
     $findings += @($artifactTree.Findings)
     foreach ($file in @($artifactTree.Files)) {
@@ -623,7 +661,7 @@ else {
     }
 }
 
-$indexSnapshotParent = Join-Path $repositoryRoot '.opsmind\secret-index-scan'
+$indexSnapshotParent = Join-Path $repositoryStorageRoot '.opsmind\secret-index-scan'
 $findings += @(Get-StaleIndexSnapshotFindings -ParentPath $indexSnapshotParent)
 $indexSnapshotRoot = Join-Path $indexSnapshotParent ([guid]::NewGuid().ToString('N'))
 $indexSnapshotCreated = $false
@@ -736,7 +774,7 @@ foreach ($candidateFile in @($candidateFiles)) {
 }
 finally {
 if ($indexSnapshotCreated -and (Test-Path -LiteralPath $indexSnapshotRoot -PathType Container)) {
-    $safeIndexPrefix = [IO.Path]::GetFullPath((Join-Path $repositoryRoot '.opsmind\secret-index-scan')).TrimEnd('\', '/') +
+    $safeIndexPrefix = [IO.Path]::GetFullPath((Join-Path $repositoryStorageRoot '.opsmind\secret-index-scan')).TrimEnd('\', '/') +
         [IO.Path]::DirectorySeparatorChar
     if (-not $indexSnapshotRoot.StartsWith($safeIndexPrefix, $pathStringComparison) -or
         (Test-PathContainsReparsePoint -Path $indexSnapshotRoot -RepositoryRoot $repositoryRoot)) {

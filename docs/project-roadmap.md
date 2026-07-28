@@ -25,14 +25,14 @@ The detailed executable plan is [plans/260719-1747-opsmind-ai-production-platfor
 | Phase | Outcome | Main gate contribution | Status |
 |---:|---|---|---|
 | 1 | Operating envelope and architecture governance | G0.5/G1 | Completed; strict contract gate passed |
-| 2 | Monorepo and developer platform foundation | G1 | In progress |
+| 2 | Monorepo and developer platform foundation | G1 | Completed; clean Ubuntu/Windows bootstrap and Compose evidence passed |
 | 3 | Contracts, data, identity, and tenant foundation | G2 | In progress |
 | 4 | Incident control plane, evidence lifecycle, and audit | G2/G3 | In progress; checkpoint 4A local proof complete |
 | 5 | DeepSeek AI runtime and provider gateway | G3 | In progress; static checkpoint passed, exit gate blocked |
 | 6 | Safe Tool Gateway and read-only connectors | G3 | In progress; B-016 tenant isolation resolved by immutable CI, broader Phase 6 exit remains BLOCK |
 | 7 | Evidence-backed incident vertical slice | G3 | In progress; metadata activity route and V009 CI fixture gates pass; external G3 blockers remain |
 | 8 | Simulator and evaluation baseline | A-Z G4 / roadmap G7 | In progress; Phase 8B complete, held-out/human/calibration evidence unavailable, exit BLOCK |
-| 9 | Durable Temporal investigation workflow | G4 | Pending; infrastructure may start, threshold freeze/exit waits for reviewed human pilot |
+| 9 | Durable Temporal investigation workflow | G4 | In progress; default-off start handoff implemented, exact-head evidence/worker/restart-resume pending, B-013 active |
 | 10 | Permission-aware RAG and knowledge lifecycle | G5 | Pending |
 | 11 | Exact-action approval and reversible remediation | G6 | Pending |
 | 12 | Operator web experience completion | G7 | Pending |
@@ -50,6 +50,16 @@ verification, and release-set receipts. This is an implementation checkpoint,
 not Phase 16 completion: immutable registry execution evidence, Docker Hub
 credential/parity proof, production manifests, staged rollout, DR, and final
 DoD audit remain required.
+
+G1 and Phase 2 are complete. PR Quality run `30327014212` is bound to feature
+tree `25d83c9a19669542c94ca915ed96b20fe3bea8ac`, which is identical to squash
+merge `659ba823a1dd8bc867a6fe9cca5187f475dec979`. Its immutable artifacts prove
+zero-error repository layout, zero secret findings over working tree/history,
+actionlint and ShellCheck, clean Ubuntu and Windows bootstrap with capacity/
+storage governance, Keycloak reference conformance, and Compose build, healthy
+startup, and cleanup. This closes the developer-platform gate only; it does not
+close G2, G3, staging, production, provider, connector, lifecycle, or release
+gates.
 
 Phase 3 and G2 remain in progress. Local Windows and revision-bound Linux CI
 Keycloak 26.7 runs satisfy the reference non-production IdP integration
@@ -188,6 +198,21 @@ adjudication are unavailable. This is deterministic smoke evidence on authored
 scenarios, so parent Phase 8 and its A-Z G4 exit remain `BLOCK` on held-out
 quality, calibration, and human comparison.
 
+Phase 9 is in progress. The current worktree adds Platform V010 and a
+default-off handoff that atomically creates the initial run, immutable Temporal
+target/request binding, and canonical outbox start event. The opt-in dispatcher
+role uses a dedicated database datasource, commits its claim before the
+Temporal RPC, and atomically reconciles binding/inbox/outbox state afterward.
+`AlreadyStarted` is accepted only after exact target, memo digest, and first
+history input verification. Inline remains the default `200` path; Temporal
+admission is additive `202 + Location` and requires a compatible task-queue
+poller.
+
+This is not the Phase 9 or roadmap G4 exit. No live/production Temporal cluster
+or namespace, Compose service, workflow worker, or restart/resume execution
+exists. V010 performs no automatic legacy backfill. Exact-head CI and
+PostgreSQL evidence are also missing, and B-013 remains active.
+
 ## Staffing Scenarios
 
 G0.5 selected six cross-functional contributors and a nine-month target. The
@@ -218,16 +243,16 @@ evidence.
 
 ## Unresolved Questions
 
-No G0.5 decision remains unresolved and Phases 2 and 3 are in progress. Later release
+No G0.5 decision remains unresolved; Phase 2 is complete and Phase 3 remains in progress. Later release
 questions are the supported local S3 adapter after MinIO's upstream archive,
 reconciliation of the 120-minute service RTO with a four-hour artifact restore
 target, production-authorized enterprise-IdP conformance, and provider
 processing terms.
 
-Phase 9 infrastructure may proceed using provisional test-only values. The
-reviewed human pilot remains mandatory before no-progress/budget thresholds
-are frozen and before Phase 9 can exit. This reconciles preparatory engineering
-with the stricter parent Phase 8 evidence gate.
+Phase 9 handoff infrastructure is now in progress with provisional test-only
+values. The reviewed human pilot remains mandatory before no-progress/budget
+thresholds are frozen and before Phase 9 can exit. This reconciles preparatory
+engineering with the stricter parent Phase 8 evidence gate.
 
 Gate labels also drift between documents: the parent A-Z plan names Phase 8
 exit `G4`, while this roadmap's gate summary names durable workflow `G4` and

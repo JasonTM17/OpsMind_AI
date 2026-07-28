@@ -3,6 +3,7 @@ package ai.opsmind.platform.messaging;
 import java.util.Objects;
 import java.util.UUID;
 
+import org.springframework.beans.factory.annotation.Qualifier;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
 import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.stereotype.Component;
@@ -13,7 +14,9 @@ public final class OutboxDispatcherTenantContextSql {
 
     private final JdbcTemplate jdbcTemplate;
 
-    public OutboxDispatcherTenantContextSql(JdbcTemplate jdbcTemplate) {
+    public OutboxDispatcherTenantContextSql(
+        @Qualifier("dispatcherJdbcTemplate") JdbcTemplate jdbcTemplate
+    ) {
         this.jdbcTemplate = jdbcTemplate;
     }
 

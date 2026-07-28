@@ -5,6 +5,7 @@ import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.when;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.content;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.header;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
@@ -21,6 +22,7 @@ import ai.opsmind.platform.common.api.OperatorProjection;
 import ai.opsmind.platform.common.api.PlatformExceptionHandler;
 import ai.opsmind.platform.identity.JwtPrincipalMapper;
 import ai.opsmind.platform.investigation.application.InvestigationRunService;
+import ai.opsmind.platform.investigation.application.InvestigationStartResult;
 import ai.opsmind.platform.investigation.domain.InvestigationStateMachine;
 import ai.opsmind.platform.investigation.projection.InvestigationRunReadModel;
 
@@ -43,6 +45,9 @@ class InvestigationRunControllerHttpTest {
     private static final String PATH = "/api/v1/organizations/" + ORGANIZATION_ID
         + "/projects/" + PROJECT_ID + "/incidents/" + INCIDENT_ID
         + "/investigations/" + RUN_ID;
+    private static final String COLLECTION_PATH = "/api/v1/organizations/" + ORGANIZATION_ID
+        + "/projects/" + PROJECT_ID + "/incidents/" + INCIDENT_ID
+        + "/investigations";
 
     private InvestigationRunService service;
     private MockMvc mvc;
@@ -103,6 +108,36 @@ class InvestigationRunControllerHttpTest {
                 .value("request.response-media-type-unacceptable"));
     }
 
+    @Test
+    void durableStartReturns202AndTenantScopedLocation() throws Exception {
+        when(service.start(
+            any(), eq(ORGANIZATION_ID), eq(PROJECT_ID), eq(INCIDENT_ID), any()
+        )).thenReturn(new InvestigationStartResult(readModel(), true));
+
+        mvc.perform(post(COLLECTION_PATH)
+                .principal(authentication("incident:analyze"))
+                .contentType(MediaType.APPLICATION_JSON)
+                .content(startRequest()))
+            .andExpect(status().isAccepted())
+            .andExpect(header().string(HttpHeaders.LOCATION, PATH))
+            .andExpect(jsonPath("$.runId").value(RUN_ID.toString()));
+    }
+
+    @Test
+    void inlineStartRetains200WithoutLocation() throws Exception {
+        when(service.start(
+            any(), eq(ORGANIZATION_ID), eq(PROJECT_ID), eq(INCIDENT_ID), any()
+        )).thenReturn(new InvestigationStartResult(readModel(), false));
+
+        mvc.perform(post(COLLECTION_PATH)
+                .principal(authentication("incident:analyze"))
+                .contentType(MediaType.APPLICATION_JSON)
+                .content(startRequest()))
+            .andExpect(status().isOk())
+            .andExpect(header().doesNotExist(HttpHeaders.LOCATION))
+            .andExpect(jsonPath("$.runId").value(RUN_ID.toString()));
+    }
+
     private void assertLegacy(String accept) throws Exception {
         mvc.perform(get(PATH)
                 .principal(authentication())
@@ -143,6 +178,10 @@ class InvestigationRunControllerHttpTest {
     }
 
     private JwtAuthenticationToken authentication() {
+        return authentication("incident:read");
+    }
+
+    private JwtAuthenticationToken authentication(String scope) {
         Instant issuedAt = Instant.parse("2030-01-01T00:00:00Z");
         Jwt jwt = Jwt.withTokenValue("synthetic")
             .header("alg", "RS256")
@@ -151,8 +190,21 @@ class InvestigationRunControllerHttpTest {
             .audience(List.of("opsmind-platform-api"))
             .issuedAt(issuedAt)
             .expiresAt(issuedAt.plusSeconds(300))
-            .claim("scope", String.join(" ", Set.of("incident:read")))
+            .claim("scope", String.join(" ", Set.of(scope)))
             .build();
         return new JwtAuthenticationToken(jwt, List.of());
+    }
+
+    private String startRequest() {
+        return """
+            {
+              "run_id": "%s",
+              "max_rounds": 4,
+              "max_tool_calls": 2,
+              "max_evidence_items": 10,
+              "max_tokens": 1000,
+              "deadline_at": "2030-01-01T00:10:00Z"
+            }
+            """.formatted(RUN_ID);
     }
 }
