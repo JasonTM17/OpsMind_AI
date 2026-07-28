@@ -49,35 +49,47 @@ release secrets or short-lived workload identities and never checked in.
 
 The SHA-pinned
 [OCI publication workflow](../.github/workflows/container-publish.yml) builds
-all four runtime images for `linux/amd64` and `linux/arm64`, attaches BuildKit
-SBOM/max-level provenance, creates a signed GitHub/Sigstore provenance
-attestation, verifies the pushed digest, and uploads a versioned receipt.
-`workflow_dispatch` can bootstrap GHCR from `main` without Docker Hub.
-Release-tag runs and manual runs with `publish_dockerhub=true` fail before
-building unless repository variable `DOCKERHUB_USERNAME` and protected secret
-`DOCKERHUB_TOKEN` are both configured. The workflow never accepts a registry
-token as an input or build argument.
-Manual publication is rejected outside `main`. Tag publication additionally
-requires a SemVer-shaped `vMAJOR.MINOR.PATCH` tag whose commit is reachable from
-`origin/main`; repository tag protection should still be enabled before the
-first production release.
+all four runtime images for `linux/amd64` and `linux/arm64` as immutable
+candidate SHA references. Each candidate must expose the expected source and
+revision labels, BuildKit SBOM/max-level provenance, a clean HIGH/CRITICAL
+vulnerability and secret scan, a passing runtime health probe, and a verified
+GitHub/Sigstore attestation. Only after all four candidate receipts pass can the
+protected `oci-production` job promote the same digests and activate `latest`.
+
+Publication is manual-only, rejects any ref except `main`, requires a strict
+SemVer `release_version`, and verifies that PR quality and cross-service
+evaluation succeeded for the exact source SHA. The `oci-production` environment
+must require a reviewer and allow only the `main` deployment branch. Its
+environment variable `DOCKERHUB_USERNAME` and environment secret
+`DOCKERHUB_TOKEN` are exposed only to Docker Hub credential steps. The workflow
+never accepts a registry token as an input, job-wide environment value, or
+build argument.
 
 Run the GHCR bootstrap after the workflow is merged:
 
 ```powershell
-gh workflow run container-publish.yml --ref main -f publish_dockerhub=false
+gh workflow run container-publish.yml --ref main `
+  -f release_version=v0.1.0 `
+  -f publish_dockerhub=false
 ```
 
-Run dual-registry publication only after the protected Docker Hub credentials
-exist:
+Candidate packages must be linked to `JasonTM17/OpsMind_AI` and made public
+before approving the protected promotion job; the job queries GitHub's package
+API and fails closed otherwise. Run dual-registry publication only after the
+protected environment credentials exist:
 
 ```powershell
-gh workflow run container-publish.yml --ref main -f publish_dockerhub=true
+gh workflow run container-publish.yml --ref main `
+  -f release_version=v0.1.0 `
+  -f publish_dockerhub=true
 ```
 
-For a release, create the approved `v*` tag only after registry credentials and
-release gates are present. Tag publication requires Docker Hub parity. Promotion
-records consume the receipt digest, never `latest`.
+The workflow normalizes valid SemVer build metadata for OCI tags, for example
+`v1.2.3+build.7` becomes `1.2.3_build.7`, while the receipt retains the original
+version. Promotion records consume candidate digests, never an existing mutable
+tag. Immutable version/revision tags are applied before signing; `latest` is the
+release-set activation pointer and is not updated if any component, signature,
+or registry parity check fails.
 
 ## Configuration and Secrets
 

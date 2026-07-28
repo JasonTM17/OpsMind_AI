@@ -8,6 +8,9 @@
     "node": ">=24.0.0 <25.0.0",
     "pnpm": ">=11.15.0 <12.0.0"
   },
+  "devDependencies": {
+    "yaml": "2.9.0"
+  },
   "scripts": {
     "setup": "node scripts/dev/opsmind.mjs setup",
     "dev": "node scripts/dev/opsmind.mjs dev",

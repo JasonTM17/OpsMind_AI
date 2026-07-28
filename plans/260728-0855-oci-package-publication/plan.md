@@ -18,24 +18,33 @@ the protected username/token pair is configured.
 
 1. Add a SHA-pinned GitHub Actions workflow for `linux/amd64` and `linux/arm64`.
 2. Publish Platform API, AI Runtime, Tool Gateway, and Operator Web to GHCR.
-3. Require Docker Hub credentials for release-tag parity; allow a GHCR-only
-   manual bootstrap while those external credentials are absent.
-4. Emit and upload one secret-free publication receipt per component.
-5. Add a static validator to the PR quality gate.
-6. Document operator commands, credential names, evidence, and rollback.
+3. Build immutable candidate SHA references, scan/test/sign all four, then
+   promote their exact digests through the protected `oci-production`
+   environment.
+4. Require environment-scoped Docker Hub credentials for optional registry
+   parity while allowing a GHCR-only manual bootstrap.
+5. Emit one secret-free candidate receipt per component and one aggregate
+   release-set receipt.
+6. Add a structural YAML validator and negative mutation tests to PR quality.
+7. Document operator commands, credential names, evidence, and rollback.
 
 ## Acceptance Criteria
 
 - All action dependencies are pinned to immutable commit SHAs.
-- Workflow permissions are limited to `contents: read` and `packages: write`.
+- Top-level permissions are empty. Job allowlists use only `contents: read`,
+  `packages: write`, `id-token: write`, and `attestations: write` where needed.
 - Four images build from their existing Dockerfiles without build-time secrets.
-- Each pushed image has `mode=max` provenance and an attached SBOM.
+- Each candidate has `mode=max` provenance, an attached SBOM, zero observed
+  HIGH/CRITICAL vulnerabilities or secrets, and a passing runtime health probe.
 - GHCR package labels link to this repository and expose source revision.
-- Release tags fail closed when Docker Hub publication is requested but either
-  `DOCKERHUB_USERNAME` or `DOCKERHUB_TOKEN` is absent.
-- Manual publication is limited to `main`; a release tag must be SemVer-shaped
-  and point to a commit reachable from `origin/main`.
-- Published registry digests are verified and written to CI receipts.
+- Manual publication is limited to `main`, requires strict SemVer, and proves
+  both quality workflows passed on the exact source SHA.
+- Promotion requires all four candidate receipts, a protected environment
+  approval, public repository-linked GHCR packages, and verified attestations.
+- Docker Hub promotion fails closed when either environment credential is
+  absent; the token is never job-scoped.
+- Published registry digests, observed platforms, scan counts, health, package
+  visibility/linkage, and signatures are verified before `latest` activation.
 - PR quality, Compose build/health, actionlint, secret scanning, and static
   publication validation pass on the exact source revision.
 
@@ -48,6 +57,8 @@ promotion never consumes a tag without resolving and recording its digest.
 
 ## External Dependency
 
-Docker Hub publication cannot execute until repository variable
-`DOCKERHUB_USERNAME` and protected secret `DOCKERHUB_TOKEN` exist. Neither value
-is inferred, generated, or committed by this plan.
+Docker Hub publication cannot execute until environment variable
+`DOCKERHUB_USERNAME` and environment secret `DOCKERHUB_TOKEN` exist in
+`oci-production`. Neither value is inferred, generated, or committed. Initial
+GHCR promotion also waits until the candidate packages are public and linked to
+this repository.

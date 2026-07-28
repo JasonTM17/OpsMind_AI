@@ -287,9 +287,11 @@ link the GHCR Package to this repository, and record immutable digests,
 SBOM/provenance, scan results, and registry parity in the release evidence.
 The checked-in
 [OCI publication workflow](./.github/workflows/container-publish.yml) provides
-that package path. GHCR bootstrap uses the scoped GitHub token; Docker Hub
-publication is blocked until the protected repository username/token pair is
-configured.
+that package path through build-once promotion: exact-SHA candidates are
+scanned, health-checked, signed, and aggregated before the protected
+`oci-production` environment can apply public version or `latest` tags. GHCR
+uses the scoped GitHub token. Docker Hub remains blocked until its username and
+token exist only in that protected environment.
 
 ## Unresolved Questions
 
