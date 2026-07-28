@@ -33,6 +33,8 @@ the protected username/token pair is configured.
 - GHCR package labels link to this repository and expose source revision.
 - Release tags fail closed when Docker Hub publication is requested but either
   `DOCKERHUB_USERNAME` or `DOCKERHUB_TOKEN` is absent.
+- Manual publication is limited to `main`; a release tag must be SemVer-shaped
+  and point to a commit reachable from `origin/main`.
 - Published registry digests are verified and written to CI receipts.
 - PR quality, Compose build/health, actionlint, secret scanning, and static
   publication validation pass on the exact source revision.

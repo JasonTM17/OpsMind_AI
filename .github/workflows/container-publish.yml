@@ -25,7 +25,9 @@ concurrency:
 jobs:
   publish:
     name: Publish ${{ matrix.component }}
-    if: github.repository == 'JasonTM17/OpsMind_AI'
+    if: >-
+      github.repository == 'JasonTM17/OpsMind_AI' &&
+      (github.event_name == 'push' || github.ref == 'refs/heads/main')
     runs-on: ubuntu-latest
     timeout-minutes: 90
     strategy:
@@ -52,6 +54,23 @@ jobs:
     steps:
       - name: Check out exact source
         uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          fetch-depth: 0
+
+      - name: Verify release tag belongs to main
+        if: github.event_name == 'push'
+        shell: bash
+        run: |
+          set -euo pipefail
+          if [[ ! "$GITHUB_REF_NAME" =~ ^v[0-9]+\.[0-9]+\.[0-9]+([.-][0-9A-Za-z.-]+)?$ ]]; then
+            echo "::error::Release tag must use a vMAJOR.MINOR.PATCH SemVer shape."
+            exit 1
+          fi
+          git fetch --no-tags origin main
+          if ! git merge-base --is-ancestor "$GITHUB_SHA" origin/main; then
+            echo "::error::Release tag commit is not reachable from origin/main."
+            exit 1
+          fi
 
       - name: Resolve registry targets
         id: targets

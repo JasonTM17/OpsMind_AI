@@ -57,6 +57,10 @@ Release-tag runs and manual runs with `publish_dockerhub=true` fail before
 building unless repository variable `DOCKERHUB_USERNAME` and protected secret
 `DOCKERHUB_TOKEN` are both configured. The workflow never accepts a registry
 token as an input or build argument.
+Manual publication is rejected outside `main`. Tag publication additionally
+requires a SemVer-shaped `vMAJOR.MINOR.PATCH` tag whose commit is reachable from
+`origin/main`; repository tag protection should still be enabled before the
+first production release.
 
 Run the GHCR bootstrap after the workflow is merged:
 
