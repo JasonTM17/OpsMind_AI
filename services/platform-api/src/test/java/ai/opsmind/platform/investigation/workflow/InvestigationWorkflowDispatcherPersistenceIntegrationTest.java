@@ -5,7 +5,13 @@ import static ai.opsmind.platform.testing.PostgresTenantFixtures.TENANT_A;
 import static ai.opsmind.platform.testing.PostgresTenantFixtures.TENANT_B;
 import static ai.opsmind.platform.testing.PostgresTenantFixtures.USER_A;
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.assertThatThrownBy;
+import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.Mockito.clearInvocations;
+import static org.mockito.Mockito.times;
+import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.verifyNoInteractions;
+import static org.mockito.Mockito.when;
 
 import java.net.URI;
 import java.nio.charset.StandardCharsets;
@@ -13,8 +19,10 @@ import java.sql.Timestamp;
 import java.time.Duration;
 import java.time.Instant;
 import java.util.List;
+import java.util.Objects;
 import java.util.Set;
 import java.util.UUID;
+import java.util.function.Supplier;
 
 import ai.opsmind.platform.common.api.RequestDigest;
 import ai.opsmind.platform.identity.OpsMindPrincipal;
@@ -26,6 +34,7 @@ import ai.opsmind.platform.investigation.integration.InvestigationAiRuntimeClien
 import ai.opsmind.platform.investigation.integration.InvestigationToolGatewayClient;
 import ai.opsmind.platform.messaging.DispatcherDatabaseIdentity;
 import ai.opsmind.platform.messaging.OutboxLease;
+import ai.opsmind.platform.messaging.OutboxLeaseRepository;
 import ai.opsmind.platform.testing.PostgresIntegrationEnvironment;
 import ai.opsmind.platform.testing.PostgresTenantFixtures;
 
@@ -35,12 +44,15 @@ import org.junit.jupiter.api.condition.EnabledIfEnvironmentVariable;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Qualifier;
 import org.springframework.boot.test.context.SpringBootTest;
+import org.springframework.dao.DataAccessException;
 import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.jdbc.datasource.DriverManagerDataSource;
 import org.springframework.test.context.ActiveProfiles;
 import org.springframework.test.context.DynamicPropertyRegistry;
 import org.springframework.test.context.DynamicPropertySource;
 import org.springframework.test.context.bean.override.mockito.MockitoBean;
+import org.springframework.transaction.PlatformTransactionManager;
+import org.springframework.transaction.support.TransactionTemplate;
 
 @ActiveProfiles("persistence")
 @EnabledIfEnvironmentVariable(named = "OPSMIND_PHASE9_DB_INTEGRATION", matches = "true")
@@ -77,10 +89,15 @@ class InvestigationWorkflowDispatcherPersistenceIntegrationTest {
     @Autowired
     private DispatcherDatabaseIdentity dispatcherIdentity;
     @Autowired
+    private OutboxLeaseRepository genericOutbox;
+    @Autowired
     private JdbcTemplate appJdbc;
     @Autowired
     @Qualifier("dispatcherJdbcTemplate")
     private JdbcTemplate dispatcherJdbc;
+    @Autowired
+    @Qualifier("dispatcherTransactionManager")
+    private PlatformTransactionManager dispatcherTransactionManager;
     @MockitoBean
     private InvestigationWorkflowAdmission admission;
     @MockitoBean
@@ -144,7 +161,7 @@ class InvestigationWorkflowDispatcherPersistenceIntegrationTest {
         assertThat(tenantScheduler.listReadyTenants(10)).contains(TENANT_A);
 
         OutboxLease lease = dispatchTransactions.claim(
-            TENANT_A, UUID.randomUUID(), NOW, starterProperties
+            TENANT_A, UUID.randomUUID(), starterProperties
         ).orElseThrow();
         assertThat(lease.event().eventType())
             .isEqualTo(InvestigationWorkflowStartEnvelopeFactory.EVENT_TYPE);
@@ -156,7 +173,7 @@ class InvestigationWorkflowDispatcherPersistenceIntegrationTest {
             Boolean.class, unrelatedEvent
         )).isTrue();
         assertThat(dispatchTransactions.claim(
-            TENANT_B, UUID.randomUUID(), NOW, starterProperties
+            TENANT_B, UUID.randomUUID(), starterProperties
         )).isEmpty();
 
         assertThat(dispatchTransactions.acknowledgeStarted(
@@ -181,10 +198,234 @@ class InvestigationWorkflowDispatcherPersistenceIntegrationTest {
     }
 
     @Test
+    void dispatcherRoleCannotDirectlyMutateBindingOrInboxAndCannotSeeCanonicalOutbox() {
+        InvestigationCommand.Start command = createHandoff();
+        UUID eventId = workflowStartEventId(command);
+        int originalAttempts = admin.queryForObject(
+            "SELECT attempts FROM outbox_events WHERE event_id = ?",
+            Integer.class,
+            eventId
+        );
+
+        assertThatThrownBy(() -> inDispatcherTenant(TENANT_A, () -> dispatcherJdbc.update(
+            "UPDATE investigation_workflow_bindings SET updated_at = clock_timestamp() "
+                + "WHERE organization_id = ? AND run_id = ?",
+            TENANT_A,
+            command.runId()
+        )))
+            .isInstanceOf(DataAccessException.class);
+        assertThatThrownBy(() -> inDispatcherTenant(TENANT_A, () -> dispatcherJdbc.update(
+            "INSERT INTO inbox_events (organization_id, event_id, consumer, attempts) "
+                + "VALUES (?, ?, 'workflow-direct-dml-test', 1)",
+            TENANT_A,
+            eventId
+        )))
+            .isInstanceOf(DataAccessException.class);
+        admin.update(
+            "INSERT INTO inbox_events (organization_id, event_id, consumer, attempts) "
+                + "VALUES (?, ?, 'workflow-direct-dml-test', 1)",
+            TENANT_A,
+            eventId
+        );
+        assertThatThrownBy(() -> inDispatcherTenant(TENANT_A, () -> dispatcherJdbc.update(
+            "UPDATE inbox_events SET attempts = attempts + 1 "
+                + "WHERE organization_id = ? AND event_id = ? "
+                + "AND consumer = 'workflow-direct-dml-test'",
+            TENANT_A,
+            eventId
+        )))
+            .isInstanceOf(DataAccessException.class);
+        assertThatThrownBy(() -> inDispatcherTenant(TENANT_A, () ->
+            dispatcherJdbc.queryForObject(
+                "SELECT public.opsmind_has_unpublished_outbox_predecessor(?, ?, ?, ?)",
+                Boolean.class,
+                TENANT_B,
+                "unrelated",
+                UUID.randomUUID(),
+                2L
+            )
+        )).isInstanceOf(DataAccessException.class);
+
+        assertThat(inDispatcherTenant(TENANT_A, () -> dispatcherJdbc.queryForObject(
+            "SELECT count(*) FROM outbox_events WHERE event_id = ?",
+            Integer.class,
+            eventId
+        ))).isZero();
+        assertThat(inDispatcherTenant(TENANT_A, () -> dispatcherJdbc.update(
+            "UPDATE outbox_events SET attempts = attempts + 1 WHERE event_id = ?",
+            eventId
+        ))).isZero();
+        assertThat(admin.queryForObject(
+            "SELECT attempts FROM outbox_events WHERE event_id = ?",
+            Integer.class,
+            eventId
+        )).isEqualTo(originalAttempts);
+    }
+
+    @Test
+    void genericClaimSkipsEarlierCanonicalWorkflowStart() {
+        InvestigationCommand.Start command = createHandoff();
+        UUID workflowEventId = workflowStartEventId(command);
+        admin.update(
+            "UPDATE outbox_events SET occurred_at = ? WHERE event_id = ?",
+            Timestamp.from(NOW.minusSeconds(1)),
+            workflowEventId
+        );
+        UUID unrelatedEventId = insertUnrelatedEvent();
+
+        OutboxLease genericLease = inDispatcherTenant(TENANT_A, () ->
+            genericOutbox.claimBatch(
+                TENANT_A,
+                UUID.randomUUID(),
+                NOW,
+                Duration.ofSeconds(30),
+                1
+            ).getFirst()
+        );
+
+        assertThat(genericLease.event().eventId()).isEqualTo(unrelatedEventId);
+        assertThat(inDispatcherTenant(TENANT_A, () -> genericOutbox.markPublished(
+            TENANT_A,
+            genericLease.event().eventId(),
+            genericLease.leaseToken(),
+            NOW
+        ))).isTrue();
+        assertThat(admin.queryForObject(
+            "SELECT published_at IS NOT NULL FROM outbox_events WHERE event_id = ?",
+            Boolean.class,
+            unrelatedEventId
+        )).isTrue();
+        assertThat(admin.queryForObject(
+            "SELECT lease_token IS NULL FROM outbox_events WHERE event_id = ?",
+            Boolean.class,
+            workflowEventId
+        )).isTrue();
+    }
+
+    @Test
+    void hiddenCanonicalPredecessorStillBlocksSameAggregateGenericClaim() {
+        InvestigationCommand.Start command = createHandoff();
+        UUID followupEventId = insertSameAggregateFollowup(command.runId());
+
+        List<OutboxLease> claimed = inDispatcherTenant(TENANT_A, () ->
+            genericOutbox.claimBatchForEventType(
+                TENANT_A,
+                UUID.randomUUID(),
+                NOW,
+                Duration.ofSeconds(30),
+                1,
+                "investigation.workflow-followup.test"
+            )
+        );
+
+        assertThat(claimed).isEmpty();
+        assertThat(admin.queryForObject(
+            "SELECT lease_token IS NULL FROM outbox_events WHERE event_id = ?",
+            Boolean.class,
+            followupEventId
+        )).isTrue();
+    }
+
+    @Test
+    void ambiguousTemporalOutcomeRetriesAndReconcilesWithinBudget() {
+        InvestigationCommand.Start command = createHandoff();
+        UUID eventId = workflowStartEventId(command);
+        when(workflowClient.start(any(), any()))
+            .thenThrow(new RuntimeException("Temporal transport outcome is unknown"))
+            .thenReturn(new InvestigationWorkflowClient.StartResult(
+                "temporal-run-reconciled",
+                true
+            ));
+
+        assertThat(dispatcher.dispatchTenant(TENANT_A)).isOne();
+        assertThat(admin.queryForObject(
+            "SELECT last_error FROM outbox_events WHERE event_id = ?",
+            String.class,
+            eventId
+        )).isEqualTo("workflow.temporal-outcome-ambiguous");
+        admin.update(
+            "UPDATE outbox_events SET next_attempt_at = clock_timestamp() - interval '1 second' "
+                + "WHERE event_id = ?",
+            eventId
+        );
+
+        assertThat(dispatcher.dispatchTenant(TENANT_A)).isOne();
+
+        verify(workflowClient, times(2)).start(any(), any());
+        assertThat(admin.queryForObject(
+            "SELECT status FROM investigation_workflow_bindings "
+                + "WHERE organization_id = ? AND run_id = ?",
+            String.class,
+            TENANT_A,
+            command.runId()
+        )).isEqualTo("STARTED");
+        assertThat(admin.queryForObject(
+            "SELECT published_at IS NOT NULL AND last_error IS NULL "
+                + "FROM outbox_events WHERE event_id = ?",
+            Boolean.class,
+            eventId
+        )).isTrue();
+    }
+
+    @Test
+    void finalAmbiguousTemporalAttemptParksWithoutASecondRpc() {
+        InvestigationCommand.Start command = createHandoff();
+        UUID eventId = workflowStartEventId(command);
+        admin.update("UPDATE outbox_events SET attempts = 7 WHERE event_id = ?", eventId);
+        when(workflowClient.start(any(), any())).thenThrow(
+            new RuntimeException("Temporal transport outcome is unknown")
+        );
+
+        assertThat(dispatcher.dispatchTenant(TENANT_A)).isOne();
+        assertThat(admin.queryForObject(
+            "SELECT status FROM investigation_workflow_bindings "
+                + "WHERE organization_id = ? AND run_id = ?",
+            String.class,
+            TENANT_A,
+            command.runId()
+        )).isEqualTo("PENDING");
+        assertThat(admin.queryForObject(
+            "SELECT last_error FROM outbox_events WHERE event_id = ?",
+            String.class,
+            eventId
+        )).isEqualTo("workflow.reconciliation-required");
+        assertThat(admin.queryForObject(
+            "SELECT poisoned_at IS NULL FROM outbox_events WHERE event_id = ?",
+            Boolean.class,
+            eventId
+        )).isTrue();
+
+        clearInvocations(workflowClient);
+        admin.update(
+            "UPDATE outbox_events SET next_attempt_at = clock_timestamp() - interval '1 second' "
+                + "WHERE event_id = ?",
+            eventId
+        );
+
+        assertThat(dispatcher.dispatchTenant(TENANT_A)).isZero();
+
+        verifyNoInteractions(workflowClient);
+        assertThat(admin.queryForObject(
+            "SELECT status FROM investigation_workflow_bindings "
+                + "WHERE organization_id = ? AND run_id = ?",
+            String.class,
+            TENANT_A,
+            command.runId()
+        )).isEqualTo("PENDING");
+        assertThat(admin.queryForObject(
+            "SELECT last_error = 'workflow.reconciliation-required' "
+                + "AND poisoned_at IS NULL FROM outbox_events WHERE event_id = ?",
+            Boolean.class,
+            eventId
+        )).isTrue();
+        assertThat(tenantScheduler.listReadyTenants(10)).doesNotContain(TENANT_A);
+    }
+
+    @Test
     void databaseClockRatherThanCallerClockFencesAcknowledgement() {
         InvestigationCommand.Start command = createHandoff();
         OutboxLease lease = dispatchTransactions.claim(
-            TENANT_A, UUID.randomUUID(), NOW, starterProperties
+            TENANT_A, UUID.randomUUID(), starterProperties
         ).orElseThrow();
         admin.update(
             "UPDATE outbox_events SET lease_expires_at = transaction_timestamp() "
@@ -192,8 +433,8 @@ class InvestigationWorkflowDispatcherPersistenceIntegrationTest {
             lease.event().eventId()
         );
 
-        // The claim timestamp is years ahead of the database clock. A live
-        // lease must still settle because the database owns lease validity.
+        // Domain timestamps are years ahead of the database clock. A live
+        // lease still settles because the database owns lease validity.
         assertThat(dispatchTransactions.acknowledgeStarted(
             lease, "temporal-run-skew-safe"
         )).isEqualTo(InvestigationWorkflowDispatchSettlementResult.STARTED);
@@ -218,7 +459,7 @@ class InvestigationWorkflowDispatcherPersistenceIntegrationTest {
     void expiredLeaseCannotPartiallyAcknowledgeBindingInboxOrOutbox() {
         InvestigationCommand.Start command = createHandoff();
         OutboxLease lease = dispatchTransactions.claim(
-            TENANT_A, UUID.randomUUID(), NOW, starterProperties
+            TENANT_A, UUID.randomUUID(), starterProperties
         ).orElseThrow();
         admin.update(
             "UPDATE outbox_events SET lease_expires_at = transaction_timestamp() "
@@ -249,7 +490,7 @@ class InvestigationWorkflowDispatcherPersistenceIntegrationTest {
     void permanentFailureRejectsBindingInboxAndOutboxInOneTransaction() {
         InvestigationCommand.Start command = createHandoff();
         OutboxLease lease = dispatchTransactions.claim(
-            TENANT_A, UUID.randomUUID(), NOW, starterProperties
+            TENANT_A, UUID.randomUUID(), starterProperties
         ).orElseThrow();
 
         assertThat(dispatchTransactions.reject(
@@ -284,7 +525,7 @@ class InvestigationWorkflowDispatcherPersistenceIntegrationTest {
     void expiredLeaseCannotReleaseOrPoisonAClaimOwnedByAnotherAttempt() {
         InvestigationCommand.Start command = createHandoff();
         OutboxLease lease = dispatchTransactions.claim(
-            TENANT_A, UUID.randomUUID(), NOW, starterProperties
+            TENANT_A, UUID.randomUUID(), starterProperties
         ).orElseThrow();
         admin.update(
             "UPDATE outbox_events SET lease_expires_at = transaction_timestamp() "
@@ -319,7 +560,7 @@ class InvestigationWorkflowDispatcherPersistenceIntegrationTest {
                 .contains(TENANT_A)
                 .doesNotContain(TENANT_B);
             assertThat(dispatchTransactions.claim(
-                TENANT_A, UUID.randomUUID(), NOW, starterProperties
+                TENANT_A, UUID.randomUUID(), starterProperties
             )).hasValueSatisfying(lease ->
                 assertThat(lease.event().aggregateId()).isEqualTo(command.runId())
             );
@@ -358,7 +599,7 @@ class InvestigationWorkflowDispatcherPersistenceIntegrationTest {
     void remainingLeaseWindowPreventsAnotherTemporalRpc() {
         InvestigationCommand.Start command = createHandoff();
         OutboxLease lease = dispatchTransactions.claim(
-            TENANT_A, UUID.randomUUID(), NOW, starterProperties
+            TENANT_A, UUID.randomUUID(), starterProperties
         ).orElseThrow();
         admin.update(
             "UPDATE outbox_events SET lease_expires_at = clock_timestamp() + interval '2 seconds' "
@@ -389,7 +630,7 @@ class InvestigationWorkflowDispatcherPersistenceIntegrationTest {
     void dispatcherAuthorizationPreflightDeniesRevokedProjectRole() {
         createHandoff();
         OutboxLease lease = dispatchTransactions.claim(
-            TENANT_A, UUID.randomUUID(), NOW, starterProperties
+            TENANT_A, UUID.randomUUID(), starterProperties
         ).orElseThrow();
         admin.update(
             "UPDATE project_memberships SET status = 'revoked' "
@@ -406,7 +647,7 @@ class InvestigationWorkflowDispatcherPersistenceIntegrationTest {
     void suspendedAccountCanTerminallySettleItsAlreadyClaimedWorkflowLease() {
         InvestigationCommand.Start command = createHandoff();
         OutboxLease lease = dispatchTransactions.claim(
-            TENANT_A, UUID.randomUUID(), NOW, starterProperties
+            TENANT_A, UUID.randomUUID(), starterProperties
         ).orElseThrow();
         admin.update(
             "UPDATE service_accounts SET status = 'suspended' "
@@ -436,7 +677,7 @@ class InvestigationWorkflowDispatcherPersistenceIntegrationTest {
     void suspendedAccountCanSettleAConfirmedTemporalStart() {
         InvestigationCommand.Start command = createHandoff();
         OutboxLease lease = dispatchTransactions.claim(
-            TENANT_A, UUID.randomUUID(), NOW, starterProperties
+            TENANT_A, UUID.randomUUID(), starterProperties
         ).orElseThrow();
         admin.update(
             "UPDATE service_accounts SET status = 'suspended' "
@@ -462,7 +703,7 @@ class InvestigationWorkflowDispatcherPersistenceIntegrationTest {
     void suspendedAccountPreservesAmbiguousRetryForReconciliation() {
         InvestigationCommand.Start command = createHandoff();
         OutboxLease lease = dispatchTransactions.claim(
-            TENANT_A, UUID.randomUUID(), NOW, starterProperties
+            TENANT_A, UUID.randomUUID(), starterProperties
         ).orElseThrow();
         admin.update(
             "UPDATE service_accounts SET status = 'suspended' "
@@ -512,7 +753,7 @@ class InvestigationWorkflowDispatcherPersistenceIntegrationTest {
         InvestigationCommand.Start second = createHandoff();
 
         OutboxLease firstLease = dispatchTransactions.claim(
-            TENANT_A, UUID.randomUUID(), NOW, starterProperties
+            TENANT_A, UUID.randomUUID(), starterProperties
         ).orElseThrow();
 
         UUID firstClaimedRunId = firstLease.event().aggregateId();
@@ -525,6 +766,28 @@ class InvestigationWorkflowDispatcherPersistenceIntegrationTest {
         assertThat(dispatchTransactions.acknowledgeStarted(
             firstLease, "temporal-run-one-lease-proof"
         )).isEqualTo(InvestigationWorkflowDispatchSettlementResult.STARTED);
+    }
+
+    private UUID workflowStartEventId(InvestigationCommand.Start command) {
+        return admin.queryForObject(
+            "SELECT start_event_id FROM investigation_workflow_bindings "
+                + "WHERE organization_id = ? AND run_id = ?",
+            UUID.class,
+            TENANT_A,
+            command.runId()
+        );
+    }
+
+    private <T> T inDispatcherTenant(UUID organizationId, Supplier<T> work) {
+        return Objects.requireNonNull(new TransactionTemplate(dispatcherTransactionManager)
+            .execute(status -> {
+                dispatcherJdbc.queryForObject(
+                    "SELECT public.opsmind_set_dispatcher_tenant_context(CAST(? AS uuid))",
+                    UUID.class,
+                    organizationId.toString()
+                );
+                return work.get();
+            }));
     }
 
     private InvestigationCommand.Start createHandoff() {
@@ -570,6 +833,30 @@ class InvestigationWorkflowDispatcherPersistenceIntegrationTest {
                 + "CAST(? AS jsonb), ?, ?)",
             eventId, TENANT_A, aggregateId, aggregateId, Timestamp.from(NOW),
             payload, payloadBytes, RequestDigest.sha256(payloadBytes)
+        );
+        return eventId;
+    }
+
+    private UUID insertSameAggregateFollowup(UUID aggregateId) {
+        UUID eventId = UUID.randomUUID();
+        String payload = "{\"kind\":\"workflow-followup\"}";
+        byte[] payloadBytes = payload.getBytes(StandardCharsets.UTF_8);
+        admin.update(
+            "INSERT INTO outbox_events "
+                + "(event_id, organization_id, aggregate_type, aggregate_id, aggregate_sequence, "
+                + "event_type, schema_version, correlation_id, occurred_at, payload, "
+                + "payload_bytes, payload_digest) "
+                + "VALUES (?, ?, 'investigation-workflow', ?, 2, "
+                + "'investigation.workflow-followup.test', '1', ?, ?, "
+                + "CAST(? AS jsonb), ?, ?)",
+            eventId,
+            TENANT_A,
+            aggregateId,
+            aggregateId,
+            Timestamp.from(NOW),
+            payload,
+            payloadBytes,
+            RequestDigest.sha256(payloadBytes)
         );
         return eventId;
     }

@@ -1,16 +1,13 @@
 package ai.opsmind.platform.investigation.workflow;
 
 import java.time.Duration;
-import java.time.Instant;
 import java.util.Objects;
 import java.util.Optional;
 import java.util.UUID;
 import java.util.function.Supplier;
 
 import ai.opsmind.platform.messaging.EventEnvelope;
-import ai.opsmind.platform.messaging.OutboxDispatcherTenantContextSql;
 import ai.opsmind.platform.messaging.OutboxLease;
-import ai.opsmind.platform.messaging.OutboxLeaseRepository;
 
 import org.springframework.beans.factory.annotation.Qualifier;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
@@ -31,35 +28,39 @@ public final class InvestigationWorkflowDispatchTransactions {
 
     private final JdbcTemplate jdbcTemplate;
     private final TransactionTemplate transactions;
-    private final OutboxDispatcherTenantContextSql tenantContext;
-    private final OutboxLeaseRepository outbox;
 
     public InvestigationWorkflowDispatchTransactions(
         @Qualifier("dispatcherJdbcTemplate") JdbcTemplate jdbcTemplate,
-        @Qualifier("dispatcherTransactionManager") PlatformTransactionManager transactionManager,
-        OutboxDispatcherTenantContextSql tenantContext,
-        OutboxLeaseRepository outbox
+        @Qualifier("dispatcherTransactionManager") PlatformTransactionManager transactionManager
     ) {
         this.jdbcTemplate = jdbcTemplate;
         this.transactions = new TransactionTemplate(transactionManager);
-        this.tenantContext = tenantContext;
-        this.outbox = outbox;
     }
 
     public Optional<OutboxLease> claim(
         UUID organizationId,
         UUID leaseToken,
-        Instant now,
         InvestigationWorkflowStarterProperties properties
     ) {
-        return inTenant(organizationId, () -> {
-            var claimed = outbox.claimBatchForEventType(
+        if (organizationId == null || leaseToken == null || properties == null) {
+            throw new IllegalArgumentException("Workflow claim identity and properties are required.");
+        }
+        properties.validate();
+        long leaseDurationMillis = requirePositiveMillis(
+            properties.leaseDuration(),
+            "Workflow claim lease duration is invalid."
+        );
+        return inDispatcher(() -> {
+            var claimed = jdbcTemplate.query(
+                "SELECT event_id, organization_id, aggregate_type, aggregate_id, "
+                    + "aggregate_sequence, event_type, schema_version, causation_id, "
+                    + "correlation_id, occurred_at, payload_bytes, payload_digest, "
+                    + "lease_token, lease_expires_at, attempts "
+                    + "FROM public.opsmind_claim_investigation_workflow_start(?, ?, ?)",
+                InvestigationWorkflowStartLeaseRowMapper.INSTANCE,
                 organizationId,
                 leaseToken,
-                now,
-                properties.leaseDuration(),
-                properties.batchSize(),
-                InvestigationWorkflowStartEnvelopeFactory.EVENT_TYPE
+                leaseDurationMillis
             );
             if (claimed.size() > 1) {
                 throw new IllegalStateException(
@@ -185,13 +186,6 @@ public final class InvestigationWorkflowDispatchTransactions {
             throw new IllegalArgumentException(message);
         }
         return milliseconds;
-    }
-
-    private <T> T inTenant(UUID organizationId, Supplier<T> work) {
-        return Objects.requireNonNull(transactions.execute(status -> {
-            tenantContext.apply(organizationId);
-            return work.get();
-        }));
     }
 
     private <T> T inDispatcher(Supplier<T> work) {

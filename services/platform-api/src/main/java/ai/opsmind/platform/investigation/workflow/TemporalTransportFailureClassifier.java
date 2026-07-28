@@ -24,8 +24,8 @@ final class TemporalTransportFailureClassifier {
         Optional<Status.Code> statusCode = findStatusCode(exception);
         if (statusCode.filter(TemporalTransportFailureClassifier::isRetryable)
             .isPresent() || isStatuslessTransportFailure(exception, statusCode)) {
-            return InvestigationWorkflowStartException.retryable(
-                "workflow.temporal-unavailable", exception
+            return InvestigationWorkflowStartException.outcomeUncertain(
+                "workflow.temporal-outcome-ambiguous", exception
             );
         }
         return InvestigationWorkflowStartException.permanent(
