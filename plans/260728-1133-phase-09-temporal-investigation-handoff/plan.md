@@ -38,7 +38,9 @@ This is Phase 9 infrastructure, not the Phase 9 exit. The existing Java
 `InvestigationStateMachine` remains authoritative, inline fixture/evaluation
 execution remains compatible, and Temporal admission remains compile/runtime
 guarded until a compatible worker is observable on the bound task queue. B-013
-still blocks threshold freeze and the full Phase 9 exit.
+still blocks threshold freeze and the full Phase 9 exit. B-017 separately blocks
+Temporal admission and roadmap G4 enablement until V012 proves real-role
+containment and an independently authorized no-Start reconciliation lane exists.
 
 ## Decision
 
@@ -83,9 +85,13 @@ Python.
   pre-start, post-start/pre-ack, lease-expiry, and duplicate-delivery crashes.
 - Claim and acknowledgement are tenant-scoped, lease-fenced, and compatible with
   a named secondary datasource authenticated as the existing separate dispatcher
-  database role; startup proves role separation.
-- Unknown schema/event type or inconsistent binding is quarantined with a bounded
-  safe error code and visible terminal binding state; no external call occurs.
+  database role. V011's inherited direct DML on workflow bindings, inbox rows,
+  and outbox rows is not acceptable containment; V012 must prove a
+  capability-only path under the real roles.
+- An unknown schema/event type or inconsistent binding found before an RPC is
+  quarantined with a bounded safe error code and visible terminal state; no
+  external call occurs. This rule never converts a possibly accepted post-RPC
+  outcome to terminal rejection.
 - HTTP retry with the same `run_id` and request digest returns the existing run;
   conflicting reuse returns 409. Temporal mode uses an additive `202 + Location`
   contract rather than silently changing the existing synchronous `200`.
@@ -100,14 +106,22 @@ Python.
 - Focused unit/integration/history-leak tests, the Phase 9 validator, full PR CI,
   and independent review pass on the exact branch head.
 - G1/Phase 2 documentation is reconciled to immutable run `30327014212`, but the
-  master Phase 9 remains in progress and B-013 remains visible.
+  master Phase 9 remains in progress and B-013/B-017 remain visible.
 - A start is admitted only while its actor remains authorized for the target
   incident and an eligible per-tenant dispatcher identity exists; the dispatcher
   rechecks a narrow database-backed authorization/deadline fence immediately
   before the Temporal RPC.
 - Ambiguous Temporal transport outcomes remain retryable within the existing
   bounded deadline and attempt budget, binding acknowledgement uses the database
-  clock, and the Phase 9 starter never serially holds more than one lease.
+  clock, and the Phase 9 starter never serially holds more than one lease. If a
+  retryable outcome may follow a remotely accepted RPC, local attempt, age, or
+  deadline exhaustion remains bounded `PENDING` plus reconciliation-required
+  alerting; it is never proof of remote rejection.
+- Temporal admission and roadmap G4 enablement require B-017: V012 real-role
+  containment plus a separately authorized read-only lane that can Describe the
+  exact workflow and inspect its first history input without Start authority.
+  The lane must have bounded `PENDING` aging/alert behavior when verification is
+  unavailable or inconclusive.
 
 ## Out of Scope
 
@@ -117,12 +131,21 @@ Python.
 - GHCR permission/visibility/linkage, immutable releases, and Docker Hub
   credentials; those remain separate confirmation-gated external actions.
 
+## Current Verification Status
+
+V010/V011 source-level behavior is not runtime or upgrade proof. The capacity
+guard currently blocks heavy local runtime/upgrade verification, so no V012
+real-role containment result, reconciliation-lane result, exact-head CI result,
+or disposable PostgreSQL result is claimed.
+
 ## Unresolved Questions
 
 - Production Temporal namespace, mTLS/identity, retention, and worker deployment
   topology remain deployment-owner decisions. Defaults must stay local-invalid
   or disabled until those decisions are recorded.
 - B-013 still blocks production threshold freeze and the Phase 9 exit.
+- B-017 blocks Temporal admission/G4 until V012 containment and read-only
+  exact-workflow reconciliation have runtime evidence.
 
 ## Red Team Review
 
@@ -145,7 +168,7 @@ Python.
 | 10 | Poison leaves PENDING/CREATED state misleading forever | High | Accept | Phases 2-5 |
 | 11 | AlreadyStarted does not prove identical input | High | Accept | Phases 2-4 |
 | 12 | Authorization revocation/stale external start lacks recheck | High | Accept (modified) | Phases 2-4 |
-| 13 | Retry backoff has no attempts/age/deadline ceiling | High | Accept | Phases 3-4 |
+| 13 | Retry backoff has no attempts/age/deadline ceiling or ambiguity handoff | High | Accept (superseded) | Phases 3-4, 6 |
 | 14 | Temporal can be enabled without a compatible worker | High | Accept | Phases 3-5 |
 | 15 | New SDK must remain inside supply-chain gates | Medium | Accept (modified) | Phase 5 |
 
@@ -153,15 +176,18 @@ Python.
 
 - Decision deltas: dual datasource; DB-bound canonical event; immutable Temporal
   target; create-or-load API retry; additive async response; cutover inventory;
-  inbox/order fence; live-lease ack; event-scoped tenant enumeration; terminal
-  rejection state; exact existing-execution verification; fresh worker
-  authorization; bounded retry; worker-readiness admission; existing SBOM/OSV/
-  dependency-review gates retained.
+  inbox/order fence; live-lease ack; event-scoped tenant enumeration;
+  pre-RPC terminal state plus post-RPC `PENDING` reconciliation; exact
+  existing-execution verification; fresh worker authorization; bounded retry;
+  worker-readiness admission; V012 containment/no-Start reconciliation; existing
+  SBOM/OSV/dependency-review gates retained.
 - Updated overview, acceptance, persistence, dispatcher, negative-test, CI,
   rollout, rollback, and documentation sections. Searches found no remaining
   V005 migration, obsolete Python `app/**` workflow, unrestricted
   `USE_EXISTING`, single-datasource, or documentation-only worker-guard claim in
   this plan.
-- No unresolved internal contradiction remains. Production cluster identity,
-  mTLS ownership, compatible worker implementation, and B-013 remain explicit
+- B-017 is an explicit unresolved safety condition: V011 direct DML is not
+  capability containment, and a retryable post-RPC outcome cannot become
+  `REJECTED` from local budget exhaustion. Production cluster identity, mTLS
+  ownership, compatible worker implementation, B-013, and B-017 remain explicit
   external/downstream gates.

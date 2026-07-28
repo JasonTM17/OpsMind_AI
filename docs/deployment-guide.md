@@ -11,10 +11,13 @@ staging, DR, and release evidence. Keycloak 26.7 remains non-production
 reference conformance and does not authorize a vendor or rollout.
 
 The current worktree adds a default-off Phase 9 Temporal start handoff in the
-Platform API artifact and Platform V010. It has no exact-head CI/PostgreSQL
-evidence, production/live Temporal cluster or namespace, Compose service,
-compatible worker, or restart/resume execution. It is not deployable as a
-durable investigation workflow yet.
+Platform API artifact and Platform V010. V011 retains inherited dispatcher
+direct DML on the Phase 9 binding, inbox, and outbox paths, so B-017 blocks
+admission until V012 real-role containment and a no-Start exact-workflow
+reconciliation lane are proven. It has no exact-head CI/PostgreSQL evidence,
+production/live Temporal cluster or namespace, Compose service, compatible
+worker, or restart/resume execution. It is not deployable as a durable
+investigation workflow yet.
 
 G0.5 approves managed Kubernetes in `ap-southeast-1` with Singapore residency,
 an enterprise OIDC profile, MinIO locally, S3-compatible production storage
@@ -246,6 +249,11 @@ A failed gate cannot be converted to a warning solely to meet a schedule.
   Temporal client, workflow-start dispatcher, and dispatcher datasource remain
   disabled. V010 adds the immutable run/target/request binding and validates
   the canonical workflow-start outbox event; it does not backfill legacy runs.
+- Do not treat V011 as Temporal-admission authorization. Its new preflight and
+  settlement functions coexist with inherited dispatcher direct DML on
+  `investigation_workflow_bindings`, `inbox_events`, and `outbox_events`.
+  Apply and prove V012 under the real application and dispatcher roles before
+  enabling this path; source/static review alone is insufficient.
 - Before Temporal admission, freeze new starts and run
   [the workflow cutover gate](./runbooks/investigation-workflow-cutover.md).
   Every nonterminal binding-less run requires explicit operator reconciliation;
@@ -253,8 +261,9 @@ A failed gate cannot be converted to a warning solely to meet a schedule.
 - The workflow-start scheduler is an opt-in role in the `platform-api` artifact,
   not a fifth deployable. It requires the dedicated dispatcher datasource
   authenticated exactly as `opsmind_dispatcher`; application credentials must
-  never be reused. The application role creates the run/binding/outbox handoff,
-  while the dispatcher has only bounded claim/inbox/reconciliation authority.
+  never be reused. The application role creates the run/binding/outbox handoff.
+  V011 does not yet prove that the dispatcher is confined to capability-only
+  claim/inbox/reconciliation authority; B-017 requires V012 real-role proof.
 - Temporal execution fails startup unless both the Temporal client and
   workflow-start scheduler are enabled. The configured Temporal RPC timeout
   plus starter safety margin must be strictly less than the starter lease
@@ -263,11 +272,19 @@ A failed gate cannot be converted to a warning solely to meet a schedule.
   poller with the exact required identity and build ID. This repository does not
   provide that worker or a Temporal service, so a repository-only rollout must
   remain disabled.
+- Admission also cannot open until B-017 has both proofs: V012 real-role
+  containment and a separately authorized, read-only exact-workflow
+  reconciliation lane limited to Describe plus first-history reads (never
+  Start). That lane must keep a potentially accepted post-RPC handoff
+  `PENDING` and alert within its configured bound when it cannot verify the
+  remote outcome; exhausted local retry, age, or deadline budget is not remote
+  rejection evidence.
 - When an approved external cluster, namespace, and compatible worker exist,
   enable the client and dispatcher role while starts stay frozen, verify the
-  cutover and rejected-binding checks, switch execution mode to `temporal`,
-  then release the ingress freeze. Inline remains the compatibility rollback
-  mode and returns `200`; Temporal admission returns `202` plus `Location`.
+  cutover, B-017 containment/reconciliation, and bounded pending-alert checks,
+  switch execution mode to `temporal`, then release the ingress freeze. Inline
+  remains the compatibility rollback mode and returns `200`; Temporal admission
+  returns `202` plus `Location`.
 - Schema compatibility covers the rolling window used by deployment.
 - Destructive transformations use expand/migrate/contract and verified backup/restore evidence.
 - Temporal workflows use version/build routing; golden histories replay before worker promotion.
@@ -301,7 +318,9 @@ that selects `started` rows older than the retry interval without a matching
   `OPSMIND_INVESTIGATION_EXECUTION_MODE=inline`, and disable the Temporal client,
   workflow-start dispatcher, and dispatcher datasource. Retain V010, bindings,
   inbox rows, and outbox rows as immutable recovery evidence; do not reset a
-  `REJECTED` binding or delete a pending handoff.
+  genuinely terminal `REJECTED` binding or delete a pending handoff. A
+  retryable post-RPC ambiguity remains `PENDING` until the no-Start
+  reconciliation lane establishes its exact remote outcome.
 
 ## Disaster Recovery
 
@@ -353,8 +372,10 @@ adds the V009/activity evidence above. This is CI fixture/checkpoint evidence,
 not production identity, latency, SLO, or deployment proof.
 
 Phase 9 source/static checks do not replace the missing exact-head PR-quality
-and disposable PostgreSQL evidence. No rollout may infer a live Temporal
-cluster, namespace, poller, workflow history, or restart/resume proof from them.
+and disposable PostgreSQL evidence. They also do not prove B-017 real-role
+containment or the no-Start reconciliation lane. No rollout may infer a live
+Temporal cluster, namespace, poller, workflow history, or restart/resume proof
+from them.
 
 Evidence schema v2 now binds the source/profile manifest and packaged Platform
 API JAR digests, verifies cleanup before atomic publication, and has a separate
@@ -397,11 +418,12 @@ pre-production reconciliation gate.
 
 ## Active Release Blockers
 
-`B-004`, `B-005`, `B-006`, `B-007`, `B-008`, `B-011`, `B-012`, and `B-013`
-remain active. They respectively block provider/legal
-egress, live-connector proof, evidence lifecycle, load/SLO, data lifecycle,
-RTO/restore alignment, object-store supply-chain posture, held-out/human
-evaluation. B-015 dependency security is dispositioned with an explicit
+`B-004`, `B-005`, `B-006`, `B-007`, `B-008`, `B-011`, `B-012`, `B-013`, and
+`B-017` remain active. They respectively block provider/legal egress,
+live-connector proof, evidence lifecycle, load/SLO, data lifecycle, RTO/restore
+alignment, object-store supply-chain posture, held-out/human evaluation, and
+Temporal admission/G4 containment-reconciliation proof. B-015 dependency
+security is dispositioned with an explicit
 compensating control and review date; B-016 tenant isolation is resolved by the
 immutable CI evidence recorded in [Progress](./progress.md), but no
 deployment gate may treat this slice as resolving the remaining blockers.
