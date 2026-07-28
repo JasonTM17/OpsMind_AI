@@ -1,11 +1,14 @@
 package ai.opsmind.platform.investigation.workflow;
 
+import java.io.IOException;
 import java.util.Optional;
+import java.util.concurrent.TimeoutException;
 
 import io.grpc.Status;
 import io.grpc.StatusException;
 import io.grpc.StatusRuntimeException;
-import io.temporal.failure.TemporalException;
+import io.temporal.client.WorkflowServiceException;
+import io.temporal.common.converter.DataConverterException;
 
 final class TemporalTransportFailureClassifier {
 
@@ -20,7 +23,7 @@ final class TemporalTransportFailureClassifier {
     ) {
         Optional<Status.Code> statusCode = findStatusCode(exception);
         if (statusCode.filter(TemporalTransportFailureClassifier::isRetryable)
-            .isPresent() || isStatuslessTemporalFailure(exception, statusCode)) {
+            .isPresent() || isStatuslessTransportFailure(exception, statusCode)) {
             return InvestigationWorkflowStartException.retryable(
                 "workflow.temporal-unavailable", exception
             );
@@ -62,20 +65,24 @@ final class TemporalTransportFailureClassifier {
             || code == Status.Code.CANCELLED;
     }
 
-    private static boolean isStatuslessTemporalFailure(
+    private static boolean isStatuslessTransportFailure(
         Throwable exception,
         Optional<Status.Code> statusCode
     ) {
-        if (statusCode.isPresent()) {
+        if (statusCode.isPresent()
+            || !(exception instanceof WorkflowServiceException)) {
             return false;
         }
-        Throwable current = exception;
+        Throwable current = exception.getCause();
         for (
             int depth = 0;
             current != null && depth < MAX_EXCEPTION_CAUSE_DEPTH;
             depth++
         ) {
-            if (current instanceof TemporalException) {
+            if (current instanceof DataConverterException) {
+                return false;
+            }
+            if (current instanceof IOException || current instanceof TimeoutException) {
                 return true;
             }
             Throwable cause = current.getCause();
