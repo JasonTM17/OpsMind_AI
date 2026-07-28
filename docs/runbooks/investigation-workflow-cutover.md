@@ -3,7 +3,25 @@
 Use this gate before changing `OPSMIND_INVESTIGATION_EXECUTION_MODE` from
 `inline` to `temporal`.
 
+## Current status
+
+This is a required future cutover procedure, not authorization to enable
+Temporal today. V011 leaves inherited dispatcher direct DML on
+`investigation_workflow_bindings`, `inbox_events`, and `outbox_events`, so B-017
+blocks admission. V012 real-role containment and the separately authorized
+read-only reconciliation lane described below are not yet proven.
+
 ## Preconditions
+
+Temporal admission remains disabled until both B-017 conditions have evidence:
+
+- V012 proves containment on fresh and upgrade paths with the real application
+  and dispatcher roles; the dispatcher cannot bypass the intended
+  capability-only binding/inbox/outbox settlement path.
+- A separately authorized reconciliation lane can Describe exactly the bound
+  workflow and read its first history input, but cannot Start a workflow. Its
+  failure path keeps the binding `PENDING` and emits a bounded aging/alert
+  signal.
 
 1. Disable new investigation starts at the ingress and application layers.
 2. Confirm all platform-api replicas observe the freeze.
@@ -40,12 +58,14 @@ triggers reject forged or incomplete handoffs.
 
 ## Enablement
 
-After the inventory exits `0`, keep starts frozen while enabling and validating:
+After the inventory exits `0`, keep starts frozen while validating B-017 and:
 
 - the dedicated dispatcher database identity;
 - the Temporal logical cluster, namespace, workflow type, and task queue;
 - compatible worker readiness;
-- the workflow-start dispatcher.
+- the workflow-start dispatcher;
+- the no-Start, exact-workflow reconciliation lane and its bounded
+  `PENDING`/alert behavior.
 
 Only then enable Temporal admission and release the ingress freeze. Runtime
 admission also checks for unbound nonterminal rows, so a missed orphan fails
@@ -57,11 +77,12 @@ a poller whose identity and build ID match
 `OPSMIND_INVESTIGATION_TEMPORAL_WORKER_IDENTITY` and
 `OPSMIND_INVESTIGATION_TEMPORAL_WORKER_BUILD_ID`.
 
-## Rejected-binding alert and recovery
+## Terminal and ambiguous-binding alert/recovery
 
-Treat any `REJECTED` binding as an operator alert. Query with an approved
-administrative identity that can produce a complete cross-tenant view; forced
-RLS makes application/dispatcher results partial or empty:
+Treat any `REJECTED` binding as an operator alert, not proof that no remote
+workflow exists. Query with an approved administrative identity that can
+produce a complete cross-tenant view; forced RLS makes application/dispatcher
+results partial or empty:
 
 ```sql
 SELECT count(*) AS rejected_workflow_starts
@@ -94,9 +115,9 @@ ORDER BY binding.rejected_at DESC, binding.organization_id, binding.run_id
 LIMIT 100;
 ```
 
-A rejected binding must have a poisoned outbox row and poisoned inbox row with
-the same bounded rejection code. The following query must return zero rows;
-any result is an integrity incident and blocks rollout:
+A known, evidence-backed terminal binding must have a poisoned outbox row and
+poisoned inbox row with the same bounded rejection code. The following query
+must return zero rows; any result is an integrity incident and blocks rollout:
 
 ```sql
 SELECT binding.organization_id, binding.run_id, binding.rejection_code
@@ -119,11 +140,23 @@ WHERE binding.status = 'REJECTED'
   );
 ```
 
-Do not reset `REJECTED` to `PENDING`, delete its evidence, or manufacture a new
-outbox row. V010 intentionally makes the binding transition terminal. Freeze
-affected starts, preserve the binding/inbox/outbox rows, determine whether an
-external execution exists, and use a separately reviewed forward recovery that
-proves exact request and execution identity.
+### Retryable post-RPC ambiguity
+
+If a retryable Temporal result followed an RPC that may have been accepted,
+local attempt, age, or deadline exhaustion does not establish remote rejection.
+Do not convert that uncertainty to `REJECTED`, poison it, or issue another Start
+call. Preserve bounded `PENDING`, page through the configured alert path, and
+use only the separately authorized read-only lane to Describe the exact bound
+workflow and verify its first history input. Until B-017 is proven, Temporal
+must stay disabled; this runbook has no manual substitute for that lane.
+
+Do not reset an existing `REJECTED` binding to `PENDING`, delete evidence, or
+manufacture a new outbox row. V010 intentionally prevents manual reopening of
+the binding transition. If diagnosis finds that a possibly accepted RPC was
+involved, preserve the binding/inbox/outbox evidence, freeze affected starts,
+and use a separately reviewed forward recovery that proves exact request and
+execution identity. The safe forward behavior is `PENDING` until that proof is
+available.
 
 ## Rollback
 
@@ -132,4 +165,6 @@ Freeze starts, restore `OPSMIND_INVESTIGATION_EXECUTION_MODE=inline`, and set
 `OPSMIND_INVESTIGATION_WORKFLOW_STARTER_ENABLED=false`, and
 `OPSMIND_DISPATCHER_ENABLED=false`. V010 remains applied. Do not delete pending
 or rejected bindings, inbox rows, or outbox rows; they are durable recovery
-evidence for a forward fix.
+evidence for a forward fix. A possibly accepted post-RPC handoff remains
+`PENDING` and reconciliation-required; it is never made `REJECTED` solely by
+local budget exhaustion.

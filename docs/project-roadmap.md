@@ -14,7 +14,7 @@ The detailed executable plan is [plans/260719-1747-opsmind-ai-production-platfor
 | G1 | Developer platform repeatable | Storage preflight, pinned tools, CI scaffold, secret-free bootstrap |
 | G2 | Identity/data/contracts isolated | OIDC conformance, forced RLS, migrations, contract tests |
 | G3 | Thin live investigation slice works | Synthetic live connector, evidence, AI, UI, audit, cost trace |
-| G4 | Durable workflow safe | Crash/replay/versioning and bounded provider continuation |
+| G4 | Durable workflow safe | Crash/replay/versioning, bounded provider continuation, and exact-workflow ambiguity reconciliation |
 | G5 | RAG lifecycle safe | ACL-before-ranking, provenance, revoke/delete receipts |
 | G6 | Exact action safe | Bound approval, CAS, idempotency, ambiguity reconciliation |
 | G7 | Product/evaluation usable | Operator UX, held-out evaluation, human baseline |
@@ -32,7 +32,7 @@ The detailed executable plan is [plans/260719-1747-opsmind-ai-production-platfor
 | 6 | Safe Tool Gateway and read-only connectors | G3 | In progress; B-016 tenant isolation resolved by immutable CI, broader Phase 6 exit remains BLOCK |
 | 7 | Evidence-backed incident vertical slice | G3 | In progress; metadata activity route and V009 CI fixture gates pass; external G3 blockers remain |
 | 8 | Simulator and evaluation baseline | A-Z G4 / roadmap G7 | In progress; Phase 8B complete, held-out/human/calibration evidence unavailable, exit BLOCK |
-| 9 | Durable Temporal investigation workflow | G4 | In progress; default-off start handoff implemented, exact-head evidence/worker/restart-resume pending, B-013 active |
+| 9 | Durable Temporal investigation workflow | G4 | In progress; default-off start handoff exists, but B-017 blocks admission pending V012 containment and no-Start reconciliation proof; B-013 remains active |
 | 10 | Permission-aware RAG and knowledge lifecycle | G5 | Pending |
 | 11 | Exact-action approval and reversible remediation | G6 | Pending |
 | 12 | Operator web experience completion | G7 | Pending |
@@ -168,7 +168,8 @@ code and forward recovery remain mandatory.
 Active program blockers remain explicit: `B-004`
 (provider/legal), `B-005` (named live connector), `B-006` (evidence lifecycle),
 `B-007` (load/SLO), `B-008` (retention/deletion), `B-011` (RTO/restore),
-`B-012` (object-store supply chain), and `B-013` (held-out/human evaluation).
+`B-012` (object-store supply chain), `B-013` (held-out/human evaluation), and
+`B-017` (Temporal dispatcher containment/reconciliation).
 See [Blockers](./blockers.md) for accountable owners and unblock evidence.
 
 Phase 8B now implements three secret-free, training-ineligible contracts:
@@ -201,17 +202,25 @@ quality, calibration, and human comparison.
 Phase 9 is in progress. The current worktree adds Platform V010 and a
 default-off handoff that atomically creates the initial run, immutable Temporal
 target/request binding, and canonical outbox start event. The opt-in dispatcher
-role uses a dedicated database datasource, commits its claim before the
-Temporal RPC, and atomically reconciles binding/inbox/outbox state afterward.
-`AlreadyStarted` is accepted only after exact target, memo digest, and first
-history input verification. Inline remains the default `200` path; Temporal
-admission is additive `202 + Location` and requires a compatible task-queue
-poller.
+uses a dedicated datasource and commits its claim before the Temporal RPC.
+However, V011 retains inherited direct DML on the Phase 9 binding, inbox, and
+outbox paths; its capability functions therefore do not yet provide real-role
+containment. V012 is required and unverified.
+
+An `AlreadyStarted` response is accepted only after exact target, memo digest,
+and first-history input verification. A retryable post-RPC result can still
+mean the remote workflow was accepted: local attempt, age, or deadline
+exhaustion must remain bounded `PENDING` and trigger exact-workflow
+reconciliation, not unconditional `REJECTED`. B-017 requires a separately
+authorized read-only Describe-plus-first-history lane that cannot Start a
+workflow before admission can open. Inline remains the default `200` path;
+Temporal admission is additive `202 + Location` and requires a compatible
+task-queue poller.
 
 This is not the Phase 9 or roadmap G4 exit. No live/production Temporal cluster
 or namespace, Compose service, workflow worker, or restart/resume execution
 exists. V010 performs no automatic legacy backfill. Exact-head CI and
-PostgreSQL evidence are also missing, and B-013 remains active.
+PostgreSQL evidence are also missing, and B-013 and B-017 remain active.
 
 ## Staffing Scenarios
 
@@ -251,8 +260,11 @@ processing terms.
 
 Phase 9 handoff infrastructure is now in progress with provisional test-only
 values. The reviewed human pilot remains mandatory before no-progress/budget
-thresholds are frozen and before Phase 9 can exit. This reconciles preparatory
-engineering with the stricter parent Phase 8 evidence gate.
+thresholds are frozen and before Phase 9 can exit. B-017 also keeps Temporal
+admission and roadmap G4 disabled until V012 real-role containment and the
+read-only exact-workflow reconciliation lane have runtime proof. This
+reconciles preparatory engineering with the stricter parent Phase 8 evidence
+gate.
 
 Gate labels also drift between documents: the parent A-Z plan names Phase 8
 exit `G4`, while this roadmap's gate summary names durable workflow `G4` and
