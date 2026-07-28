@@ -31,16 +31,21 @@ the protected username/token pair is configured.
 ## Acceptance Criteria
 
 - All action dependencies are pinned to immutable commit SHAs.
-- Top-level permissions are empty. Job allowlists use only `contents: read`,
+- Top-level permissions are empty. The authorizer alone adds `actions: read` to
+  prove exact-SHA CI; candidate and promotion jobs use only `contents: read`,
   `packages: write`, `id-token: write`, and `attestations: write` where needed.
 - Four images build from their existing Dockerfiles without build-time secrets.
-- Each candidate has `mode=max` provenance, an attached SBOM, zero observed
-  HIGH/CRITICAL vulnerabilities or secrets, and a passing runtime health probe.
+- Each candidate has `mode=max` provenance, an attached SBOM, zero fixable
+  HIGH/CRITICAL vulnerabilities or detected secrets, an observed license
+  inventory, and a passing runtime health probe on both `linux/amd64` and
+  `linux/arm64`.
 - GHCR package labels link to this repository and expose source revision.
 - Manual publication is limited to `main`, requires strict SemVer, and proves
   both quality workflows passed on the exact source SHA.
 - Promotion requires all four candidate receipts, a protected environment
   approval, public repository-linked GHCR packages, and verified attestations.
+  Immutable version tags are staged first; `latest` activates only after every
+  digest and signature passes.
 - Docker Hub promotion fails closed when either environment credential is
   absent; the token is never job-scoped.
 - Published registry digests, observed platforms, scan counts, health, package

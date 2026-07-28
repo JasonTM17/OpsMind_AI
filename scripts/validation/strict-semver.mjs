@@ -1,32 +1,44 @@
 import process from "node:process";
-import { pathToFileURL } from "node:url";
+import { fileURLToPath } from "node:url";
 
-const STRICT_SEMVER =
-  /^v(0|[1-9]\d*)\.(0|[1-9]\d*)\.(0|[1-9]\d*)(?:-((?:0|[1-9]\d*|\d*[A-Za-z-][0-9A-Za-z-]*)(?:\.(?:0|[1-9]\d*|\d*[A-Za-z-][0-9A-Za-z-]*))*))?(?:\+([0-9A-Za-z-]+(?:\.[0-9A-Za-z-]+)*))?$/;
+const identifier =
+  String.raw`(?:0|[1-9]\d*|\d*[A-Za-z-][0-9A-Za-z-]*)`;
 
-export function normalizeReleaseTag(version) {
-  if (!STRICT_SEMVER.test(version)) {
-    throw new Error(
-      "release version must be strict SemVer with a v prefix, for example v1.2.3 or v1.2.3-rc.1+build.7",
+export const strictSemVerPattern = new RegExp(
+  String.raw`^(0|[1-9]\d*)\.(0|[1-9]\d*)\.(0|[1-9]\d*)` +
+    String.raw`(?:-(${identifier}(?:\.${identifier})*))?` +
+    String.raw`(?:\+([0-9A-Za-z-]+(?:\.[0-9A-Za-z-]+)*))?$`,
+);
+
+export function parseStrictSemVer(value) {
+  const match = strictSemVerPattern.exec(value);
+  if (!match) return null;
+  return {
+    version: value,
+    releaseTag: value.replace("+", "_"),
+    major: match[1],
+    minor: match[2],
+    patch: match[3],
+    majorMinor: `${match[1]}.${match[2]}`,
+  };
+}
+
+function runCli() {
+  const result = parseStrictSemVer(process.argv[2] ?? "");
+  if (!result) {
+    console.error(
+      "Release version must be strict SemVer without a v prefix " +
+        "(example: 1.2.3 or 1.2.3-rc.1+build.7).",
     );
+    process.exit(1);
   }
-
-  const tag = version.slice(1).replace("+", "_");
-  if (tag.length > 128) {
-    throw new Error("normalized OCI release tag exceeds 128 characters");
+  if (result.releaseTag.length > 128) {
+    console.error("Release version exceeds the OCI tag length limit.");
+    process.exit(1);
   }
-  return tag;
+  console.log(`release_version=${result.version}`);
+  console.log(`release_tag=${result.releaseTag}`);
+  console.log(`major_minor=${result.majorMinor}`);
 }
 
-const isEntryPoint =
-  process.argv[1] &&
-  import.meta.url === pathToFileURL(process.argv[1]).href;
-
-if (isEntryPoint) {
-  try {
-    process.stdout.write(`${normalizeReleaseTag(process.argv[2] ?? "")}\n`);
-  } catch (error) {
-    process.stderr.write(`${error.message}\n`);
-    process.exitCode = 1;
-  }
-}
+if (process.argv[1] === fileURLToPath(import.meta.url)) runCli();

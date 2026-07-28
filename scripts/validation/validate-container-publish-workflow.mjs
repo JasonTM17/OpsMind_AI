@@ -3,69 +3,154 @@ import path from "node:path";
 import process from "node:process";
 import { parse } from "yaml";
 
-import { validateWorkflow } from "./container-publish-workflow-contract.mjs";
-import { normalizeReleaseTag } from "./strict-semver.mjs";
+import { validateContainerPublishWorkflow } from "./container-publish-workflow-contract.mjs";
+import { parseStrictSemVer } from "./strict-semver.mjs";
 
-const root = path.resolve(import.meta.dirname, "..", "..");
-const workflowPath = path.join(root, ".github", "workflows", "container-publish.yml");
-const source = fs.readFileSync(workflowPath, "utf8").replace(/\r\n/g, "\n");
-const errors = [];
+const repositoryRoot = path.resolve(import.meta.dirname, "..", "..");
+const workflowPath = path.join(
+  repositoryRoot,
+  ".github",
+  "workflows",
+  "container-publish.yml",
+);
+const source = fs.readFileSync(workflowPath, "utf8");
+const document = parse(source);
+const errors = validateContainerPublishWorkflow(document);
 
-function runMutationTests(document) {
-  const failures = [];
-  const mutations = [
-    ["unpinned action", (copy) => copy.jobs.authorize.steps.push({ uses: "owner/action@main" })],
-    ["extra permission", (copy) => { copy.jobs.promote.permissions.issues = "write"; }],
-    ["missing environment", (copy) => { delete copy.jobs.promote.environment; }],
-    ["job-scoped secret", (copy) => {
-      copy.jobs.promote.env = { DOCKERHUB_TOKEN: "${{ secrets.DOCKERHUB_TOKEN }}" };
-    }],
-    ["push trigger", (copy) => { copy.on.push = { branches: ["main"] }; }],
-  ];
-  for (const [name, mutate] of mutations) {
-    const copy = structuredClone(document);
-    mutate(copy);
-    if (validateWorkflow(copy).length === 0) failures.push(name);
+function clone(value) {
+  return structuredClone(value);
+}
+
+const mutations = [
+  [
+    "unpinned action",
+    (value) => {
+      value.jobs.authorize.steps.push({ uses: "owner/action@main" });
+    },
+    "action.unpinned:",
+  ],
+  [
+    "extra write permission",
+    (value) => {
+      value.jobs.authorize.permissions.issues = "write";
+    },
+    "permissions.authorize",
+  ],
+  [
+    "unapproved pinned action",
+    (value) => {
+      value.jobs.authorize.steps.push({
+        uses: "owner/action@0000000000000000000000000000000000000000",
+      });
+    },
+    "action.unapproved:",
+  ],
+  [
+    "removed protected environment",
+    (value) => {
+      delete value.jobs.promote.environment;
+    },
+    "environment.protected-promotion",
+  ],
+  [
+    "job-scoped Docker Hub secret",
+    (value) => {
+      value.jobs.promote.env = {
+        DOCKERHUB_TOKEN: "${{ secrets.DOCKERHUB_TOKEN }}",
+      };
+    },
+    "secret.dockerhub-step-scope",
+  ],
+  [
+    "automatic tag trigger",
+    (value) => {
+      value.on.push = { tags: ["v*"] };
+    },
+    "trigger.manual-only",
+  ],
+  [
+    "Docker Hub enabled by default",
+    (value) => {
+      value.on.workflow_dispatch.inputs.publish_dockerhub.default = true;
+    },
+    "trigger.fail-closed-inputs",
+  ],
+  [
+    "removed main authorization guard",
+    (value) => {
+      value.jobs.authorize.if = "true";
+    },
+    "flow.main-only-authorization",
+  ],
+  [
+    "cancellable overlapping release",
+    (value) => {
+      value.concurrency["cancel-in-progress"] = true;
+    },
+    "flow.global-noncancelling-concurrency",
+  ],
+  [
+    "promotion without aggregate gate",
+    (value) => {
+      value.jobs.promote.needs = "authorize";
+    },
+    "flow.promote-needs-all-candidates",
+  ],
+  [
+    "mutable tag before signature verification",
+    (value) => {
+      const step = value.jobs.promote.steps.find(
+        (entry) => entry.name === "Promote tested digests",
+      );
+      step.run += '\noras cp "$source" "${target}:latest"\n';
+    },
+    "release.public-tag-order",
+  ],
+];
+
+for (const [name, mutate, expectedErrorPrefix] of mutations) {
+  const candidate = clone(document);
+  mutate(candidate);
+  const mutationErrors = validateContainerPublishWorkflow(candidate);
+  if (!mutationErrors.some((error) => error.startsWith(expectedErrorPrefix))) {
+    errors.push(`negative mutation escaped validation: ${name}`);
   }
-  return failures;
 }
 
-try {
-  const document = parse(source);
-  errors.push(...validateWorkflow(document));
-  for (const mutation of runMutationTests(document)) {
-    errors.push(`validator accepted negative mutation: ${mutation}`);
-  }
-} catch (error) {
-  errors.push(`workflow YAML parse failed: ${error.message}`);
-}
-
-for (const bad of ["v01.2.3", "v1.02.3", "v1.2.03", "v1.2.3..", "v1.2.3-01"]) {
-  try {
-    normalizeReleaseTag(bad);
-    errors.push(`strict SemVer validator accepted ${bad}`);
-  } catch {}
-}
-for (const [valid, tag] of [
-  ["v0.1.0", "0.1.0"],
-  ["v1.2.3-rc.1", "1.2.3-rc.1"],
-  ["v1.2.3+build.7", "1.2.3_build.7"],
+for (const value of [
+  "0.1.0",
+  "1.2.3",
+  "1.2.3-rc.1",
+  "1.2.3-rc.1+build.7",
 ]) {
-  if (normalizeReleaseTag(valid) !== tag) errors.push(`normalization failed for ${valid}`);
+  if (!parseStrictSemVer(value)) errors.push(`valid SemVer rejected: ${value}`);
+}
+if (parseStrictSemVer("1.2.3+build.7")?.releaseTag !== "1.2.3_build.7") {
+  errors.push("SemVer build metadata was not normalized for OCI tags");
+}
+for (const value of [
+  "v1.2.3",
+  "01.2.3",
+  "1.02.3",
+  "1.2.03",
+  "1.2.3-01",
+  "1.2.3..",
+  "1.2",
+]) {
+  if (parseStrictSemVer(value)) errors.push(`invalid SemVer accepted: ${value}`);
 }
 
 console.log("OpsMind OCI publication workflow validation");
 console.log("EvidenceSchemaVersion=oci-publication-static-v2");
-console.log(`Workflow=${path.relative(root, workflowPath).replaceAll("\\", "/")}`);
+console.log(
+  `Workflow=${path.relative(repositoryRoot, workflowPath).replaceAll("\\", "/")}`,
+);
 console.log("Trigger=MANUAL_MAIN_ONLY");
-console.log("Environment=oci-production");
+console.log("CandidateGate=BUILD_SCAN_SMOKE");
+console.log("PromotionGate=PROTECTED_AGGREGATE_DIGEST");
 console.log("Images=4");
 console.log("Platforms=linux/amd64,linux/arm64");
-console.log("Promotion=BUILD_ONCE_BY_DIGEST");
-console.log("Scans=vulnerability,secret,license");
-console.log("SignedAttestation=VERIFIED");
-console.log("GHCRVisibility=PUBLIC_REQUIRED");
-console.log("DockerHub=PROTECTED_ENVIRONMENT_CREDENTIAL_GATED");
+console.log("NegativeMutations=11");
 console.log(`Errors=${errors.length}`);
 for (const error of errors) console.error(`Error=${error}`);
 console.log(`Result=${errors.length === 0 ? "PASS" : "BLOCK"}`);

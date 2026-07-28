@@ -288,10 +288,11 @@ SBOM/provenance, scan results, and registry parity in the release evidence.
 The checked-in
 [OCI publication workflow](./.github/workflows/container-publish.yml) provides
 that package path through build-once promotion: exact-SHA candidates are
-scanned, health-checked, signed, and aggregated before the protected
-`oci-production` environment can apply public version or `latest` tags. GHCR
-uses the scoped GitHub token. Docker Hub remains blocked until its username and
-token exist only in that protected environment.
+scanned, health-checked, and aggregated before the protected `oci-production`
+environment stages immutable version tags. It then signs and verifies the
+release-set before activating `latest`. Both architectures are scanned and
+runtime-probed. GHCR uses the scoped GitHub token. Docker Hub remains blocked
+until its username and token exist only in that protected environment.
 
 ## Unresolved Questions
 

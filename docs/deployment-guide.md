@@ -52,9 +52,12 @@ The SHA-pinned
 all four runtime images for `linux/amd64` and `linux/arm64` as immutable
 candidate SHA references. Each candidate must expose the expected source and
 revision labels, BuildKit SBOM/max-level provenance, a clean HIGH/CRITICAL
-vulnerability and secret scan, a passing runtime health probe, and a verified
-GitHub/Sigstore attestation. Only after all four candidate receipts pass can the
-protected `oci-production` job promote the same digests and activate `latest`.
+fixable-vulnerability and secret scan, a license inventory, and a passing
+runtime health probe on both
+`linux/amd64` and `linux/arm64`. Only after all four candidate receipts pass can
+the protected `oci-production` job stage immutable version tags, create and
+verify GitHub/Sigstore attestations for each release digest, then activate
+`latest`.
 
 Publication is manual-only, rejects any ref except `main`, requires a strict
 SemVer `release_version`, and verifies that PR quality and cross-service
@@ -69,7 +72,7 @@ Run the GHCR bootstrap after the workflow is merged:
 
 ```powershell
 gh workflow run container-publish.yml --ref main `
-  -f release_version=v0.1.0 `
+  -f release_version=0.1.0 `
   -f publish_dockerhub=false
 ```
 
@@ -80,12 +83,12 @@ protected environment credentials exist:
 
 ```powershell
 gh workflow run container-publish.yml --ref main `
-  -f release_version=v0.1.0 `
+  -f release_version=0.1.0 `
   -f publish_dockerhub=true
 ```
 
 The workflow normalizes valid SemVer build metadata for OCI tags, for example
-`v1.2.3+build.7` becomes `1.2.3_build.7`, while the receipt retains the original
+`1.2.3+build.7` becomes `1.2.3_build.7`, while the receipt retains the original
 version. Promotion records consume candidate digests, never an existing mutable
 tag. Immutable version/revision tags are applied before signing; `latest` is the
 release-set activation pointer and is not updated if any component, signature,
