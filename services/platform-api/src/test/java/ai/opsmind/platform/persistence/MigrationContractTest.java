@@ -309,6 +309,15 @@ class MigrationContractTest {
             .contains("outbox predecessor lookup requires its bound tenant")
             .contains("AS RESTRICTIVE")
             .contains("CREATE OR REPLACE FUNCTION opsmind_claim_investigation_workflow_start")
+            .contains("SET last_error = 'workflow.temporal-outcome-ambiguous'")
+            .contains("event_row.attempts > 0")
+            .contains("event_row.last_error = 'workflow.temporal-unavailable'")
+            .contains(
+                "event_row.last_error IN (\n"
+                    + "        'workflow.temporal-outcome-ambiguous',\n"
+                    + "        'workflow.temporal-unavailable'\n"
+                    + "    )"
+            )
             .contains("workflow.ambiguous-retry-allowed")
             .contains("workflow.reconciliation-required");
     }

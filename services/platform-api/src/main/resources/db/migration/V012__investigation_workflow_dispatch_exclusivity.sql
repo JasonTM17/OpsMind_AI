@@ -59,6 +59,29 @@ BEGIN
 END
 $$;
 
+-- V011-era dispatchers used temporal-unavailable for a retryable Temporal
+-- transport result whose remote outcome was not known. Preserve that safety
+-- meaning only for attempted, live canonical starts; ordinary events,
+-- unattempted starts, and already terminalized rows keep their original code.
+UPDATE public.outbox_events event_row
+   SET last_error = 'workflow.temporal-outcome-ambiguous'
+ WHERE event_row.event_type = 'investigation.workflow-start.requested'
+   AND event_row.schema_version = '1'
+   AND event_row.aggregate_type = 'investigation-workflow'
+   AND event_row.aggregate_sequence = 1
+   AND event_row.published_at IS NULL
+   AND event_row.poisoned_at IS NULL
+   AND event_row.attempts > 0
+   AND event_row.last_error = 'workflow.temporal-unavailable'
+   AND EXISTS (
+       SELECT 1
+         FROM public.investigation_workflow_bindings binding_row
+        WHERE binding_row.organization_id = event_row.organization_id
+          AND binding_row.run_id = event_row.aggregate_id
+          AND binding_row.start_event_id = event_row.event_id
+          AND binding_row.status = 'PENDING'
+   );
+
 CREATE OR REPLACE FUNCTION opsmind_has_unpublished_outbox_predecessor(
     p_organization_id uuid,
     p_aggregate_type varchar,
@@ -262,7 +285,10 @@ BEGIN
         RETURN 'workflow.lease-lost';
     END IF;
 
-    SELECT event_row.last_error = 'workflow.temporal-outcome-ambiguous'
+    SELECT event_row.last_error IN (
+        'workflow.temporal-outcome-ambiguous',
+        'workflow.temporal-unavailable'
+    )
       INTO ambiguous_outcome
       FROM public.outbox_events event_row
      WHERE event_row.organization_id = p_organization_id
