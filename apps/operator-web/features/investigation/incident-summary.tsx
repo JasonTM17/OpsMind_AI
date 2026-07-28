@@ -15,10 +15,10 @@ export function IncidentSummary({
 }: IncidentSummaryProps) {
   const elapsedUntil = investigation.endedAt ?? refreshedAt;
   return (
-    <header className={styles.summary}>
+    <section className={styles.summary} aria-labelledby="incident-title">
       <div className={styles.identity}>
         <p className={styles.kicker}>Incident / {incident.id}</p>
-        <h1>{incident.title}</h1>
+        <h1 id="incident-title">{incident.title}</h1>
         <p className={styles.description}>{incident.summary}</p>
       </div>
       <dl className={styles.facts}>
@@ -43,6 +43,6 @@ export function IncidentSummary({
           <dd>{formatDuration(investigation.startedAt, elapsedUntil)}</dd>
         </div>
       </dl>
-    </header>
+    </section>
   );
 }

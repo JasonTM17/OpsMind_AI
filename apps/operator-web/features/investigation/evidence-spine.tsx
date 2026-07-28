@@ -14,8 +14,12 @@ export function EvidenceSpine({ investigation }: EvidenceSpineProps) {
     NonNullable<InvestigationView["analysis"]>["citations"]
   >();
   for (const citation of analysis?.citations ?? []) {
-    const citations = citationsByEvidence.get(citation.evidenceId) ?? [];
-    citationsByEvidence.set(citation.evidenceId, [...citations, citation]);
+    const citations = citationsByEvidence.get(citation.evidenceId);
+    if (citations === undefined) {
+      citationsByEvidence.set(citation.evidenceId, [citation]);
+    } else {
+      citations.push(citation);
+    }
   }
 
   return (
@@ -28,7 +32,7 @@ export function EvidenceSpine({ investigation }: EvidenceSpineProps) {
         <span>{investigation.evidenceIds.length} durable reference(s)</span>
       </header>
 
-      <ol className={styles.timeline}>
+      <ol className={styles.timeline} aria-label="Evidence processing history">
         <SpineStep
           state="stable"
           label="Run accepted"
@@ -79,7 +83,7 @@ export function EvidenceSpine({ investigation }: EvidenceSpineProps) {
             from the browser contract.
           </p>
           {investigation.pendingToolCalls.length > 0 ? (
-            <ul className={styles.intentList}>
+            <ul className={styles.intentList} aria-label="Pending catalog read intents">
               {investigation.pendingToolCalls.map((intent) => (
                 <li key={intent.intentId}>
                   <strong>{intent.connector}.{intent.operation}</strong>
@@ -99,7 +103,7 @@ export function EvidenceSpine({ investigation }: EvidenceSpineProps) {
           {investigation.evidenceIds.length === 0 ? (
             <p>No evidence reference has been accepted.</p>
           ) : (
-            <ul className={styles.evidenceList}>
+            <ul className={styles.evidenceList} aria-label="Durable evidence records">
               {investigation.evidenceIds.map((evidenceId, index) => {
                 const citations = citationsByEvidence.get(evidenceId) ?? [];
                 return (
@@ -109,7 +113,10 @@ export function EvidenceSpine({ investigation }: EvidenceSpineProps) {
                       <strong>{citations.length > 0 ? "Cited evidence" : "Durable evidence"}</strong>
                     </div>
                     {citations.length > 0 ? (
-                      <ul className={styles.citationClaims}>
+                      <ul
+                        className={styles.citationClaims}
+                        aria-label={`Claims citing evidence ${index + 1}`}
+                      >
                         {citations.map((citation, citationIndex) => (
                           <li key={`${citation.digest}:${citation.claim}:${citationIndex}`}>
                             <p>{citation.claim}</p>

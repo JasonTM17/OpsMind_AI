@@ -10,6 +10,10 @@ interface InvestigationContextProps {
 export function InvestigationContext({ investigation }: InvestigationContextProps) {
   const hypothesis = investigation.analysis?.hypotheses[0];
   const confidence = hypothesis?.confidence ?? investigation.analysis?.confidence ?? null;
+  const confidenceLabel = formatConfidence(confidence);
+  const confidenceValueText = confidence === null
+    ? "Not reported"
+    : `${Math.round(confidence * 100)}%`;
   const remaining = {
     rounds: Math.max(0, investigation.budget.maxRounds - investigation.rounds),
     tools: Math.max(0, investigation.budget.maxToolCalls - investigation.toolCalls),
@@ -30,10 +34,16 @@ export function InvestigationContext({ investigation }: InvestigationContextProp
           <div className={styles.confidence}>
             <div>
               <span>Confidence</span>
-              <strong>{formatConfidence(confidence)}</strong>
+              <strong>{confidenceLabel}</strong>
             </div>
             {confidence !== null ? (
-              <meter min="0" max="1" value={confidence}>
+              <meter
+                aria-label="Hypothesis confidence"
+                aria-valuetext={confidenceValueText}
+                min="0"
+                max="1"
+                value={confidence}
+              >
                 {Math.round(confidence * 100)}%
               </meter>
             ) : null}

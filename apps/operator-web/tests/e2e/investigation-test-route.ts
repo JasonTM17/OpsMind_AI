@@ -27,6 +27,7 @@ export const investigationRuns = {
   invalidUtf8: "10000000-0000-4000-8000-000000000727",
   unclassified: "10000000-0000-4000-8000-000000000728",
   unknownOperation: "10000000-0000-4000-8000-000000000729",
+  longContent: "10000000-0000-4000-8000-000000000730",
 } as const;
 
 export function runPath(runId: string): string {

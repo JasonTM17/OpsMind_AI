@@ -1,6 +1,11 @@
-import type { Metadata } from "next";
+import type { Metadata, Viewport } from "next";
 import type { ReactNode } from "react";
 import "./styles.css";
+
+export const viewport: Viewport = {
+  colorScheme: "dark",
+  themeColor: "#14130f",
+};
 
 export const metadata: Metadata = {
   title: {

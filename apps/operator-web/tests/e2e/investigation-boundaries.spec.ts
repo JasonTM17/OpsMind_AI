@@ -111,15 +111,55 @@ test("bounds an upstream timeout without retrying in the browser", async ({ page
 });
 
 test("renders the route loading boundary while the bounded read is pending", async ({ page }) => {
-  await page.setViewportSize({ width: 820, height: 900 });
-  const navigation = page.goto(runPath(investigationRuns.slow));
+  for (const scenario of [
+    { width: 1440, columns: 3 },
+    { width: 1024, columns: 2 },
+    { width: 820, columns: 1 },
+    { width: 768, columns: 1 },
+    { width: 375, columns: 1 },
+    { width: 320, columns: 1 },
+  ]) {
+    await page.setViewportSize({ width: scenario.width, height: 900 });
+    const navigation = page.goto(runPath(investigationRuns.slow));
 
-  await expect(page.getByText("Loading the authorized investigation projection")).toBeVisible();
-  await expect.poll(() => page.evaluate(
-    () => document.documentElement.scrollWidth <= document.documentElement.clientWidth,
-  )).toBe(true);
-  await navigation;
-  await expect(page.getByRole("heading", { name: "Created", exact: true })).toBeVisible();
+    await expect(page.getByText("Loading the authorized investigation projection")).toBeVisible();
+    await expect(page.getByRole("complementary")).toHaveCount(0);
+    const geometry = await page.evaluate(() => {
+      const main = document.querySelector<HTMLElement>('main[aria-label="Loading investigation"]');
+      const layout = main?.querySelectorAll<HTMLElement>(':scope > [aria-hidden="true"]')[1];
+      if (layout === undefined) throw new Error("Missing loading workspace layout");
+      const panels = Array.from(layout.children, (element) => {
+        const bounds = element.getBoundingClientRect();
+        return { x: bounds.x, y: bounds.y, width: bounds.width };
+      });
+      if (panels.length !== 3) throw new Error("Loading workspace must expose three panels");
+      return { panels, overflow: document.documentElement.scrollWidth > window.innerWidth };
+    });
+    expect(geometry.overflow).toBe(false);
+    const [context, evidence, conclusion] = geometry.panels;
+
+    if (scenario.columns === 3) {
+      expect(context.y).toBeCloseTo(evidence.y, 0);
+      expect(evidence.y).toBeCloseTo(conclusion.y, 0);
+      expect(context.x).toBeLessThan(evidence.x);
+      expect(evidence.x).toBeLessThan(conclusion.x);
+    } else if (scenario.columns === 2) {
+      expect(context.y).toBeCloseTo(evidence.y, 0);
+      expect(context.x).toBeLessThan(evidence.x);
+      expect(conclusion.y).toBeGreaterThan(evidence.y);
+      expect(conclusion.x).toBeCloseTo(context.x, 0);
+    } else {
+      expect(context.y).toBeLessThan(evidence.y);
+      expect(evidence.y).toBeLessThan(conclusion.y);
+      expect(context.x).toBeCloseTo(evidence.x, 0);
+      expect(evidence.x).toBeCloseTo(conclusion.x, 0);
+      expect(context.width).toBeCloseTo(evidence.width, 0);
+      expect(evidence.width).toBeCloseTo(conclusion.width, 0);
+    }
+
+    await navigation;
+    await expect(page.getByRole("heading", { name: "Created", exact: true })).toBeVisible();
+  }
 });
 
 async function expectAxeClean(page: Page): Promise<void> {
