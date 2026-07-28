@@ -7,16 +7,19 @@ import static ai.opsmind.platform.testing.PostgresTenantFixtures.USER_A;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
+import java.net.URI;
 import java.nio.charset.StandardCharsets;
 import java.sql.Timestamp;
 import java.time.Instant;
 import java.util.List;
+import java.util.Set;
 import java.util.UUID;
 
 import ai.opsmind.platform.common.api.RequestDigest;
-import ai.opsmind.platform.incident.AuthorizedIncidentAnalysisEvidence;
-import ai.opsmind.platform.incident.IncidentSeverity;
-import ai.opsmind.platform.incident.IncidentStatus;
+import ai.opsmind.platform.identity.OpsMindPrincipal;
+import ai.opsmind.platform.incident.IncidentAnalysisAuthorizer;
+import ai.opsmind.platform.investigation.application.DurableInvestigationAdmissionRepository;
+import ai.opsmind.platform.investigation.application.InvestigationExecutionContext;
 import ai.opsmind.platform.investigation.domain.InvestigationCommand;
 import ai.opsmind.platform.investigation.integration.InvestigationAiRuntimeClient;
 import ai.opsmind.platform.investigation.integration.InvestigationToolGatewayClient;
@@ -57,7 +60,9 @@ class InvestigationWorkflowDispatcherPersistenceIntegrationTest {
     private static final Instant NOW = Instant.parse("2030-01-01T00:00:00Z");
 
     @Autowired
-    private InvestigationWorkflowHandoffRepository handoff;
+    private DurableInvestigationAdmissionRepository handoff;
+    @Autowired
+    private IncidentAnalysisAuthorizer authorizer;
     @Autowired
     private InvestigationWorkflowDispatchTransactions dispatchTransactions;
     @Autowired
@@ -311,14 +316,22 @@ class InvestigationWorkflowDispatcherPersistenceIntegrationTest {
             new InvestigationCommand.Budget(4, 4, 20, 8_000),
             NOW, NOW.plusSeconds(600)
         );
-        handoff.createOrLoad(
-            command,
-            new AuthorizedIncidentAnalysisEvidence(
-                command.organizationId(), command.projectId(), command.incidentId(),
-                command.actorId(), "Latency", "Synthetic", IncidentSeverity.SEV2,
-                IncidentStatus.INVESTIGATING, null, null, 0
-            )
+        OpsMindPrincipal principal = new OpsMindPrincipal(
+            URI.create("https://idp.example.test/opsmind"),
+            "phase3-operator-a",
+            null,
+            null,
+            Set.of("incident:analyze")
         );
+        handoff.createOrLoad(command, new InvestigationExecutionContext(
+            principal,
+            authorizer.requireEvidence(
+                principal,
+                command.organizationId(),
+                command.projectId(),
+                command.incidentId()
+            )
+        ));
         return command;
     }
 

@@ -2,18 +2,17 @@ package ai.opsmind.platform.investigation.application;
 
 import ai.opsmind.platform.investigation.domain.InvestigationCommand;
 import ai.opsmind.platform.investigation.workflow.InvestigationWorkflowAdmission;
-import ai.opsmind.platform.investigation.workflow.InvestigationWorkflowHandoffRepository;
 import ai.opsmind.platform.investigation.workflow.InvestigationWorkflowProperties;
 
 public final class DurableInvestigationExecutionStarter implements InvestigationExecutionStarter {
 
     private final InvestigationWorkflowAdmission admission;
-    private final InvestigationWorkflowHandoffRepository handoffRepository;
+    private final DurableInvestigationAdmissionRepository handoffRepository;
     private final InvestigationWorkflowProperties properties;
 
     public DurableInvestigationExecutionStarter(
         InvestigationWorkflowAdmission admission,
-        InvestigationWorkflowHandoffRepository handoffRepository,
+        DurableInvestigationAdmissionRepository handoffRepository,
         InvestigationWorkflowProperties properties
     ) {
         this.admission = admission;
@@ -23,12 +22,12 @@ public final class DurableInvestigationExecutionStarter implements Investigation
 
     @Override
     public StartResult start(InvestigationCommand.Start command, InvestigationExecutionContext context) {
-        var existing = handoffRepository.loadExisting(command, context.initialIncident());
+        var existing = handoffRepository.loadExisting(command, context);
         if (existing.isPresent()) {
             return new StartResult(existing.get(), true);
         }
         InvestigationStartDeadlinePolicy.requireActive(command);
         admission.requireReady(properties);
-        return new StartResult(handoffRepository.createOrLoad(command, context.initialIncident()), true);
+        return new StartResult(handoffRepository.createOrLoad(command, context), true);
     }
 }

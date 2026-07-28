@@ -4,9 +4,9 @@ import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.Mockito.inOrder;
 import static org.mockito.Mockito.mock;
-import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.verifyNoInteractions;
+import static org.mockito.Mockito.verifyNoMoreInteractions;
 import static org.mockito.Mockito.when;
 
 import java.net.URI;
@@ -23,7 +23,6 @@ import ai.opsmind.platform.incident.IncidentStatus;
 import ai.opsmind.platform.investigation.domain.InvestigationCommand;
 import ai.opsmind.platform.investigation.domain.InvestigationStateMachine;
 import ai.opsmind.platform.investigation.workflow.InvestigationWorkflowAdmission;
-import ai.opsmind.platform.investigation.workflow.InvestigationWorkflowHandoffRepository;
 import ai.opsmind.platform.investigation.workflow.InvestigationWorkflowProperties;
 
 import org.junit.jupiter.api.Test;
@@ -34,8 +33,8 @@ class DurableInvestigationExecutionStarterTest {
     @Test
     void checksExistingBindingThenRequiresReadinessBeforeNewPersistence() {
         InvestigationWorkflowAdmission admission = mock(InvestigationWorkflowAdmission.class);
-        InvestigationWorkflowHandoffRepository repository =
-            mock(InvestigationWorkflowHandoffRepository.class);
+        DurableInvestigationAdmissionRepository repository =
+            mock(DurableInvestigationAdmissionRepository.class);
         InvestigationWorkflowProperties properties = new InvestigationWorkflowProperties(
             "temporal-primary", "opsmind-prod", "opsmind-investigation-v1",
             "opsmind-investigation-prod"
@@ -43,26 +42,18 @@ class DurableInvestigationExecutionStarterTest {
         InvestigationCommand.Start command = command();
         AuthorizedIncidentAnalysisEvidence authorized = authorized();
         InvestigationStateMachine.State state = InvestigationStateMachine.start(command).state();
-        when(repository.loadExisting(command, authorized)).thenReturn(Optional.empty());
-        when(repository.createOrLoad(command, authorized)).thenReturn(state);
+        InvestigationExecutionContext context = context(authorized);
+        when(repository.loadExisting(command, context)).thenReturn(Optional.empty());
+        when(repository.createOrLoad(command, context)).thenReturn(state);
         DurableInvestigationExecutionStarter starter =
             new DurableInvestigationExecutionStarter(admission, repository, properties);
 
-        InvestigationExecutionStarter.StartResult result = starter.start(
-            command,
-            new InvestigationExecutionContext(
-                new OpsMindPrincipal(
-                    URI.create("https://idp.example.test/opsmind"),
-                    "operator-001", null, null, Set.of("incident:analyze")
-                ),
-                authorized
-            )
-        );
+        InvestigationExecutionStarter.StartResult result = starter.start(command, context);
 
         InOrder order = inOrder(admission, repository);
-        order.verify(repository).loadExisting(command, authorized);
+        order.verify(repository).loadExisting(command, context);
         order.verify(admission).requireReady(properties);
-        order.verify(repository).createOrLoad(command, authorized);
+        order.verify(repository).createOrLoad(command, context);
         assertThat(result.asynchronous()).isTrue();
         assertThat(result.state()).isSameAs(state);
     }
@@ -70,8 +61,8 @@ class DurableInvestigationExecutionStarterTest {
     @Test
     void exactExistingBindingRemainsReadableWhenWorkerReadinessIsLost() {
         InvestigationWorkflowAdmission admission = mock(InvestigationWorkflowAdmission.class);
-        InvestigationWorkflowHandoffRepository repository =
-            mock(InvestigationWorkflowHandoffRepository.class);
+        DurableInvestigationAdmissionRepository repository =
+            mock(DurableInvestigationAdmissionRepository.class);
         InvestigationWorkflowProperties properties = new InvestigationWorkflowProperties(
             "temporal-primary", "opsmind-prod", "opsmind-investigation-v1",
             "opsmind-investigation-prod"
@@ -79,23 +70,16 @@ class DurableInvestigationExecutionStarterTest {
         InvestigationCommand.Start command = command();
         AuthorizedIncidentAnalysisEvidence authorized = authorized();
         InvestigationStateMachine.State state = InvestigationStateMachine.start(command).state();
-        when(repository.loadExisting(command, authorized)).thenReturn(Optional.of(state));
+        InvestigationExecutionContext context = context(authorized);
+        when(repository.loadExisting(command, context)).thenReturn(Optional.of(state));
         DurableInvestigationExecutionStarter starter =
             new DurableInvestigationExecutionStarter(admission, repository, properties);
 
-        InvestigationExecutionStarter.StartResult result = starter.start(
-            command,
-            new InvestigationExecutionContext(
-                new OpsMindPrincipal(
-                    URI.create("https://idp.example.test/opsmind"),
-                    "operator-001", null, null, Set.of("incident:analyze")
-                ),
-                authorized
-            )
-        );
+        InvestigationExecutionStarter.StartResult result = starter.start(command, context);
 
         verifyNoInteractions(admission);
-        verify(repository, never()).createOrLoad(command, authorized);
+        verify(repository).loadExisting(command, context);
+        verifyNoMoreInteractions(repository);
         assertThat(result.asynchronous()).isTrue();
         assertThat(result.state()).isSameAs(state);
     }
@@ -103,43 +87,45 @@ class DurableInvestigationExecutionStarterTest {
     @Test
     void exactExistingBindingRemainsReadableAfterItsDeadline() {
         InvestigationWorkflowAdmission admission = mock(InvestigationWorkflowAdmission.class);
-        InvestigationWorkflowHandoffRepository repository =
-            mock(InvestigationWorkflowHandoffRepository.class);
+        DurableInvestigationAdmissionRepository repository =
+            mock(DurableInvestigationAdmissionRepository.class);
         InvestigationWorkflowProperties properties = properties();
         InvestigationCommand.Start expired = expiredCommand();
         AuthorizedIncidentAnalysisEvidence authorized = authorized();
         InvestigationStateMachine.State existing =
             InvestigationStateMachine.start(command()).state();
-        when(repository.loadExisting(expired, authorized)).thenReturn(Optional.of(existing));
+        InvestigationExecutionContext context = context(authorized);
+        when(repository.loadExisting(expired, context)).thenReturn(Optional.of(existing));
         DurableInvestigationExecutionStarter starter =
             new DurableInvestigationExecutionStarter(admission, repository, properties);
 
-        InvestigationExecutionStarter.StartResult result = starter.start(
-            expired, context(authorized)
-        );
+        InvestigationExecutionStarter.StartResult result = starter.start(expired, context);
 
         verifyNoInteractions(admission);
-        verify(repository, never()).createOrLoad(expired, authorized);
+        verify(repository).loadExisting(expired, context);
+        verifyNoMoreInteractions(repository);
         assertThat(result.state()).isSameAs(existing);
     }
 
     @Test
     void expiredNewStartFailsBeforeAdmissionOrPersistence() {
         InvestigationWorkflowAdmission admission = mock(InvestigationWorkflowAdmission.class);
-        InvestigationWorkflowHandoffRepository repository =
-            mock(InvestigationWorkflowHandoffRepository.class);
+        DurableInvestigationAdmissionRepository repository =
+            mock(DurableInvestigationAdmissionRepository.class);
         InvestigationCommand.Start expired = expiredCommand();
         AuthorizedIncidentAnalysisEvidence authorized = authorized();
-        when(repository.loadExisting(expired, authorized)).thenReturn(Optional.empty());
+        InvestigationExecutionContext context = context(authorized);
+        when(repository.loadExisting(expired, context)).thenReturn(Optional.empty());
         DurableInvestigationExecutionStarter starter =
             new DurableInvestigationExecutionStarter(admission, repository, properties());
 
-        assertThatThrownBy(() -> starter.start(expired, context(authorized)))
+        assertThatThrownBy(() -> starter.start(expired, context))
             .isInstanceOfSatisfying(PlatformProblemException.class, exception ->
                 assertThat(exception.code()).isEqualTo("investigation.deadline-exceeded")
             );
         verifyNoInteractions(admission);
-        verify(repository, never()).createOrLoad(expired, authorized);
+        verify(repository).loadExisting(expired, context);
+        verifyNoMoreInteractions(repository);
     }
 
     private InvestigationWorkflowProperties properties() {
