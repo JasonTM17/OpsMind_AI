@@ -361,7 +361,8 @@ const requiredTests = {
     "finalOutcomeUncertainAttemptParksForReconciliation",
     "ambiguousRetryWithinBudgetReachesDeterministicTemporalReconciliation",
     "corruptPayloadUsesWorkflowSettlementRejectWithoutCallingTemporal",
-    "reconciliationRequiredParksWithoutInvokingWorkflowClient",
+    "reconciliationRequiredParksUndecodablePayloadWithoutInvokingWorkflowClient",
+    "exhaustedAmbiguousRetryParksUndecodablePayloadForReconciliation",
   ],
   ["services/platform-api/src/test/java/ai/opsmind/platform/investigation/"
     + "workflow/TemporalInvestigationWorkflowClientTest.java"]: [
