@@ -1,8 +1,8 @@
 package ai.opsmind.platform.investigation.workflow;
 
 import java.time.Clock;
+import java.time.Duration;
 import java.time.Instant;
-import java.util.List;
 import java.util.UUID;
 
 import ai.opsmind.platform.investigation.workflow.InvestigationWorkflowStartEventCodec.DecodedStart;
@@ -24,6 +24,7 @@ public final class InvestigationWorkflowStartDispatcher {
     private final InvestigationWorkflowStartEventCodec eventCodec;
     private final InvestigationWorkflowClient workflowClient;
     private final InvestigationWorkflowStarterProperties properties;
+    private final InvestigationTemporalClientProperties clientProperties;
     private final Clock clock;
 
     public InvestigationWorkflowStartDispatcher(
@@ -31,46 +32,62 @@ public final class InvestigationWorkflowStartDispatcher {
         InvestigationWorkflowStartEventCodec eventCodec,
         InvestigationWorkflowClient workflowClient,
         InvestigationWorkflowStarterProperties properties,
+        InvestigationTemporalClientProperties clientProperties,
         Clock clock
     ) {
         this.transactions = transactions;
         this.eventCodec = eventCodec;
         this.workflowClient = workflowClient;
         this.properties = properties;
+        this.clientProperties = clientProperties;
         this.clock = clock;
     }
 
     public int dispatchTenant(UUID organizationId) {
-        properties.validate();
+        Duration requiredRpcWindow = properties.requiredRpcWindow(clientProperties.rpcTimeout());
         Instant claimTime = Instant.now(clock);
-        List<OutboxLease> leases = transactions.claim(
+        return transactions.claim(
             organizationId, UUID.randomUUID(), claimTime, properties
-        );
-        int handled = 0;
-        for (OutboxLease lease : leases) {
-            if (process(lease)) handled++;
-        }
-        return handled;
+        ).filter(lease -> process(lease, requiredRpcWindow)).map(lease -> 1).orElse(0);
     }
 
-    private boolean process(OutboxLease lease) {
+    public int terminalizeUnclaimedIneligibleStarts(int limit) {
+        properties.validate();
+        return transactions.terminalizeUnclaimedIneligible(limit);
+    }
+
+    private boolean process(OutboxLease lease, Duration requiredRpcWindow) {
         DecodedStart decoded;
         try {
             decoded = eventCodec.decode(lease.event());
         }
         catch (InvestigationWorkflowStartException invalid) {
-            return rejectIfLive(lease, invalid.code());
+            return transactions.reject(lease, invalid.code()).handled();
         }
-        if (!transactions.leaseIsLive(lease)) return false;
+        InvestigationWorkflowDispatchPreflightDecision preflight = transactions.preflight(
+            lease, requiredRpcWindow
+        );
+        if (preflight == InvestigationWorkflowDispatchPreflightDecision.LEASE_LOST) {
+            return false;
+        }
+        if (preflight.retryWithoutRpc()) {
+            return handleFailure(
+                lease,
+                decoded.request(),
+                InvestigationWorkflowStartException.retryable(preflight.code(), null)
+            );
+        }
+        if (preflight.rejectWithoutRpc()) {
+            return transactions.reject(lease, preflight.code()).handled();
+        }
         requireNoDatabaseTransaction();
         try {
             InvestigationWorkflowClient.StartResult result = workflowClient.start(
                 decoded.request(), decoded.startPayloadDigest()
             );
-            transactions.acknowledgeStarted(
-                lease, result.temporalRunId(), Instant.now(clock)
-            );
-            return true;
+            return transactions.acknowledgeStarted(
+                lease, result.temporalRunId()
+            ).handled();
         }
         catch (InvestigationWorkflowStartException exception) {
             return handleFailure(lease, decoded.request(), exception);
@@ -92,7 +109,8 @@ public final class InvestigationWorkflowStartDispatcher {
         InvestigationWorkflowStartException exception
     ) {
         Instant failedAt = Instant.now(clock);
-        Instant retryAt = failedAt.plus(properties.retryDelay(lease.attempt()));
+        Duration retryDelay = properties.retryDelay(lease.attempt());
+        Instant retryAt = failedAt.plus(retryDelay);
         Instant ageLimit = lease.event().occurredAt().plus(properties.maximumAge());
         Instant deadlineLimit = request.deadlineAt().minus(properties.rpcSafetyMargin());
         boolean retry = exception.retryable()
@@ -101,15 +119,13 @@ public final class InvestigationWorkflowStartDispatcher {
             && retryAt.isBefore(deadlineLimit);
         if (retry) {
             return transactions.releaseRetry(
-                lease, exception.code(), failedAt, retryAt
-            );
+                lease, exception.code(), retryDelay
+            ).handled();
         }
-        transactions.reject(
+        return transactions.reject(
             lease,
-            terminalCode(exception, lease, failedAt, ageLimit),
-            failedAt
-        );
-        return true;
+            terminalCode(exception, lease, failedAt, ageLimit)
+        ).handled();
     }
 
     private String terminalCode(
@@ -124,12 +140,6 @@ public final class InvestigationWorkflowStartDispatcher {
         }
         if (!failedAt.isBefore(ageLimit)) return "workflow.retry-age-exhausted";
         return "workflow.deadline-exhausted";
-    }
-
-    private boolean rejectIfLive(OutboxLease lease, String errorCode) {
-        if (!transactions.leaseIsLive(lease)) return false;
-        transactions.reject(lease, errorCode, Instant.now(clock));
-        return true;
     }
 
     private void requireNoDatabaseTransaction() {
