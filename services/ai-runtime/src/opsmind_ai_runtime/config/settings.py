@@ -13,6 +13,7 @@ from urllib.parse import urlsplit
 LEGACY_MODEL_RETIREMENT = datetime(2026, 7, 24, 15, 59, tzinfo=UTC)
 SUPPORTED_MODELS = frozenset({"deepseek-v4-flash"})
 LEGACY_MODELS = frozenset({"deepseek-chat", "deepseek-reasoner"})
+DEFAULT_DEEPSEEK_API_BASE_URL = "https://api.deepseek.com"
 _REGION_PATTERN = re.compile(r"[a-z]{2}(?:-[a-z0-9]{1,16})?")
 
 
@@ -58,7 +59,7 @@ def _decimal(name: str, default: str, minimum: Decimal, maximum: Decimal) -> Dec
 
 def _base_url() -> str:
     name = "DEEPSEEK_API_BASE_URL"
-    value = os.getenv(name, "https://deepseek.invalid.example/v1").strip().rstrip("/")
+    value = os.getenv(name, DEFAULT_DEEPSEEK_API_BASE_URL).strip().rstrip("/")
     parsed = urlsplit(value)
     if parsed.username or parsed.password or not parsed.hostname or parsed.query or parsed.fragment:
         raise ValueError(f"{name} must be an origin/path without credentials, query, or fragment")

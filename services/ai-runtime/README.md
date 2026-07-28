@@ -18,6 +18,7 @@ Copy the service example only into an untracked local environment and inject the
 
 ```powershell
 $env:AI_PROVIDER = 'deepseek'
+$env:DEEPSEEK_API_BASE_URL = 'https://api.deepseek.com'
 $env:DEEPSEEK_MODEL = 'deepseek-v4-flash'
 $env:AI_PROVIDER_ALLOWED_HOSTS = 'api.deepseek.com'
 $env:AI_INPUT_COST_USD_PER_MILLION = '<approved-positive-price>'
