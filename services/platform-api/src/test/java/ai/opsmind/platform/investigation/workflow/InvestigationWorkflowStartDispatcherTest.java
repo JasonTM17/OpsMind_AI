@@ -3,12 +3,14 @@ package ai.opsmind.platform.investigation.workflow;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.eq;
+import static org.mockito.Mockito.inOrder;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.verifyNoInteractions;
 import static org.mockito.Mockito.when;
 
+import java.nio.charset.StandardCharsets;
 import java.time.Clock;
 import java.time.Duration;
 import java.time.Instant;
@@ -17,6 +19,7 @@ import java.util.Optional;
 import java.util.UUID;
 import java.util.concurrent.atomic.AtomicBoolean;
 
+import ai.opsmind.platform.common.api.RequestDigest;
 import ai.opsmind.platform.incident.AuthorizedIncidentAnalysisEvidence;
 import ai.opsmind.platform.incident.IncidentSeverity;
 import ai.opsmind.platform.incident.IncidentStatus;
@@ -182,6 +185,9 @@ class InvestigationWorkflowStartDispatcherTest {
         when(transactions.claim(
             eq(corruptLease.event().organizationId()), any(), any()
         )).thenReturn(Optional.of(corruptLease));
+        when(transactions.preflight(
+            corruptLease, requiredRpcWindow()
+        )).thenReturn(InvestigationWorkflowDispatchPreflightDecision.ALLOW);
         when(transactions.reject(corruptLease, "workflow.event-payload-invalid"))
             .thenReturn(InvestigationWorkflowDispatchSettlementResult.REJECTED);
 
@@ -190,7 +196,11 @@ class InvestigationWorkflowStartDispatcherTest {
         )).isOne();
 
         verifyNoInteractions(client);
-        verify(transactions).reject(corruptLease, "workflow.event-payload-invalid");
+        var settlementOrder = inOrder(transactions);
+        settlementOrder.verify(transactions).preflight(corruptLease, requiredRpcWindow());
+        settlementOrder.verify(transactions).reject(
+            corruptLease, "workflow.event-payload-invalid"
+        );
         verify(transactions, never()).releaseRetry(any(), any(), any());
     }
 
@@ -244,10 +254,10 @@ class InvestigationWorkflowStartDispatcherTest {
     }
 
     @Test
-    void reconciliationRequiredParksWithoutInvokingWorkflowClient() {
+    void reconciliationRequiredParksUndecodablePayloadWithoutInvokingWorkflowClient() {
         InvestigationWorkflowDispatchTransactions transactions =
             mock(InvestigationWorkflowDispatchTransactions.class);
-        OutboxLease lease = lease(8);
+        OutboxLease lease = undecodablePayload(lease(8));
         InvestigationWorkflowClient client = mock(InvestigationWorkflowClient.class);
         when(transactions.claim(
             eq(lease.event().organizationId()), any(), any()
@@ -255,6 +265,39 @@ class InvestigationWorkflowStartDispatcherTest {
         when(transactions.preflight(
             lease, requiredRpcWindow()
         )).thenReturn(InvestigationWorkflowDispatchPreflightDecision.RECONCILIATION_REQUIRED);
+        when(transactions.releaseRetry(
+            lease,
+            "workflow.reconciliation-required",
+            Duration.ofMinutes(1)
+        )).thenReturn(InvestigationWorkflowDispatchSettlementResult.RETRY_SCHEDULED);
+
+        assertThat(dispatcher(transactions, client).dispatchTenant(
+            lease.event().organizationId()
+        )).isOne();
+
+        verifyNoInteractions(client);
+        verify(transactions).releaseRetry(
+            lease,
+            "workflow.reconciliation-required",
+            Duration.ofMinutes(1)
+        );
+        verify(transactions, never()).reject(any(), any());
+    }
+
+    @Test
+    void exhaustedAmbiguousRetryParksUndecodablePayloadForReconciliation() {
+        InvestigationWorkflowDispatchTransactions transactions =
+            mock(InvestigationWorkflowDispatchTransactions.class);
+        OutboxLease lease = undecodablePayload(lease(9));
+        InvestigationWorkflowClient client = mock(InvestigationWorkflowClient.class);
+        when(transactions.claim(
+            eq(lease.event().organizationId()), any(), any()
+        )).thenReturn(Optional.of(lease));
+        when(transactions.preflight(
+            lease, requiredRpcWindow()
+        )).thenReturn(
+            InvestigationWorkflowDispatchPreflightDecision.AMBIGUOUS_RETRY_ALLOWED
+        );
         when(transactions.releaseRetry(
             lease,
             "workflow.reconciliation-required",
@@ -356,6 +399,31 @@ class InvestigationWorkflowStartDispatcherTest {
         );
         return new OutboxLease(
             corruptEvent,
+            originalLease.leaseToken(),
+            originalLease.leaseExpiresAt(),
+            originalLease.attempt()
+        );
+    }
+
+    private OutboxLease undecodablePayload(OutboxLease originalLease) {
+        EventEnvelope event = originalLease.event();
+        String invalidPayload = "{";
+        EventEnvelope invalidEvent = new EventEnvelope(
+            event.eventId(),
+            event.organizationId(),
+            event.aggregateType(),
+            event.aggregateId(),
+            event.aggregateSequence(),
+            event.eventType(),
+            event.schemaVersion(),
+            event.causationId(),
+            event.correlationId(),
+            event.occurredAt(),
+            invalidPayload,
+            RequestDigest.sha256(invalidPayload.getBytes(StandardCharsets.UTF_8))
+        );
+        return new OutboxLease(
+            invalidEvent,
             originalLease.leaseToken(),
             originalLease.leaseExpiresAt(),
             originalLease.attempt()
