@@ -91,6 +91,27 @@ the `5.0.7` to `5.0.8` override remain until that graph can move safely.
 Dependency policy run `30282520687` is terminal green. This resolves B-015's
 alert-disposition gate, not the future dependency-upgrade follow-up.
 
+## 2026-07-28 — DeepSeek V4 Flash endpoint alignment
+
+The provider adapter already targets the approved `deepseek-v4-flash` model.
+This slice aligns the checked-in non-secret defaults with DeepSeek's official
+OpenAI-compatible origin, `https://api.deepseek.com`, in `.env.example` and
+Compose. The runtime still defaults to `AI_PROVIDER=disabled` and
+`OPS_ENABLE_DEEPSEEK_EGRESS=false`; a key or endpoint value alone cannot enable
+egress. The model identifier and base URL are verified against the
+[official DeepSeek model documentation](https://api-docs.deepseek.com/quick_start/pricing/).
+
+Verification on the exact branch worktree:
+
+- AI Runtime suite: `168 passed, 5 skipped` (the skips require disposable
+  PostgreSQL).
+- Ruff: pass.
+- mypy: pass.
+- `docker compose config --quiet`: pass.
+- Phase 5 static checkpoint: `CheckpointResult=PASS`; phase exit remains
+  blocked by B-004 and the missing externally injected rotated-key synthetic
+  smoke evidence.
+
 ## 2026-07-27 — Incident activity timeline bridge evidence gate passed
 
 Implemented in the current worktree:
