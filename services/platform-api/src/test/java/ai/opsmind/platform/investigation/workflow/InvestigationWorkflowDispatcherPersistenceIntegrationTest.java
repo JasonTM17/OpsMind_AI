@@ -422,6 +422,42 @@ class InvestigationWorkflowDispatcherPersistenceIntegrationTest {
     }
 
     @Test
+    void legacyV011AmbiguityCannotTakeTerminalDeadlineBranchAfterV012() {
+        Instant databaseNow = admin.queryForObject(
+            "SELECT clock_timestamp()",
+            Timestamp.class
+        ).toInstant();
+        InvestigationCommand.Start command = createHandoff(
+            databaseNow.minusSeconds(1),
+            databaseNow.plusSeconds(2)
+        );
+        UUID eventId = workflowStartEventId(command);
+        admin.update(
+            "UPDATE outbox_events SET attempts = 1, "
+                + "last_error = 'workflow.temporal-unavailable' WHERE event_id = ?",
+            eventId
+        );
+
+        assertThat(dispatcher.dispatchTenant(TENANT_A)).isOne();
+
+        verifyNoInteractions(workflowClient);
+        assertThat(admin.queryForObject(
+            "SELECT status FROM investigation_workflow_bindings "
+                + "WHERE organization_id = ? AND run_id = ?",
+            String.class,
+            TENANT_A,
+            command.runId()
+        )).isEqualTo("PENDING");
+        assertThat(admin.queryForObject(
+            "SELECT last_error = 'workflow.reconciliation-required' "
+                + "AND published_at IS NULL AND poisoned_at IS NULL "
+                + "FROM outbox_events WHERE event_id = ?",
+            Boolean.class,
+            eventId
+        )).isTrue();
+    }
+
+    @Test
     void databaseClockRatherThanCallerClockFencesAcknowledgement() {
         InvestigationCommand.Start command = createHandoff();
         OutboxLease lease = dispatchTransactions.claim(
