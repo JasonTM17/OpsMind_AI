@@ -58,7 +58,7 @@ export function CitedConclusion({
 
           <section className={styles.citations} aria-labelledby="citations-title">
             <h3 id="citations-title">Persisted citations</h3>
-            <ol>
+            <ol aria-label="Persisted citation records">
               {analysis.citations.map((citation, index) => (
                 <li key={`${citation.evidenceId}:${citation.digest}:${index}`}>
                   <span>{evidenceLabel(evidenceLabels, citation.evidenceId)}</span>
@@ -72,7 +72,7 @@ export function CitedConclusion({
           {alternatives.length > 0 ? (
             <section className={styles.alternatives} aria-labelledby="alternatives-title">
               <h3 id="alternatives-title">Other bounded hypotheses</h3>
-              <ol>
+              <ol aria-label="Alternative bounded hypotheses">
                 {alternatives.map((alternative, index) => (
                   <li key={`${alternative.title}:${index}`}>
                     <div>

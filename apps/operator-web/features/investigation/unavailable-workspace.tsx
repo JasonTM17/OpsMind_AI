@@ -1,5 +1,6 @@
 import type { InvestigationWorkspaceResult } from "./investigation-types";
 import { OperatorShell } from "./operator-shell";
+import { RefreshStatusButton } from "./refresh-status-button";
 import styles from "./unavailable-workspace.module.css";
 
 type Unavailable = Extract<InvestigationWorkspaceResult, { kind: "unavailable" }>;
@@ -27,7 +28,9 @@ export function UnavailableWorkspace({ unavailable }: UnavailableWorkspaceProps)
               Support correlation <code>{unavailable.correlationId}</code>
             </p>
           ) : null}
-          <a href="">Refresh status</a>
+          <div className={styles.action}>
+            <RefreshStatusButton emphasis="primary" />
+          </div>
         </section>
         <aside className={styles.boundary} aria-labelledby="boundary-title">
           <p>Security boundary</p>

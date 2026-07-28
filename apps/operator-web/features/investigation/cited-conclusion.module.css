@@ -3,6 +3,7 @@
   padding: var(--space-5);
   border-left: 1px solid var(--border-subtle);
   background: var(--surface-panel);
+  overflow-wrap: anywhere;
 }
 
 .conclusion > header {
@@ -36,12 +37,14 @@
 }
 
 .conclusion > header > span {
+  min-width: 0;
   padding: 0.3rem 0.45rem;
   border: 1px solid var(--border-strong);
   border-radius: 2px;
   color: var(--text-secondary);
   font-family: var(--font-mono);
   font-size: 0.68rem;
+  overflow-wrap: anywhere;
 }
 
 .conclusion > header > span[data-complete="true"] {
@@ -229,5 +232,16 @@
   .conclusion {
     border-top: 1px solid var(--border-subtle);
     border-left: 0;
+  }
+}
+
+@media (max-width: 820px) {
+  .finding > p:not(.references),
+  .citations p,
+  .alternatives p,
+  .counterEvidence li,
+  .stopped p,
+  .correlation p {
+    font-size: 1rem;
   }
 }

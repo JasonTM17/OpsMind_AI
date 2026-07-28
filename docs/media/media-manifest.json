@@ -3,10 +3,10 @@
   "media": [
     {
       "path": "docs/media/operator-investigation-workspace.png",
-      "sha256": "a5ebd654cb2971351c012cae6313758a8736cdfa2625b9549de9aad188a65313",
-      "byteSize": 233748,
+      "sha256": "e7dd81263a6d3cbc41a8e48a076d35c7275ba3d95db7ba19110d561d47628b7b",
+      "byteSize": 206537,
       "mediaType": "image/png",
-      "width": 1280,
+      "width": 1440,
       "height": 1831,
       "frames": 1,
       "source": "Playwright Phase 7 browser verification",
@@ -14,8 +14,8 @@
     },
     {
       "path": "docs/media/operator-investigation-workspace-walkthrough.gif",
-      "sha256": "04fdb00aba0817bec345e8bce9a4dd50ecb0071c30150ca684c2be0c47c2f826",
-      "byteSize": 613249,
+      "sha256": "b0fa4be23f8bc832c1b40803e752787bfc587c9a9dc176b5ccccf9fee41aeb3d",
+      "byteSize": 604957,
       "mediaType": "image/gif",
       "width": 720,
       "height": 480,
