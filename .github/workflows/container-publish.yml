@@ -1,0 +1,987 @@
+name: Publish OCI packages
+
+on:
+  workflow_dispatch:
+    inputs:
+      release_version:
+        description: Strict SemVer without a v prefix
+        required: true
+        default: 0.1.0
+        type: string
+      publish_dockerhub:
+        description: Copy the exact tested GHCR digests to Docker Hub
+        required: true
+        default: false
+        type: boolean
+
+permissions: {}
+
+concurrency:
+  group: oci-production-publication
+  cancel-in-progress: false
+
+jobs:
+  authorize:
+    name: Authorize exact source revision
+    if: >-
+      github.repository == 'JasonTM17/OpsMind_AI' &&
+      github.event_name == 'workflow_dispatch' &&
+      github.ref == 'refs/heads/main'
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    permissions:
+      actions: read
+      contents: read
+    outputs:
+      release_version: ${{ steps.version.outputs.release_version }}
+      release_tag: ${{ steps.version.outputs.release_tag }}
+      is_prerelease: ${{ steps.version.outputs.is_prerelease }}
+
+    steps:
+      - name: Check out exact source
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+
+      - name: Validate release version
+        id: version
+        shell: bash
+        env:
+          RELEASE_VERSION: ${{ inputs.release_version }}
+        run: |
+          set -euo pipefail
+          node scripts/validation/strict-semver.mjs "$RELEASE_VERSION" \
+            | tee -a "$GITHUB_OUTPUT"
+
+      - name: Verify exact-revision quality gates
+        shell: bash
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          set -euo pipefail
+          for workflow in pr-quality.yml cross-service-evaluation.yml; do
+            result="$(
+              gh api --method GET \
+                "repos/${GITHUB_REPOSITORY}/actions/workflows/${workflow}/runs" \
+                -f head_sha="$GITHUB_SHA" \
+                -f status=success \
+                -f per_page=20
+            )"
+            if ! jq -e \
+              --arg sha "$GITHUB_SHA" \
+              '[.workflow_runs[] | select(.head_sha == $sha and .conclusion == "success")] | length > 0' \
+              <<<"$result" >/dev/null; then
+              echo "::error::${workflow} has no successful run for ${GITHUB_SHA}."
+              exit 1
+            fi
+          done
+
+  build-candidate:
+    name: Candidate ${{ matrix.component }}
+    needs: authorize
+    runs-on: ubuntu-latest
+    timeout-minutes: 120
+    permissions:
+      contents: read
+      packages: write
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - component: Platform API
+            image: opsmind-platform-api
+            dockerfile: services/platform-api/Dockerfile
+            container_port: 8080
+            health_path: /actuator/health
+            extra_tmpfs: ""
+          - component: AI Runtime
+            image: opsmind-ai-runtime
+            dockerfile: services/ai-runtime/Dockerfile
+            container_port: 8000
+            health_path: /ready
+            extra_tmpfs: ""
+          - component: Tool Gateway
+            image: opsmind-tool-gateway
+            dockerfile: services/tool-gateway/Dockerfile
+            container_port: 8081
+            health_path: /actuator/health
+            extra_tmpfs: ""
+          - component: Operator Web
+            image: opsmind-operator-web
+            dockerfile: apps/operator-web/Dockerfile
+            container_port: 3000
+            health_path: /api/health
+            extra_tmpfs: /app/apps/operator-web/.next/cache:size=64m,uid=1000,gid=1000,mode=0700
+
+    steps:
+      - name: Check out exact source
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+
+      - name: Log in to candidate registry
+        uses: docker/login-action@abd2ef45e78c5afb21d64d4ca52ee8550d9572c7 # v4.5.1
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Set up QEMU
+        uses: docker/setup-qemu-action@96fe6ef7f33517b61c61be40b68a1882f3264fb8 # v4.2.0
+
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@bb05f3f5519dd87d3ba754cc423b652a5edd6d2c # v4.2.0
+
+      - name: Derive immutable candidate metadata
+        id: meta
+        uses: docker/metadata-action@dc802804100637a589fabce1cb79ff13a1411302 # v6.2.0
+        env:
+          DOCKER_METADATA_ANNOTATIONS_LEVELS: manifest,index
+        with:
+          images: ghcr.io/jasontm17/${{ matrix.image }}
+          flavor: latest=false
+          tags: |
+            type=raw,value=candidate-${{ github.sha }}-${{ github.run_id }}-${{ github.run_attempt }}
+          labels: |
+            org.opencontainers.image.source=${{ github.server_url }}/${{ github.repository }}
+            org.opencontainers.image.revision=${{ github.sha }}
+            org.opencontainers.image.version=${{ needs.authorize.outputs.release_version }}
+            org.opencontainers.image.licenses=MIT
+            org.opencontainers.image.vendor=OpsMind AI
+
+      - name: Build immutable candidate
+        id: build
+        uses: docker/build-push-action@53b7df96c91f9c12dcc8a07bcb9ccacbed38856a # v7.3.0
+        with:
+          context: .
+          file: ${{ matrix.dockerfile }}
+          platforms: linux/amd64,linux/arm64
+          pull: true
+          push: true
+          tags: ${{ steps.meta.outputs.tags }}
+          labels: ${{ steps.meta.outputs.labels }}
+          annotations: ${{ steps.meta.outputs.annotations }}
+          provenance: mode=max
+          sbom: true
+          cache-from: type=gha,scope=${{ matrix.image }}
+          cache-to: type=gha,mode=max,scope=${{ matrix.image }}
+
+      - name: Inspect candidate evidence
+        shell: bash
+        env:
+          IMAGE: ghcr.io/jasontm17/${{ matrix.image }}
+          IMAGE_DIGEST: ${{ steps.build.outputs.digest }}
+        run: |
+          set -euo pipefail
+          evidence_dir="artifacts/container-candidates/${{ matrix.image }}"
+          mkdir -p "$evidence_dir"
+          image_ref="${IMAGE}@${IMAGE_DIGEST}"
+
+          docker buildx imagetools inspect "$image_ref" \
+            --format '{{json .Manifest}}' > "$evidence_dir/manifest.json"
+          docker buildx imagetools inspect "$image_ref" \
+            --format '{{json (index .SBOM "linux/amd64").SPDX}}' \
+            > "$evidence_dir/sbom-amd64.json"
+          docker buildx imagetools inspect "$image_ref" \
+            --format '{{json (index .SBOM "linux/arm64").SPDX}}' \
+            > "$evidence_dir/sbom-arm64.json"
+          docker buildx imagetools inspect "$image_ref" \
+            --format '{{json (index .Provenance "linux/amd64").SLSA}}' \
+            > "$evidence_dir/provenance-amd64.json"
+          docker buildx imagetools inspect "$image_ref" \
+            --format '{{json (index .Provenance "linux/arm64").SLSA}}' \
+            > "$evidence_dir/provenance-arm64.json"
+
+          jq -e --arg digest "$IMAGE_DIGEST" '.digest == $digest' \
+            "$evidence_dir/manifest.json" >/dev/null
+          platforms="$(
+            jq -c \
+              '[.manifests[]
+                | select(.platform.os != "unknown")
+                | "\(.platform.os)/\(.platform.architecture)"] | sort' \
+              "$evidence_dir/manifest.json"
+          )"
+          [[ "$platforms" == '["linux/amd64","linux/arm64"]' ]]
+          jq -e \
+            --arg source "${GITHUB_SERVER_URL}/${GITHUB_REPOSITORY}" \
+            --arg revision "$GITHUB_SHA" \
+            '.annotations["org.opencontainers.image.source"] == $source
+              and .annotations["org.opencontainers.image.revision"] == $revision' \
+            "$evidence_dir/manifest.json" >/dev/null
+          jq -s -e \
+            'length == 2
+              and all(.[];
+                .SPDXID == "SPDXRef-DOCUMENT"
+                and (.packages | type == "array")
+              )' \
+            "$evidence_dir/sbom-amd64.json" \
+            "$evidence_dir/sbom-arm64.json" >/dev/null
+          jq -s -e \
+            'length == 2
+              and all(.[];
+                .buildType == "https://mobyproject.org/buildkit@v1"
+                and (.metadata.completeness.parameters == true)
+              )' \
+            "$evidence_dir/provenance-amd64.json" \
+            "$evidence_dir/provenance-arm64.json" >/dev/null
+
+      - name: Smoke-test candidate runtime
+        shell: bash
+        env:
+          IMAGE: ghcr.io/jasontm17/${{ matrix.image }}
+          IMAGE_DIGEST: ${{ steps.build.outputs.digest }}
+          CONTAINER_PORT: ${{ matrix.container_port }}
+          HEALTH_PATH: ${{ matrix.health_path }}
+          EXTRA_TMPFS: ${{ matrix.extra_tmpfs }}
+        run: |
+          set -euo pipefail
+          extra_mount=()
+          if [[ -n "$EXTRA_TMPFS" ]]; then
+            extra_mount=(--tmpfs "$EXTRA_TMPFS")
+          fi
+          for architecture in amd64 arm64; do
+            container="opsmind-candidate-${{ strategy.job-index }}-${architecture}"
+            docker run --detach --name "$container" \
+              --platform "linux/${architecture}" \
+              --read-only \
+              --cap-drop ALL \
+              --security-opt no-new-privileges \
+              --tmpfs /tmp:size=64m,mode=1777 \
+              "${extra_mount[@]}" \
+              --publish "127.0.0.1:18080:${CONTAINER_PORT}" \
+              "${IMAGE}@${IMAGE_DIGEST}" >/dev/null
+
+            ready=false
+            attempt=1
+            while [[ "$attempt" -le 60 ]]; do
+              if curl --fail --silent --connect-timeout 2 --max-time 5 \
+                "http://127.0.0.1:18080${HEALTH_PATH}" >/dev/null; then
+                ready=true
+                break
+              fi
+              sleep 2
+              attempt=$((attempt + 1))
+            done
+            docker logs "$container" 2>&1 || true
+            docker rm --force "$container" >/dev/null 2>&1 || true
+            if [[ "$ready" != "true" ]]; then
+              echo "::error::${architecture} candidate health endpoint did not become ready."
+              exit 1
+            fi
+          done
+
+      - name: Scan amd64 vulnerabilities and secrets
+        uses: aquasecurity/trivy-action@ed142fd0673e97e23eac54620cfb913e5ce36c25 # v0.36.0
+        env:
+          TRIVY_PLATFORM: linux/amd64
+        with:
+          scan-type: image
+          image-ref: ghcr.io/jasontm17/${{ matrix.image }}@${{ steps.build.outputs.digest }}
+          scanners: vuln,secret
+          severity: HIGH,CRITICAL
+          ignore-unfixed: true
+          exit-code: 1
+          format: json
+          output: artifacts/container-candidates/${{ matrix.image }}/trivy-vuln-amd64.json
+          timeout: 20m
+
+      - name: Scan arm64 vulnerabilities, secrets, and both license inventories
+        shell: bash
+        env:
+          IMAGE: ghcr.io/jasontm17/${{ matrix.image }}
+          IMAGE_DIGEST: ${{ steps.build.outputs.digest }}
+        run: |
+          set -euo pipefail
+          evidence_dir="artifacts/container-candidates/${{ matrix.image }}"
+          image_ref="${IMAGE}@${IMAGE_DIGEST}"
+          trivy image --platform linux/arm64 \
+            --scanners vuln,secret \
+            --severity HIGH,CRITICAL \
+            --ignore-unfixed \
+            --exit-code 1 \
+            --format json \
+            --output "$evidence_dir/trivy-vuln-arm64.json" \
+            "$image_ref"
+          for platform in amd64 arm64; do
+            trivy image --platform "linux/${platform}" \
+              --scanners license \
+              --exit-code 0 \
+              --format json \
+              --output "$evidence_dir/trivy-license-${platform}.json" \
+              "$image_ref"
+          done
+          for report in "$evidence_dir"/trivy-*.json; do
+            jq -e 'type == "object"' "$report" >/dev/null
+          done
+
+      - name: Write observed candidate receipt
+        shell: bash
+        env:
+          COMPONENT: ${{ matrix.component }}
+          IMAGE: ghcr.io/jasontm17/${{ matrix.image }}
+          IMAGE_DIGEST: ${{ steps.build.outputs.digest }}
+          DOCKERFILE: ${{ matrix.dockerfile }}
+        run: |
+          set -euo pipefail
+          evidence_dir="artifacts/container-candidates/${{ matrix.image }}"
+          report_hashes="$(
+            cd "$evidence_dir"
+            sha256sum manifest.json sbom-*.json provenance-*.json trivy-*.json \
+              | jq -Rsc \
+                'split("\n")
+                  | map(select(length > 0) | split("  "))
+                  | map({key: .[1], value: .[0]})
+                  | from_entries'
+          )"
+          platforms="$(
+            jq -c \
+              '[.manifests[]
+                | select(.platform.os != "unknown")
+                | "\(.platform.os)/\(.platform.architecture)"] | sort' \
+              "$evidence_dir/manifest.json"
+          )"
+          scan_observation="$(
+            jq -n \
+              --slurpfile vulnAmd64 "$evidence_dir/trivy-vuln-amd64.json" \
+              --slurpfile vulnArm64 "$evidence_dir/trivy-vuln-arm64.json" \
+              --slurpfile licenseAmd64 "$evidence_dir/trivy-license-amd64.json" \
+              --slurpfile licenseArm64 "$evidence_dir/trivy-license-arm64.json" \
+              'def observed($vulnerability; $license):
+                {
+                  highCriticalFixable: (
+                    [$vulnerability[0].Results[]?.Vulnerabilities[]?
+                      | select(.Severity == "HIGH" or .Severity == "CRITICAL")]
+                    | length
+                  ),
+                  secrets: (
+                    [$vulnerability[0].Results[]?.Secrets[]?] | length
+                  ),
+                  licensesObserved: (
+                    [$license[0].Results[]?.Licenses[]?] | length
+                  )
+                };
+              {
+                "linux/amd64": observed($vulnAmd64; $licenseAmd64),
+                "linux/arm64": observed($vulnArm64; $licenseArm64)
+              }'
+          )"
+          jq -n \
+            --arg schemaVersion "opsmind-oci-candidate-v2" \
+            --arg component "$COMPONENT" \
+            --arg imageName "${{ matrix.image }}" \
+            --arg image "$IMAGE" \
+            --arg digest "$IMAGE_DIGEST" \
+            --arg dockerfile "$DOCKERFILE" \
+            --arg repository "$GITHUB_REPOSITORY" \
+            --arg sourceSha "$GITHUB_SHA" \
+            --arg runId "$GITHUB_RUN_ID" \
+            --arg runAttempt "$GITHUB_RUN_ATTEMPT" \
+            --argjson platforms "$platforms" \
+            --argjson reportHashes "$report_hashes" \
+            --argjson scan "$scan_observation" \
+            '{
+              schemaVersion: $schemaVersion,
+              component: $component,
+              imageName: $imageName,
+              image: $image,
+              digest: $digest,
+              dockerfile: $dockerfile,
+              repository: $repository,
+              sourceSha: $sourceSha,
+              workflow: {runId: $runId, runAttempt: $runAttempt},
+              observed: {
+                platforms: $platforms,
+                sbom: {format: "SPDX", platforms: $platforms},
+                provenance: {buildType: "https://mobyproject.org/buildkit@v1"},
+                scan: $scan,
+                runtimeSmoke: "PASS",
+                reportHashes: $reportHashes
+              },
+              result: "PASS"
+            }' > "$evidence_dir/receipt.json"
+          jq -e \
+            '.result == "PASS"
+              and .observed.platforms == ["linux/amd64", "linux/arm64"]
+              and all(.observed.scan[];
+                .highCriticalFixable == 0 and .secrets == 0
+              )
+              and (.digest | test("^sha256:[0-9a-f]{64}$"))' \
+            "$evidence_dir/receipt.json" >/dev/null
+
+      - name: Upload candidate evidence
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
+        with:
+          name: oci-candidate-${{ matrix.image }}
+          path: artifacts/container-candidates/${{ matrix.image }}
+          if-no-files-found: error
+          retention-days: 30
+
+  promote:
+    name: Promote verified release set
+    needs: [authorize, build-candidate]
+    runs-on: ubuntu-latest
+    timeout-minutes: 45
+    permissions:
+      artifact-metadata: write
+      attestations: write
+      contents: write
+      id-token: write
+      packages: write
+    environment:
+      name: oci-production
+      url: https://github.com/JasonTM17/OpsMind_AI/pkgs/container/opsmind-platform-api
+
+    steps:
+      - name: Check out exact source
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+
+      - name: Download all candidate evidence
+        uses: actions/download-artifact@3e5f45b2cfb9172054b4087a40e8e0b5a5461e7c # v8.0.1
+        with:
+          pattern: oci-candidate-*
+          path: artifacts/candidates
+
+      - name: Validate aggregate candidate release set
+        id: release_set
+        shell: bash
+        env:
+          GH_TOKEN: ${{ github.token }}
+          RELEASE_VERSION: ${{ needs.authorize.outputs.release_version }}
+        run: |
+          set -euo pipefail
+          mapfile -t receipts < <(
+            find artifacts/candidates -type f -name receipt.json | sort
+          )
+          [[ "${#receipts[@]}" -eq 4 ]]
+          jq -s \
+            --arg sourceSha "$GITHUB_SHA" \
+            'if (
+              length == 4
+              and all(.[];
+                .schemaVersion == "opsmind-oci-candidate-v2"
+                and .sourceSha == $sourceSha
+                and .result == "PASS"
+                and .observed.runtimeSmoke == "PASS"
+                and all(.observed.scan[];
+                  .highCriticalFixable == 0 and .secrets == 0
+                )
+                and .observed.platforms == ["linux/amd64", "linux/arm64"]
+                and (.digest | test("^sha256:[0-9a-f]{64}$"))
+              )
+              and ([.[].imageName] | unique | length == 4)
+            ) then . else error("candidate release set is incomplete") end' \
+            "${receipts[@]}" > artifacts/candidate-release-set.json
+
+          gh api "repos/${GITHUB_REPOSITORY}/immutable-releases" \
+            | jq -e '.enabled == true' >/dev/null
+          github_tag="v${RELEASE_VERSION}"
+          gh api --paginate --slurp \
+            "repos/${GITHUB_REPOSITORY}/releases?per_page=100" \
+            | jq -e \
+                --arg tag "$github_tag" \
+                '[.[][] | select(.tag_name == $tag)] | length == 0' \
+                >/dev/null
+          # GraphQL variables must remain literal in the query document.
+          # shellcheck disable=SC2016
+          gh api graphql \
+            -f query='
+              query($owner: String!, $name: String!, $ref: String!) {
+                repository(owner: $owner, name: $name) {
+                  ref(qualifiedName: $ref) { name }
+                }
+              }' \
+            -f owner="$GITHUB_REPOSITORY_OWNER" \
+            -f name="${GITHUB_REPOSITORY#*/}" \
+            -f ref="refs/tags/${github_tag}" \
+            | jq -e '.data.repository.ref == null' >/dev/null
+
+          for image in \
+            opsmind-platform-api \
+            opsmind-ai-runtime \
+            opsmind-tool-gateway \
+            opsmind-operator-web; do
+            package="$(
+              gh api \
+                "/users/${GITHUB_REPOSITORY_OWNER}/packages/container/${image}"
+            )"
+            jq -e \
+              --arg repository "$GITHUB_REPOSITORY" \
+              '.visibility == "public"
+                and .repository.full_name == $repository' \
+              <<<"$package" >/dev/null
+          done
+
+          for image in \
+            opsmind-platform-api \
+            opsmind-ai-runtime \
+            opsmind-tool-gateway \
+            opsmind-operator-web; do
+            output_name="${image#opsmind-}"
+            output_name="${output_name//-/_}_digest"
+            digest="$(
+              jq -r --arg image "$image" \
+                '.[] | select(.imageName == $image) | .digest' \
+                artifacts/candidate-release-set.json
+            )"
+            [[ "$digest" =~ ^sha256:[0-9a-f]{64}$ ]]
+            echo "${output_name}=${digest}" >> "$GITHUB_OUTPUT"
+          done
+
+      - name: Validate Docker Hub credentials
+        id: targets
+        shell: bash
+        env:
+          PUBLISH_DOCKERHUB: ${{ inputs.publish_dockerhub }}
+          DOCKERHUB_USERNAME: ${{ vars.DOCKERHUB_USERNAME }}
+          DOCKERHUB_TOKEN: ${{ secrets.DOCKERHUB_TOKEN }}
+        run: |
+          set -euo pipefail
+          enabled=false
+          namespace=
+          if [[ "$PUBLISH_DOCKERHUB" == "true" ]]; then
+            if [[ -z "$DOCKERHUB_USERNAME" || -z "$DOCKERHUB_TOKEN" ]]; then
+              echo "::error::Docker Hub publication requires protected environment credentials."
+              exit 1
+            fi
+            if [[ ! "$DOCKERHUB_USERNAME" =~ ^[A-Za-z0-9][A-Za-z0-9_-]{0,254}$ ]]; then
+              echo "::error::DOCKERHUB_USERNAME has an invalid namespace shape."
+              exit 1
+            fi
+            enabled=true
+            namespace="${DOCKERHUB_USERNAME,,}"
+          fi
+          echo "dockerhub_enabled=$enabled" >> "$GITHUB_OUTPUT"
+          echo "dockerhub_namespace=$namespace" >> "$GITHUB_OUTPUT"
+
+      - name: Set up ORAS
+        uses: oras-project/setup-oras@1d808f7d7f6995cc68b7bf507bfe5c5446e1dc9d # v2.0.1
+        with:
+          version: 1.3.3
+
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@bb05f3f5519dd87d3ba754cc423b652a5edd6d2c # v4.2.0
+
+      - name: Prepare registry credential session
+        id: registry_credentials
+        shell: bash
+        run: |
+          set -euo pipefail
+          expected_home="$(
+            getent passwd "$(id -u)" | cut -d: -f6
+          )"
+          [[ -n "$expected_home" && "$HOME" == "$expected_home" ]]
+          config_dir="${HOME}/.docker"
+          config_file="${config_dir}/config.json"
+          backup_file="${RUNNER_TEMP}/opsmind-docker-config.backup"
+          [[ ! -e "$backup_file" ]]
+          had_config=false
+          if [[ -f "$config_file" ]]; then
+            cp -- "$config_file" "$backup_file"
+            chmod 600 "$backup_file"
+            had_config=true
+          fi
+          mkdir -p "$config_dir"
+          chmod 700 "$config_dir"
+          echo "opened=true" >> "$GITHUB_OUTPUT"
+          echo "had_config=${had_config}" >> "$GITHUB_OUTPUT"
+
+      - name: Log in to GHCR for promotion and attestation
+        uses: docker/login-action@abd2ef45e78c5afb21d64d4ca52ee8550d9572c7 # v4.5.1
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Log in to Docker Hub for promotion and attestation
+        if: steps.targets.outputs.dockerhub_enabled == 'true'
+        uses: docker/login-action@abd2ef45e78c5afb21d64d4ca52ee8550d9572c7 # v4.5.1
+        with:
+          registry: docker.io
+          username: ${{ vars.DOCKERHUB_USERNAME }}
+          password: ${{ secrets.DOCKERHUB_TOKEN }}
+
+      - name: Promote tested digests
+        shell: bash
+        env:
+          RELEASE_TAG: ${{ needs.authorize.outputs.release_tag }}
+          DOCKERHUB_ENABLED: ${{ steps.targets.outputs.dockerhub_enabled }}
+          DOCKERHUB_NAMESPACE: ${{ steps.targets.outputs.dockerhub_namespace }}
+        run: |
+          set -euo pipefail
+          owner="${GITHUB_REPOSITORY_OWNER,,}"
+          while IFS= read -r receipt; do
+            image="$(jq -r .imageName "$receipt")"
+            digest="$(jq -r .digest "$receipt")"
+            source="ghcr.io/${owner}/${image}@${digest}"
+            targets=("ghcr.io/${owner}/${image}")
+            if [[ "$DOCKERHUB_ENABLED" == "true" ]]; then
+              targets+=("docker.io/${DOCKERHUB_NAMESPACE}/${image}")
+            fi
+
+            for target in "${targets[@]}"; do
+              if existing="$(
+                docker buildx imagetools inspect "${target}:${RELEASE_TAG}" \
+                  --format '{{json .Manifest}}' 2>/dev/null \
+                  | jq -r .digest
+              )" && [[ "$existing" != "$digest" ]]; then
+                echo "::error::Immutable version tag ${target}:${RELEASE_TAG} already points to ${existing}."
+                exit 1
+              fi
+              oras cp --recursive "$source" "${target}:${RELEASE_TAG}"
+              observed="$(
+                docker buildx imagetools inspect "${target}:${RELEASE_TAG}" \
+                  --format '{{json .Manifest}}' | jq -r .digest
+              )"
+              [[ "$observed" == "$digest" ]]
+            done
+          done < <(
+            find artifacts/candidates -type f -name receipt.json | sort
+          )
+
+      - name: Attest Platform API on GHCR
+        id: attest_platform_api
+        uses: actions/attest@f7c74d28b9d84cb8768d0b8ca14a4bac6ef463e6 # v4.2.0
+        with:
+          subject-name: ghcr.io/jasontm17/opsmind-platform-api
+          subject-digest: ${{ steps.release_set.outputs.platform_api_digest }}
+          push-to-registry: true
+          create-storage-record: false
+
+      - name: Attest AI Runtime on GHCR
+        id: attest_ai_runtime
+        uses: actions/attest@f7c74d28b9d84cb8768d0b8ca14a4bac6ef463e6 # v4.2.0
+        with:
+          subject-name: ghcr.io/jasontm17/opsmind-ai-runtime
+          subject-digest: ${{ steps.release_set.outputs.ai_runtime_digest }}
+          push-to-registry: true
+          create-storage-record: false
+
+      - name: Attest Tool Gateway on GHCR
+        id: attest_tool_gateway
+        uses: actions/attest@f7c74d28b9d84cb8768d0b8ca14a4bac6ef463e6 # v4.2.0
+        with:
+          subject-name: ghcr.io/jasontm17/opsmind-tool-gateway
+          subject-digest: ${{ steps.release_set.outputs.tool_gateway_digest }}
+          push-to-registry: true
+          create-storage-record: false
+
+      - name: Attest Operator Web on GHCR
+        id: attest_operator_web
+        uses: actions/attest@f7c74d28b9d84cb8768d0b8ca14a4bac6ef463e6 # v4.2.0
+        with:
+          subject-name: ghcr.io/jasontm17/opsmind-operator-web
+          subject-digest: ${{ steps.release_set.outputs.operator_web_digest }}
+          push-to-registry: true
+          create-storage-record: false
+
+      - name: Attest Platform API on Docker Hub
+        if: steps.targets.outputs.dockerhub_enabled == 'true'
+        uses: actions/attest@f7c74d28b9d84cb8768d0b8ca14a4bac6ef463e6 # v4.2.0
+        with:
+          subject-name: docker.io/${{ steps.targets.outputs.dockerhub_namespace }}/opsmind-platform-api
+          subject-digest: ${{ steps.release_set.outputs.platform_api_digest }}
+          push-to-registry: true
+          create-storage-record: false
+
+      - name: Attest AI Runtime on Docker Hub
+        if: steps.targets.outputs.dockerhub_enabled == 'true'
+        uses: actions/attest@f7c74d28b9d84cb8768d0b8ca14a4bac6ef463e6 # v4.2.0
+        with:
+          subject-name: docker.io/${{ steps.targets.outputs.dockerhub_namespace }}/opsmind-ai-runtime
+          subject-digest: ${{ steps.release_set.outputs.ai_runtime_digest }}
+          push-to-registry: true
+          create-storage-record: false
+
+      - name: Attest Tool Gateway on Docker Hub
+        if: steps.targets.outputs.dockerhub_enabled == 'true'
+        uses: actions/attest@f7c74d28b9d84cb8768d0b8ca14a4bac6ef463e6 # v4.2.0
+        with:
+          subject-name: docker.io/${{ steps.targets.outputs.dockerhub_namespace }}/opsmind-tool-gateway
+          subject-digest: ${{ steps.release_set.outputs.tool_gateway_digest }}
+          push-to-registry: true
+          create-storage-record: false
+
+      - name: Attest Operator Web on Docker Hub
+        if: steps.targets.outputs.dockerhub_enabled == 'true'
+        uses: actions/attest@f7c74d28b9d84cb8768d0b8ca14a4bac6ef463e6 # v4.2.0
+        with:
+          subject-name: docker.io/${{ steps.targets.outputs.dockerhub_namespace }}/opsmind-operator-web
+          subject-digest: ${{ steps.release_set.outputs.operator_web_digest }}
+          push-to-registry: true
+          create-storage-record: false
+
+      - name: Close registry credential session
+        if: ${{ always() && steps.registry_credentials.outputs.opened == 'true' }}
+        shell: bash
+        env:
+          HAD_CONFIG: ${{ steps.registry_credentials.outputs.had_config }}
+        run: |
+          set -euo pipefail
+          expected_home="$(
+            getent passwd "$(id -u)" | cut -d: -f6
+          )"
+          [[ -n "$expected_home" && "$HOME" == "$expected_home" ]]
+          config_dir="${HOME}/.docker"
+          config_file="${config_dir}/config.json"
+          backup_file="${RUNNER_TEMP}/opsmind-docker-config.backup"
+          docker logout ghcr.io >/dev/null 2>&1 || true
+          docker logout docker.io >/dev/null 2>&1 || true
+          if [[ "$HAD_CONFIG" == "true" ]]; then
+            [[ -f "$backup_file" ]]
+            mv -- "$backup_file" "$config_file"
+            chmod 600 "$config_file"
+          else
+            rm -f "$config_file"
+            rmdir "$config_dir" >/dev/null 2>&1 || true
+          fi
+
+      - name: Verify staged immutable release set
+        shell: bash
+        env:
+          GH_TOKEN: ${{ github.token }}
+          RELEASE_TAG: ${{ needs.authorize.outputs.release_tag }}
+          DOCKERHUB_ENABLED: ${{ steps.targets.outputs.dockerhub_enabled }}
+          DOCKERHUB_NAMESPACE: ${{ steps.targets.outputs.dockerhub_namespace }}
+        run: |
+          set -euo pipefail
+          owner="${GITHUB_REPOSITORY_OWNER,,}"
+          output_dir="artifacts/container-publication/verification"
+          mkdir -p "$output_dir"
+
+          while IFS= read -r receipt; do
+            image="$(jq -r .imageName "$receipt")"
+            digest="$(jq -r .digest "$receipt")"
+            ghcr="ghcr.io/${owner}/${image}"
+            manifest_file="$output_dir/${image}-manifest.json"
+            attestation_file="$output_dir/${image}-attestation.json"
+            package_file="$output_dir/${image}-package.json"
+
+            docker buildx imagetools inspect "${ghcr}:${RELEASE_TAG}" \
+              --format '{{json .Manifest}}' > "$manifest_file"
+            jq -e \
+              --arg digest "$digest" \
+              --arg source "${GITHUB_SERVER_URL}/${GITHUB_REPOSITORY}" \
+              --arg revision "$GITHUB_SHA" \
+              '.digest == $digest
+                and .annotations["org.opencontainers.image.source"] == $source
+                and .annotations["org.opencontainers.image.revision"] == $revision
+                and (
+                  [.manifests[]
+                    | select(.platform.os != "unknown")
+                    | "\(.platform.os)/\(.platform.architecture)"] | sort
+                ) == ["linux/amd64", "linux/arm64"]' \
+              "$manifest_file" >/dev/null
+            docker buildx imagetools inspect "${ghcr}@${digest}" \
+              --format '{{json .SBOM}}' | jq -e 'length > 0' >/dev/null
+            docker buildx imagetools inspect "${ghcr}@${digest}" \
+              --format '{{json .Provenance}}' | jq -e 'length > 0' >/dev/null
+            gh attestation verify "oci://${ghcr}@${digest}" \
+              --repo "$GITHUB_REPOSITORY" \
+              --format json > "$attestation_file"
+            jq -e 'length > 0' "$attestation_file" >/dev/null
+
+            gh api "/users/${GITHUB_REPOSITORY_OWNER}/packages/container/${image}" \
+              > "$package_file"
+            jq -e \
+              --arg repository "$GITHUB_REPOSITORY" \
+              '.visibility == "public"
+                and .repository.full_name == $repository' \
+              "$package_file" >/dev/null
+
+            if [[ "$DOCKERHUB_ENABLED" == "true" ]]; then
+              dockerhub="docker.io/${DOCKERHUB_NAMESPACE}/${image}"
+              observed="$(
+                docker buildx imagetools inspect \
+                  "${dockerhub}:${RELEASE_TAG}" \
+                  --format '{{json .Manifest}}' | jq -r .digest
+              )"
+              [[ "$observed" == "$digest" ]]
+              gh attestation verify "oci://${dockerhub}@${digest}" \
+                --repo "$GITHUB_REPOSITORY" \
+                --format json \
+                > "$output_dir/${image}-dockerhub-attestation.json"
+            fi
+          done < <(
+            find artifacts/candidates -type f -name receipt.json | sort
+          )
+
+      - name: Write observed immutable release receipt
+        shell: bash
+        env:
+          RELEASE_VERSION: ${{ needs.authorize.outputs.release_version }}
+          RELEASE_TAG: ${{ needs.authorize.outputs.release_tag }}
+          DOCKERHUB_ENABLED: ${{ steps.targets.outputs.dockerhub_enabled }}
+          DOCKERHUB_NAMESPACE: ${{ steps.targets.outputs.dockerhub_namespace }}
+        run: |
+          set -euo pipefail
+          owner="${GITHUB_REPOSITORY_OWNER,,}"
+          output_dir="artifacts/container-publication"
+          mkdir -p "$output_dir/verification"
+          components='[]'
+
+          while IFS= read -r receipt; do
+            image="$(jq -r .imageName "$receipt")"
+            digest="$(jq -r .digest "$receipt")"
+            ghcr="ghcr.io/${owner}/${image}"
+            observed="$(
+              docker buildx imagetools inspect "${ghcr}:${RELEASE_TAG}" \
+                --format '{{json .Manifest}}' | jq -r .digest
+            )"
+            [[ "$observed" == "$digest" ]]
+
+            dockerhub='{"published":false}'
+            if [[ "$DOCKERHUB_ENABLED" == "true" ]]; then
+              dockerhub_image="docker.io/${DOCKERHUB_NAMESPACE}/${image}"
+              observed="$(
+                docker buildx imagetools inspect \
+                  "${dockerhub_image}:${RELEASE_TAG}" \
+                  --format '{{json .Manifest}}' | jq -r .digest
+              )"
+              [[ "$observed" == "$digest" ]]
+              dockerhub="$(
+                jq -n \
+                  --arg image "$dockerhub_image" \
+                  --arg digest "$digest" \
+                  --arg tag "$RELEASE_TAG" \
+                  '{
+                    published: true,
+                    image: $image,
+                    tag: $tag,
+                    digest: $digest
+                  }'
+              )"
+            fi
+
+            component="$(
+              scan="$(jq -c .observed.scan "$receipt")"
+              package_url="$(
+                jq -r '.html_url | select(startswith("https://github.com/"))' \
+                  "$output_dir/verification/${image}-package.json"
+              )"
+              [[ -n "$package_url" ]]
+              jq -n \
+                --arg image "$ghcr" \
+                --arg tag "$RELEASE_TAG" \
+                --arg digest "$digest" \
+                --arg packageUrl "$package_url" \
+                --argjson dockerHub "$dockerhub" \
+                --argjson scan "$scan" \
+                '{
+                  image: $image,
+                  tag: $tag,
+                  digest: $digest,
+                  platforms: ["linux/amd64", "linux/arm64"],
+                  sbom: "VERIFIED",
+                  provenance: "VERIFIED",
+                  signedAttestation: "VERIFIED",
+                  scan: $scan,
+                  package: {
+                    visibility: "public",
+                    repositoryLinked: true,
+                    url: $packageUrl
+                  },
+                  dockerHub: $dockerHub
+                }'
+            )"
+            components="$(jq -c --argjson item "$component" '. + [$item]' <<<"$components")"
+          done < <(
+            find artifacts/candidates -type f -name receipt.json | sort
+          )
+
+          jq -n \
+            --arg schemaVersion "opsmind-oci-publication-v3" \
+            --arg repository "$GITHUB_REPOSITORY" \
+            --arg sourceSha "$GITHUB_SHA" \
+            --arg sourceRef "$GITHUB_REF" \
+            --arg releaseVersion "$RELEASE_VERSION" \
+            --arg releaseTag "$RELEASE_TAG" \
+            --arg githubTag "v${RELEASE_VERSION}" \
+            --arg runId "$GITHUB_RUN_ID" \
+            --arg runAttempt "$GITHUB_RUN_ATTEMPT" \
+            --argjson components "$components" \
+            '{
+              schemaVersion: $schemaVersion,
+              repository: $repository,
+              sourceSha: $sourceSha,
+              sourceRef: $sourceRef,
+              release: {
+                version: $releaseVersion,
+                componentTag: $releaseTag,
+                atomicMarkerTag: $githubTag
+              },
+              workflow: {runId: $runId, runAttempt: $runAttempt},
+              components: $components,
+              result: (
+                if ($components | length) == 4
+                then "PASS"
+                else "BLOCK"
+                end
+              )
+            }' > "$output_dir/release-receipt.json"
+          jq -e \
+            '.result == "PASS"
+              and (.components | length) == 4
+              and all(.components[];
+                .sbom == "VERIFIED"
+                and .provenance == "VERIFIED"
+                and .signedAttestation == "VERIFIED"
+                and .package.visibility == "public"
+                and .package.repositoryLinked == true
+              )' \
+            "$output_dir/release-receipt.json" >/dev/null
+          tar \
+            --sort=name \
+            --mtime='UTC 1970-01-01' \
+            --owner=0 \
+            --group=0 \
+            --numeric-owner \
+            -czf "$output_dir/publication-evidence.tar.gz" \
+            artifacts/candidate-release-set.json \
+            artifacts/candidates \
+            "$output_dir/verification"
+
+      - name: Attest aggregate release evidence
+        id: attest_release_evidence
+        uses: actions/attest@f7c74d28b9d84cb8768d0b8ca14a4bac6ef463e6 # v4.2.0
+        with:
+          subject-path: |
+            artifacts/container-publication/release-receipt.json
+            artifacts/container-publication/publication-evidence.tar.gz
+
+      - name: Verify aggregate release evidence attestation
+        shell: bash
+        env:
+          ATTESTATION_BUNDLE: ${{ steps.attest_release_evidence.outputs.bundle-path }}
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          set -euo pipefail
+          output_dir="artifacts/container-publication"
+          cp -- "$ATTESTATION_BUNDLE" \
+            "$output_dir/release-evidence-attestation.sigstore.json"
+          for subject in \
+            "$output_dir/release-receipt.json" \
+            "$output_dir/publication-evidence.tar.gz"; do
+            output="$output_dir/$(basename "$subject").verification.json"
+            gh attestation verify "$subject" \
+              --repo "$GITHUB_REPOSITORY" \
+              --format json > "$output"
+            jq -e 'length > 0' "$output" >/dev/null
+          done
+
+      - name: Upload publication evidence to workflow run
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
+        with:
+          name: oci-publication-${{ github.sha }}-${{ github.run_id }}-${{ github.run_attempt }}
+          path: artifacts/container-publication
+          if-no-files-found: error
+          retention-days: 90
+
+      - name: Publish atomic GitHub release marker
+        shell: bash
+        env:
+          GH_TOKEN: ${{ github.token }}
+          RELEASE_VERSION: ${{ needs.authorize.outputs.release_version }}
+          IS_PRERELEASE: ${{ needs.authorize.outputs.is_prerelease }}
+        run: bash scripts/delivery/publish-atomic-github-release.sh
