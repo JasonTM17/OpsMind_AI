@@ -128,6 +128,12 @@ for (const value of [
 if (parseStrictSemVer("1.2.3+build.7")?.releaseTag !== "1.2.3_build.7") {
   errors.push("SemVer build metadata was not normalized for OCI tags");
 }
+if (
+  parseStrictSemVer("1.2.3-rc.1")?.isPrerelease !== true ||
+  parseStrictSemVer("1.2.3")?.isPrerelease !== false
+) {
+  errors.push("SemVer pre-release channel classification failed");
+}
 for (const value of [
   "v1.2.3",
   "01.2.3",

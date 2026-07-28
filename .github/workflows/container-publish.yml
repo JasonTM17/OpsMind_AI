@@ -36,6 +36,7 @@ jobs:
       release_version: ${{ steps.version.outputs.release_version }}
       release_tag: ${{ steps.version.outputs.release_tag }}
       major_minor: ${{ steps.version.outputs.major_minor }}
+      is_prerelease: ${{ steps.version.outputs.is_prerelease }}
 
     steps:
       - name: Check out exact source
@@ -735,10 +736,15 @@ jobs:
         env:
           RELEASE_TAG: ${{ needs.authorize.outputs.release_tag }}
           MAJOR_MINOR: ${{ needs.authorize.outputs.major_minor }}
+          IS_PRERELEASE: ${{ needs.authorize.outputs.is_prerelease }}
           DOCKERHUB_ENABLED: ${{ steps.targets.outputs.dockerhub_enabled }}
           DOCKERHUB_NAMESPACE: ${{ steps.targets.outputs.dockerhub_namespace }}
         run: |
           set -euo pipefail
+          if [[ "$IS_PRERELEASE" == "true" ]]; then
+            echo "Pre-release verified; mutable stable tags remain unchanged."
+            exit 0
+          fi
           owner="${GITHUB_REPOSITORY_OWNER,,}"
           while IFS= read -r receipt; do
             image="$(jq -r .imageName "$receipt")"
@@ -770,6 +776,7 @@ jobs:
           RELEASE_VERSION: ${{ needs.authorize.outputs.release_version }}
           RELEASE_TAG: ${{ needs.authorize.outputs.release_tag }}
           MAJOR_MINOR: ${{ needs.authorize.outputs.major_minor }}
+          IS_PRERELEASE: ${{ needs.authorize.outputs.is_prerelease }}
           DOCKERHUB_ENABLED: ${{ steps.targets.outputs.dockerhub_enabled }}
           DOCKERHUB_NAMESPACE: ${{ steps.targets.outputs.dockerhub_namespace }}
         run: |
@@ -783,7 +790,11 @@ jobs:
             image="$(jq -r .imageName "$receipt")"
             digest="$(jq -r .digest "$receipt")"
             ghcr="ghcr.io/${owner}/${image}"
-            for tag in "$RELEASE_TAG" "$MAJOR_MINOR" latest; do
+            tags=("$RELEASE_TAG")
+            if [[ "$IS_PRERELEASE" != "true" ]]; then
+              tags+=("$MAJOR_MINOR" latest)
+            fi
+            for tag in "${tags[@]}"; do
               observed="$(
                 docker buildx imagetools inspect "${ghcr}:${tag}" \
                   --format '{{json .Manifest}}' | jq -r .digest
@@ -794,7 +805,7 @@ jobs:
             dockerhub='{"published":false}'
             if [[ "$DOCKERHUB_ENABLED" == "true" ]]; then
               dockerhub_image="docker.io/${DOCKERHUB_NAMESPACE}/${image}"
-              for tag in "$RELEASE_TAG" "$MAJOR_MINOR" latest; do
+              for tag in "${tags[@]}"; do
                 observed="$(
                   docker buildx imagetools inspect \
                     "${dockerhub_image}:${tag}" \
@@ -812,11 +823,15 @@ jobs:
 
             component="$(
               scan="$(jq -c .observed.scan "$receipt")"
+              package_url="$(
+                jq -r '.html_url | select(startswith("https://github.com/"))' \
+                  "$output_dir/verification/${image}-package.json"
+              )"
+              [[ -n "$package_url" ]]
               jq -n \
                 --arg image "$ghcr" \
                 --arg digest "$digest" \
-                --arg packageUrl \
-                  "https://github.com/${GITHUB_REPOSITORY}/pkgs/container/${image}" \
+                --arg packageUrl "$package_url" \
                 --argjson dockerHub "$dockerhub" \
                 --argjson scan "$scan" \
                 '{
@@ -840,14 +855,22 @@ jobs:
             find artifacts/candidates -type f -name receipt.json | sort
           )
 
+          release_tags="$(jq -n --arg tag "$RELEASE_TAG" '[$tag]')"
+          if [[ "$IS_PRERELEASE" != "true" ]]; then
+            release_tags="$(
+              jq -n \
+                --arg version "$RELEASE_TAG" \
+                --arg minor "$MAJOR_MINOR" \
+                '[$version, $minor, "latest"]'
+            )"
+          fi
           jq -n \
             --arg schemaVersion "opsmind-oci-publication-v2" \
             --arg repository "$GITHUB_REPOSITORY" \
             --arg sourceSha "$GITHUB_SHA" \
             --arg sourceRef "$GITHUB_REF" \
             --arg releaseVersion "$RELEASE_VERSION" \
-            --arg releaseTag "$RELEASE_TAG" \
-            --arg majorMinor "$MAJOR_MINOR" \
+            --argjson releaseTags "$release_tags" \
             --arg runId "$GITHUB_RUN_ID" \
             --arg runAttempt "$GITHUB_RUN_ATTEMPT" \
             --argjson components "$components" \
@@ -858,7 +881,7 @@ jobs:
               sourceRef: $sourceRef,
               release: {
                 version: $releaseVersion,
-                tags: [$releaseTag, $majorMinor, "latest"]
+                tags: $releaseTags
               },
               workflow: {runId: $runId, runAttempt: $runAttempt},
               components: $components,

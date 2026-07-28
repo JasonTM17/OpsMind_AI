@@ -103,7 +103,11 @@ export function validateReleaseFlow(jobs, errors) {
   }
   const activate =
     findStep(jobs.promote, "Activate mutable release tags")?.run ?? "";
-  if (!activate.includes(",latest") || !activate.includes("oras cp --recursive")) {
+  if (
+    !activate.includes(",latest") ||
+    !activate.includes("oras cp --recursive") ||
+    !activate.includes('IS_PRERELEASE" == "true')
+  ) {
     errors.push("release.mutable-activation");
   }
 }

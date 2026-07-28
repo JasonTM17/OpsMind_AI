@@ -45,7 +45,8 @@ the protected username/token pair is configured.
 - Promotion requires all four candidate receipts, a protected environment
   approval, public repository-linked GHCR packages, and verified attestations.
   Immutable version tags are staged first; `latest` activates only after every
-  digest and signature passes.
+  stable-release digest and signature passes. Pre-releases never move stable
+  mutable tags.
 - Docker Hub promotion fails closed when either environment credential is
   absent; the token is never job-scoped.
 - Published registry digests, observed platforms, scan counts, health, package

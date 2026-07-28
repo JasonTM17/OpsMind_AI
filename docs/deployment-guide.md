@@ -90,9 +90,10 @@ gh workflow run container-publish.yml --ref main `
 The workflow normalizes valid SemVer build metadata for OCI tags, for example
 `1.2.3+build.7` becomes `1.2.3_build.7`, while the receipt retains the original
 version. Promotion records consume candidate digests, never an existing mutable
-tag. Immutable version/revision tags are applied before signing; `latest` is the
-release-set activation pointer and is not updated if any component, signature,
-or registry parity check fails.
+tag. Immutable version/revision tags are applied before signing; stable releases
+activate `major.minor` and `latest` only after all verification passes.
+Pre-releases retain only their immutable version tag and never move stable
+channels.
 
 ## Configuration and Secrets
 

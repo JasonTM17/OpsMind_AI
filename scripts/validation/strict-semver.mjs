@@ -19,6 +19,7 @@ export function parseStrictSemVer(value) {
     major: match[1],
     minor: match[2],
     patch: match[3],
+    isPrerelease: Boolean(match[4]),
     majorMinor: `${match[1]}.${match[2]}`,
   };
 }
@@ -39,6 +40,7 @@ function runCli() {
   console.log(`release_version=${result.version}`);
   console.log(`release_tag=${result.releaseTag}`);
   console.log(`major_minor=${result.majorMinor}`);
+  console.log(`is_prerelease=${result.isPrerelease}`);
 }
 
 if (process.argv[1] === fileURLToPath(import.meta.url)) runCli();
