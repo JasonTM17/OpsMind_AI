@@ -10,6 +10,7 @@ const {
   crossScope: crossScopeRunId,
   failed: failedRunId,
   invalid: invalidRunId,
+  longContent: longContentRunId,
   oversized: oversizedRunId,
   unavailable: unavailableRunId,
   uncited: uncitedRunId,
@@ -18,9 +19,15 @@ const {
 test("renders a cited completed investigation without browser credentials", async ({ page }) => {
   await page.goto(runPath(completedRunId));
 
+  await expect(page.locator("main#main-content")).toHaveCount(1);
+  await expect(page.getByRole("heading", { level: 1 })).toHaveCount(1);
   await expect(page.getByRole("heading", { name: "Checkout latency regression" })).toBeVisible();
   await expect(page.getByRole("heading", { name: "Evidence spine" })).toBeVisible();
   await expect(page.getByRole("heading", { name: "Cited conclusion" })).toBeVisible();
+  await expect(page.getByRole("meter", { name: "Hypothesis confidence" })).toHaveAttribute(
+    "aria-valuetext",
+    "83%",
+  );
   await expect(
     page.getByRole("complementary", { name: "Cited conclusion" })
       .getByRole("heading", { name: "Evidence-backed hypothesis 1" }),
@@ -57,14 +64,12 @@ test("renders a cited completed investigation without browser credentials", asyn
     /authorization|bearer|credential|refresh[_-]?token|access[_-]?token/iu,
   );
 
-  const accessibility = await new AxeBuilder({ page })
-    .withTags(["wcag2a", "wcag2aa", "wcag21a", "wcag21aa"])
-    .analyze();
-  expect(accessibility.violations).toEqual([]);
+  await expectNoAccessibilityViolations(page);
 });
 
 test("surfaces a bounded dependency failure and no authoritative conclusion", async ({ page }) => {
-  await page.goto(runPath(failedRunId));
+  const path = runPath(failedRunId);
+  await page.goto(path);
 
   await expect(
     page.getByRole("status")
@@ -72,26 +77,75 @@ test("surfaces a bounded dependency failure and no authoritative conclusion", as
   ).toBeVisible();
   await expect(page.getByRole("heading", { name: "No authoritative conclusion" })).toBeVisible();
   await expect(page.getByText("No remediation action was exposed.")).toBeVisible();
-  await expect(page.getByRole("link", { name: "Refresh status" })).toBeVisible();
+  const refresh = page.getByRole("button", { name: "Refresh status" });
+  await expect(refresh).toBeVisible();
   await expect(page.getByText("Cited evidence")).toHaveCount(0);
+
+  const refreshedRoute = page.waitForResponse((response) => {
+    const url = new URL(response.url());
+    return url.pathname === path
+      && response.request().method() === "GET"
+      && response.request().headers().rsc === "1";
+  });
+  await refresh.click();
+  await expect(page.getByRole("status", { name: "Refresh status result" })).toHaveText(
+    /Refreshing status\.|Status refreshed\./u,
+  );
+  await refreshedRoute;
+  await expect(refresh).toBeVisible();
+  await expect(page.getByText("Status refreshed.", { exact: true })).toBeAttached();
+  await expectNoAccessibilityViolations(page);
 });
 
-test("keeps the evidence workflow usable at 375 pixels", async ({ page }) => {
-  await page.setViewportSize({ width: 375, height: 812 });
-  await page.goto(runPath(completedRunId));
+test("uses the responsive 3, 2, and 1-column operator geometry without overflow", async ({
+  page,
+}) => {
+  for (const scenario of [
+    { width: 1440, columns: 3 },
+    { width: 1024, columns: 2 },
+    { width: 820, columns: 1 },
+    { width: 768, columns: 1 },
+    { width: 375, columns: 1 },
+    { width: 320, columns: 1 },
+  ]) {
+    await page.setViewportSize({ width: scenario.width, height: 1_000 });
+    await page.goto(runPath(completedRunId));
+    await expect(page.getByRole("heading", { name: "Evidence spine" })).toBeVisible();
+    await expectNoHorizontalOverflow(page);
 
-  await expect(page.getByRole("heading", { name: "Checkout latency regression" })).toBeVisible();
-  await expect(page.getByRole("heading", { name: "Evidence spine" })).toBeVisible();
-  const dimensions = await page.evaluate(() => ({
-    viewport: window.innerWidth,
-    document: document.documentElement.scrollWidth,
-  }));
-  expect(dimensions.document).toBeLessThanOrEqual(dimensions.viewport);
+    const geometry = await page.evaluate(() => {
+      function box(selector: string) {
+        const element = document.querySelector<HTMLElement>(selector);
+        if (element === null) throw new Error(`Missing responsive panel: ${selector}`);
+        const bounds = element.getBoundingClientRect();
+        return { x: bounds.x, y: bounds.y, width: bounds.width };
+      }
+      return {
+        context: box('[aria-labelledby="investigation-context-title"]'),
+        evidence: box('[aria-labelledby="evidence-spine-title"]'),
+        conclusion: box('[aria-labelledby="conclusion-title"]'),
+      };
+    });
 
-  await page.setViewportSize({ width: 820, height: 1_000 });
-  await page.reload();
-  expect(await page.evaluate(() =>
-    document.documentElement.scrollWidth <= window.innerWidth)).toBe(true);
+    if (scenario.columns === 3) {
+      expect(geometry.context.y).toBeCloseTo(geometry.evidence.y, 0);
+      expect(geometry.evidence.y).toBeCloseTo(geometry.conclusion.y, 0);
+      expect(geometry.context.x).toBeLessThan(geometry.evidence.x);
+      expect(geometry.evidence.x).toBeLessThan(geometry.conclusion.x);
+    } else if (scenario.columns === 2) {
+      expect(geometry.context.y).toBeCloseTo(geometry.evidence.y, 0);
+      expect(geometry.context.x).toBeLessThan(geometry.evidence.x);
+      expect(geometry.conclusion.y).toBeGreaterThan(geometry.evidence.y);
+      expect(geometry.conclusion.x).toBeCloseTo(geometry.context.x, 0);
+    } else {
+      expect(geometry.context.y).toBeLessThan(geometry.evidence.y);
+      expect(geometry.evidence.y).toBeLessThan(geometry.conclusion.y);
+      expect(geometry.context.x).toBeCloseTo(geometry.evidence.x, 0);
+      expect(geometry.evidence.x).toBeCloseTo(geometry.conclusion.x, 0);
+      expect(geometry.context.width).toBeCloseTo(geometry.evidence.width, 0);
+      expect(geometry.evidence.width).toBeCloseTo(geometry.conclusion.width, 0);
+    }
+  }
 });
 
 test("supports skip navigation and reduced motion", async ({ page }) => {
@@ -107,12 +161,88 @@ test("supports skip navigation and reduced motion", async ({ page }) => {
   await copyButton.focus();
   await expect(copyButton).toBeFocused();
   await page.keyboard.press("Enter");
-  await expect(copyButton.locator("xpath=following-sibling::span")).toHaveText(
+  const copyStatus = copyButton.locator("xpath=following-sibling::span");
+  await expect(copyStatus).toHaveText(
     /Copied|Copy unavailable/u,
   );
+  const firstFeedback = await copyStatus.textContent();
+  await page.keyboard.press("Enter");
+  await expect(copyStatus).toHaveText(/Copied again|Copy still unavailable/u);
+  await expect(copyStatus).not.toHaveText(firstFeedback ?? "");
   const duration = await page.evaluate(() =>
     getComputedStyle(document.querySelector("button")!).transitionDuration);
   expect(Number.parseFloat(duration)).toBeLessThanOrEqual(0.00001);
+});
+
+test("keeps the newest copy result when clipboard requests finish out of order", async ({ page }) => {
+  await page.addInitScript(() => {
+    const requests: Array<{
+      resolve: () => void;
+      reject: (reason?: unknown) => void;
+    }> = [];
+    Object.defineProperty(window, "__opsmindCopyRequests", { value: requests });
+    Object.defineProperty(navigator, "clipboard", {
+      configurable: true,
+      value: {
+        writeText: () => new Promise<void>((resolve, reject) => requests.push({ resolve, reject })),
+      },
+    });
+  });
+  await page.goto(runPath(completedRunId));
+
+  const copyButton = page.getByRole("button", { name: "Copy run ID" });
+  await copyButton.click();
+  await copyButton.click();
+  await expect.poll(() => page.evaluate(() =>
+    (window as unknown as { __opsmindCopyRequests: unknown[] })
+      .__opsmindCopyRequests.length)).toBe(2);
+
+  await settleCopyRequest(page, 1, "resolve");
+  const copyStatus = copyButton.locator("xpath=following-sibling::span");
+  await expect(copyStatus).toHaveText("Copied");
+  await settleCopyRequest(page, 0, "reject");
+  await expect(copyStatus).toHaveText("Copied");
+});
+
+test("does not announce an old correlation copy result after a status refresh", async ({ page }) => {
+  await page.addInitScript(() => {
+    const requests: Array<{
+      resolve: () => void;
+      reject: (reason?: unknown) => void;
+    }> = [];
+    Object.defineProperty(window, "__opsmindCopyRequests", { value: requests });
+    Object.defineProperty(navigator, "clipboard", {
+      configurable: true,
+      value: {
+        writeText: () => new Promise<void>((resolve, reject) => requests.push({ resolve, reject })),
+      },
+    });
+  });
+
+  const path = runPath(failedRunId);
+  await page.goto(path);
+
+  const copyButton = page.getByRole("button", { name: "Copy correlation ID" });
+  const correlationId = copyButton.locator("xpath=preceding-sibling::code");
+  const previousCorrelationId = await correlationId.textContent();
+  await copyButton.click();
+  await expect.poll(() => page.evaluate(() =>
+    (window as unknown as { __opsmindCopyRequests: unknown[] })
+      .__opsmindCopyRequests.length)).toBe(1);
+
+  const refreshedRoute = page.waitForResponse((response) => {
+    const url = new URL(response.url());
+    return url.pathname === path
+      && response.request().method() === "GET"
+      && response.request().headers().rsc === "1";
+  });
+  await page.getByRole("button", { name: "Refresh status" }).click();
+  await refreshedRoute;
+  await expect.poll(() => correlationId.textContent()).not.toBe(previousCorrelationId);
+
+  const copyStatus = copyButton.locator("xpath=following-sibling::span");
+  await settleCopyRequest(page, 0, "resolve");
+  await expect(copyStatus).toHaveText("");
 });
 
 test("renders the empty operator entry without exposing a fixture selector", async ({ page }) => {
@@ -124,10 +254,7 @@ test("renders the empty operator entry without exposing a fixture selector", asy
 
   // Every investigation state is scanned, but the entry route is the first
   // thing an operator reaches and was the only rendered page without a check.
-  const accessibility = await new AxeBuilder({ page })
-    .withTags(["wcag2a", "wcag2aa", "wcag21a", "wcag21aa"])
-    .analyze();
-  expect(accessibility.violations).toEqual([]);
+  await expectNoAccessibilityViolations(page);
 });
 
 test("rejects an analysis projection containing raw reasoning fields", async ({ page }) => {
@@ -173,6 +300,7 @@ for (const scenario of [
     await expect(page.getByRole("status").getByText(scenario.reason)).toBeVisible();
     await expect(page.getByRole("heading", { name: "No authoritative conclusion" })).toBeVisible();
     await expect(page.getByText("No remediation action was exposed.")).toBeVisible();
+    await expectNoAccessibilityViolations(page);
   });
 }
 
@@ -184,4 +312,61 @@ test("keeps durable state explicit when the Platform dependency is unavailable",
     "The last durable state remains unchanged. No retry or downstream action was attempted.",
   )).toBeVisible();
   await expect(page.getByText("No credential fallback")).toBeVisible();
+  const refresh = page.getByRole("button", { name: "Refresh status" });
+  await expect(refresh).toBeVisible();
+  expect(await refresh.evaluate((button) => button.getBoundingClientRect().height))
+    .toBeGreaterThanOrEqual(44);
+  await expectNoAccessibilityViolations(page);
 });
+
+test("wraps maximum-shape operator content without hiding evidence", async ({ page }) => {
+  for (const width of [1024, 320]) {
+    await page.setViewportSize({ width, height: 1_000 });
+    await page.goto(runPath(longContentRunId));
+    await expect(
+      page
+        .getByRole("complementary", { name: "Hypothesis", exact: true })
+        .getByText("UnbrokenSignal".repeat(15), { exact: true }),
+    ).toBeVisible();
+    await expect(page.getByText("C".repeat(900), { exact: true }).first()).toBeVisible();
+    await expect(page.getByText("200 durable reference(s)", { exact: true })).toBeVisible();
+    await expect(
+      page.getByRole("list", { name: "Durable evidence records" }).locator(":scope > li"),
+    ).toHaveCount(200);
+    await expectNoHorizontalOverflow(page);
+  }
+});
+
+async function expectNoHorizontalOverflow(page: import("@playwright/test").Page) {
+  const dimensions = await page.evaluate(() => ({
+    viewport: document.documentElement.clientWidth,
+    document: document.documentElement.scrollWidth,
+  }));
+  expect(dimensions.document).toBeLessThanOrEqual(dimensions.viewport);
+}
+
+async function expectNoAccessibilityViolations(page: import("@playwright/test").Page) {
+  const accessibility = await new AxeBuilder({ page })
+    .withTags(["wcag2a", "wcag2aa", "wcag21a", "wcag21aa"])
+    .analyze();
+  expect(accessibility.violations).toEqual([]);
+}
+
+async function settleCopyRequest(
+  page: import("@playwright/test").Page,
+  index: number,
+  outcome: "resolve" | "reject",
+) {
+  await page.evaluate(({ requestIndex, requestOutcome }) => {
+    const requests = (window as unknown as {
+      __opsmindCopyRequests: Array<{
+        resolve: () => void;
+        reject: (reason?: unknown) => void;
+      }>;
+    }).__opsmindCopyRequests;
+    const request = requests.at(requestIndex);
+    if (request === undefined) throw new Error(`Missing copy request ${requestIndex}`);
+    if (requestOutcome === "resolve") request.resolve();
+    else request.reject(new DOMException("Clipboard denied", "NotAllowedError"));
+  }, { requestIndex: index, requestOutcome: outcome });
+}

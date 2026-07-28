@@ -2,6 +2,7 @@
   min-width: 0;
   padding: var(--space-5) clamp(var(--space-5), 3vw, var(--space-8));
   background: var(--surface-canvas);
+  overflow-wrap: anywhere;
 }
 
 .heading {
@@ -238,5 +239,13 @@
 
   .metadata {
     grid-template-columns: 1fr;
+  }
+}
+
+@media (max-width: 820px) {
+  .stepBody > p,
+  .intentList span,
+  .evidenceList p {
+    font-size: 1rem;
   }
 }
