@@ -8,13 +8,11 @@ import ai.opsmind.platform.common.api.RequestDigest;
 import ai.opsmind.platform.incident.AuthorizedIncidentAnalysisEvidence;
 import ai.opsmind.platform.investigation.domain.InvestigationCommand;
 import ai.opsmind.platform.investigation.domain.InvestigationStateMachine;
-import ai.opsmind.platform.investigation.workflow.InvestigationWorkflowHandoffRepository;
 import ai.opsmind.platform.investigation.workflow.InvestigationWorkflowProperties;
 import ai.opsmind.platform.investigation.workflow.InvestigationWorkflowStartEnvelopeFactory;
 import ai.opsmind.platform.investigation.workflow.InvestigationWorkflowStartEnvelopeFactory.PreparedStart;
 import ai.opsmind.platform.investigation.application.JdbcInvestigationWorkflowBindingStore.StoredBinding;
 import ai.opsmind.platform.messaging.OutboxRepository;
-import ai.opsmind.platform.tenancy.TenantContextSql;
 
 import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
 import org.springframework.context.annotation.Profile;
@@ -32,46 +30,51 @@ import org.springframework.transaction.support.TransactionTemplate;
 @ConditionalOnProperty(prefix = "opsmind.investigation", name = "store", havingValue = "postgres")
 @ConditionalOnProperty(prefix = "opsmind.investigation", name = "execution-mode", havingValue = "temporal")
 public final class JdbcInvestigationWorkflowHandoffRepository
-    implements InvestigationWorkflowHandoffRepository {
+    implements DurableInvestigationAdmissionRepository {
 
     private final JdbcInvestigationWorkflowBindingStore bindingStore;
-    private final TenantContextSql tenantContextSql;
     private final TransactionTemplate transactions;
     private final InvestigationInitialRunWriter initialRunWriter;
     private final InvestigationRunStore runStore;
     private final OutboxRepository outboxRepository;
     private final InvestigationWorkflowStartEnvelopeFactory envelopeFactory;
     private final InvestigationWorkflowProperties properties;
+    private final InvestigationWorkflowAdmissionPreflight admissionPreflight;
 
     public JdbcInvestigationWorkflowHandoffRepository(
         JdbcTemplate jdbcTemplate,
-        TenantContextSql tenantContextSql,
         PlatformTransactionManager transactionManager,
         InvestigationInitialRunWriter initialRunWriter,
         InvestigationRunStore runStore,
         OutboxRepository outboxRepository,
         InvestigationWorkflowStartEnvelopeFactory envelopeFactory,
-        InvestigationWorkflowProperties properties
+        InvestigationWorkflowProperties properties,
+        InvestigationWorkflowAdmissionPreflight admissionPreflight
     ) {
         this.bindingStore = new JdbcInvestigationWorkflowBindingStore(jdbcTemplate);
-        this.tenantContextSql = tenantContextSql;
         this.transactions = new TransactionTemplate(transactionManager);
         this.initialRunWriter = initialRunWriter;
         this.runStore = runStore;
         this.outboxRepository = outboxRepository;
         this.envelopeFactory = envelopeFactory;
         this.properties = properties;
+        this.admissionPreflight = admissionPreflight;
     }
 
     @Override
     public Optional<InvestigationStateMachine.State> loadExisting(
         InvestigationCommand.Start command,
-        AuthorizedIncidentAnalysisEvidence authorizedIncident
+        InvestigationExecutionContext context
     ) {
-        PreparedStart prepared = envelopeFactory.prepare(command, authorizedIncident, properties);
         try {
             return Objects.requireNonNull(transactions.execute(status -> {
-                tenantContextSql.apply(command.organizationId(), command.actorId());
+                AuthorizedIncidentAnalysisEvidence authorizedIncident =
+                    admissionPreflight.requireFreshOperatorAccess(command, context);
+                PreparedStart prepared = envelopeFactory.prepare(
+                    command,
+                    authorizedIncident,
+                    properties
+                );
                 Optional<StoredBinding> binding = bindingStore.find(command);
                 if (binding.isEmpty()) return Optional.empty();
                 return Optional.of(loadIdempotentRun(command, prepared, binding.get()));
@@ -88,22 +91,18 @@ public final class JdbcInvestigationWorkflowHandoffRepository
     @Override
     public InvestigationStateMachine.State createOrLoad(
         InvestigationCommand.Start command,
-        AuthorizedIncidentAnalysisEvidence authorizedIncident
+        InvestigationExecutionContext context
     ) {
-        PreparedStart prepared = envelopeFactory.prepare(command, authorizedIncident, properties);
         try {
             return Objects.requireNonNull(transactions.execute(status -> {
-                tenantContextSql.apply(command.organizationId(), command.actorId());
-                if (bindingStore.hasUnboundNonterminalRun()) {
-                    throw workflowCutoverRequired();
-                }
-                InvestigationStateMachine.Step initial = InvestigationStateMachine.start(command);
-                if (!initialRunWriter.createIfAbsentInCurrentTransaction(initial)) {
-                    StoredBinding binding = bindingStore.find(command)
-                        .orElseThrow(this::workflowCutoverRequired);
-                    return loadIdempotentRun(command, prepared, binding);
-                }
-                return createRunBindingAndOutbox(command, prepared, initial);
+                AuthorizedIncidentAnalysisEvidence effectiveAuthorized =
+                    admissionPreflight.requireFreshAdmission(command, context);
+                PreparedStart prepared = envelopeFactory.prepare(
+                    command,
+                    effectiveAuthorized,
+                    properties
+                );
+                return createOrLoadInCurrentTransaction(command, prepared);
             }), "Investigation handoff transaction returned no state.");
         }
         catch (PlatformProblemException exception) {
@@ -112,6 +111,22 @@ public final class JdbcInvestigationWorkflowHandoffRepository
         catch (DataAccessException | TransactionException exception) {
             throw persistenceUnavailable(exception);
         }
+    }
+
+    private InvestigationStateMachine.State createOrLoadInCurrentTransaction(
+        InvestigationCommand.Start command,
+        PreparedStart prepared
+    ) {
+        if (bindingStore.hasUnboundNonterminalRun()) {
+            throw workflowCutoverRequired();
+        }
+        InvestigationStateMachine.Step initial = InvestigationStateMachine.start(command);
+        if (!initialRunWriter.createIfAbsentInCurrentTransaction(initial)) {
+            StoredBinding binding = bindingStore.find(command)
+                .orElseThrow(this::workflowCutoverRequired);
+            return loadIdempotentRun(command, prepared, binding);
+        }
+        return createRunBindingAndOutbox(command, prepared, initial);
     }
 
     private InvestigationStateMachine.State createRunBindingAndOutbox(
