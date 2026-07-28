@@ -41,6 +41,13 @@ The detailed executable plan is [plans/260719-1747-opsmind-ai-production-platfor
 | 15 | Security, reliability, and observability hardening | G8 | Pending |
 | 16 | Delivery, disaster recovery, and final verification | G8 | Pending |
 
+The delivery foundation now includes a SHA-pinned four-image OCI publication
+workflow with multi-architecture builds, SBOM, max-level provenance, signed
+registry attestations, GHCR linkage labels, digest verification, and CI
+receipts. This is an implementation checkpoint, not Phase 16 completion:
+immutable registry execution evidence, Docker Hub credential/parity proof,
+production manifests, staged rollout, DR, and final DoD audit remain required.
+
 Phase 3 and G2 remain in progress. Local Windows and revision-bound Linux CI
 Keycloak 26.7 runs satisfy the reference non-production IdP integration
 criterion; the local artifact remains marked

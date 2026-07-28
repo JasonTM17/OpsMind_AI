@@ -135,6 +135,10 @@ jobs:
           if [ "$status" -eq 0 ]; then result=PASS; else result=BLOCK; fi
           echo "Result=$result" | tee -a "$evidence"
           exit "$status"
+      - name: Validate OCI publication controls
+        run: |
+          node scripts/validation/validate-container-publish-workflow.mjs \
+            | tee artifacts/verification/phase-02/oci-publication-workflow.txt
       - uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
         if: always()
         with:

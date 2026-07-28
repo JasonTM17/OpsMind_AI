@@ -285,6 +285,11 @@ The public repository About panel is synchronized from
 must publish the same signed multi-architecture digest to Docker Hub and GHCR,
 link the GHCR Package to this repository, and record immutable digests,
 SBOM/provenance, scan results, and registry parity in the release evidence.
+The checked-in
+[OCI publication workflow](./.github/workflows/container-publish.yml) provides
+that package path. GHCR bootstrap uses the scoped GitHub token; Docker Hub
+publication is blocked until the protected repository username/token pair is
+configured.
 
 ## Unresolved Questions
 

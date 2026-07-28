@@ -1,0 +1,234 @@
+name: Publish OCI packages
+
+on:
+  workflow_dispatch:
+    inputs:
+      publish_dockerhub:
+        description: Also publish the exact GHCR digest to Docker Hub
+        required: true
+        default: false
+        type: boolean
+  push:
+    tags:
+      - "v*"
+
+permissions:
+  contents: read
+  packages: write
+  id-token: write
+  attestations: write
+
+concurrency:
+  group: container-publish-${{ github.ref }}
+  cancel-in-progress: false
+
+jobs:
+  publish:
+    name: Publish ${{ matrix.component }}
+    if: github.repository == 'JasonTM17/OpsMind_AI'
+    runs-on: ubuntu-latest
+    timeout-minutes: 90
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - component: Platform API
+            image: opsmind-platform-api
+            dockerfile: services/platform-api/Dockerfile
+          - component: AI Runtime
+            image: opsmind-ai-runtime
+            dockerfile: services/ai-runtime/Dockerfile
+          - component: Tool Gateway
+            image: opsmind-tool-gateway
+            dockerfile: services/tool-gateway/Dockerfile
+          - component: Operator Web
+            image: opsmind-operator-web
+            dockerfile: apps/operator-web/Dockerfile
+    env:
+      DOCKERHUB_USERNAME: ${{ vars.DOCKERHUB_USERNAME }}
+      DOCKERHUB_TOKEN: ${{ secrets.DOCKERHUB_TOKEN }}
+      PUBLISH_DOCKERHUB: ${{ github.event_name == 'push' || inputs.publish_dockerhub }}
+
+    steps:
+      - name: Check out exact source
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+
+      - name: Resolve registry targets
+        id: targets
+        shell: bash
+        run: |
+          set -euo pipefail
+          ghcr_owner="${GITHUB_REPOSITORY_OWNER,,}"
+          ghcr_image="ghcr.io/${ghcr_owner}/${{ matrix.image }}"
+          dockerhub_enabled=false
+          dockerhub_image=
+
+          if [[ "$PUBLISH_DOCKERHUB" == "true" ]]; then
+            if [[ -z "$DOCKERHUB_USERNAME" || -z "$DOCKERHUB_TOKEN" ]]; then
+              echo "::error::Docker Hub publication requires DOCKERHUB_USERNAME and DOCKERHUB_TOKEN."
+              exit 1
+            fi
+            if [[ ! "$DOCKERHUB_USERNAME" =~ ^[A-Za-z0-9][A-Za-z0-9_-]{0,254}$ ]]; then
+              echo "::error::DOCKERHUB_USERNAME has an invalid registry namespace shape."
+              exit 1
+            fi
+            dockerhub_enabled=true
+            dockerhub_image="${DOCKERHUB_USERNAME,,}/${{ matrix.image }}"
+          fi
+
+          {
+            echo "ghcr_image=$ghcr_image"
+            echo "dockerhub_enabled=$dockerhub_enabled"
+            echo "dockerhub_image=$dockerhub_image"
+            echo "images<<EOF"
+            echo "$ghcr_image"
+            if [[ "$dockerhub_enabled" == "true" ]]; then
+              echo "$dockerhub_image"
+            fi
+            echo "EOF"
+          } >> "$GITHUB_OUTPUT"
+
+      - name: Log in to GHCR
+        uses: docker/login-action@abd2ef45e78c5afb21d64d4ca52ee8550d9572c7 # v4.5.1
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Log in to Docker Hub
+        if: steps.targets.outputs.dockerhub_enabled == 'true'
+        uses: docker/login-action@abd2ef45e78c5afb21d64d4ca52ee8550d9572c7 # v4.5.1
+        with:
+          username: ${{ env.DOCKERHUB_USERNAME }}
+          password: ${{ env.DOCKERHUB_TOKEN }}
+
+      - name: Set up QEMU
+        uses: docker/setup-qemu-action@96fe6ef7f33517b61c61be40b68a1882f3264fb8 # v4.2.0
+
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@bb05f3f5519dd87d3ba754cc423b652a5edd6d2c # v4.2.0
+
+      - name: Derive OCI metadata
+        id: meta
+        uses: docker/metadata-action@dc802804100637a589fabce1cb79ff13a1411302 # v6.2.0
+        with:
+          images: ${{ steps.targets.outputs.images }}
+          tags: |
+            type=raw,value=latest,enable={{is_default_branch}}
+            type=semver,pattern={{version}}
+            type=semver,pattern={{major}}.{{minor}}
+            type=sha,format=long,prefix=sha-
+          labels: |
+            org.opencontainers.image.source=${{ github.server_url }}/${{ github.repository }}
+            org.opencontainers.image.revision=${{ github.sha }}
+            org.opencontainers.image.licenses=MIT
+            org.opencontainers.image.vendor=OpsMind AI
+
+      - name: Build and publish multi-architecture image
+        id: build
+        uses: docker/build-push-action@53b7df96c91f9c12dcc8a07bcb9ccacbed38856a # v7.3.0
+        with:
+          context: .
+          file: ${{ matrix.dockerfile }}
+          platforms: linux/amd64,linux/arm64
+          pull: true
+          push: true
+          tags: ${{ steps.meta.outputs.tags }}
+          labels: ${{ steps.meta.outputs.labels }}
+          annotations: ${{ steps.meta.outputs.annotations }}
+          provenance: mode=max
+          sbom: true
+          cache-from: type=gha,scope=${{ matrix.image }}
+          cache-to: type=gha,mode=max,scope=${{ matrix.image }}
+
+      - name: Generate signed GHCR provenance
+        id: ghcr_attest
+        uses: actions/attest@f7c74d28b9d84cb8768d0b8ca14a4bac6ef463e6 # v4.2.0
+        with:
+          subject-name: ${{ steps.targets.outputs.ghcr_image }}
+          subject-digest: ${{ steps.build.outputs.digest }}
+          push-to-registry: true
+
+      - name: Generate signed Docker Hub provenance
+        id: dockerhub_attest
+        if: steps.targets.outputs.dockerhub_enabled == 'true'
+        uses: actions/attest@f7c74d28b9d84cb8768d0b8ca14a4bac6ef463e6 # v4.2.0
+        with:
+          subject-name: docker.io/${{ steps.targets.outputs.dockerhub_image }}
+          subject-digest: ${{ steps.build.outputs.digest }}
+          push-to-registry: true
+
+      - name: Verify registry digest and write receipt
+        shell: bash
+        env:
+          COMPONENT: ${{ matrix.component }}
+          DOCKERFILE: ${{ matrix.dockerfile }}
+          GHCR_IMAGE: ${{ steps.targets.outputs.ghcr_image }}
+          DOCKERHUB_ENABLED: ${{ steps.targets.outputs.dockerhub_enabled }}
+          DOCKERHUB_IMAGE: ${{ steps.targets.outputs.dockerhub_image }}
+          IMAGE_DIGEST: ${{ steps.build.outputs.digest }}
+          GHCR_ATTESTATION_URL: ${{ steps.ghcr_attest.outputs.attestation-url }}
+          DOCKERHUB_ATTESTATION_URL: ${{ steps.dockerhub_attest.outputs.attestation-url }}
+        run: |
+          set -euo pipefail
+          docker buildx imagetools inspect "${GHCR_IMAGE}@${IMAGE_DIGEST}" >/dev/null
+          if [[ "$DOCKERHUB_ENABLED" == "true" ]]; then
+            docker buildx imagetools inspect \
+              "docker.io/${DOCKERHUB_IMAGE}@${IMAGE_DIGEST}" >/dev/null
+          fi
+
+          receipt_root="artifacts/container-publication/${{ matrix.image }}"
+          mkdir -p "$receipt_root"
+          jq -n \
+            --arg schemaVersion "opsmind-oci-publication-v1" \
+            --arg component "$COMPONENT" \
+            --arg dockerfile "$DOCKERFILE" \
+            --arg repository "$GITHUB_REPOSITORY" \
+            --arg sourceSha "$GITHUB_SHA" \
+            --arg sourceRef "$GITHUB_REF" \
+            --arg runId "$GITHUB_RUN_ID" \
+            --arg runAttempt "$GITHUB_RUN_ATTEMPT" \
+            --arg ghcrImage "$GHCR_IMAGE" \
+            --arg dockerHubImage "$DOCKERHUB_IMAGE" \
+            --arg digest "$IMAGE_DIGEST" \
+            --arg ghcrAttestationUrl "$GHCR_ATTESTATION_URL" \
+            --arg dockerHubAttestationUrl "$DOCKERHUB_ATTESTATION_URL" \
+            --argjson dockerHubPublished "$DOCKERHUB_ENABLED" \
+            '{
+              schemaVersion: $schemaVersion,
+              component: $component,
+              dockerfile: $dockerfile,
+              repository: $repository,
+              sourceSha: $sourceSha,
+              sourceRef: $sourceRef,
+              workflow: {runId: $runId, runAttempt: $runAttempt},
+              platforms: ["linux/amd64", "linux/arm64"],
+              registries: {
+                ghcr: {
+                  image: $ghcrImage,
+                  digest: $digest,
+                  attestationUrl: $ghcrAttestationUrl
+                },
+                dockerHub: {
+                  published: $dockerHubPublished,
+                  image: $dockerHubImage,
+                  digest: (if $dockerHubPublished then $digest else "" end),
+                  attestationUrl: $dockerHubAttestationUrl
+                }
+              },
+              sbom: true,
+              provenance: "mode=max",
+              result: "PASS"
+            }' > "$receipt_root/receipt.json"
+          jq -e \
+            '.result == "PASS" and .registries.ghcr.digest == $digest' \
+            --arg digest "$IMAGE_DIGEST" \
+            "$receipt_root/receipt.json" >/dev/null
+
+      - name: Upload publication receipt
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
+        with:
+          name: oci-publication-${{ matrix.image }}
+          path: artifacts/container-publication/${{ matrix.image }}/receipt.json
+          if-no-files-found: error
+          retention-days: 90

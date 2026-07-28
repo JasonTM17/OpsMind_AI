@@ -47,6 +47,34 @@ same multi-architecture OCI manifest digest; mutable tags are convenience
 pointers, not promotion authority. Docker Hub/GitHub credentials are protected
 release secrets or short-lived workload identities and never checked in.
 
+The SHA-pinned
+[OCI publication workflow](../.github/workflows/container-publish.yml) builds
+all four runtime images for `linux/amd64` and `linux/arm64`, attaches BuildKit
+SBOM/max-level provenance, creates a signed GitHub/Sigstore provenance
+attestation, verifies the pushed digest, and uploads a versioned receipt.
+`workflow_dispatch` can bootstrap GHCR from `main` without Docker Hub.
+Release-tag runs and manual runs with `publish_dockerhub=true` fail before
+building unless repository variable `DOCKERHUB_USERNAME` and protected secret
+`DOCKERHUB_TOKEN` are both configured. The workflow never accepts a registry
+token as an input or build argument.
+
+Run the GHCR bootstrap after the workflow is merged:
+
+```powershell
+gh workflow run container-publish.yml --ref main -f publish_dockerhub=false
+```
+
+Run dual-registry publication only after the protected Docker Hub credentials
+exist:
+
+```powershell
+gh workflow run container-publish.yml --ref main -f publish_dockerhub=true
+```
+
+For a release, create the approved `v*` tag only after registry credentials and
+release gates are present. Tag publication requires Docker Hub parity. Promotion
+records consume the receipt digest, never `latest`.
+
 ## Configuration and Secrets
 
 - Non-secret configuration is schema-validated at startup.
