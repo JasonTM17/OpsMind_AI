@@ -32,6 +32,7 @@ class InvestigationWorkflowStarterRunnerTest {
         runner.runOnce();
 
         InOrder order = inOrder(dispatcher);
+        order.verify(dispatcher).terminalizeUnclaimedIneligibleStarts(10);
         order.verify(dispatcher).dispatchTenant(firstTenant);
         order.verify(dispatcher).dispatchTenant(secondTenant);
     }
@@ -55,6 +56,7 @@ class InvestigationWorkflowStarterRunnerTest {
         assertThatCode(runner::runOnce).doesNotThrowAnyException();
 
         InOrder order = inOrder(dispatcher);
+        order.verify(dispatcher).terminalizeUnclaimedIneligibleStarts(10);
         order.verify(dispatcher).dispatchTenant(firstTenant);
         order.verify(dispatcher).dispatchTenant(secondTenant);
     }
@@ -74,6 +76,27 @@ class InvestigationWorkflowStarterRunnerTest {
         assertThatCode(runner::runOnce).doesNotThrowAnyException();
     }
 
+    @Test
+    void terminalizerFailureDoesNotStarveReadyTenants() {
+        UUID tenant = UUID.randomUUID();
+        InvestigationWorkflowStartTenantScheduler scheduler =
+            mock(InvestigationWorkflowStartTenantScheduler.class);
+        InvestigationWorkflowStartDispatcher dispatcher =
+            mock(InvestigationWorkflowStartDispatcher.class);
+        when(scheduler.listReadyTenants(10)).thenReturn(List.of(tenant));
+        doThrow(new IllegalStateException("synthetic"))
+            .when(dispatcher).terminalizeUnclaimedIneligibleStarts(10);
+        InvestigationWorkflowStarterRunner runner = new InvestigationWorkflowStarterRunner(
+            scheduler, dispatcher, properties()
+        );
+
+        assertThatCode(runner::runOnce).doesNotThrowAnyException();
+
+        InOrder order = inOrder(dispatcher);
+        order.verify(dispatcher).terminalizeUnclaimedIneligibleStarts(10);
+        order.verify(dispatcher).dispatchTenant(tenant);
+    }
+
     private InvestigationWorkflowStarterProperties properties() {
         return new InvestigationWorkflowStarterProperties(
             true,
@@ -85,7 +108,7 @@ class InvestigationWorkflowStarterRunnerTest {
             Duration.ofSeconds(30),
             5,
             10,
-            10
+            1
         );
     }
 }

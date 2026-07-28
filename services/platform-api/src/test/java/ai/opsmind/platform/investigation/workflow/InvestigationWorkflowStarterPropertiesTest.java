@@ -25,7 +25,7 @@ class InvestigationWorkflowStarterPropertiesTest {
             new InvestigationWorkflowStarterProperties(
                 true, Duration.ofSeconds(1), Duration.ofSeconds(5),
                 Duration.ofSeconds(5), Duration.ofHours(1), Duration.ofSeconds(1),
-                Duration.ofMinutes(1), 8, 25, 101
+                Duration.ofMinutes(1), 8, 25, 2
             );
 
         assertThatThrownBy(invalid::validate)
@@ -33,11 +33,17 @@ class InvestigationWorkflowStarterPropertiesTest {
             .hasMessageContaining("outside policy");
     }
 
+    @Test
+    void requiredRpcWindowIncludesTheTransportTimeoutAndSafetyMargin() {
+        assertThat(properties().requiredRpcWindow(Duration.ofSeconds(5)))
+            .isEqualTo(Duration.ofSeconds(10));
+    }
+
     private InvestigationWorkflowStarterProperties properties() {
         return new InvestigationWorkflowStarterProperties(
             true, Duration.ofSeconds(1), Duration.ofSeconds(30),
             Duration.ofSeconds(5), Duration.ofHours(1), Duration.ofSeconds(1),
-            Duration.ofMinutes(1), 8, 25, 10
+            Duration.ofMinutes(1), 8, 25, 1
         );
     }
 }

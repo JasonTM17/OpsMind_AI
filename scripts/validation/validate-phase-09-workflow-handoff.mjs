@@ -46,17 +46,41 @@ const migration = requireMarkers(migrationPath, [
   "event_row.event_type = 'investigation.workflow-start.requested'",
 ]);
 
+const hardeningMigrationPath =
+  "services/platform-api/src/main/resources/db/migration/"
+  + "V011__investigation_workflow_dispatch_safety_fence.sql";
+const hardeningMigration = requireMarkers(hardeningMigrationPath, [
+  "CREATE OR REPLACE FUNCTION opsmind_lock_eligible_investigation_dispatcher",
+  "CREATE OR REPLACE FUNCTION opsmind_preflight_investigation_workflow_start",
+  "CREATE OR REPLACE FUNCTION opsmind_settle_investigation_workflow_start",
+  "CREATE OR REPLACE FUNCTION opsmind_terminalize_unclaimed_ineligible_workflow_starts",
+  "RETURN 'workflow.lease-lost';",
+  "RETURN 'workflow.lease-window-exhausted';",
+  "RETURN 'workflow.deadline-exhausted';",
+  "RETURN 'workflow.dispatcher-ineligible';",
+  "RETURN 'workflow.authorization-revoked';",
+  "RETURN 'workflow.preflight-allowed';",
+  "OWNER TO opsmind_context_resolver",
+  "OWNER TO opsmind_dispatch_resolver",
+  "TO opsmind_dispatcher",
+]);
+if (hardeningMigration.includes("opsmind_current_tenant_id")) {
+  errors.push("V011 preflight must not require or establish a tenant context");
+}
+
 const migrationDirectory = path.join(
   repositoryRoot,
   "services/platform-api/src/main/resources/db/migration",
 );
 const workflowMigrations = fs.readdirSync(migrationDirectory)
-  .filter((name) => /workflow.*handoff|handoff.*workflow/iu.test(name));
+  .filter((name) => /workflow.*(?:handoff|safety)|(?:handoff|safety).*workflow/iu.test(name))
+  .sort();
 if (
-  workflowMigrations.length !== 1
+  workflowMigrations.length !== 2
   || workflowMigrations[0] !== "V010__investigation_workflow_start_handoff.sql"
+  || workflowMigrations[1] !== "V011__investigation_workflow_dispatch_safety_fence.sql"
 ) {
-  errors.push("the workflow handoff must have exactly one V010 migration owner");
+  errors.push("the workflow handoff must have exactly V010 and V011 migration owners");
 }
 
 const pom = requireMarkers("services/platform-api/pom.xml", [
@@ -77,6 +101,7 @@ requireMarkers("services/platform-api/src/main/resources/application.yaml", [
   "enabled: ${OPSMIND_INVESTIGATION_WORKFLOW_STARTER_ENABLED:false}",
   "enabled: ${OPSMIND_DISPATCHER_ENABLED:false}",
   "url: ${OPSMIND_DISPATCHER_DB_URL:disabled}",
+  "batch-size: ${OPSMIND_INVESTIGATION_WORKFLOW_STARTER_BATCH_SIZE:1}",
 ]);
 requireMarkers(".env.example", [
   "OPSMIND_INVESTIGATION_EXECUTION_MODE=inline",
@@ -84,6 +109,7 @@ requireMarkers(".env.example", [
   "OPSMIND_INVESTIGATION_WORKFLOW_STARTER_ENABLED=false",
   "OPSMIND_DISPATCHER_ENABLED=false",
   "OPSMIND_DISPATCHER_DB_URL=disabled",
+  "OPSMIND_INVESTIGATION_WORKFLOW_STARTER_BATCH_SIZE=1",
 ]);
 
 const requestPath =
@@ -166,10 +192,12 @@ requireMarkers(
     + "workflow/InvestigationWorkflowDispatchTransactions.java",
   [
     "dispatcherTransactionManager",
-    "lease_expires_at > transaction_timestamp()",
-    "investigation-workflow-starter-v1",
-    "markProcessed",
-    "markPoisoned",
+    "opsmind_preflight_investigation_workflow_start",
+    "opsmind_settle_investigation_workflow_start",
+    "opsmind_terminalize_unclaimed_ineligible_workflow_starts",
+    "Workflow starter must not claim more than one lease per transaction.",
+    "private <T> T inDispatcher",
+    "private <T> T inTenant",
   ],
 );
 
@@ -185,8 +213,12 @@ requireMarkers(
 );
 requireMarkers("scripts/validation/run-phase-04b-migration-upgrade.sh", [
   "migrate_to 10",
+  "migrate_to 11",
   "CutoverBlockExit=%s",
   "NonterminalOrphansAfterReconciliation=%s",
+  "VersionEleven=%s",
+  "WorkflowSettlementFunctionAfterEleven=%s",
+  "WorkflowSettlementOwnerAfterEleven=%s",
 ]);
 
 const requiredTests = {
@@ -197,9 +229,22 @@ const requiredTests = {
   ],
   ["services/platform-api/src/test/java/ai/opsmind/platform/investigation/"
     + "workflow/InvestigationWorkflowDispatcherPersistenceIntegrationTest.java"]: [
+    "databaseClockDeadlineFenceRejectsWithoutTemporalRpc",
+    "remainingLeaseWindowPreventsAnotherTemporalRpc",
+    "dispatcherAuthorizationPreflightDeniesRevokedProjectRole",
+    "suspendedAccountCanTerminallySettleItsAlreadyClaimedWorkflowLease",
+    "suspendedAccountCanSettleAConfirmedTemporalStart",
+    "suspendedAccountPreservesAmbiguousRetryForReconciliation",
+    "terminalizerPoisonsAnUnclaimedStartWithNoEligibleDispatcher",
+    "claimProcessesOnlyOneLeasePerTransaction",
     "expiredLeaseCannotPartiallyAcknowledgeBindingInboxOrOutbox",
     "permanentFailureRejectsBindingInboxAndOutboxInOneTransaction",
     "moreThanOneHundredUnrelatedReadyTenantsCannotStarveWorkflowStarts",
+  ],
+  ["services/platform-api/src/test/java/ai/opsmind/platform/investigation/"
+    + "workflow/InvestigationWorkflowStartDispatcherTest.java"]: [
+    "preflightTerminalDecisionRejectsWithoutInvokingWorkflowClient",
+    "stalePreflightSkipsWorkflowClientAndLeaseMutation",
   ],
   ["services/platform-api/src/test/java/ai/opsmind/platform/investigation/"
     + "workflow/TemporalInvestigationWorkflowClientTest.java"]: [
@@ -260,6 +305,7 @@ if (!migration.includes("REVOKE ALL ON investigation_workflow_bindings")) {
 const lines = [
   "OpsMind Phase 9 workflow handoff validation",
   `MigrationOwner=${path.basename(migrationPath)}`,
+  `HardeningMigrationOwner=${path.basename(hardeningMigrationPath)}`,
   `TemporalVersionPins=${temporalVersionDeclarations.length}`,
   `SerializedPayloadFields=${serializedFields.length}`,
   `RequiredTestFiles=${Object.keys(requiredTests).length}`,
