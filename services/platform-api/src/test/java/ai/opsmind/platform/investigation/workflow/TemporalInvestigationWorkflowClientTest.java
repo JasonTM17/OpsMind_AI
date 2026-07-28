@@ -7,6 +7,7 @@ import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.when;
 
+import java.net.SocketTimeoutException;
 import java.time.Duration;
 import java.time.Instant;
 import java.util.Map;
@@ -34,6 +35,7 @@ import io.temporal.client.WorkflowOptions;
 import io.temporal.client.WorkflowServiceException;
 import io.temporal.client.WorkflowStub;
 import io.temporal.common.converter.DataConverter;
+import io.temporal.common.converter.DataConverterException;
 import io.temporal.testing.TestWorkflowEnvironment;
 import io.temporal.worker.Worker;
 import io.temporal.workflow.WorkflowInterface;
@@ -41,6 +43,7 @@ import io.temporal.workflow.WorkflowMethod;
 
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.params.ParameterizedTest;
+import org.junit.jupiter.params.provider.Arguments;
 import org.junit.jupiter.params.provider.MethodSource;
 
 class TemporalInvestigationWorkflowClientTest {
@@ -185,7 +188,7 @@ class TemporalInvestigationWorkflowClientTest {
             eq(WORKFLOW_TYPE), any(WorkflowOptions.class)
         )).thenReturn(startStub);
         when(startStub.start(any(Object[].class)))
-            .thenThrow(statuslessServiceFailure(execution))
+            .thenThrow(statuslessTransportServiceFailure(execution))
             .thenThrow(alreadyStarted);
         when(sdkClient.newUntypedWorkflowStub(
             eq(execution), eq(Optional.of(WORKFLOW_TYPE))
@@ -216,6 +219,48 @@ class TemporalInvestigationWorkflowClientTest {
         assertThat(duplicate.temporalRunId()).isEqualTo(execution.getRunId());
     }
 
+    @Test
+    void statuslessLocalFailureOnStartRemainsPermanent() {
+        String namespace = "temporal-test-namespace";
+        InvestigationWorkflowStartRequest request = request(namespace);
+        WorkflowExecution execution = execution(request);
+        WorkflowClient sdkClient = mock(WorkflowClient.class);
+        WorkflowStub startStub = mock(WorkflowStub.class);
+        when(sdkClient.newUntypedWorkflowStub(
+            eq(WORKFLOW_TYPE), any(WorkflowOptions.class)
+        )).thenReturn(startStub);
+        when(startStub.start(any(Object[].class)))
+            .thenThrow(statuslessLocalServiceFailure(execution));
+
+        assertMappedFailure(
+            temporalClient(sdkClient, namespace),
+            request,
+            false,
+            "workflow.temporal-rejected"
+        );
+    }
+
+    @Test
+    void statuslessLocalConverterFailureOnStartRemainsPermanent() {
+        String namespace = "temporal-test-namespace";
+        InvestigationWorkflowStartRequest request = request(namespace);
+        WorkflowExecution execution = execution(request);
+        WorkflowClient sdkClient = mock(WorkflowClient.class);
+        WorkflowStub startStub = mock(WorkflowStub.class);
+        when(sdkClient.newUntypedWorkflowStub(
+            eq(WORKFLOW_TYPE), any(WorkflowOptions.class)
+        )).thenReturn(startStub);
+        when(startStub.start(any(Object[].class)))
+            .thenThrow(statuslessLocalConverterFailure(execution));
+
+        assertMappedFailure(
+            temporalClient(sdkClient, namespace),
+            request,
+            false,
+            "workflow.temporal-rejected"
+        );
+    }
+
     @ParameterizedTest
     @MethodSource("nonRetryableTransportCodes")
     void wrappedNonRetryableTransportFailureOnStartRemainsPermanent(
@@ -240,12 +285,41 @@ class TemporalInvestigationWorkflowClientTest {
         );
     }
 
+    @Test
+    void checkedNonRetryableTransportFailureOnStartRemainsPermanent() {
+        String namespace = "temporal-test-namespace";
+        InvestigationWorkflowStartRequest request = request(namespace);
+        WorkflowExecution execution = execution(request);
+        WorkflowClient sdkClient = mock(WorkflowClient.class);
+        WorkflowStub startStub = mock(WorkflowStub.class);
+        when(sdkClient.newUntypedWorkflowStub(
+            eq(WORKFLOW_TYPE), any(WorkflowOptions.class)
+        )).thenReturn(startStub);
+        when(startStub.start(any(Object[].class)))
+            .thenThrow(wrappedCheckedServiceFailure(
+                execution,
+                Status.Code.PERMISSION_DENIED
+            ));
+
+        assertMappedFailure(
+            temporalClient(sdkClient, namespace),
+            request,
+            false,
+            "workflow.temporal-rejected"
+        );
+    }
+
     @ParameterizedTest
     @MethodSource("ambiguousTransportFailureCases")
     void ambiguousTransportFailureWhileDescribingExistingIsRetryable(
         TransportFailureCase failureCase
     ) {
-        assertReconciliationTransportFailureIsRetryable(true, failureCase);
+        assertReconciliationFailure(
+            true,
+            failureCase::failure,
+            true,
+            "workflow.temporal-unavailable"
+        );
     }
 
     @ParameterizedTest
@@ -253,51 +327,43 @@ class TemporalInvestigationWorkflowClientTest {
     void ambiguousTransportFailureWhileReadingHistoryIsRetryable(
         TransportFailureCase failureCase
     ) {
-        assertReconciliationTransportFailureIsRetryable(false, failureCase);
+        assertReconciliationFailure(
+            false,
+            failureCase::failure,
+            true,
+            "workflow.temporal-unavailable"
+        );
     }
 
-    @Test
-    void localStatuslessVerificationFailureDuringReconciliationRemainsPermanent() {
-        String namespace = "temporal-test-namespace";
-        InvestigationWorkflowStartRequest request = request(namespace);
-        WorkflowExecution execution = execution(request);
-        WorkflowClient sdkClient = mock(WorkflowClient.class);
-        WorkflowStub startStub = mock(WorkflowStub.class);
-        WorkflowStub existingStub = mock(WorkflowStub.class);
-        WorkflowExecutionAlreadyStarted alreadyStarted =
-            new WorkflowExecutionAlreadyStarted(
-                execution,
-                WORKFLOW_TYPE,
-                Status.ALREADY_EXISTS.asRuntimeException()
-            );
-        when(sdkClient.newUntypedWorkflowStub(
-            eq(WORKFLOW_TYPE), any(WorkflowOptions.class)
-        )).thenReturn(startStub);
-        when(startStub.start(any(Object[].class))).thenThrow(alreadyStarted);
-        when(sdkClient.newUntypedWorkflowStub(
-            eq(execution), eq(Optional.of(WORKFLOW_TYPE))
-        )).thenReturn(existingStub);
-        when(existingStub.describe()).thenReturn(description(execution));
-        when(sdkClient.getOptions()).thenReturn(
-            WorkflowClientOptions.newBuilder()
-                .setDataConverter(DATA_CONVERTER)
-                .build()
-        );
-        when(sdkClient.streamHistory(
-            request.workflowId(), execution.getRunId()
-        )).thenThrow(new IllegalStateException("Local verification failed."));
-
-        assertMappedFailure(
-            temporalClient(sdkClient, namespace),
-            request,
+    @ParameterizedTest
+    @MethodSource("permanentReconciliationFailureCases")
+    void permanentReconciliationFailureUsesUnverifiableCode(
+        boolean failDescribe,
+        Status.Code statusCode
+    ) {
+        assertReconciliationFailure(
+            failDescribe,
+            execution -> wrappedServiceFailure(execution, statusCode),
             false,
             "workflow.existing-contract-unverifiable"
         );
     }
 
-    private void assertReconciliationTransportFailureIsRetryable(
+    @Test
+    void statuslessLocalFailureDuringReconciliationRemainsPermanent() {
+        assertReconciliationFailure(
+            false,
+            TemporalInvestigationWorkflowClientTest::statuslessLocalServiceFailure,
+            false,
+            "workflow.existing-contract-unverifiable"
+        );
+    }
+
+    private void assertReconciliationFailure(
         boolean failDescribe,
-        TransportFailureCase failureCase
+        Function<WorkflowExecution, RuntimeException> failureFactory,
+        boolean retryable,
+        String expectedCode
     ) {
         String namespace = "temporal-test-namespace";
         InvestigationWorkflowStartRequest request = request(namespace);
@@ -311,7 +377,7 @@ class TemporalInvestigationWorkflowClientTest {
                 WORKFLOW_TYPE,
                 Status.ALREADY_EXISTS.asRuntimeException()
             );
-        RuntimeException transportFailure = failureCase.failure(execution);
+        RuntimeException transportFailure = failureFactory.apply(execution);
         when(sdkClient.newUntypedWorkflowStub(
             eq(WORKFLOW_TYPE), any(WorkflowOptions.class)
         )).thenReturn(startStub);
@@ -338,8 +404,8 @@ class TemporalInvestigationWorkflowClientTest {
         assertMappedFailure(
             temporalClient(sdkClient, namespace),
             request,
-            true,
-            "workflow.temporal-unavailable"
+            retryable,
+            expectedCode
         );
     }
 
@@ -389,13 +455,51 @@ class TemporalInvestigationWorkflowClientTest {
         );
     }
 
-    private static WorkflowServiceException statuslessServiceFailure(
+    private static WorkflowServiceException wrappedCheckedServiceFailure(
+        WorkflowExecution execution,
+        Status.Code statusCode
+    ) {
+        return new WorkflowServiceException(
+            execution,
+            WORKFLOW_TYPE,
+            new IllegalStateException(
+                "SDK checked transport wrapper",
+                Status.fromCode(statusCode)
+                    .withDescription("sensitive transport detail")
+                    .asException()
+            )
+        );
+    }
+
+    private static WorkflowServiceException statuslessTransportServiceFailure(
         WorkflowExecution execution
     ) {
         return new WorkflowServiceException(
             execution,
             WORKFLOW_TYPE,
-            new IllegalStateException("SDK wrapper without gRPC status")
+            new SocketTimeoutException("Temporal RPC timed out without a gRPC status")
+        );
+    }
+
+    private static WorkflowServiceException statuslessLocalServiceFailure(
+        WorkflowExecution execution
+    ) {
+        return new WorkflowServiceException(
+            execution,
+            WORKFLOW_TYPE,
+            new IllegalStateException("Local SDK/interceptor failure")
+        );
+    }
+
+    private static WorkflowServiceException statuslessLocalConverterFailure(
+        WorkflowExecution execution
+    ) {
+        return new WorkflowServiceException(
+            execution,
+            WORKFLOW_TYPE,
+            new DataConverterException(
+                new SocketTimeoutException("Local converter stream rejected input")
+            )
         );
     }
 
@@ -458,8 +562,15 @@ class TemporalInvestigationWorkflowClientTest {
             transportFailureCase("INTERNAL", Status.Code.INTERNAL),
             transportFailureCase("CANCELLED", Status.Code.CANCELLED),
             new TransportFailureCase(
+                "checked-UNAVAILABLE",
+                execution -> wrappedCheckedServiceFailure(
+                    execution,
+                    Status.Code.UNAVAILABLE
+                )
+            ),
+            new TransportFailureCase(
                 "statusless-temporal-wrapper",
-                TemporalInvestigationWorkflowClientTest::statuslessServiceFailure
+                TemporalInvestigationWorkflowClientTest::statuslessTransportServiceFailure
             )
         );
     }
@@ -482,6 +593,15 @@ class TemporalInvestigationWorkflowClientTest {
                     false;
                 default -> true;
             });
+    }
+
+    private static Stream<Arguments> permanentReconciliationFailureCases() {
+        return Stream.of(
+            Arguments.of(true, Status.Code.NOT_FOUND),
+            Arguments.of(true, Status.Code.PERMISSION_DENIED),
+            Arguments.of(false, Status.Code.NOT_FOUND),
+            Arguments.of(false, Status.Code.PERMISSION_DENIED)
+        );
     }
 
     private record TransportFailureCase(
