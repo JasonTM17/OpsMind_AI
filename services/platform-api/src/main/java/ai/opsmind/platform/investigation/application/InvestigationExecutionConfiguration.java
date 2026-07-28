@@ -1,7 +1,6 @@
 package ai.opsmind.platform.investigation.application;
 
 import ai.opsmind.platform.investigation.workflow.InvestigationWorkflowAdmission;
-import ai.opsmind.platform.investigation.workflow.InvestigationWorkflowHandoffRepository;
 import ai.opsmind.platform.investigation.workflow.InvestigationWorkflowProperties;
 import ai.opsmind.platform.investigation.workflow.InvestigationWorkflowStarterProperties;
 import ai.opsmind.platform.investigation.workflow.InvestigationTemporalClientProperties;
@@ -41,7 +40,7 @@ public class InvestigationExecutionConfiguration {
     )
     InvestigationExecutionStarter durableInvestigationExecutionStarter(
         InvestigationWorkflowAdmission admission,
-        InvestigationWorkflowHandoffRepository handoffRepository,
+        DurableInvestigationAdmissionRepository handoffRepository,
         InvestigationWorkflowProperties properties,
         InvestigationWorkflowStarterProperties starterProperties,
         InvestigationTemporalClientProperties clientProperties

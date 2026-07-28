@@ -1,5 +1,6 @@
 package ai.opsmind.platform.investigation.application;
 
+import static ai.opsmind.platform.testing.PostgresTenantFixtures.DISPATCHER_A;
 import static ai.opsmind.platform.testing.PostgresTenantFixtures.PROJECT_A;
 import static ai.opsmind.platform.testing.PostgresTenantFixtures.TENANT_A;
 import static ai.opsmind.platform.testing.PostgresTenantFixtures.TENANT_B;
@@ -8,20 +9,30 @@ import static ai.opsmind.platform.testing.PostgresTenantFixtures.USER_B;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
+import java.net.URI;
+import java.sql.Connection;
+import java.sql.PreparedStatement;
 import java.sql.SQLException;
 import java.sql.Timestamp;
 import java.time.Instant;
 import java.util.Map;
 import java.util.Objects;
+import java.util.Set;
 import java.util.UUID;
+import java.util.concurrent.ExecutorService;
+import java.util.concurrent.Executors;
+import java.util.concurrent.Future;
+import java.util.concurrent.TimeUnit;
 
 import ai.opsmind.platform.common.api.PlatformProblemException;
+import ai.opsmind.platform.identity.OpsMindPrincipal;
+import ai.opsmind.platform.incident.AuthorizedIncidentAnalysisEvidence;
+import ai.opsmind.platform.incident.IncidentAnalysisAuthorizer;
 import ai.opsmind.platform.investigation.domain.InvestigationCommand;
 import ai.opsmind.platform.investigation.domain.InvestigationStateMachine;
 import ai.opsmind.platform.investigation.integration.InvestigationAiRuntimeClient;
 import ai.opsmind.platform.investigation.integration.InvestigationToolGatewayClient;
 import ai.opsmind.platform.investigation.workflow.InvestigationWorkflowAdmission;
-import ai.opsmind.platform.investigation.workflow.InvestigationWorkflowHandoffRepository;
 import ai.opsmind.platform.testing.PostgresIntegrationEnvironment;
 import ai.opsmind.platform.testing.PostgresTenantFixtures;
 import ai.opsmind.platform.tenancy.TenantContextSql;
@@ -59,7 +70,11 @@ class InvestigationWorkflowHandoffPersistenceIntegrationTest {
     private static final Instant NOW = Instant.parse("2030-01-01T00:00:00Z");
 
     @Autowired
-    private InvestigationWorkflowHandoffRepository repository;
+    private DurableInvestigationAdmissionRepository durableRepository;
+    @Autowired
+    private InvestigationWorkflowAdmissionPreflight admissionPreflight;
+    @Autowired
+    private IncidentAnalysisAuthorizer authorizer;
     @Autowired
     private InvestigationRunStore runStore;
     @Autowired
@@ -78,6 +93,7 @@ class InvestigationWorkflowHandoffPersistenceIntegrationTest {
     private InvestigationToolGatewayClient toolGatewayClient;
 
     private JdbcTemplate admin;
+    private DriverManagerDataSource adminDataSource;
     private UUID incidentId;
 
     @DynamicPropertySource
@@ -93,9 +109,10 @@ class InvestigationWorkflowHandoffPersistenceIntegrationTest {
     void seedIncident() throws Exception {
         PostgresIntegrationEnvironment environment = PostgresIntegrationEnvironment.fromProcess();
         PostgresTenantFixtures.seed(environment);
-        admin = new JdbcTemplate(new DriverManagerDataSource(
+        adminDataSource = new DriverManagerDataSource(
             environment.jdbcUrl(), environment.adminUser(), environment.adminPassword()
-        ));
+        );
+        admin = new JdbcTemplate(adminDataSource);
         incidentId = UUID.randomUUID();
         admin.update(
             "INSERT INTO incidents (id, organization_id, project_id, title, description, severity, "
@@ -111,10 +128,10 @@ class InvestigationWorkflowHandoffPersistenceIntegrationTest {
     void createsAtomicHandoffAndLoadsExactRetryWithoutDuplicateRows() {
         InvestigationCommand.Start first = start(UUID.randomUUID(), NOW, 4);
         InvestigationStateMachine.State created =
-            repository.createOrLoad(first, InvestigationTestFixtures.context(first).initialIncident());
+            durableRepository.createOrLoad(first, durableContext(first));
         InvestigationCommand.Start retry = start(first.runId(), NOW.plusSeconds(5), 4);
         InvestigationStateMachine.State loaded =
-            repository.createOrLoad(retry, InvestigationTestFixtures.context(retry).initialIncident());
+            durableRepository.createOrLoad(retry, durableContext(retry));
 
         assertThat(created.status()).isEqualTo(InvestigationStateMachine.Status.CREATED);
         assertThat(loaded).isEqualTo(created);
@@ -135,8 +152,8 @@ class InvestigationWorkflowHandoffPersistenceIntegrationTest {
         assertThat(otherTenantVisible).isZero();
 
         InvestigationCommand.Start conflicting = start(first.runId(), NOW.plusSeconds(10), 5);
-        assertThatThrownBy(() -> repository.createOrLoad(
-            conflicting, InvestigationTestFixtures.context(conflicting).initialIncident()
+        assertThatThrownBy(() -> durableRepository.createOrLoad(
+            conflicting, durableContext(conflicting)
         )).isInstanceOfSatisfying(PlatformProblemException.class, exception ->
             assertThat(exception.code()).isEqualTo("investigation.run-conflict")
         );
@@ -145,7 +162,7 @@ class InvestigationWorkflowHandoffPersistenceIntegrationTest {
     @Test
     void rejectsForgedWorkflowStartPayloadEvenWithRecomputedBytesAndDigest() {
         InvestigationCommand.Start first = start(UUID.randomUUID(), NOW, 4);
-        repository.createOrLoad(first, InvestigationTestFixtures.context(first).initialIncident());
+        durableRepository.createOrLoad(first, durableContext(first));
 
         Map<String, Object> canonical = admin.queryForMap(
             "SELECT event_id, organization_id, aggregate_type, aggregate_id, "
@@ -200,8 +217,8 @@ class InvestigationWorkflowHandoffPersistenceIntegrationTest {
         InvestigationCommand.Start next = start(UUID.randomUUID(), NOW.plusSeconds(1), 4);
 
         try {
-            assertThatThrownBy(() -> repository.createOrLoad(
-                next, InvestigationTestFixtures.context(next).initialIncident()
+            assertThatThrownBy(() -> durableRepository.createOrLoad(
+                next, durableContext(next)
             )).isInstanceOfSatisfying(PlatformProblemException.class, exception ->
                 assertThat(exception.code()).isEqualTo("investigation.workflow-cutover-required")
             );
@@ -231,8 +248,8 @@ class InvestigationWorkflowHandoffPersistenceIntegrationTest {
         InvestigationCommand.Start command = start(UUID.randomUUID(), NOW, 4);
         installFailureTrigger(table);
         try {
-            assertThatThrownBy(() -> repository.createOrLoad(
-                command, InvestigationTestFixtures.context(command).initialIncident()
+            assertThatThrownBy(() -> durableRepository.createOrLoad(
+                command, durableContext(command)
             )).isInstanceOf(PlatformProblemException.class);
         }
         finally {
@@ -245,11 +262,139 @@ class InvestigationWorkflowHandoffPersistenceIntegrationTest {
         assertThat(count("outbox_events", "aggregate_id", command.runId())).isZero();
     }
 
+    @Test
+    void revocationBetweenInitialAuthorizationAndDurableWriteCreatesNoPersistentState() {
+        InvestigationCommand.Start command = start(UUID.randomUUID(), NOW, 4);
+        InvestigationExecutionContext context = durableContext(command);
+        admin.update(
+            "UPDATE project_memberships SET status = 'suspended' "
+                + "WHERE organization_id = ? AND project_id = ? AND user_id = ?",
+            TENANT_A, PROJECT_A, USER_A
+        );
+        try {
+            assertThatThrownBy(() -> durableRepository.createOrLoad(command, context))
+                .isInstanceOfSatisfying(PlatformProblemException.class, exception -> {
+                    assertThat(exception.status().value()).isEqualTo(404);
+                    assertThat(exception.code()).isEqualTo("resource.not-found");
+                });
+            assertNoDurableState(command.runId());
+        }
+        finally {
+            admin.update(
+                "UPDATE project_memberships SET status = 'active' "
+                    + "WHERE organization_id = ? AND project_id = ? AND user_id = ?",
+                TENANT_A, PROJECT_A, USER_A
+            );
+        }
+    }
+
+    @ParameterizedTest
+    @ValueSource(strings = {"suspended", "deleted"})
+    void inactiveOrMissingDispatcherReturnsSafeAdmissionFailure(String dispatcherState) {
+        InvestigationCommand.Start command = start(UUID.randomUUID(), NOW, 4);
+        InvestigationExecutionContext context = durableContext(command);
+        if ("deleted".equals(dispatcherState)) {
+            admin.update(
+                "DELETE FROM service_accounts WHERE organization_id = ? AND id = ?",
+                TENANT_A, DISPATCHER_A
+            );
+        }
+        else {
+            admin.update(
+                "UPDATE service_accounts SET status = ? WHERE organization_id = ? AND id = ?",
+                dispatcherState, TENANT_A, DISPATCHER_A
+            );
+        }
+        try {
+            assertThatThrownBy(() -> durableRepository.createOrLoad(command, context))
+                .isInstanceOfSatisfying(PlatformProblemException.class, exception -> {
+                    assertThat(exception.status().value()).isEqualTo(503);
+                    assertThat(exception.code())
+                        .isEqualTo("investigation.workflow-dispatcher-unavailable");
+                });
+            assertNoDurableState(command.runId());
+        }
+        finally {
+            restoreDispatcherAccount();
+        }
+    }
+
+    @Test
+    void dispatcherAccountCannotBeRevokedBetweenAdmissionAndDurableCommit()
+        throws Exception {
+        InvestigationCommand.Start command = start(UUID.randomUUID(), NOW, 4);
+        InvestigationExecutionContext context = durableContext(command);
+        ExecutorService executor = Executors.newSingleThreadExecutor();
+        try {
+            String sqlState = Objects.requireNonNull(
+                new TransactionTemplate(transactionManager).execute(status -> {
+                    admissionPreflight.requireFreshAdmission(command, context);
+                    Future<String> update = executor.submit(() -> {
+                        try (
+                            Connection connection = adminDataSource.getConnection();
+                            PreparedStatement statement = connection.prepareStatement(
+                                "UPDATE service_accounts SET status = 'suspended' "
+                                    + "WHERE organization_id = ? AND id = ?"
+                            )
+                        ) {
+                            connection.setAutoCommit(false);
+                            try (var lockTimeout = connection.createStatement()) {
+                                lockTimeout.execute("SET LOCAL lock_timeout = '250ms'");
+                            }
+                            statement.setObject(1, TENANT_A);
+                            statement.setObject(2, DISPATCHER_A);
+                            statement.executeUpdate();
+                            return "unexpected-update";
+                        }
+                        catch (SQLException exception) {
+                            return exception.getSQLState();
+                        }
+                    });
+                    try {
+                        return update.get(5, TimeUnit.SECONDS);
+                    }
+                    catch (Exception exception) {
+                        throw new AssertionError(
+                            "Dispatcher revocation lock probe did not complete.",
+                            exception
+                        );
+                    }
+                })
+            );
+            assertThat(sqlState).isEqualTo("55P03");
+        }
+        finally {
+            executor.shutdownNow();
+            restoreDispatcherAccount();
+        }
+    }
+
     private InvestigationCommand.Start start(UUID runId, Instant startedAt, int maxRounds) {
         return new InvestigationCommand.Start(
             runId, TENANT_A, PROJECT_A, incidentId, USER_A,
             new InvestigationCommand.Budget(maxRounds, 4, 20, 8_000),
             startedAt, NOW.plusSeconds(120)
+        );
+    }
+
+    private InvestigationExecutionContext durableContext(InvestigationCommand.Start command) {
+        OpsMindPrincipal principal = principal();
+        AuthorizedIncidentAnalysisEvidence authorized = authorizer.requireEvidence(
+            principal,
+            command.organizationId(),
+            command.projectId(),
+            command.incidentId()
+        );
+        return new InvestigationExecutionContext(principal, authorized);
+    }
+
+    private OpsMindPrincipal principal() {
+        return new OpsMindPrincipal(
+            URI.create("https://idp.example.test/opsmind"),
+            "phase3-operator-a",
+            null,
+            null,
+            Set.of("incident:analyze")
         );
     }
 
@@ -270,6 +415,35 @@ class InvestigationWorkflowHandoffPersistenceIntegrationTest {
             "SELECT count(*) FROM " + table + " WHERE " + column + " = ?",
             Integer.class, value
         ));
+    }
+
+    private void assertNoDurableState(UUID runId) {
+        assertThat(count("investigation_runs", "run_id", runId)).isZero();
+        assertThat(count("investigation_run_events", "run_id", runId)).isZero();
+        assertThat(count("audit_events", "resource_id", runId.toString())).isZero();
+        assertThat(count("investigation_workflow_bindings", "run_id", runId)).isZero();
+        assertThat(count("outbox_events", "aggregate_id", runId)).isZero();
+    }
+
+    private void restoreDispatcherAccount() {
+        admin.update(
+            "INSERT INTO service_accounts "
+                + "(id, organization_id, name, credential_ref, allowed_audiences, "
+                + "allowed_scopes, database_principal, status) "
+                + "VALUES (?, ?, 'outbox-dispatcher', "
+                + "'secret-manager://phase3/tenant-a/dispatcher', "
+                + "'[\"opsmind-outbox-dispatcher\"]'::jsonb, "
+                + "'[\"outbox:dispatch\"]'::jsonb, 'opsmind_dispatcher', 'active') "
+                + "ON CONFLICT (id) DO UPDATE SET "
+                + "organization_id = EXCLUDED.organization_id, "
+                + "name = EXCLUDED.name, "
+                + "credential_ref = EXCLUDED.credential_ref, "
+                + "allowed_audiences = EXCLUDED.allowed_audiences, "
+                + "allowed_scopes = EXCLUDED.allowed_scopes, "
+                + "database_principal = EXCLUDED.database_principal, "
+                + "status = EXCLUDED.status",
+            DISPATCHER_A, TENANT_A
+        );
     }
 
     private <T> T inTenant(UUID organizationId, UUID actorId, java.util.function.Supplier<T> work) {

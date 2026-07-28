@@ -1,20 +1,19 @@
-package ai.opsmind.platform.investigation.workflow;
-
-import ai.opsmind.platform.incident.AuthorizedIncidentAnalysisEvidence;
-import ai.opsmind.platform.investigation.domain.InvestigationCommand;
-import ai.opsmind.platform.investigation.domain.InvestigationStateMachine;
+package ai.opsmind.platform.investigation.application;
 
 import java.util.Optional;
 
-public interface InvestigationWorkflowHandoffRepository {
+import ai.opsmind.platform.investigation.domain.InvestigationCommand;
+import ai.opsmind.platform.investigation.domain.InvestigationStateMachine;
+
+public interface DurableInvestigationAdmissionRepository {
 
     Optional<InvestigationStateMachine.State> loadExisting(
         InvestigationCommand.Start command,
-        AuthorizedIncidentAnalysisEvidence authorizedIncident
+        InvestigationExecutionContext context
     );
 
     InvestigationStateMachine.State createOrLoad(
         InvestigationCommand.Start command,
-        AuthorizedIncidentAnalysisEvidence authorizedIncident
+        InvestigationExecutionContext context
     );
 }

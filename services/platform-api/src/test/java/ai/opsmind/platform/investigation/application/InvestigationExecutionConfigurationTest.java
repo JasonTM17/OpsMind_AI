@@ -4,7 +4,6 @@ import static org.assertj.core.api.Assertions.assertThat;
 import static org.mockito.Mockito.mock;
 
 import ai.opsmind.platform.investigation.workflow.InvestigationWorkflowAdmission;
-import ai.opsmind.platform.investigation.workflow.InvestigationWorkflowHandoffRepository;
 
 import org.junit.jupiter.api.Test;
 import org.springframework.boot.test.context.runner.ApplicationContextRunner;
@@ -38,8 +37,8 @@ class InvestigationExecutionConfigurationTest {
                 () -> mock(InvestigationWorkflowAdmission.class)
             )
             .withBean(
-                InvestigationWorkflowHandoffRepository.class,
-                () -> mock(InvestigationWorkflowHandoffRepository.class)
+                DurableInvestigationAdmissionRepository.class,
+                () -> mock(DurableInvestigationAdmissionRepository.class)
             )
             .run(application -> {
                 assertThat(application).hasNotFailed();
@@ -58,8 +57,8 @@ class InvestigationExecutionConfigurationTest {
                 () -> mock(InvestigationWorkflowAdmission.class)
             )
             .withBean(
-                InvestigationWorkflowHandoffRepository.class,
-                () -> mock(InvestigationWorkflowHandoffRepository.class)
+                DurableInvestigationAdmissionRepository.class,
+                () -> mock(DurableInvestigationAdmissionRepository.class)
             )
             .run(application -> assertThat(application).hasFailed());
     }
@@ -79,8 +78,8 @@ class InvestigationExecutionConfigurationTest {
                 () -> mock(InvestigationWorkflowAdmission.class)
             )
             .withBean(
-                InvestigationWorkflowHandoffRepository.class,
-                () -> mock(InvestigationWorkflowHandoffRepository.class)
+                DurableInvestigationAdmissionRepository.class,
+                () -> mock(DurableInvestigationAdmissionRepository.class)
             )
             .run(application -> assertThat(application).hasFailed());
     }
@@ -93,8 +92,8 @@ class InvestigationExecutionConfigurationTest {
                 "opsmind.investigation.workflow-starter.enabled=true"
             )
             .withBean(
-                InvestigationWorkflowHandoffRepository.class,
-                () -> mock(InvestigationWorkflowHandoffRepository.class)
+                DurableInvestigationAdmissionRepository.class,
+                () -> mock(DurableInvestigationAdmissionRepository.class)
             )
             .run(application -> assertThat(application).hasFailed());
     }
