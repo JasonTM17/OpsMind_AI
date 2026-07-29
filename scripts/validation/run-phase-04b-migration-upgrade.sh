@@ -1031,13 +1031,19 @@ PGPASSWORD="$POSTGRES_PASSWORD" scripts/operations/run-investigation-workflow-cu
 cutover_block_status=$?
 set -e
 cat "$cutover_block_output"
+
+contains_cutover_block_marker() {
+  tr -d '\r' < "$cutover_block_output" \
+    | grep -Fqx 'FAILED: unresolved legacy investigation rows block Temporal admission.'
+}
+
 cutover_expected_block=FAIL
 if [[ "$cutover_block_status" == "3" ]] \
-  && grep -Fqx 'FAILED: unresolved legacy investigation rows block Temporal admission.' "$cutover_block_output"; then
+  && contains_cutover_block_marker; then
   cutover_expected_block=PASS
 fi
 [[ "$cutover_expected_block" == "PASS" ]]
-grep -Fq 'FAILED: unresolved legacy investigation rows block Temporal admission.' "$cutover_block_output"
+contains_cutover_block_marker
 rm -f "$cutover_block_output"
 
 query_upgrade_database "
