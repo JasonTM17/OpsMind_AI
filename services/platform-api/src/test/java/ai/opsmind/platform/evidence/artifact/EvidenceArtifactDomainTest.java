@@ -79,12 +79,19 @@ class EvidenceArtifactDomainTest {
             ORGANIZATION_ID, RUN_ID, IDEMPOTENCY_KEY
         );
         UUID eventId = EvidenceArtifactIdentity.initialEventId(ORGANIZATION_ID, artifactId);
+        UUID lifecycleEventId = EvidenceArtifactIdentity.lifecycleEventId(
+            ORGANIZATION_ID, artifactId, 2L, IDEMPOTENCY_KEY
+        );
 
         assertThat(artifactId).isEqualTo(EvidenceArtifactIdentity.artifactId(
             ORGANIZATION_ID, RUN_ID, IDEMPOTENCY_KEY
         ));
         assertThat(artifactId.version()).isEqualTo(8);
         assertThat(eventId.version()).isEqualTo(8);
+        assertThat(lifecycleEventId.version()).isEqualTo(8);
+        assertThat(lifecycleEventId).isEqualTo(EvidenceArtifactIdentity.lifecycleEventId(
+            ORGANIZATION_ID, artifactId, 2L, IDEMPOTENCY_KEY
+        ));
         assertThat(EvidenceArtifactStorageKey.derive(
             ORGANIZATION_ID, artifactId, EvidenceArtifactDigest.parse(DIGEST)
         )).isEqualTo("artifacts/v1/" + ORGANIZATION_ID + "/" + artifactId + "/" + "a".repeat(64));
