@@ -436,7 +436,8 @@ requireMarkers(
     "starts_must_be_frozen",
     "eligible_for_automatic_backfill",
     "legacy_request_digest_and_authorization_revision_not_persisted",
-    "\\quit 3",
+    "FAILED: unresolved legacy investigation rows block Temporal admission.",
+    "\\quit",
   ],
 );
 requireMarkers("scripts/validation/run-phase-04b-migration-upgrade.sh", [

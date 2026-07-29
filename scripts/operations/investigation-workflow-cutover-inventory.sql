@@ -82,7 +82,7 @@ FROM inventory
 \if :has_unresolved
     \echo 'FAILED: unresolved legacy investigation rows block Temporal admission.'
     ROLLBACK;
-    \quit 3
+    \quit
 \else
     \echo 'PASSED: zero unresolved legacy investigation rows.'
     COMMIT;
