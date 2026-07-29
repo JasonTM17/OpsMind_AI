@@ -37,9 +37,9 @@ final class TransactionalOutboxClaimer {
                    AND (candidate.lease_expires_at IS NULL OR candidate.lease_expires_at <= ?)
                    %s
                    -- Canonical investigation workflow starts are reserved for the
-                   -- resolver-owned V012 claim path. Keep this query fence in
-                   -- addition to the dispatcher RLS policy so a generic batch
-                   -- cannot lease one when the tenant also has ordinary work.
+                   -- dedicated resolver-owned workflow-start claim function. Keep
+                   -- this query fence in addition to the dispatcher RLS policy so
+                   -- a generic batch cannot lease one when ordinary work coexists.
                    AND NOT (
                        candidate.event_type = 'investigation.workflow-start.requested'
                        AND candidate.schema_version = '1'
