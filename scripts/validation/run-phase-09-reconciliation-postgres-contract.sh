@@ -195,8 +195,8 @@ SET session_replication_role = origin;
 match_org="91000000-0000-4000-8000-000000000001"
 match_run="91000000-0000-4000-8000-000000000002"
 match_event="91000000-0000-4000-8000-000000000003"
-match_token="91000000-0000-4000-8000-000000000004"
-wrong_token="91000000-0000-4000-8000-000000000005"
+match_lease_id="91000000-0000-4000-8000-000000000004"
+wrong_lease_id="91000000-0000-4000-8000-000000000005"
 
 absence_org="92000000-0000-4000-8000-000000000001"
 absence_run="92000000-0000-4000-8000-000000000002"
@@ -213,7 +213,7 @@ reactivation_token_two="93000000-0000-4000-8000-000000000005"
 exhausted_org="94000000-0000-4000-8000-000000000001"
 exhausted_run="94000000-0000-4000-8000-000000000002"
 exhausted_event="94000000-0000-4000-8000-000000000003"
-exhausted_token="94000000-0000-4000-8000-000000000004"
+exhausted_lease_id="94000000-0000-4000-8000-000000000004"
 
 if reconciler_query "SELECT count(*) FROM public.outbox_events;" \
   >/dev/null 2>&1; then
@@ -261,13 +261,13 @@ insert_fixture "$match_org" "$match_run" "$match_event" "phase09-match"
 expect_equal "$match_event" "$(reconciler_query "
 SELECT event_id
 FROM opsmind_claim_investigation_workflow_reconciliation(
-  '$match_token', 30000, 8, 3600000
+  '$match_lease_id', 30000, 8, 3600000
 );
 ")" "MatchClaim"
 
 expect_equal "workflow.reconciliation-lease-lost" "$(reconciler_query "
 SELECT opsmind_settle_investigation_workflow_reconciliation(
-  '$match_org', '$match_event', '$wrong_token', 'MATCH',
+  '$match_org', '$match_event', '$wrong_lease_id', 'MATCH',
   'temporal-first-run', NULL, NULL, 1000, 3600000
 );
 ")" "WrongLeaseRejected"
@@ -276,7 +276,7 @@ expect_admin_true "
 SELECT status = 'PENDING'
   AND published_at IS NULL
   AND poisoned_at IS NULL
-  AND lease_token = '$match_token'
+  AND lease_token = '$match_lease_id'
 FROM investigation_workflow_bindings binding
 JOIN outbox_events event_row
   ON event_row.organization_id = binding.organization_id
@@ -288,13 +288,13 @@ WHERE binding.organization_id = '$match_org'
 expect_equal "0" "$(reconciler_query "
 SELECT count(*)
 FROM opsmind_claim_investigation_workflow_reconciliation(
-  '$wrong_token', 30000, 8, 3600000
+  '$wrong_lease_id', 30000, 8, 3600000
 );
 ")" "LiveLeaseExclusive"
 
 expect_equal "workflow.reconciliation-started" "$(reconciler_query "
 SELECT opsmind_settle_investigation_workflow_reconciliation(
-  '$match_org', '$match_event', '$match_token', 'MATCH',
+  '$match_org', '$match_event', '$match_lease_id', 'MATCH',
   'temporal-first-run', NULL, NULL, 1000, 3600000
 );
 ")" "MatchSettlement"
@@ -451,7 +451,7 @@ insert_fixture "$exhausted_org" "$exhausted_run" "$exhausted_event" \
 expect_equal "$exhausted_event" "$(reconciler_query "
 SELECT event_id
 FROM opsmind_claim_investigation_workflow_reconciliation(
-  '$exhausted_token', 30000, 1, 3600000
+  '$exhausted_lease_id', 30000, 1, 3600000
 );
 ")" "ExhaustionFirstClaim"
 admin_query "
