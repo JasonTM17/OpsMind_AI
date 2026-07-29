@@ -74,7 +74,8 @@ query_upgrade_database() {
   local sql="$1"
   PGPASSWORD="$POSTGRES_PASSWORD" psql --no-password --no-psqlrc \
     --host "$PGHOST" --port "$PGPORT" --username "$POSTGRES_USER" \
-    --dbname "$upgrade_database" --tuples-only --no-align --set ON_ERROR_STOP=1 \
+    --dbname "$upgrade_database" --quiet --tuples-only --no-align \
+    --set ON_ERROR_STOP=1 \
     --command "$sql" | tr -d '\r'
 }
 
@@ -918,6 +919,24 @@ WHERE organization_id = '70000000-0000-4000-8000-000000000001'
   AND published_at IS NULL
   AND poisoned_at IS NULL;
 ")"
+legacy_workflow_start_event_id_after_twelve="$(query_upgrade_database "
+SELECT binding_row.start_event_id::text
+FROM investigation_workflow_bindings binding_row
+JOIN outbox_events event_row
+  ON event_row.organization_id = binding_row.organization_id
+ AND event_row.aggregate_id = binding_row.run_id
+ AND event_row.event_id = binding_row.start_event_id
+WHERE binding_row.organization_id = '70000000-0000-4000-8000-000000000001'
+  AND binding_row.run_id = '70000000-0000-4000-8000-000000000013'
+  AND event_row.event_type = 'investigation.workflow-start.requested'
+  AND event_row.schema_version = '1'
+  AND event_row.aggregate_type = 'investigation-workflow'
+  AND event_row.aggregate_sequence = 1;
+")"
+if [[ ! "$legacy_workflow_start_event_id_after_twelve" =~ ^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$ ]]; then
+  echo "Expected exactly one canonical lowercase workflow start event UUID." >&2
+  exit 1
+fi
 legacy_workflow_claim_count_after_twelve="$(query_upgrade_database "
 SET SESSION AUTHORIZATION opsmind_dispatcher;
 SELECT count(*)
@@ -932,10 +951,7 @@ legacy_workflow_preflight_after_twelve="$(query_upgrade_database "
 SET SESSION AUTHORIZATION opsmind_dispatcher;
 SELECT public.opsmind_preflight_investigation_workflow_start(
   '70000000-0000-4000-8000-000000000001',
-  public.opsmind_investigation_workflow_start_event_id(
-    '70000000-0000-4000-8000-000000000001',
-    '70000000-0000-4000-8000-000000000013'
-  ),
+  '${legacy_workflow_start_event_id_after_twelve}'::uuid,
   '70000000-0000-4000-8000-000000000017',
   600000
 );
@@ -945,10 +961,7 @@ legacy_workflow_park_after_twelve="$(query_upgrade_database "
 SET SESSION AUTHORIZATION opsmind_dispatcher;
 SELECT public.opsmind_settle_investigation_workflow_start(
   '70000000-0000-4000-8000-000000000001',
-  public.opsmind_investigation_workflow_start_event_id(
-    '70000000-0000-4000-8000-000000000001',
-    '70000000-0000-4000-8000-000000000013'
-  ),
+  '${legacy_workflow_start_event_id_after_twelve}'::uuid,
   '70000000-0000-4000-8000-000000000017',
   'RETRY',
   NULL,
