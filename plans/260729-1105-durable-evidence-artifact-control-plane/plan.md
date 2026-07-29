@@ -66,8 +66,8 @@ retention/deletion, restore, and reconciliation evidence exist.
 
 | Phase | Status | Objective | Depends on |
 |---|---|---|---|
-| [01 Metadata and lifecycle authority](./phase-01-metadata-and-lifecycle-authority.md) | In progress | Add V014 artifact metadata, deterministic lifecycle policy, scoped repository, and authorization/read guards. | V007 / Phase 4B |
-| [02 Bounded S3-compatible streaming port](./phase-02-bounded-s3-streaming-port.md) | Pending | Add default-off storage configuration, durable upload claim/attempt protocol, real bounded streaming adapter, and fenced finalization. | Phase 01; backend/KMS configuration decision |
+| [01 Metadata and lifecycle authority](./phase-01-metadata-and-lifecycle-authority.md) | Completed | Add V014 artifact metadata, deterministic lifecycle policy, scoped repository, and authorization/read guards. | V007 / Phase 4B |
+| [02 Bounded S3-compatible streaming port](./phase-02-bounded-s3-streaming-port.md) | In progress | Add default-off storage configuration, durable upload claim/attempt protocol, real bounded streaming adapter, and fenced finalization. | Phase 01; production backend/KMS conformance remains external |
 | [03 Controlled ingress and lifecycle operations](./phase-03-controlled-ingress-and-lifecycle-operations.md) | Pending | Add capability-bound producer integration, scan/hold/delete/reconcile operations, and release-grade conformance evidence. | Phase 02; supported backend and operational owners |
 
 ## Dependency and Ownership Map
@@ -94,6 +94,12 @@ flowchart LR
 Phase 01 proves metadata/lifecycle authority, tenant isolation, idempotency,
 authorization-epoch/lifecycle denial, digest/length validation, and no raw
 artifact leakage. It does **not** prove that a real object was stored.
+
+Phase 01 is revision-bound by PR Quality run `30458193909` and cross-service
+run `30458194098` on tested head
+`c626daf8c958e09e3ab41569429f9f7f135699f5`. All 13 PR checks passed,
+including PostgreSQL job `90598811368`; squash merge
+`1da97877111ef938746b246722cea1c826b04cd0` has an identical source tree.
 
 Phase 02 proves a concrete, bounded S3-compatible adapter against an approved
 test environment and KMS configuration contract. It remains default-off and
