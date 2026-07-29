@@ -8,7 +8,7 @@ version = "0.1.0"
 description = "Provider-neutral OpsMind AI runtime foundation"
 requires-python = ">=3.13,<3.14"
 dependencies = [
-  "fastapi==0.139.2",
+  "fastapi==0.141.1",
   "httpx2==2.7.0",
   "PyJWT[crypto]==2.13.0",
   "psycopg[binary]==3.3.4",
