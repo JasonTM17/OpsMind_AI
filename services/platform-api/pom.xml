@@ -18,6 +18,7 @@
     <description>Transactional incident control-plane foundation</description>
 
     <properties>
+        <aws.sdk.version>2.49.5</aws.sdk.version>
         <java.version>21</java.version>
         <jackson-bom.version>3.1.5</jackson-bom.version>
         <log4j2.version>2.25.5</log4j2.version>
@@ -25,6 +26,18 @@
         <temporal.version>1.35.0</temporal.version>
         <tomcat.version>11.0.24</tomcat.version>
     </properties>
+
+    <dependencyManagement>
+        <dependencies>
+            <dependency>
+                <groupId>software.amazon.awssdk</groupId>
+                <artifactId>bom</artifactId>
+                <version>${aws.sdk.version}</version>
+                <type>pom</type>
+                <scope>import</scope>
+            </dependency>
+        </dependencies>
+    </dependencyManagement>
 
     <dependencies>
         <dependency>
@@ -72,6 +85,18 @@
             <groupId>io.temporal</groupId>
             <artifactId>temporal-sdk</artifactId>
             <version>${temporal.version}</version>
+        </dependency>
+        <dependency>
+            <groupId>software.amazon.awssdk</groupId>
+            <artifactId>s3</artifactId>
+        </dependency>
+        <dependency>
+            <groupId>software.amazon.awssdk</groupId>
+            <artifactId>sts</artifactId>
+        </dependency>
+        <dependency>
+            <groupId>software.amazon.awssdk</groupId>
+            <artifactId>apache5-client</artifactId>
         </dependency>
         <dependency>
             <groupId>org.springframework.boot</groupId>
