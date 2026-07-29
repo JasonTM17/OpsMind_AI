@@ -58,7 +58,7 @@ Accepted scope remains full A-to-Z, but delivery is gate-driven: the approved G0
 | 6 | [Safe Tool Gateway and Read-only Connectors](./phase-06-safe-tool-gateway-and-read-only-connectors.md) | In progress — checkpoint PASS; PhaseExitGate BLOCK |
 | 7 | [Thin Evidence-backed Incident Vertical Slice](./phase-07-thin-evidence-backed-incident-vertical-slice.md) | In progress — durable persistence checkpoint PASS; PhaseExitGate BLOCK |
 | 8 | [Simulator and Evaluation Baseline](./phase-08-simulator-and-evaluation-baseline.md) ([8B production-path evaluation](../260726-1004-phase-08b-production-path-evaluation/plan.md)) | In Progress — Phase 8B implementation/local contracts present; production-path CI pending; PhaseExit BLOCK |
-| 9 | [Durable Investigation Workflow](./phase-09-durable-investigation-workflow.md) | In Progress |
+| 9 | [Durable Investigation Workflow](./phase-09-durable-investigation-workflow.md) | In Progress — V010-V013 handoff/reconciliation source and local exact-role/rollback proof pass; B-017 live and merged-head gates remain |
 | 10 | [Permission-aware RAG and Knowledge Lifecycle](./phase-10-permission-aware-rag-and-knowledge-lifecycle.md) | Pending |
 | 11 | [Exact-action Approval and Reversible Remediation](./phase-11-exact-action-approval-and-reversible-remediation.md) | Pending |
 | 12 | [Operator Web Experience Completion](./phase-12-operator-web-experience-completion.md) | Pending |
