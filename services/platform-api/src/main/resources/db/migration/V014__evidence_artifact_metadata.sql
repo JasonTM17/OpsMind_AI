@@ -276,8 +276,9 @@ BEGIN
       INTO artifact_row
       FROM public.evidence_artifacts stored
      WHERE stored.organization_id = NEW.organization_id
-       AND stored.artifact_id = NEW.artifact_id
-     FOR KEY SHARE;
+       AND stored.artifact_id = NEW.artifact_id;
+    -- Phase 1 artifact metadata is immutable after insertion. Keeping this read
+    -- lock-free lets opsmind_app append its bound event without UPDATE privilege.
     IF NOT FOUND
        OR NEW.project_id IS DISTINCT FROM artifact_row.project_id
        OR NEW.incident_id IS DISTINCT FROM artifact_row.incident_id

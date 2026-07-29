@@ -103,6 +103,15 @@ const upgradeRunner = requireMarkers(
 if (!migration.includes("NEW.actor_id IS DISTINCT FROM run_row.actor_id")) {
   errors.push("artifact insert trigger must bind metadata actor to the authoritative run owner");
 }
+const eventAppendFunction = migration.match(
+  /CREATE\s+OR\s+REPLACE\s+FUNCTION\s+opsmind_validate_evidence_artifact_event_append\s*\(\s*\)\s+RETURNS\s+trigger[\s\S]*?(?=\n\s*CREATE\s+TRIGGER\s+evidence_artifacts_validate_insert\b)/iu,
+);
+if (!eventAppendFunction) {
+  errors.push("artifact event append validation function is missing");
+}
+else if (/\bFOR\s+KEY\s+SHARE\b/iu.test(eventAppendFunction[0])) {
+  errors.push("artifact event append validation must not require UPDATE privilege on immutable metadata");
+}
 
 const sourceRoot = path.join(
   repositoryRoot, "services/platform-api/src/main/java/ai/opsmind/platform/evidence/artifact",
