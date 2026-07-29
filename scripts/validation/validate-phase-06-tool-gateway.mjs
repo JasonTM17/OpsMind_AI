@@ -272,10 +272,10 @@ const tenantBulkheadConformant = sourceContains(
   ],
 ) && sourceContains(
   "services/tool-gateway/src/test/java/ai/opsmind/toolgateway/application/BoundedConnectorExecutorPermitLifecycleTest.java",
-  [
-    "ignoredInterruptRetainsPermitUntilConnectorReturns",
-    "cancellationBeforeTaskStartReleasesBothPermits",
-  ],
+  ["ignoredInterruptRetainsPermitUntilConnectorReturns"],
+) && sourceContains(
+  "services/tool-gateway/src/test/java/ai/opsmind/toolgateway/application/BoundedConnectorExecutorFailureReleaseTest.java",
+  ["cancellationBeforeTaskStartReleasesBothPermits"],
 );
 if (!tenantBulkheadConformant) {
   errors.push("tenant-scoped connector bulkhead enforcement or proof is incomplete");
