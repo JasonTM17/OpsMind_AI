@@ -46,7 +46,7 @@ class EvidenceArtifactAuditPayloadCodecTest {
 
         assertThat(audit.schemaVersion()).isEqualTo(AuditEvent.EVIDENCE_ARTIFACT_SCHEMA_VERSION);
         assertThat(audit.resourceId()).isEqualTo(metadata.artifactId().toString());
-        assertThat(payload.propertyNames()).containsExactlyInAnyOrder(Set.of(
+        assertThat(payload.propertyNames()).containsExactlyInAnyOrderElementsOf(Set.of(
             "eventId", "organizationId", "projectId", "incidentId", "runId", "artifactId",
             "actorId", "lifecycleVersion", "lifecycleState", "contentDigest", "byteCount",
             "dataClassification", "retentionClass", "occurredAt"
