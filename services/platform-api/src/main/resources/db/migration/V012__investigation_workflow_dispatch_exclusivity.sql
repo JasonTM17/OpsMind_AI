@@ -560,7 +560,7 @@ BEGIN
     ), claimed AS (
         UPDATE public.outbox_events event_row
            SET attempts = event_row.attempts + 1,
-               lease_token = p_lease_token,
+               "lease_token" = p_lease_token,
                lease_expires_at = db_now
                    + (p_lease_duration_ms * interval '1 millisecond')
           FROM candidate

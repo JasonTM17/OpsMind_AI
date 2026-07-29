@@ -84,13 +84,13 @@ unsafe_probe_created=false
 mismatch_org="95000000-0000-4000-8000-000000000001"
 mismatch_run="95000000-0000-4000-8000-000000000002"
 mismatch_event="95000000-0000-4000-8000-000000000003"
-mismatch_token="95000000-0000-4000-8000-000000000004"
+mismatch_lease_id="95000000-0000-4000-8000-000000000004"
 insert_fixture "$mismatch_org" "$mismatch_run" "$mismatch_event" \
   "phase09-mismatch"
-claim_fixture "$mismatch_event" "$mismatch_token" "MismatchClaim"
+claim_fixture "$mismatch_event" "$mismatch_lease_id" "MismatchClaim"
 expect_equal "workflow.reconciliation-contract-mismatch" "$(reconciler_query "
 SELECT opsmind_settle_investigation_workflow_reconciliation(
-  '$mismatch_org', '$mismatch_event', '$mismatch_token', 'MISMATCH',
+  '$mismatch_org', '$mismatch_event', '$mismatch_lease_id', 'MISMATCH',
   NULL, 'workflow.existing-contract-mismatch', NULL, 1000, 3600000
 );
 ")" "MismatchSettlement"
@@ -121,12 +121,12 @@ WHERE binding.organization_id = '$mismatch_org'
 retry_org="96000000-0000-4000-8000-000000000001"
 retry_run="96000000-0000-4000-8000-000000000002"
 retry_event="96000000-0000-4000-8000-000000000003"
-retry_token="96000000-0000-4000-8000-000000000004"
+retry_lease_id="96000000-0000-4000-8000-000000000004"
 insert_fixture "$retry_org" "$retry_run" "$retry_event" "phase09-retry"
-claim_fixture "$retry_event" "$retry_token" "RetryClaim"
+claim_fixture "$retry_event" "$retry_lease_id" "RetryClaim"
 expect_equal "workflow.reconciliation-retry-scheduled" "$(reconciler_query "
 SELECT opsmind_settle_investigation_workflow_reconciliation(
-  '$retry_org', '$retry_event', '$retry_token', 'RETRY',
+  '$retry_org', '$retry_event', '$retry_lease_id', 'RETRY',
   NULL, 'workflow.temporal-unavailable', 100, 1000, 3600000
 );
 ")" "RetrySettlement"
@@ -161,13 +161,13 @@ WHERE organization_id = '$retry_org'
 retention_org="97000000-0000-4000-8000-000000000001"
 retention_run="97000000-0000-4000-8000-000000000002"
 retention_event="97000000-0000-4000-8000-000000000003"
-retention_token="97000000-0000-4000-8000-000000000004"
+retention_lease_id="97000000-0000-4000-8000-000000000004"
 insert_fixture "$retention_org" "$retention_run" "$retention_event" \
   "phase09-retention"
-claim_fixture "$retention_event" "$retention_token" "RetentionClaim"
+claim_fixture "$retention_event" "$retention_lease_id" "RetentionClaim"
 expect_equal "workflow.reconciliation-blocked" "$(reconciler_query "
 SELECT opsmind_settle_investigation_workflow_reconciliation(
-  '$retention_org', '$retention_event', '$retention_token', 'ABSENT',
+  '$retention_org', '$retention_event', '$retention_lease_id', 'ABSENT',
   NULL, 'workflow.temporal-start-not-found', NULL, 1000, 10000
 );
 ")" "RetentionBoundarySettlement"
@@ -194,20 +194,20 @@ WHERE binding.organization_id = '$retention_org'
 takeover_org="98000000-0000-4000-8000-000000000001"
 takeover_run="98000000-0000-4000-8000-000000000002"
 takeover_event="98000000-0000-4000-8000-000000000003"
-takeover_old_token="98000000-0000-4000-8000-000000000004"
-takeover_new_token="98000000-0000-4000-8000-000000000005"
+takeover_old_lease_id="98000000-0000-4000-8000-000000000004"
+takeover_new_lease_id="98000000-0000-4000-8000-000000000005"
 insert_fixture "$takeover_org" "$takeover_run" "$takeover_event" \
   "phase09-takeover"
 admin_query "
 UPDATE outbox_events
-SET lease_token = '$takeover_old_token',
+SET lease_token = '$takeover_old_lease_id',
     lease_expires_at = clock_timestamp() - interval '1 second'
 WHERE organization_id = '$takeover_org'
   AND event_id = '$takeover_event';
 " >/dev/null
-claim_fixture "$takeover_event" "$takeover_new_token" "ExpiredLeaseTakeoverClaim"
+claim_fixture "$takeover_event" "$takeover_new_lease_id" "ExpiredLeaseTakeoverClaim"
 expect_admin_true "
-SELECT event_row.lease_token = '$takeover_new_token'
+SELECT event_row.lease_token = '$takeover_new_lease_id'
   AND event_row.lease_expires_at > clock_timestamp()
   AND reconciliation_inbox.status = 'received'
   AND reconciliation_inbox.attempts = 1
@@ -221,7 +221,7 @@ WHERE event_row.organization_id = '$takeover_org'
 " "ExpiredLeaseTakeoverAtomic"
 expect_equal "workflow.reconciliation-blocked" "$(reconciler_query "
 SELECT opsmind_settle_investigation_workflow_reconciliation(
-  '$takeover_org', '$takeover_event', '$takeover_new_token', 'BLOCKED',
+  '$takeover_org', '$takeover_event', '$takeover_new_lease_id', 'BLOCKED',
   NULL, 'workflow.reconciliation-observer-failed', NULL, 1000, 3600000
 );
 ")" "ExpiredLeaseTakeoverClosed"
@@ -262,75 +262,75 @@ EXECUTE FUNCTION public.opsmind_phase09_reconciliation_failpoint('after_outbox')
 rollback_one_org="99010000-0000-4000-8000-000000000001"
 rollback_one_run="99010000-0000-4000-8000-000000000002"
 rollback_one_event="99010000-0000-4000-8000-000000000003"
-rollback_one_token="99010000-0000-4000-8000-000000000004"
+rollback_one_lease_id="99010000-0000-4000-8000-000000000004"
 insert_fixture "$rollback_one_org" "$rollback_one_run" "$rollback_one_event" \
   "phase09-rollback-starter"
-claim_fixture "$rollback_one_event" "$rollback_one_token" \
+claim_fixture "$rollback_one_event" "$rollback_one_lease_id" \
   "RollbackAfterStarterClaim"
 expect_failed_settlement "
 SET opsmind.phase09_failpoint = 'after_starter';
 SELECT opsmind_settle_investigation_workflow_reconciliation(
-  '$rollback_one_org', '$rollback_one_event', '$rollback_one_token', 'MISMATCH',
+  '$rollback_one_org', '$rollback_one_event', '$rollback_one_lease_id', 'MISMATCH',
   NULL, 'workflow.existing-contract-mismatch', NULL, 1000, 3600000
 );
 " "RollbackAfterStarterInjected"
 expect_rollback_atomic \
   "$rollback_one_org" "$rollback_one_run" "$rollback_one_event" \
-  "$rollback_one_token" "RollbackAfterStarterAtomic"
+  "$rollback_one_lease_id" "RollbackAfterStarterAtomic"
 
 rollback_two_org="99020000-0000-4000-8000-000000000001"
 rollback_two_run="99020000-0000-4000-8000-000000000002"
 rollback_two_event="99020000-0000-4000-8000-000000000003"
-rollback_two_token="99020000-0000-4000-8000-000000000004"
+rollback_two_lease_id="99020000-0000-4000-8000-000000000004"
 insert_fixture "$rollback_two_org" "$rollback_two_run" "$rollback_two_event" \
   "phase09-rollback-binding"
-claim_fixture "$rollback_two_event" "$rollback_two_token" \
+claim_fixture "$rollback_two_event" "$rollback_two_lease_id" \
   "RollbackAfterBindingClaim"
 expect_failed_settlement "
 SET opsmind.phase09_failpoint = 'after_binding';
 SELECT opsmind_settle_investigation_workflow_reconciliation(
-  '$rollback_two_org', '$rollback_two_event', '$rollback_two_token', 'MATCH',
+  '$rollback_two_org', '$rollback_two_event', '$rollback_two_lease_id', 'MATCH',
   'temporal-first-run', NULL, NULL, 1000, 3600000
 );
 " "RollbackAfterBindingInjected"
 expect_rollback_atomic \
   "$rollback_two_org" "$rollback_two_run" "$rollback_two_event" \
-  "$rollback_two_token" "RollbackAfterBindingAtomic"
+  "$rollback_two_lease_id" "RollbackAfterBindingAtomic"
 
 rollback_three_org="99030000-0000-4000-8000-000000000001"
 rollback_three_run="99030000-0000-4000-8000-000000000002"
 rollback_three_event="99030000-0000-4000-8000-000000000003"
-rollback_three_token="99030000-0000-4000-8000-000000000004"
+rollback_three_lease_id="99030000-0000-4000-8000-000000000004"
 insert_fixture "$rollback_three_org" "$rollback_three_run" \
   "$rollback_three_event" "phase09-rollback-inbox"
-claim_fixture "$rollback_three_event" "$rollback_three_token" \
+claim_fixture "$rollback_three_event" "$rollback_three_lease_id" \
   "RollbackAfterInboxClaim"
 expect_failed_settlement "
 SET opsmind.phase09_failpoint = 'after_inbox';
 SELECT opsmind_settle_investigation_workflow_reconciliation(
-  '$rollback_three_org', '$rollback_three_event', '$rollback_three_token', 'MATCH',
+  '$rollback_three_org', '$rollback_three_event', '$rollback_three_lease_id', 'MATCH',
   'temporal-first-run', NULL, NULL, 1000, 3600000
 );
 " "RollbackAfterInboxInjected"
 expect_rollback_atomic \
   "$rollback_three_org" "$rollback_three_run" "$rollback_three_event" \
-  "$rollback_three_token" "RollbackAfterInboxAtomic"
+  "$rollback_three_lease_id" "RollbackAfterInboxAtomic"
 
 rollback_four_org="99040000-0000-4000-8000-000000000001"
 rollback_four_run="99040000-0000-4000-8000-000000000002"
 rollback_four_event="99040000-0000-4000-8000-000000000003"
-rollback_four_token="99040000-0000-4000-8000-000000000004"
+rollback_four_lease_id="99040000-0000-4000-8000-000000000004"
 insert_fixture "$rollback_four_org" "$rollback_four_run" "$rollback_four_event" \
   "phase09-rollback-outbox"
-claim_fixture "$rollback_four_event" "$rollback_four_token" \
+claim_fixture "$rollback_four_event" "$rollback_four_lease_id" \
   "RollbackAfterOutboxClaim"
 expect_failed_settlement "
 SET opsmind.phase09_failpoint = 'after_outbox';
 SELECT opsmind_settle_investigation_workflow_reconciliation(
-  '$rollback_four_org', '$rollback_four_event', '$rollback_four_token', 'MATCH',
+  '$rollback_four_org', '$rollback_four_event', '$rollback_four_lease_id', 'MATCH',
   'temporal-first-run', NULL, NULL, 1000, 3600000
 );
 " "RollbackAfterOutboxInjected"
 expect_rollback_atomic \
   "$rollback_four_org" "$rollback_four_run" "$rollback_four_event" \
-  "$rollback_four_token" "RollbackAfterOutboxAtomic"
+  "$rollback_four_lease_id" "RollbackAfterOutboxAtomic"
