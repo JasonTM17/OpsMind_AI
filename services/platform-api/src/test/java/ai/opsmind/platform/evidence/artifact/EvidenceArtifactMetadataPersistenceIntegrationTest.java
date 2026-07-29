@@ -139,7 +139,9 @@ class EvidenceArtifactMetadataPersistenceIntegrationTest {
         assertSqlState(() -> admin.update(
             "DELETE FROM evidence_artifacts WHERE organization_id = ?", TENANT_A
         ), "42501");
-        assertSqlState(() -> admin.execute("TRUNCATE TABLE evidence_artifacts"), "42501");
+        assertSqlState(() -> admin.execute(
+            "TRUNCATE TABLE evidence_artifacts, evidence_artifact_events"
+        ), "42501");
     }
 
     private UUID createRun() {
