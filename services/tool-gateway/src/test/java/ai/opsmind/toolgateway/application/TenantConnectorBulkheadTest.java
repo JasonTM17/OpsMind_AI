@@ -4,6 +4,11 @@ import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
 import java.util.UUID;
+import java.util.concurrent.CountDownLatch;
+import java.util.concurrent.CyclicBarrier;
+import java.util.concurrent.ExecutorService;
+import java.util.concurrent.Future;
+import java.util.concurrent.TimeUnit;
 
 import ai.opsmind.toolgateway.config.ConnectorBulkheadProperties;
 import ai.opsmind.toolgateway.domain.DenialCode;
@@ -63,6 +68,51 @@ class TenantConnectorBulkheadTest {
 
         assertThat(bulkhead.trackedTenantCount()).isOne();
         first.close();
+        assertThat(bulkhead.trackedTenantCount()).isZero();
+    }
+
+    @Test
+    void finalReleaseAndSameTenantReacquireLeaveOneCleanRegistryEntry() throws Exception {
+        TenantConnectorBulkhead bulkhead = new TenantConnectorBulkhead(properties(1, 1));
+        TenantProjectScope scope = scope("1", "1");
+        TenantConnectorBulkhead.Permit initial = bulkhead.acquire(scope);
+        CyclicBarrier raceStart = new CyclicBarrier(2);
+        CountDownLatch finalRelease = new CountDownLatch(1);
+
+        try {
+            try (ExecutorService callers = java.util.concurrent.Executors.newVirtualThreadPerTaskExecutor()) {
+                Future<?> release = callers.submit(() -> {
+                    raceStart.await(1, TimeUnit.SECONDS);
+                    initial.close();
+                    finalRelease.countDown();
+                    return null;
+                });
+                Future<TenantConnectorBulkhead.Permit> reacquire = callers.submit(() -> {
+                    raceStart.await(1, TimeUnit.SECONDS);
+                    try {
+                        return bulkhead.acquire(scope);
+                    }
+                    catch (ToolDeniedException expectedDuringRace) {
+                        assertThat(expectedDuringRace.code()).isEqualTo(DenialCode.EXECUTION_BACKPRESSURE);
+                        assertThat(finalRelease.await(1, TimeUnit.SECONDS)).isTrue();
+                        return bulkhead.acquire(scope);
+                    }
+                });
+
+                release.get(1, TimeUnit.SECONDS);
+                TenantConnectorBulkhead.Permit reacquired = reacquire.get(1, TimeUnit.SECONDS);
+                try {
+                    assertThat(bulkhead.trackedTenantCount()).isOne();
+                }
+                finally {
+                    reacquired.close();
+                }
+            }
+        }
+        finally {
+            initial.close();
+        }
+
         assertThat(bulkhead.trackedTenantCount()).isZero();
     }
 

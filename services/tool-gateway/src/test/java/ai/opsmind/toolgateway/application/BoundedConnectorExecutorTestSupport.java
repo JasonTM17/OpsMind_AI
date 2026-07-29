@@ -10,6 +10,8 @@ import java.util.List;
 import java.util.Map;
 import java.util.UUID;
 import java.util.concurrent.AbstractExecutorService;
+import java.util.concurrent.CountDownLatch;
+import java.util.concurrent.RejectedExecutionException;
 import java.util.concurrent.TimeUnit;
 
 import ai.opsmind.toolgateway.config.ConnectorBulkheadProperties;
@@ -33,12 +35,8 @@ final class BoundedConnectorExecutorTestSupport {
             );
     }
 
-    static void awaitEmpty(TenantConnectorBulkhead bulkhead) {
-        long deadline = System.nanoTime() + TimeUnit.SECONDS.toNanos(1);
-        while (bulkhead.trackedTenantCount() != 0 && System.nanoTime() < deadline) {
-            Thread.onSpinWait();
-        }
-        assertThat(bulkhead.trackedTenantCount()).isZero();
+    static void await(CountDownLatch latch) throws InterruptedException {
+        assertThat(latch.await(1, TimeUnit.SECONDS)).isTrue();
     }
 
     static Clock fixedClock() {
@@ -130,6 +128,42 @@ final class BoundedConnectorExecutorTestSupport {
         @Override
         public boolean awaitTermination(long timeout, TimeUnit unit) {
             return isTerminated();
+        }
+    }
+
+    static final class RejectingExecutorService extends AbstractExecutorService {
+
+        private boolean shutdown;
+
+        @Override
+        public void execute(Runnable command) {
+            throw new RejectedExecutionException("test-only submission rejection");
+        }
+
+        @Override
+        public void shutdown() {
+            shutdown = true;
+        }
+
+        @Override
+        public List<Runnable> shutdownNow() {
+            shutdown = true;
+            return List.of();
+        }
+
+        @Override
+        public boolean isShutdown() {
+            return shutdown;
+        }
+
+        @Override
+        public boolean isTerminated() {
+            return shutdown;
+        }
+
+        @Override
+        public boolean awaitTermination(long timeout, TimeUnit unit) {
+            return true;
         }
     }
 }
