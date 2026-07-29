@@ -120,21 +120,108 @@ for (const column of [
   }
 }
 
+const reconciliationMigrationPath =
+  "services/platform-api/src/main/resources/db/migration/"
+  + "V013__investigation_workflow_exact_reconciliation.sql";
+const reconciliationMigration = requireMarkers(reconciliationMigrationPath, [
+  "opsmind_workflow_reconciler has unsafe attributes or role memberships",
+  "opsmind_workflow_reconciliation_resolver has unsafe attributes or role memberships",
+  "CREATE OR REPLACE FUNCTION opsmind_claim_investigation_workflow_reconciliation",
+  "CREATE OR REPLACE FUNCTION opsmind_settle_investigation_workflow_reconciliation",
+  "CREATE OR REPLACE FUNCTION opsmind_get_investigation_workflow_reconciliation_status",
+  "FOR UPDATE OF event_row, binding_row SKIP LOCKED",
+  "event_row.attempts > 0",
+  "p_maximum_attempts > 8",
+  "ON CONFLICT ON CONSTRAINT inbox_events_pkey DO UPDATE",
+  "ELSE public.inbox_events.processed_at",
+  "p_outcome NOT IN ('MATCH', 'ABSENT', 'MISMATCH', 'RETRY', 'BLOCKED')",
+  "workflow.reconciliation-started",
+  "workflow.reconciliation-absence-candidate",
+  "workflow.reconciliation-released-to-starter",
+  "workflow.reconciliation-verified-absence",
+  "workflow.reconciliation-contract-mismatch",
+  "workflow.reconciliation-retry-scheduled",
+  "workflow.reconciliation-blocked",
+  "workflow.reconciliation-lease-lost",
+  "claim_ready_count bigint",
+  "reconciliation_status IN ('received', 'processed')",
+  "pending_count bigint",
+  "blocked_count bigint",
+  "exhausted_count bigint",
+  "retention_ineligible_count bigint",
+  "oldest_pending_age_seconds bigint",
+  "REVOKE ALL ON ALL TABLES IN SCHEMA public FROM opsmind_workflow_reconciler",
+  "public.opsmind_validate_investigation_workflow_binding_update()\n    FROM PUBLIC",
+  "TO opsmind_workflow_reconciliation_resolver",
+  "TO opsmind_workflow_reconciler",
+]);
+for (const forbiddenCapability of [
+  "opsmind_set_tenant_context",
+  "opsmind_set_dispatcher_tenant_context",
+  "SET attempts = event_row.attempts + 1",
+  "StartWorkflowExecution",
+]) {
+  if (reconciliationMigration.includes(forbiddenCapability)) {
+    errors.push(`V013 exposes forbidden reconciliation capability: ${forbiddenCapability}`);
+  }
+}
+
 const migrationDirectory = path.join(
   repositoryRoot,
   "services/platform-api/src/main/resources/db/migration",
 );
 const workflowMigrations = fs.readdirSync(migrationDirectory)
-  .filter((name) => /^V01[0-2]__investigation_workflow_/u.test(name))
+  .filter((name) => /^V01[0-3]__investigation_workflow_/u.test(name))
   .sort();
 if (
-  workflowMigrations.length !== 3
+  workflowMigrations.length !== 4
   || workflowMigrations[0] !== "V010__investigation_workflow_start_handoff.sql"
   || workflowMigrations[1] !== "V011__investigation_workflow_dispatch_safety_fence.sql"
   || workflowMigrations[2] !== "V012__investigation_workflow_dispatch_exclusivity.sql"
+  || workflowMigrations[3] !== "V013__investigation_workflow_exact_reconciliation.sql"
 ) {
-  errors.push("the workflow handoff must have exactly V010, V011, and V012 migration owners");
+  errors.push(
+    "the workflow handoff must have exactly V010, V011, V012, and V013 migration owners",
+  );
 }
+
+requireMarkers(
+  "services/platform-api/src/main/resources/db/bootstrap/001-create-runtime-role.sh",
+  [
+    "POSTGRES_WORKFLOW_RECONCILER_PASSWORD",
+    "CREATE ROLE opsmind_workflow_reconciler LOGIN NOSUPERUSER",
+    "CREATE ROLE opsmind_workflow_reconciliation_resolver NOLOGIN NOSUPERUSER",
+    "\\password opsmind_workflow_reconciler",
+  ],
+);
+requireMarkers("scripts/validation/run-phase-09-reconciliation-postgres-contract.sh", [
+  "DirectTableReadDenied=PASS",
+  "TriggerFunctionExecuteDenied",
+  "WrongLeaseAtomic",
+  "OneAbsenceCannotReject",
+  "VerifiedAbsenceState",
+  "ProcessedEpochStatusReady",
+  "BlockedUncertaintyPreservesPending",
+  "ExhaustionPreservesCanonicalPending",
+  "CrossTenantSettlementDenied",
+  "ReconciliationPostgresContract=PASS",
+]);
+requireMarkers(".github/workflows/pr-quality.yml", [
+  "POSTGRES_WORKFLOW_RECONCILER_USER: opsmind_workflow_reconciler",
+  "POSTGRES_WORKFLOW_RECONCILER_PASSWORD: placeholder-ci-reconciler",
+  "bash scripts/validation/run-phase-09-reconciliation-postgres-contract.sh",
+]);
+requireMarkers("compose.yaml", [
+  "POSTGRES_WORKFLOW_RECONCILER_USER: "
+    + "${POSTGRES_WORKFLOW_RECONCILER_USER:-opsmind_workflow_reconciler}",
+  "source: ./deploy/prometheus/opsmind-reconciliation-alerts.yml",
+  "target: /etc/prometheus/opsmind-reconciliation-alerts.yml",
+  "PLATFORM_MANAGEMENT_PORT: 8082",
+  "OPSMIND_MANAGEMENT_EXPOSED_ENDPOINTS: health,prometheus",
+  "http://127.0.0.1:8082/actuator/health",
+  "OPSMIND_WORKFLOW_RECONCILER_DB_USERNAME: "
+    + "${POSTGRES_WORKFLOW_RECONCILER_USER:-opsmind_workflow_reconciler}",
+]);
 
 const pom = requireMarkers("services/platform-api/pom.xml", [
   "<temporal.version>1.35.0</temporal.version>",
@@ -383,6 +470,8 @@ const requiredTests = {
   ["services/platform-api/src/test/java/ai/opsmind/platform/"
     + "persistence/MigrationContractTest.java"]: [
     "workflowDispatchExclusivityMigrationGuardsBothMembershipDirections",
+    "workflowReconciliationMigrationExposesOnlyExactCapabilities",
+    "workflowReconcilerBootstrapAndComposeUseTheFixedRole",
   ],
 };
 for (const [relativePath, markers] of Object.entries(requiredTests)) {
@@ -430,6 +519,7 @@ const lines = [
   `MigrationOwner=${path.basename(migrationPath)}`,
   `HardeningMigrationOwner=${path.basename(hardeningMigrationPath)}`,
   `ExclusivityMigrationOwner=${path.basename(exclusivityMigrationPath)}`,
+  `ReconciliationMigrationOwner=${path.basename(reconciliationMigrationPath)}`,
   `TemporalVersionPins=${temporalVersionDeclarations.length}`,
   `SerializedPayloadFields=${serializedFields.length}`,
   `RequiredTestFiles=${Object.keys(requiredTests).length}`,

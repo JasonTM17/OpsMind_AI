@@ -87,12 +87,30 @@ $PythonPath = Resolve-Executable $PythonPath @('python', 'python.exe') 'Python 3
 $adminPassword = New-EphemeralPassword
 $appPassword = New-EphemeralPassword
 $dispatcherPassword = New-EphemeralPassword
+$workflowReconcilerPassword = New-EphemeralPassword
 $aiRuntimePassword = New-EphemeralPassword
-$secretValues = @($adminPassword, $appPassword, $dispatcherPassword, $aiRuntimePassword)
+while ($dispatcherPassword -in @($adminPassword, $appPassword)) {
+    $dispatcherPassword = New-EphemeralPassword
+}
+while ($workflowReconcilerPassword -in @(
+    $adminPassword, $appPassword, $dispatcherPassword
+)) {
+    $workflowReconcilerPassword = New-EphemeralPassword
+}
+while ($aiRuntimePassword -in @(
+    $adminPassword, $appPassword, $dispatcherPassword, $workflowReconcilerPassword
+)) {
+    $aiRuntimePassword = New-EphemeralPassword
+}
+$secretValues = @(
+    $adminPassword, $appPassword, $dispatcherPassword,
+    $workflowReconcilerPassword, $aiRuntimePassword
+)
 $environmentNames = @(
     'POSTGRES_DB', 'POSTGRES_USER', 'POSTGRES_PASSWORD',
     'POSTGRES_APP_USER', 'POSTGRES_APP_PASSWORD',
     'POSTGRES_DISPATCHER_USER', 'POSTGRES_DISPATCHER_PASSWORD',
+    'POSTGRES_WORKFLOW_RECONCILER_USER', 'POSTGRES_WORKFLOW_RECONCILER_PASSWORD',
     'POSTGRES_AI_RUNTIME_USER', 'POSTGRES_AI_RUNTIME_PASSWORD',
     'SPRING_PROFILES_ACTIVE', 'SPRING_DATASOURCE_URL',
     'SPRING_DATASOURCE_USERNAME', 'SPRING_DATASOURCE_PASSWORD',
@@ -136,6 +154,8 @@ try {
     $env:POSTGRES_APP_PASSWORD = $appPassword
     $env:POSTGRES_DISPATCHER_USER = 'opsmind_dispatcher'
     $env:POSTGRES_DISPATCHER_PASSWORD = $dispatcherPassword
+    $env:POSTGRES_WORKFLOW_RECONCILER_USER = 'opsmind_workflow_reconciler'
+    $env:POSTGRES_WORKFLOW_RECONCILER_PASSWORD = $workflowReconcilerPassword
     $env:POSTGRES_AI_RUNTIME_USER = 'opsmind_ai_runtime'
     $env:POSTGRES_AI_RUNTIME_PASSWORD = $aiRuntimePassword
     $mount = "type=bind,source=$bootstrapPath,target=/docker-entrypoint-initdb.d/001-create-runtime-role.sh,readonly"
@@ -144,6 +164,7 @@ try {
         --env POSTGRES_DB --env POSTGRES_USER --env POSTGRES_PASSWORD `
         --env POSTGRES_APP_USER --env POSTGRES_APP_PASSWORD `
         --env POSTGRES_DISPATCHER_USER --env POSTGRES_DISPATCHER_PASSWORD `
+        --env POSTGRES_WORKFLOW_RECONCILER_USER --env POSTGRES_WORKFLOW_RECONCILER_PASSWORD `
         --env POSTGRES_AI_RUNTIME_USER --env POSTGRES_AI_RUNTIME_PASSWORD `
         --mount $mount --tmpfs '/var/lib/postgresql:rw,noexec,nosuid,size=536870912' `
         --publish '127.0.0.1::5432' $PostgresImage | Out-Null

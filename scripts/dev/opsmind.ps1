@@ -26,6 +26,7 @@ foreach ($name in @(
     'AI_RUNTIME_PORT', 'TOOL_GATEWAY_PORT', 'PROMETHEUS_PORT',
     'POSTGRES_PORT', 'REDIS_PORT', 'MINIO_API_PORT', 'MINIO_CONSOLE_PORT',
     'POSTGRES_DB', 'POSTGRES_USER', 'POSTGRES_APP_USER', 'POSTGRES_DISPATCHER_USER',
+    'POSTGRES_WORKFLOW_RECONCILER_USER',
     'POSTGRES_AI_RUNTIME_USER', 'POSTGRES_TOOL_GATEWAY_MIGRATOR_USER',
     'POSTGRES_TOOL_GATEWAY_USER',
     'SPRING_PROFILES_ACTIVE', 'SPRING_DATASOURCE_URL',
@@ -63,6 +64,7 @@ foreach ($name in @(
 )) { [void]$safeEnvironmentNames.Add($name) }
 $runtimeSecretNames = @(
     'POSTGRES_PASSWORD', 'POSTGRES_APP_PASSWORD', 'POSTGRES_DISPATCHER_PASSWORD',
+    'POSTGRES_WORKFLOW_RECONCILER_PASSWORD',
     'POSTGRES_AI_RUNTIME_PASSWORD', 'POSTGRES_TOOL_GATEWAY_MIGRATOR_PASSWORD',
     'POSTGRES_TOOL_GATEWAY_PASSWORD', 'TOOL_GATEWAY_DATABASE_PASSWORD',
     'AI_RUNTIME_DATABASE_PASSWORD',
@@ -253,6 +255,9 @@ function Assert-ApplicationComposeConfiguration {
     if ([string]::IsNullOrWhiteSpace($env:POSTGRES_DISPATCHER_PASSWORD)) {
         throw 'POSTGRES_DISPATCHER_PASSWORD must be supplied through the process environment or an approved secret manager.'
     }
+    if ([string]::IsNullOrWhiteSpace($env:POSTGRES_WORKFLOW_RECONCILER_PASSWORD)) {
+        throw 'POSTGRES_WORKFLOW_RECONCILER_PASSWORD must be supplied through the process environment or an approved secret manager.'
+    }
     if ([string]::IsNullOrWhiteSpace($env:POSTGRES_AI_RUNTIME_PASSWORD)) {
         throw 'POSTGRES_AI_RUNTIME_PASSWORD must be supplied through the process environment or an approved secret manager.'
     }
@@ -266,6 +271,7 @@ function Assert-ApplicationComposeConfiguration {
         $env:POSTGRES_PASSWORD,
         $env:POSTGRES_APP_PASSWORD,
         $env:POSTGRES_DISPATCHER_PASSWORD,
+        $env:POSTGRES_WORKFLOW_RECONCILER_PASSWORD,
         $env:POSTGRES_AI_RUNTIME_PASSWORD,
         $env:POSTGRES_TOOL_GATEWAY_MIGRATOR_PASSWORD,
         $env:POSTGRES_TOOL_GATEWAY_PASSWORD
@@ -278,6 +284,9 @@ function Assert-ApplicationComposeConfiguration {
     }
     if (-not [string]::IsNullOrWhiteSpace($env:POSTGRES_DISPATCHER_USER) -and $env:POSTGRES_DISPATCHER_USER -cne 'opsmind_dispatcher') {
         throw 'POSTGRES_DISPATCHER_USER must remain opsmind_dispatcher; migration grants are intentionally explicit.'
+    }
+    if (-not [string]::IsNullOrWhiteSpace($env:POSTGRES_WORKFLOW_RECONCILER_USER) -and $env:POSTGRES_WORKFLOW_RECONCILER_USER -cne 'opsmind_workflow_reconciler') {
+        throw 'POSTGRES_WORKFLOW_RECONCILER_USER must remain opsmind_workflow_reconciler; migration grants are intentionally explicit.'
     }
     if (-not [string]::IsNullOrWhiteSpace($env:POSTGRES_AI_RUNTIME_USER) -and $env:POSTGRES_AI_RUNTIME_USER -cne 'opsmind_ai_runtime') {
         throw 'POSTGRES_AI_RUNTIME_USER must remain opsmind_ai_runtime; migration grants are intentionally explicit.'

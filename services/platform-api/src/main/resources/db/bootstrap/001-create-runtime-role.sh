@@ -4,6 +4,7 @@ set -Eeuo pipefail
 
 : "${POSTGRES_APP_PASSWORD:?POSTGRES_APP_PASSWORD must be supplied for the non-owner runtime role}"
 : "${POSTGRES_DISPATCHER_PASSWORD:?POSTGRES_DISPATCHER_PASSWORD must be supplied for the outbox dispatcher role}"
+: "${POSTGRES_WORKFLOW_RECONCILER_PASSWORD:?POSTGRES_WORKFLOW_RECONCILER_PASSWORD must be supplied for the workflow reconciler role}"
 : "${POSTGRES_AI_RUNTIME_PASSWORD:?POSTGRES_AI_RUNTIME_PASSWORD must be supplied for the AI runtime role}"
 : "${POSTGRES_TOOL_GATEWAY_MIGRATOR_PASSWORD:?POSTGRES_TOOL_GATEWAY_MIGRATOR_PASSWORD must be supplied for the Tool Gateway migration role}"
 : "${POSTGRES_TOOL_GATEWAY_PASSWORD:?POSTGRES_TOOL_GATEWAY_PASSWORD must be supplied for the Tool Gateway runtime role}"
@@ -15,6 +16,10 @@ if [[ "${POSTGRES_APP_USER:-opsmind_app}" != "opsmind_app" ]]; then
 fi
 if [[ "${POSTGRES_DISPATCHER_USER:-opsmind_dispatcher}" != "opsmind_dispatcher" ]]; then
     printf '%s\n' 'POSTGRES_DISPATCHER_USER must remain opsmind_dispatcher; migration grants are intentionally explicit.' >&2
+    exit 2
+fi
+if [[ "${POSTGRES_WORKFLOW_RECONCILER_USER:-opsmind_workflow_reconciler}" != "opsmind_workflow_reconciler" ]]; then
+    printf '%s\n' 'POSTGRES_WORKFLOW_RECONCILER_USER must remain opsmind_workflow_reconciler; migration grants are intentionally explicit.' >&2
     exit 2
 fi
 if [[ "${POSTGRES_AI_RUNTIME_USER:-opsmind_ai_runtime}" != "opsmind_ai_runtime" ]]; then
@@ -34,6 +39,7 @@ database_passwords=(
     "$POSTGRES_PASSWORD"
     "$POSTGRES_APP_PASSWORD"
     "$POSTGRES_DISPATCHER_PASSWORD"
+    "$POSTGRES_WORKFLOW_RECONCILER_PASSWORD"
     "$POSTGRES_AI_RUNTIME_PASSWORD"
     "$POSTGRES_TOOL_GATEWAY_MIGRATOR_PASSWORD"
     "$POSTGRES_TOOL_GATEWAY_PASSWORD"
@@ -93,6 +99,43 @@ psql --no-password --set=ON_ERROR_STOP=1 \
         ) THEN
             RAISE EXCEPTION 'opsmind_dispatch_resolver has unsafe role attributes';
         END IF;
+        IF NOT EXISTS (SELECT 1 FROM pg_roles WHERE rolname = 'opsmind_workflow_reconciler') THEN
+            CREATE ROLE opsmind_workflow_reconciler LOGIN NOSUPERUSER NOCREATEDB NOCREATEROLE NOINHERIT NOREPLICATION NOBYPASSRLS;
+        END IF;
+        IF EXISTS (
+            SELECT 1 FROM pg_roles
+             WHERE rolname = 'opsmind_workflow_reconciler'
+               AND (rolsuper OR rolcreatedb OR rolcreaterole OR rolreplication
+                    OR rolbypassrls OR NOT rolcanlogin OR rolinherit)
+        ) OR EXISTS (
+            SELECT 1
+              FROM pg_auth_members membership
+              JOIN pg_roles protected_role
+                ON protected_role.oid IN (membership.member, membership.roleid)
+             WHERE protected_role.rolname = 'opsmind_workflow_reconciler'
+        ) THEN
+            RAISE EXCEPTION 'opsmind_workflow_reconciler has unsafe role attributes or memberships';
+        END IF;
+        IF NOT EXISTS (
+            SELECT 1 FROM pg_roles
+             WHERE rolname = 'opsmind_workflow_reconciliation_resolver'
+        ) THEN
+            CREATE ROLE opsmind_workflow_reconciliation_resolver NOLOGIN NOSUPERUSER NOCREATEDB NOCREATEROLE NOINHERIT NOREPLICATION NOBYPASSRLS;
+        END IF;
+        IF EXISTS (
+            SELECT 1 FROM pg_roles
+             WHERE rolname = 'opsmind_workflow_reconciliation_resolver'
+               AND (rolsuper OR rolcreatedb OR rolcreaterole OR rolreplication
+                    OR rolbypassrls OR rolcanlogin OR rolinherit)
+        ) OR EXISTS (
+            SELECT 1
+              FROM pg_auth_members membership
+              JOIN pg_roles protected_role
+                ON protected_role.oid IN (membership.member, membership.roleid)
+             WHERE protected_role.rolname = 'opsmind_workflow_reconciliation_resolver'
+        ) THEN
+            RAISE EXCEPTION 'opsmind_workflow_reconciliation_resolver has unsafe role attributes or memberships';
+        END IF;
         IF NOT EXISTS (SELECT 1 FROM pg_roles WHERE rolname = 'opsmind_ai_runtime') THEN
             CREATE ROLE opsmind_ai_runtime LOGIN NOSUPERUSER NOCREATEDB NOCREATEROLE NOINHERIT NOREPLICATION NOBYPASSRLS;
         END IF;
@@ -147,6 +190,9 @@ $POSTGRES_APP_PASSWORD
 \password opsmind_dispatcher
 $POSTGRES_DISPATCHER_PASSWORD
 $POSTGRES_DISPATCHER_PASSWORD
+\password opsmind_workflow_reconciler
+$POSTGRES_WORKFLOW_RECONCILER_PASSWORD
+$POSTGRES_WORKFLOW_RECONCILER_PASSWORD
 \password opsmind_ai_runtime
 $POSTGRES_AI_RUNTIME_PASSWORD
 $POSTGRES_AI_RUNTIME_PASSWORD
@@ -159,5 +205,6 @@ $POSTGRES_TOOL_GATEWAY_PASSWORD
 EOF
 
 unset PGPASSWORD POSTGRES_APP_PASSWORD POSTGRES_DISPATCHER_PASSWORD \
+    POSTGRES_WORKFLOW_RECONCILER_PASSWORD \
     POSTGRES_AI_RUNTIME_PASSWORD POSTGRES_TOOL_GATEWAY_MIGRATOR_PASSWORD \
     POSTGRES_TOOL_GATEWAY_PASSWORD POSTGRES_PASSWORD
