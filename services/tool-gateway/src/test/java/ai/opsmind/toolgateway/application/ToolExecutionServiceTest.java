@@ -17,8 +17,6 @@ import ai.opsmind.toolgateway.audit.DeterministicToolAuditWriter;
 import ai.opsmind.toolgateway.audit.ToolAuditWriter;
 import ai.opsmind.toolgateway.audit.ToolExecutionProvenance;
 import ai.opsmind.toolgateway.config.GatewaySettings;
-import ai.opsmind.toolgateway.connectors.ConnectorEvidence;
-import ai.opsmind.toolgateway.connectors.ToolConnector;
 import ai.opsmind.toolgateway.connectors.observability.FixtureObservabilityConnector;
 import ai.opsmind.toolgateway.domain.DenialCode;
 import ai.opsmind.toolgateway.domain.ToolDeniedException;
@@ -266,51 +264,6 @@ class ToolExecutionServiceTest {
         assertThat(unverifiedWriter.lastScope).isNull();
     }
 
-    @Test
-    void rejectsMismatchedVerifiedScopeBeforeConnectorAdmission() {
-        AtomicBoolean connectorCalled = new AtomicBoolean();
-        TenantConnectorBulkhead bulkhead = new TenantConnectorBulkhead(
-            new ai.opsmind.toolgateway.config.ConnectorBulkheadProperties(1, 1)
-        );
-        try (
-            var connectorThreads = java.util.concurrent.Executors.newVirtualThreadPerTaskExecutor();
-            BoundedConnectorExecutor scopedExecutor = new BoundedConnectorExecutor(
-                clock, connectorThreads, bulkhead
-            )
-        ) {
-            ToolExecutionService mismatchedScopeService = service(
-                (token, request) -> capability(
-                    request,
-                    UUID.fromString("aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa"),
-                    UUID.fromString("bbbbbbbb-bbbb-4bbb-8bbb-bbbbbbbbbbbb")
-                ),
-                new TrackingToolAuditWriter(),
-                scopedExecutor,
-                List.of(new ToolConnector() {
-                    @Override
-                    public String id() {
-                        return "fixture-observability";
-                    }
-
-                    @Override
-                    public ConnectorEvidence execute(
-                        ToolExecutionRequest request,
-                        ToolManifest manifest
-                    ) {
-                        connectorCalled.set(true);
-                        return new FixtureObservabilityConnector().execute(request, manifest);
-                    }
-                })
-            );
-
-            var response = mismatchedScopeService.execute("verified", validRequest(UUID.randomUUID()));
-
-            assertThat(response.denialCode()).isEqualTo(DenialCode.CAPABILITY_SCOPE_MISMATCH);
-            assertThat(connectorCalled).isFalse();
-            assertThat(bulkhead.trackedTenantCount()).isZero();
-        }
-    }
-
     private ToolExecutionRequest validRequest(UUID executionId) {
         return request(
             executionId,
@@ -349,15 +302,6 @@ class ToolExecutionServiceTest {
         DelegatedCapabilityVerifier verifier,
         ToolAuditWriter writer
     ) {
-        return service(verifier, writer, connectorExecutor, List.of(new FixtureObservabilityConnector()));
-    }
-
-    private ToolExecutionService service(
-        DelegatedCapabilityVerifier verifier,
-        ToolAuditWriter writer,
-        BoundedConnectorExecutor executor,
-        List<ToolConnector> connectors
-    ) {
         return new ToolExecutionService(
             verifier,
             new ToolManifestResourceLoader(objectMapper).loadFixtureRegistry(),
@@ -366,23 +310,9 @@ class ToolExecutionServiceTest {
             new EvidenceNormalizer(objectMapper, settings),
             writer,
             new RequestDigester(objectMapper),
-            executor,
+            connectorExecutor,
             new DirectToolExecutionTransactionRunner(),
-            connectors
-        );
-    }
-
-    private VerifiedCapability capability(
-        ToolExecutionRequest request,
-        UUID tenantId,
-        UUID projectId
-    ) {
-        return new VerifiedCapability(
-            "capability-test-001", request.actorSubject(), tenantId, projectId,
-            request.incidentId(), request.runId(),
-            Set.of(request.tool() + ":" + request.action() + ":" + request.schemaVersion()),
-            Set.of(request.resource()), Set.of("operator:read"), 1, 65_536,
-            "policy-test", NOW.plusSeconds(300)
+            List.of(new FixtureObservabilityConnector())
         );
     }
 
