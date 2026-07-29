@@ -8,31 +8,70 @@
 - Record blockers explicitly and leave downstream phases pending.
 - Do not include secrets, raw credentials, or sensitive evidence.
 
-## 2026-07-28 — Phase 9 V012 containment source integrated; runtime proof pending
+## 2026-07-29 — Exact-workflow reconciliation source and local contract integrated
 
-Current integration source adds default-off V010 atomic run/binding/outbox
-admission, additive `202 + Location`, a dedicated-datasource dispatcher role
-in the Platform API artifact, Temporal RPC outside the claim transaction,
-deterministic workflow identity, and exact `AlreadyStarted` verification.
-Inline remains the default `200` path.
+The integration branch now adds V013 and a default-off read-only reconciliation
+lane without adding another Temporal start surface:
 
-V012 removes the V011 inherited direct-DML bypass for workflow-start binding,
-inbox, and canonical outbox state; claims exactly one canonical event through a
-resolver-owned function; preserves hidden-predecessor ordering; and rejects
-unsafe protected-role memberships. Ambiguous post-RPC results retry within the
-bounded policy, then remain `PENDING` with
-`workflow.reconciliation-required`. V012 conservatively normalizes attempted
-V011 legacy ambiguity markers, and durable preflight now runs before payload
-validation/decode. The current integration source passes the Phase 9 static
-validator; focused rollback-only PostgreSQL probes passed for migration shape,
-row visibility, predecessor blocking, and membership rejection.
+- `opsmind_workflow_reconciler` has no direct table/sequence/function access
+  after blanket revocation and receives `EXECUTE` on exactly claim, settle, and
+  aggregate-status functions. A separate NOLOGIN resolver owns them.
+- Claim is one-row, lease-fenced, ordered, and does not increment normal
+  workflow-start attempts. Settlement supports exact match, two qualified
+  absence samples, dispatcher reactivation, mismatch, retry, and blocked
+  uncertainty while preserving canonical `PENDING` state when proof is absent.
+- `TemporalInvestigationWorkflowObserver` calls
+  `DescribeWorkflowExecution` by workflow ID, pins history to the returned first
+  run ID, and reads one first-history event. For a Continue-As-New chain, that
+  first-run event—not mutable current-execution description fields—is the source
+  for workflow type, task queue, memo digest, and decoded start input. The
+  observer interface exposes no Start, signal, update, or query method.
+- The Java pre-observation fence maps a row older than the configured maximum
+  handoff age to `workflow.reconciliation-handoff-age-exceeded`; settlement
+  keeps the canonical binding/outbox `PENDING` and blocks the reconciler epoch.
+- `.env.example` declares the fixed reconciler role and disabled datasource.
+  Windows/portable launchers reject its password in `.env`, require a distinct
+  process-scoped value for application Compose, and reject username drift or
+  password reuse. The datasource defaults to a 3,000 ms connection timeout
+  bounded to 250-30,000 ms and a 1-second query timeout bounded to 1-30
+  seconds. That query bound is applied to JDBC statements, the PostgreSQL
+  socket, and JDBC transactions; startup rejects the configuration unless
+  connection acquisition plus query timeout is strictly shorter than both the
+  settlement margin and `lease duration - settlement margin`.
+- Management uses port `8082`; checked-in defaults expose health only. Compose
+  explicitly enables `health,prometheus` on the internal network for a
+  reconciliation scrape that keeps only bounded aggregate series.
+- Seven alert rules cover blocked, exhausted, retention-ineligible, warning and
+  critical lag, not-ready/scrape-down, and no-progress conditions. Every rule
+  links the cutover runbook.
 
-This is start-handoff infrastructure only. No live Temporal cluster/namespace,
-Compose service, worker, or restart/resume execution exists; no legacy row is
-automatically backfilled. Full Flyway fresh/upgrade real-role, atomicity,
-performance, and exact-head CI evidence are missing. The separately authorized
-read-only exact-workflow reconciliation/alert lane is not implemented. Phase 9
-and roadmap G4 remain in progress; B-013 and B-017 remain active.
+Verified local evidence:
+
+- `scripts/validation/run-phase-09-reconciliation-postgres-contract.sh` ended
+  `ReconciliationPostgresContract=PASS` against disposable PostgreSQL after
+  V001-V013, followed by `ContractCleanup=PASS`. Its corrected 55-marker run
+  proved direct read/write and trigger-function denial, the global exact-three
+  executable set, membership-drift denial, match, two-sample absence,
+  reactivation, mismatch, retry, blocked/retention/exhaustion `PENDING`
+  preservation, lease fencing/takeover, cross-tenant denial, and atomic rollback
+  at four settlement failpoints.
+- The local V012-to-V013 upgrade probe also passed the exact-three executable
+  set and PUBLIC trigger-function denial. The same reconciliation contract and
+  V006-to-V013 upgrade/recovery checks are wired into PR Quality; no
+  revision-bound run of that updated job is claimed yet.
+- Manual `javac` compile and test-compile of the changed reconciliation main and
+  test surfaces passed against the cached dependency classpath.
+- Phase 9 source validator reports `Errors=0` and
+  `WorkflowHandoffResult=PASS`; the observability validator reports internal
+  scrape, bounded labels, aggregate recordings, and seven alerts.
+
+This does not close B-017. `D:` had 17.86 GiB free on 2026-07-29, below the
+20 GiB heavy-work floor, so full Maven, Docker, exact-head CI, performance, and
+DR gates remain deferred. No production/live Temporal namespace, retention
+proof, compatible worker, or read-only credential conformance exists.
+Prometheus still needs pinned `promtool` plus live-scrape proof, and the
+repository has no Alertmanager receiver or page-delivery receipt. Phase 9 and
+roadmap G4 remain in progress; B-013 and B-017 remain active.
 
 ## 2026-07-28 — G1 and Phase 2 immutable clean-runner evidence complete
 
@@ -739,24 +778,20 @@ B-006/B-008/B-012.
 
 ## Next Allowed Work
 
-1. Build the real Phase 7 integration through an allowlisted intent catalog,
-   short-lived capability issuance, independent workload authentication, and
-   bounded Platform-to-AI Runtime/Tool Gateway HTTP clients; model output must
-   never become an executable request directly.
-2. Add the Prometheus live non-production connector path and persist/link
-   accepted evidence into the incident timeline without weakening Tool Gateway
-   policy, replay, or audit controls.
-3. Build the operator slice through CK frontend workflow plus Stitch, then add
-   Playwright failure-path and accessibility coverage.
-4. Continue Phase 4 evidence-object lifecycle and select/authorize the
-   production IdP profile, then prove federation,
-   session, claim, break-glass, and revocation behavior in non-production.
-5. Keep the external dispatcher loop disabled until Phase 9 binds its runtime
-   identity, deterministic workflow ID, and reconciliation contract.
+1. Continue Phase 4 evidence-object lifecycle and production IdP
+   federation/session/break-glass/revocation conformance.
+2. Authorize and prove the named live non-production connector plus provider/
+   legal egress; fixture-backed Phase 7 evidence is not a substitute.
+3. Register governed held-out cases and qualified human adjudication for B-013.
+4. Complete B-017 revision-bound database-gate execution, merged-head
+   Maven/Docker/CI/performance/DR, namespace read-only
+   authorization/retention, scrape, and page-delivery proof.
+5. Keep the Temporal dispatcher, observer, and reconciler disabled until B-017
+   namespace authorization/retention, merged-head heavy, live scrape, and
+   external page-delivery evidence passes.
 6. Keep dependency downloads, container builds, and service startup behind a
-   fresh capacity/root preflight. Both monitored volumes remain above their
-   floors, but prefer CI for heavy Docker work while C remains close to its
-   minimum reserve.
+   fresh capacity/root preflight. The 2026-07-29 preflight blocks local heavy
+   work because `D:` is below its 20 GiB minimum.
 
 ## 2026-07-23 — Operator projection safety and CK/Stitch workspace
 
@@ -864,7 +899,9 @@ BLOCK.
 Production IdP, provider/legal, named live connector, evidence-object lifecycle,
 RAG, remediation, a live Temporal environment and restart/resume worker,
 staging/production, DR, and release conformance remain explicit gates. Phase 9
-handoff infrastructure is in progress with provisional test-only thresholds,
-but exact-head evidence, threshold freeze, Temporal-admission containment/
-reconciliation proof, and Phase 9 exit remain open; B-013 requires reviewed
-human pilot data and B-017 blocks admission/G4. See [Blockers](./blockers.md).
+handoff infrastructure is in progress with provisional test-only thresholds.
+V013 source and its local database contract exist, but merged-head heavy/
+CI/performance/DR plus a revision-bound run of the wired database gate, live
+Temporal authorization/retention, live scrape, external alert delivery,
+threshold freeze, and Phase 9 exit remain open. B-013 requires reviewed human
+pilot data and B-017 blocks admission/G4. See [Blockers](./blockers.md).

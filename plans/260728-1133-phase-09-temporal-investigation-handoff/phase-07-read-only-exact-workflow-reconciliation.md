@@ -61,7 +61,9 @@ tenant-sensitive identifier may enter metrics, logs, Git, or plan evidence.
    `GetWorkflowExecutionHistory` pinned to `first_run_id`, page size one,
    `wait_new_event=false`, and all-event filter. Verify the immutable first
    `WORKFLOW_EXECUTION_STARTED` event, type, task queue, memo digest, workflow
-   identity, chain identity, and decoded start input.
+   identity, chain identity, and decoded start input. For Continue-As-New,
+   type/queue/memo/input must come from the first-run event, never mutable
+   current-execution description fields.
 9. Use a distinct Temporal service-stub bean and deployment credential. Source
    separation is necessary but insufficient: production enablement also
    requires an environment conformance test proving that Start, signal/start,
@@ -181,6 +183,7 @@ Default timing:
 - lease 30 seconds;
 - RPC timeout 5 seconds;
 - settlement margin 5 seconds;
+- database query/socket/transaction timeout 1 second;
 - maximum eight read attempts;
 - automated age one hour;
 - retry backoff 1, 2, 4, 8, 16, 32, then 60 seconds;
@@ -192,6 +195,8 @@ Validation must enforce:
 
 ```text
 2 * rpc timeout + settlement margin < lease
+connection acquisition timeout + query timeout < settlement margin
+connection acquisition timeout + query timeout < lease - settlement margin
 maximum handoff age + reconciliation age + retention safety margin
   < namespace workflow-execution retention
 ```
@@ -208,6 +213,9 @@ Safe exception taxonomy:
 - `PERMISSION_DENIED`, configuration mismatch, malformed/missing history,
   decode failure, or history disappearing after describe: blocked,
   never absent.
+- maximum handoff age exceeded before observation:
+  `workflow.reconciliation-handoff-age-exceeded`, blocked with canonical
+  binding/outbox still `PENDING`.
 
 ## Observability contract
 
@@ -296,29 +304,47 @@ configuration join after the three branches are reviewed.
 
 ### Lightweight while storage guard blocks
 
-- `git diff --check`;
-- Java compile-surface review against locally cached Temporal 1.35.0 classes;
-- focused source/static validators;
-- shell and YAML syntax;
-- changed-file secret scan;
-- independent code review with concurrency, authorization, data-leak, error,
+- [x] `git diff --check`;
+- [x] Java main/test compile surface against locally cached Temporal 1.35.0
+  classes (`javac`, not Maven);
+- [x] Phase 9 workflow and observability source/static validators;
+- [x] shell and YAML syntax;
+- [x] changed-file secret scan;
+- [x] independent workstream review with concurrency, authorization, data-leak, error,
   compatibility, and no-start checks.
+- [x] disposable PostgreSQL V001-V013 real-role reconciliation contract:
+  55 PASS markers including cleanup prove direct/PUBLIC denial, the global exact-three
+  executable set, membership-drift denial, match, two-sample absence,
+  reactivation, mismatch, retry, blocked/retention/exhaustion `PENDING`, lease
+  fencing/takeover, cross-tenant denial, and four settlement rollback
+  failpoints.
+- [x] local V012-to-V013 upgrade proves the exact-three executable set and
+  PUBLIC trigger-function denial.
+- [x] PR Quality wires the reconciliation contract and V006-to-V013
+  upgrade/recovery checks.
+- [x] launcher/env fixed-role, pairwise-secret, disabled-default, and bounded
+  reconciler datasource connection/query timeout source contracts; query
+  timeout reaches JDBC statement, PostgreSQL socket, and transaction defaults
+  and connection-plus-query time is startup-validated against
+  settlement/lease safety margins.
 
 ### Mandatory before B-017 closes
 
-- focused and full Maven tests;
-- V001-V013 fresh migration under real roles;
-- V012-to-V013 upgrade under real roles;
-- injected rollback after every settlement sub-step;
-- cross-tenant, stolen/expired lease, role membership, RLS, PUBLIC denial, and
-  no-direct-DML tests;
-- matching, continued-as-new, closed, not-found double sample, reactivation,
-  mismatch, transient, permission, corrupt payload, missing history, retention,
-  exhaustion, and lease-loss tests;
-- Temporal authorization conformance proving read RPC success and every
+- [ ] focused and full Maven tests on the exact merged head;
+- [ ] revision-bound CI execution of the wired fresh V001-V013,
+  V006-to-V013 upgrade/recovery, real-role, and four-failpoint atomicity gates;
+- [ ] query-plan/latency, DR, and production database proof;
+- [ ] exact-head runtime tests for matching, continued-as-new, closed, not-found
+  double sample, reactivation, mismatch, transient, permission, corrupt payload,
+  missing history, retention, exhaustion, and lease loss;
+- [ ] Temporal authorization conformance proving read RPC success and every
   start/signal/update-with-start mutation denied;
-- Prometheus rule validation and a scrape showing only bounded labels;
-- exact-head full CI and independent final review.
+- [ ] namespace retention conformance against configured timing bounds;
+- [ ] pinned `promtool` rule/config validation and a live scrape showing only
+  bounded labels;
+- [ ] configured external Alertmanager receiver and end-to-end page-delivery
+  receipt;
+- [ ] exact-head Docker/Compose, full CI, and independent final review.
 
 ## Acceptance criteria
 
@@ -360,7 +386,7 @@ uncertain row without exact target-side evidence.
 
 ## Capacity gate
 
-As of 2026-07-28, C has 11.77 GiB free and D has 17.92 GiB free. Source and
+As of 2026-07-29, C has 11.66 GiB free and D has 17.86 GiB free. Source and
 lightweight static work may continue. Maven, full Flyway, Docker builds,
 package installation, and other heavy gates remain prohibited until D has at
 least 20 GiB free. A scoped cleanup attempt against regenerable workspace
@@ -370,5 +396,7 @@ artifacts was blocked before deletion; no project data was removed.
 
 - Production Temporal namespace retention and read-only credential enforcement
   remain deployment-owner evidence, not source assumptions.
+- The repository has seven alert rules but no Alertmanager receiver or proven
+  external notification path. Source rules do not satisfy page delivery.
 - The product owner must later define the break-glass re-arm procedure for a
   blocked row; automatic re-arm is intentionally excluded.
