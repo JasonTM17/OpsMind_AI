@@ -58,6 +58,7 @@ class BoundedConnectorExecutorTest {
         )) {
             assertThatThrownBy(() -> executor.execute(
                 () -> slowConnector.execute(request, manifest),
+                new TenantProjectScope(request.tenantId(), request.projectId()),
                 request,
                 manifest
             ))

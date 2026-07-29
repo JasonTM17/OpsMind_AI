@@ -692,6 +692,21 @@ the Platform capability issuer/client path, a selected live target, and
 provider-specific cancellation/bulkhead proof remain open. Phase 6 is **in
 progress**; its checkpoint passes but its exit gate is blocked.
 
+## 2026-07-29 — Phase 6 tenant-scoped connector bulkhead checkpoint
+
+Added a dedicated `ConnectorBulkheadProperties` contract with global `32` and
+per-tenant `4` defaults plus startup bounds, and wired
+`BoundedConnectorExecutor` to a reference-counted tenant registry keyed from
+verified `TenantProjectScope.tenantId()`. Admission is fail-fast and ordered
+tenant then global; different projects of one tenant share the same allowance.
+Permit ownership uses a queued/running/released state guard so cancellation
+before task start releases capacity while an interrupted connector retains it
+until its body exits. Focused and full Tool Gateway Maven suites pass, and the
+Phase 6 validator reports `CheckpointResult=PASS`. Phase 6 remains **in
+progress** and `PhaseExit=BLOCK` for the oversized-evidence artifact adapter,
+remaining connector families, named live non-production connector proof, and
+provider-specific cancellation.
+
 ## 2026-07-22 — Phase 7 durable investigation persistence checkpoint
 
 Implemented in the Platform API:

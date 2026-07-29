@@ -29,7 +29,7 @@ The detailed executable plan is [plans/260719-1747-opsmind-ai-production-platfor
 | 3 | Contracts, data, identity, and tenant foundation | G2 | In progress |
 | 4 | Incident control plane, evidence lifecycle, and audit | G2/G3 | In progress; checkpoint 4A local proof complete |
 | 5 | DeepSeek AI runtime and provider gateway | G3 | In progress; static checkpoint passed, exit gate blocked |
-| 6 | Safe Tool Gateway and read-only connectors | G3 | In progress; B-016 tenant isolation resolved by immutable CI, broader Phase 6 exit remains BLOCK |
+| 6 | Safe Tool Gateway and read-only connectors | G3 | In progress; B-016 tenant isolation and tenant-scoped connector bulkhead checkpoints pass, broader Phase 6 exit remains BLOCK |
 | 7 | Evidence-backed incident vertical slice | G3 | In progress; metadata activity route and V009 CI fixture gates pass; external G3 blockers remain |
 | 8 | Simulator and evaluation baseline | A-Z G4 / roadmap G7 | In progress; Phase 8B complete, held-out/human/calibration evidence unavailable, exit BLOCK |
 | 9 | Durable Temporal investigation workflow | G4 | In progress; V010-V013 default-off handoff, containment, exact-workflow read-only reconciliation, local real-role/rollback proof, and alert rules exist; B-017 still blocks admission on exact-head heavy CI and live environment/paging evidence; B-013 remains active |
@@ -103,14 +103,17 @@ validates four Tool Gateway schemas, canonical fixtures,
 canonical request/evidence digests, manifest/OpenAPI ownership, source-level
 generic-executor prohibitions, dedicated workload-vs-capability token domains,
 exact workload scope, canonical request-body capability binding, resource-bound
-selectors, recursive DLP, bounded connector execution, and fail-closed readiness.
+selectors, recursive DLP, global/per-tenant fail-fast connector admission,
+bounded connector execution, and fail-closed readiness.
 Platform capability issuer conformance now passes. The dedicated Tool Gateway
 schema/roles, hashed nonce claims, fenced receipts, transactional audit
 finalization, and exact read-only Prometheus connector are implemented with
 guarded PostgreSQL and Compose conformance gates. GitHub Actions run
 `29987371420` proves the exact durable/live checkpoint. This is not a Phase 6
-exit: the large-evidence artifact adapter, remaining connector families, and
-provider-specific cancellation plus tenant-bulkhead proof remain open.
+exit: the large-evidence artifact adapter, remaining connector families, named
+live non-production connector proof, and provider-specific cancellation remain
+open. The tenant-bulkhead checkpoint is source- and test-backed but does not
+close those external gates.
 The B-016 branch adds capability-derived tenant/project propagation, forced RLS
 for receipts and verified audits, a tenant-free pre-verification audit lane,
 exact-policy/schema-privilege readiness, lease-vs-manifest safety, authenticated
@@ -120,8 +123,8 @@ upgrade proof. PR Quality run `30279072972` and cross-service run
 `269bd39e626836607fe66ed7eb050e1aa309044a7`; PostgreSQL artifact `8658901958`
 and cross-service artifact `8658216777` are digest-recorded in
 [Progress](./progress.md). B-016 is resolved. This is not a Phase 6 exit:
-the large-evidence artifact adapter, remaining connector families, provider
-cancellation, and tenant-bulkhead proof remain open.
+the large-evidence artifact adapter, remaining connector families, named live
+connector proof, and provider cancellation remain open.
 
 Phase 7 now includes a pure command/event reducer, bounded in-process runner,
 fixture-only `metrics.query` path, cited-completion guard, duplicate/no-progress

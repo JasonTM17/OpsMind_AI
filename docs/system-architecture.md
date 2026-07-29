@@ -394,11 +394,15 @@ Dispatch is registry-key based and reads the checked-in manifest through
 `ToolManifestResourceLoader`; the fixture action is read-only, selector-bound,
 typed, and limited to a synthetic observability target. Generic shell, URL,
 filesystem, SQL, provider command, and admin-verb execution are not connector
-primitives. `BoundedConnectorExecutor` applies a 32-slot backpressure bulkhead,
-the signed deadline, a manifest timeout, cancellation, and recursive output
-limits before DLP normalization. Metadata and nested content are validated and
-redacted; oversized evidence fails closed until the Phase 4 artifact port is
-durably wired. Request/evidence digests use recursively ordered JSON keys.
+primitives. `BoundedConnectorExecutor` applies a global 32-slot ceiling and a
+fail-fast per-tenant four-slot bulkhead keyed only from verified capability
+scope (`tenantId`, shared across that tenant's projects). Tenant admission
+happens before global admission, so one saturated tenant cannot consume another
+tenant's allowance. The signed deadline, manifest timeout, cancellation, and
+recursive output limits apply before DLP normalization. Metadata and nested
+content are validated and redacted; oversized evidence fails closed until the
+Phase 4 artifact port is durably wired. Request/evidence digests use
+recursively ordered JSON keys.
 
 The default nonce replay, execution receipt, and audit adapters are deliberately
 unavailable and return stable failure responses; fixture adapters are explicitly
@@ -456,11 +460,12 @@ workload/capability JWKS, durable stores, the enabled manifest, and connector
 reachability are all available. The canonical OpenAPI route and Tool Gateway
 JSON Schemas are in `packages/contracts/`;
 `scripts/validation/validate-phase-06-tool-gateway.mjs` is the deterministic
-checkpoint gate. The durable PostgreSQL and live synthetic Prometheus checkpoint
+checkpoint gate and now checks tenant-scoped admission, permit lifecycle, and
+eviction proof. The durable PostgreSQL and live synthetic Prometheus checkpoint
 is revision-bound by successful GitHub Actions run `29987371420`. Phase 6 exit
 remains blocked by the durable large-evidence artifact adapter, the remaining
-connector families, and provider-specific cancellation plus tenant-scoped
-bulkhead proof.
+connector families, the named live non-production connector proof, and
+provider-specific cancellation.
 
 ## Investigation Orchestration (Phase 7 checkpoint)
 

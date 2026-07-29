@@ -44,6 +44,9 @@ opsmind:
     maximum-capability-lifetime: 5m
     maximum-request-bytes: 65536
     maximum-result-bytes: 262144
+    connector-bulkhead:
+      global-concurrency: ${TOOL_GATEWAY_CONNECTOR_GLOBAL_CONCURRENCY:32}
+      per-tenant-concurrency: ${TOOL_GATEWAY_CONNECTOR_PER_TENANT_CONCURRENCY:4}
     persistence:
       enabled: ${TOOL_GATEWAY_PERSISTENCE_ENABLED:false}
       maximum-response-bytes: ${TOOL_GATEWAY_MAX_PERSISTED_RESPONSE_BYTES:131072}

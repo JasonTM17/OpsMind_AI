@@ -115,6 +115,12 @@ must provision and verify a disposable database boundary independently.
 - Thinking/tool continuation survives an Activity boundary without duplicating a side effect.
 - Redaction and egress policy deny disallowed evidence even when a credential is configured.
 - Provider-neutral conformance ensures the domain does not depend on DeepSeek-specific response objects.
+- Connector admission uses a global 32-operation ceiling plus a four-operation
+  per-tenant ceiling keyed from verified capability scope. Same-tenant requests
+  across different projects share the cap; a saturated tenant cannot consume
+  another tenant's allowance. Tests cover fail-fast backpressure, success and
+  failure release, timeout with ignored interruption, cancellation before task
+  start, and idle-slot eviction.
 
 The Phase 5 offline checkpoint currently covers 85 passing Python tests for strict
 request/response fixtures, signed request scope/TTL/nonce replay, evidence-bound

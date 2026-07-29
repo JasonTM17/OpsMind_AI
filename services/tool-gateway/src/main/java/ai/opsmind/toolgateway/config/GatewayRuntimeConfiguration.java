@@ -131,8 +131,11 @@ public class GatewayRuntimeConfiguration {
     }
 
     @Bean(destroyMethod = "close")
-    BoundedConnectorExecutor boundedConnectorExecutor(Clock gatewayClock) {
-        return new BoundedConnectorExecutor(gatewayClock);
+    BoundedConnectorExecutor boundedConnectorExecutor(
+        Clock gatewayClock,
+        ConnectorBulkheadProperties bulkheadProperties
+    ) {
+        return new BoundedConnectorExecutor(gatewayClock, bulkheadProperties);
     }
 
     @Bean
