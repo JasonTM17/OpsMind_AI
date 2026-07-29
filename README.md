@@ -40,17 +40,21 @@ the RPC, then reconciliation updates binding, inbox, and outbox.
 
 V012 revokes direct workflow binding/inbox authority, hides canonical start rows
 behind a dedicated `SECURITY DEFINER` claim, and preserves generic outbox order
-through a resolver-owned predecessor check. Static and rollback-only PostgreSQL
-probes cover migration shape, row visibility, predecessor blocking, and unsafe
-role membership; full fresh/upgrade real-role, atomicity, and latency evidence
-is pending.
+through a resolver-owned predecessor check. V013 adds a fixed, read-only
+reconciler identity with exactly three database capabilities, exact-workflow
+Describe plus first-history verification, fenced settlement, bounded aggregate
+metrics, and seven alert rules. Disposable fresh V001-V013 and V012-to-V013
+real-role contracts pass, including direct/PUBLIC/membership denial, tenant
+isolation, lease takeover, the outcome matrix, and four rollback failpoints.
 
 Ambiguous post-RPC exhaustion parks the handoff `PENDING` with
-`workflow.reconciliation-required`, not remote rejection. B-017 remains active
-until a separate read-only exact-workflow reconciliation/alert lane exists
-(`Describe` plus first history; never `Start`). There is no live Temporal
-cluster/worker, restart/resume execution, or exact-head CI/Flyway runtime proof.
-Phase 9/G4 remain in progress; B-013 and B-017 remain active.
+`workflow.reconciliation-required`, not remote rejection. The reconciler can
+observe and settle that state but cannot Start, signal, update, or cancel a
+workflow. B-017 remains active because the merged head still lacks
+revision-bound heavy CI, live namespace retention/read-only authorization,
+`promtool` plus live scrape, external page delivery, a compatible worker, and
+restart/resume proof. Phase 9/G4 remain in progress; B-013 and B-017 remain
+active.
 
 Phase 8B now implements three deterministic, training-ineligible evaluation
 contracts: A detects a deployment-correlated latency regression, B terminates
@@ -270,7 +274,7 @@ node .\scripts\validation\validate-phase-09-workflow-handoff.mjs
 | Tool Gateway | Static contract, durable PostgreSQL receipt/audit state, synthetic Prometheus connector, workload OAuth boundary, dual-credential Platform execution client, and local V003 tenant-scope unit/static gates pass | V003 PostgreSQL/upgrade evidence, named live non-production connector, and production conformance pending |
 | Investigation | Bounded-record checkpoint 4B, ANALYZE-only activity view, V009 evidence, capability-backed AI rounds, CK/Stitch/browser proof, and Phase 7 regression PASS in artifact `8649696519` | G3 still requires a named live connector, provider/legal approval, and BFF/session proof |
 | Evaluation | Fresh disposable A/B/C score `PASS` on all eight metrics with samples `100/1/1`; exact CI command passes 61/61 | Held-out payloads, human adjudication, calibration, and comparison unavailable; Phase 8 exit is BLOCK |
-| Workflow handoff | V010-V012 plus default-off API/client/dispatcher source implement atomic admission, capability-only workflow claiming, direct-row containment, ordering preservation, and a durable ambiguous-outcome hold; static and rollback-only PostgreSQL probes pass | B-017 blocks Temporal admission/G4 until full fresh/upgrade real-role and atomicity proof plus a no-`Start`, exact-workflow reconciliation/alert lane exist; no exact-head CI/Flyway runtime evidence, live cluster/namespace, compatible worker, or restart/resume execution |
+| Workflow handoff | V010-V013 implement default-off atomic admission, capability-only dispatch, direct-row containment, ordering preservation, durable ambiguous-outcome hold, and a no-`Start` exact-workflow reconciliation/alert lane; local fresh/upgrade real-role and rollback contracts pass | B-017 still blocks Temporal admission/G4 pending exact-head heavy CI, live namespace read-only/retention conformance, `promtool` and live scrape, external page delivery, a compatible worker, and restart/resume execution |
 | Compose | All application images build, start, and pass health smoke in CI | Not staging/production deployment evidence |
 
 Historical local evidence marked `REFERENCE_CONFORMANCE_NOT_PRODUCTION` stays

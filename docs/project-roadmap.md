@@ -32,7 +32,7 @@ The detailed executable plan is [plans/260719-1747-opsmind-ai-production-platfor
 | 6 | Safe Tool Gateway and read-only connectors | G3 | In progress; B-016 tenant isolation resolved by immutable CI, broader Phase 6 exit remains BLOCK |
 | 7 | Evidence-backed incident vertical slice | G3 | In progress; metadata activity route and V009 CI fixture gates pass; external G3 blockers remain |
 | 8 | Simulator and evaluation baseline | A-Z G4 / roadmap G7 | In progress; Phase 8B complete, held-out/human/calibration evidence unavailable, exit BLOCK |
-| 9 | Durable Temporal investigation workflow | G4 | In progress; default-off start handoff and V012 containment source exist, but B-017 blocks admission pending full fresh/upgrade real-role, atomicity, predecessor-latency, and no-Start reconciliation/alert proof; B-013 remains active |
+| 9 | Durable Temporal investigation workflow | G4 | In progress; V010-V013 default-off handoff, containment, exact-workflow read-only reconciliation, local real-role/rollback proof, and alert rules exist; B-017 still blocks admission on exact-head heavy CI and live environment/paging evidence; B-013 remains active |
 | 10 | Permission-aware RAG and knowledge lifecycle | G5 | Pending |
 | 11 | Exact-action approval and reversible remediation | G6 | Pending |
 | 12 | Operator web experience completion | G7 | Pending |
@@ -199,31 +199,36 @@ adjudication are unavailable. This is deterministic smoke evidence on authored
 scenarios, so parent Phase 8 and its A-Z G4 exit remain `BLOCK` on held-out
 quality, calibration, and human comparison.
 
-Phase 9 is in progress. The current worktree adds Platform V010-V012 and a
-default-off handoff that atomically creates the initial run, immutable Temporal
-target/request binding, and canonical outbox start event. The opt-in dispatcher
-uses a dedicated datasource and commits its claim before the Temporal RPC.
-V012 removes V011's inherited direct-DML bypass for the Phase 9 binding, inbox,
-and canonical outbox event, introduces a dedicated workflow claim, preserves
-same-aggregate ordering, and rejects unsafe role memberships. Static validation
-and rollback-only PostgreSQL probes pass; full fresh/upgrade real-role,
-atomicity, and latency evidence is still pending.
+Phase 9 is in progress. Platform V010-V013 provide a default-off handoff that
+atomically creates the initial run, immutable Temporal target/request binding,
+and canonical outbox start event. The opt-in dispatcher uses a dedicated
+datasource and commits its claim before the Temporal RPC. V012 removes V011's
+inherited direct-DML bypass, preserves same-aggregate ordering, and rejects
+unsafe dispatcher role memberships. V013 adds a fixed reconciler login with
+exactly three `SECURITY DEFINER` capabilities, fenced claim/settle/status
+operations, retention and absence boundaries, and direct/PUBLIC/membership
+denial.
 
 An `AlreadyStarted` response is accepted only after exact target, memo digest,
 and first-history input verification. A retryable post-RPC result can still
-mean the remote workflow was accepted: V012 retries within the bounded policy
-and then holds the row `PENDING` with `workflow.reconciliation-required`
-instead of unconditional `REJECTED`. B-017 requires a separately
-authorized read-only Describe-plus-first-history lane that cannot Start a
-workflow before admission can open. Inline remains the default `200` path;
-Temporal admission is additive `202 + Location` and requires a compatible
-task-queue poller.
+mean the remote workflow was accepted: bounded dispatch retries hold the row
+`PENDING` with `workflow.reconciliation-required` instead of unconditional
+`REJECTED`. The separately authorized observer describes one exact workflow
+and reads its first history event; its port has no Start, signal, update, cancel,
+or query surface. The reconciler settles match, two-sample absence, mismatch,
+retry, blocked, retention, and exhaustion outcomes while preserving lease
+fencing and tenant isolation. Seven bounded-label alerts cover runtime and
+backlog failure modes.
 
-This is not the Phase 9 or roadmap G4 exit. No live/production Temporal cluster
-or namespace, Compose service, workflow worker, or restart/resume execution
-exists. V010 performs no automatic legacy backfill. Exact-head CI and full
-Flyway/PostgreSQL runtime evidence are also missing, and B-013 and B-017 remain
-active.
+The local disposable V001-V013 real-role contract emits 55 PASS markers,
+including cleanup, and the V012-to-V013 upgrade probe passes exact-three and
+PUBLIC-denial checks. Static workflow/observability validators and lightweight
+Java tests also pass. This is not the Phase 9 or roadmap G4 exit: no
+live/production Temporal namespace, compatible worker, restart/resume
+execution, revision-bound merged-head heavy CI, live retention/read-only
+credential conformance, `promtool`/scrape evidence, or external page-delivery
+receipt exists. V010 performs no automatic legacy backfill. B-013 and B-017
+remain active.
 
 ## Staffing Scenarios
 
@@ -264,11 +269,11 @@ processing terms.
 Phase 9 handoff infrastructure is now in progress with provisional test-only
 values. The reviewed human pilot remains mandatory before no-progress/budget
 thresholds are frozen and before Phase 9 can exit. B-017 also keeps Temporal
-admission and roadmap G4 disabled until V012 has full real-role fresh/upgrade
-and atomicity runtime proof and the read-only exact-workflow reconciliation/
-alert lane exists. This
-reconciles preparatory engineering with the stricter parent Phase 8 evidence
-gate.
+admission and roadmap G4 disabled until V013 receives revision-bound merged-head
+heavy evidence plus live namespace retention/read-only authorization, a
+compatible worker/restart drill, bounded live scrape, and external page-delivery
+proof. This reconciles preparatory engineering with the stricter parent Phase 8
+evidence gate.
 
 Gate labels also drift between documents: the parent A-Z plan names Phase 8
 exit `G4`, while this roadmap's gate summary names durable workflow `G4` and
