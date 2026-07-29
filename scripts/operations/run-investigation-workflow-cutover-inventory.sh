@@ -26,6 +26,12 @@ set -e
 psql_status="${pipeline_status[0]}"
 tee_status="${pipeline_status[1]}"
 if (( psql_status != 0 )); then
+  # ON_ERROR_STOP reserves psql exit 3 for SQL/script failures. The wrapper
+  # reserves 3 exclusively for a successful inventory that emitted its block
+  # marker, so callers can never mistake a database failure for reconciliation.
+  if (( psql_status == 3 )); then
+    exit 5
+  fi
   exit "$psql_status"
 fi
 if (( tee_status != 0 )); then
