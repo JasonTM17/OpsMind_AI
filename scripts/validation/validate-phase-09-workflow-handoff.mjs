@@ -459,10 +459,19 @@ requireMarkers(
     "exit 4",
   ],
 );
+requireMarkers("scripts/validation/verify-cutover-inventory-wrapper.sh", [
+  "OPSMIND_FAKE_PSQL_OUTCOME",
+  "assert_exit 3 blocked",
+  "assert_exit 0 passed",
+  "assert_exit 2 error",
+  "assert_exit 4 unknown",
+  "CutoverInventoryWrapperResult=PASS",
+]);
 requireMarkers("scripts/validation/run-phase-04b-migration-upgrade.sh", [
   "migrate_to 10",
   "migrate_to 11",
   "migrate_to 12",
+  "verify-cutover-inventory-wrapper.sh",
   "run-investigation-workflow-cutover-inventory.sh",
   "CutoverExpectedBlock=%s",
   "[[ \"$cutover_expected_block\" == \"PASS\" ]]",
@@ -489,6 +498,7 @@ requireMarkers("scripts/validation/run-phase-04b-migration-upgrade.sh", [
 requireMarkers("docs/runbooks/investigation-workflow-cutover.md", [
   "run-investigation-workflow-cutover-inventory.sh",
   "Exit code `3`",
+  "Any other nonzero exit",
 ]);
 
 const requiredTests = {

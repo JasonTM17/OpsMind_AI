@@ -58,6 +58,8 @@ Exit code `3` means cutover is blocked and the emitted JSON identifies every
 row requiring reconciliation. Always use this wrapper rather than invoking the
 SQL file with bare `psql`: it preserves the blocked-inventory exit contract on
 portable psql versions while propagating actual psql failures.
+Any other nonzero exit is an execution or output-capture failure; keep Temporal
+disabled, repair the failure, and rerun the inventory before proceeding.
 
 The command deliberately performs no automatic backfill. Legacy inline starts
 did not persist the canonical request digest or authorization snapshot revision,
