@@ -1,0 +1,86 @@
+groups:
+  - name: opsmind-workflow-reconciliation-alerts
+    interval: 15s
+    limit: 8
+    rules:
+      - alert: OpsMindWorkflowReconciliationBlocked
+        expr: opsmind:workflow_reconciliation:blocked > 0
+        labels:
+          severity: critical
+          component: workflow-reconciliation
+        annotations:
+          summary: Workflow reconciliation is blocked
+          description: At least one uncertain workflow handoff requires operator intervention.
+          runbook_url: https://github.com/JasonTM17/OpsMind_AI/blob/main/docs/runbooks/investigation-workflow-cutover.md#terminal-and-ambiguous-binding-alertrecovery
+
+      - alert: OpsMindWorkflowReconciliationExhausted
+        expr: >-
+          sum(increase(opsmind_workflow_reconciliation_outcomes_total{outcome="exhausted"}[5m])) > 0
+        labels:
+          severity: critical
+          component: workflow-reconciliation
+        annotations:
+          summary: Workflow reconciliation exhausted its bounded attempts
+          description: A workflow handoff remains pending after reconciliation exhausted its attempt or age bound.
+          runbook_url: https://github.com/JasonTM17/OpsMind_AI/blob/main/docs/runbooks/investigation-workflow-cutover.md#terminal-and-ambiguous-binding-alertrecovery
+
+      - alert: OpsMindWorkflowReconciliationRetentionIneligible
+        expr: opsmind:workflow_reconciliation:retention_ineligible > 0
+        labels:
+          severity: critical
+          component: workflow-reconciliation
+        annotations:
+          summary: Workflow reconciliation cannot prove absence within retention
+          description: At least one pending handoff is too old for safe automated absence settlement.
+          runbook_url: https://github.com/JasonTM17/OpsMind_AI/blob/main/docs/runbooks/investigation-workflow-cutover.md#terminal-and-ambiguous-binding-alertrecovery
+
+      - alert: OpsMindWorkflowReconciliationLagWarning
+        expr: opsmind:workflow_reconciliation:oldest_pending_age_seconds > 30
+        for: 2m
+        labels:
+          severity: warning
+          component: workflow-reconciliation
+        annotations:
+          summary: Workflow reconciliation lag exceeds 30 seconds
+          description: The oldest pending workflow handoff has exceeded the normal convergence target for two minutes.
+          runbook_url: https://github.com/JasonTM17/OpsMind_AI/blob/main/docs/runbooks/investigation-workflow-cutover.md#terminal-and-ambiguous-binding-alertrecovery
+
+      - alert: OpsMindWorkflowReconciliationLagCritical
+        expr: opsmind:workflow_reconciliation:oldest_pending_age_seconds > 300
+        for: 5m
+        labels:
+          severity: critical
+          component: workflow-reconciliation
+        annotations:
+          summary: Workflow reconciliation lag exceeds five minutes
+          description: The oldest pending workflow handoff has exceeded five minutes for five continuous minutes.
+          runbook_url: https://github.com/JasonTM17/OpsMind_AI/blob/main/docs/runbooks/investigation-workflow-cutover.md#terminal-and-ambiguous-binding-alertrecovery
+
+      - alert: OpsMindWorkflowReconcilerNotReady
+        expr: >-
+          (opsmind:workflow_reconciliation:ready == 0)
+          or
+          (up{job="opsmind-workflow-reconciliation"} == 0)
+        for: 2m
+        labels:
+          severity: critical
+          component: workflow-reconciliation
+        annotations:
+          summary: Workflow reconciliation metrics target is not ready
+          description: The reconciliation lane is unready or its internal metrics target has been unreachable for two minutes.
+          runbook_url: https://github.com/JasonTM17/OpsMind_AI/blob/main/docs/runbooks/investigation-workflow-cutover.md#terminal-and-ambiguous-binding-alertrecovery
+
+      - alert: OpsMindWorkflowReconciliationNoProgress
+        expr: >-
+          (opsmind:workflow_reconciliation:pending > 0)
+          and
+          (opsmind:workflow_reconciliation:oldest_pending_age_seconds > 300)
+          and
+          ((sum(increase(opsmind_workflow_reconciliation_outcomes_total[5m])) or vector(0)) == 0)
+        labels:
+          severity: critical
+          component: workflow-reconciliation
+        annotations:
+          summary: Pending workflow reconciliation is making no progress
+          description: Pending handoffs have produced no bounded outcome for five minutes.
+          runbook_url: https://github.com/JasonTM17/OpsMind_AI/blob/main/docs/runbooks/investigation-workflow-cutover.md#terminal-and-ambiguous-binding-alertrecovery

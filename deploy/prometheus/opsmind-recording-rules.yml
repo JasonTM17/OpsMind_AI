@@ -10,3 +10,29 @@ groups:
         expr: vector(3)
         labels:
           service: opsmind-api
+  - name: opsmind-workflow-reconciliation-recording
+    interval: 15s
+    limit: 32
+    rules:
+      - record: opsmind:workflow_reconciliation:ready
+        expr: min(opsmind_workflow_reconciliation_ready)
+      - record: opsmind:workflow_reconciliation:pending
+        expr: max(opsmind_workflow_reconciliation_pending)
+      - record: opsmind:workflow_reconciliation:oldest_pending_age_seconds
+        expr: max(opsmind_workflow_reconciliation_oldest_pending_age_seconds)
+      - record: opsmind:workflow_reconciliation:blocked
+        expr: max(opsmind_workflow_reconciliation_blocked)
+      - record: opsmind:workflow_reconciliation:retention_ineligible
+        expr: max(opsmind_workflow_reconciliation_retention_ineligible)
+      - record: opsmind:workflow_reconciliation:outcomes_total
+        expr: sum by (outcome) (opsmind_workflow_reconciliation_outcomes_total)
+      - record: opsmind:workflow_reconciliation:observation_duration_seconds:mean5m
+        expr: >-
+          sum by (operation) (increase(opsmind_workflow_reconciliation_observation_duration_seconds_sum[5m]))
+          /
+          clamp_min(sum by (operation) (increase(opsmind_workflow_reconciliation_observation_duration_seconds_count[5m])), 1)
+      - record: opsmind:workflow_reconciliation:convergence_duration_seconds:mean5m
+        expr: >-
+          sum by (result) (increase(opsmind_workflow_reconciliation_convergence_duration_seconds_sum[5m]))
+          /
+          clamp_min(sum by (result) (increase(opsmind_workflow_reconciliation_convergence_duration_seconds_count[5m])), 1)

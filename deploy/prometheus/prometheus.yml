@@ -4,5 +4,37 @@ global:
 
 rule_files:
   - /etc/prometheus/opsmind-recording-rules.yml
+  - /etc/prometheus/opsmind-reconciliation-alerts.yml
 
-scrape_configs: []
+scrape_configs:
+  - job_name: opsmind-workflow-reconciliation
+    honor_labels: false
+    scrape_interval: 15s
+    scrape_timeout: 5s
+    body_size_limit: 1MB
+    sample_limit: 256
+    label_limit: 8
+    label_name_length_limit: 128
+    label_value_length_limit: 256
+    metrics_path: /actuator/prometheus
+    scheme: http
+    follow_redirects: false
+    enable_http2: false
+    static_configs:
+      - targets:
+          - platform-api:8082
+    metric_relabel_configs:
+      # Fail closed: retain only aggregate reconciliation metrics with fixed
+      # label values. Row identifiers and arbitrary error values never enter
+      # Prometheus storage.
+      - source_labels:
+          - __name__
+          - outcome
+          - operation
+          - result
+        separator: ;
+        regex: >-
+          (opsmind_workflow_reconciliation_ready;;;|opsmind_workflow_reconciliation_pending;;;|opsmind_workflow_reconciliation_oldest_pending_age_seconds;;;|opsmind_workflow_reconciliation_blocked;;;|opsmind_workflow_reconciliation_retention_ineligible;;;|opsmind_workflow_reconciliation_outcomes_total;(match|absence_candidate|verified_absence|released|mismatch|retry|blocked|lease_lost|exhausted);;|opsmind_workflow_reconciliation_observation_duration_seconds(_(bucket|count|sum|max))?;;(describe|first_history);|opsmind_workflow_reconciliation_convergence_duration_seconds(_(bucket|count|sum|max))?;;;(started|rejected|blocked))
+        action: keep
+      - regex: __name__|job|instance|outcome|operation|result|le|quantile
+        action: labelkeep
