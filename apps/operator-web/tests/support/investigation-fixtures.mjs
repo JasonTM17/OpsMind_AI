@@ -25,6 +25,7 @@ export const invalidJsonRunId = "10000000-0000-4000-8000-000000000726";
 export const invalidUtf8RunId = "10000000-0000-4000-8000-000000000727";
 export const unclassifiedRunId = "10000000-0000-4000-8000-000000000728";
 export const unknownOperationRunId = "10000000-0000-4000-8000-000000000729";
+export const longContentRunId = "10000000-0000-4000-8000-000000000730";
 export const incidentPath =
   `/api/v1/organizations/${organizationId}/projects/${projectId}/incidents/${incidentId}`;
 

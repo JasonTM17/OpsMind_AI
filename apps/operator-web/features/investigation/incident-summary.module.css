@@ -2,11 +2,12 @@
   display: grid;
   grid-template-columns: minmax(0, 1fr) auto;
   gap: var(--space-8);
-  padding: var(--space-8) var(--page-gutter) var(--space-6);
+  padding: clamp(var(--space-6), 4vw, var(--space-8));
   border-bottom: 1px solid var(--border-subtle);
 }
 
 .identity {
+  min-width: 0;
   max-width: 72rem;
 }
 
@@ -26,6 +27,7 @@
   font-weight: 620;
   letter-spacing: -0.045em;
   line-height: 1;
+  overflow-wrap: anywhere;
   text-wrap: balance;
 }
 
@@ -34,17 +36,20 @@
   margin: var(--space-4) 0 0;
   color: var(--text-secondary);
   line-height: 1.55;
+  overflow-wrap: anywhere;
+  text-wrap: pretty;
 }
 
 .facts {
   display: grid;
-  grid-template-columns: repeat(5, minmax(5.5rem, auto));
+  grid-template-columns: repeat(5, minmax(0, auto));
   align-content: end;
   margin: 0;
   border-top: 1px solid var(--border-strong);
 }
 
 .facts > div {
+  min-width: 0;
   padding: var(--space-3) var(--space-4) 0;
   border-left: 1px solid var(--border-subtle);
 }
@@ -61,6 +66,7 @@
   font-family: var(--font-mono);
   font-size: 0.78rem;
   font-variant-numeric: tabular-nums;
+  overflow-wrap: anywhere;
 }
 
 .severity {
@@ -90,5 +96,9 @@
   .facts > div {
     min-height: 64px;
     border-bottom: 1px solid var(--border-subtle);
+  }
+
+  .description {
+    font-size: 1rem;
   }
 }
