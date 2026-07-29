@@ -318,6 +318,7 @@ SELECT CASE WHEN
      WHERE table_schema = 'public'
        AND table_name = 'evidence_artifacts'
        AND column_name = 'storage_version_reference'
+       AND character_maximum_length = 1024
   )
   AND EXISTS (
     SELECT 1 FROM pg_class
@@ -350,6 +351,53 @@ echo "ArtifactObjectUpgrade=PASS"
 echo "V014MetadataPreserved=PASS"
 echo "ArtifactAttemptRls=PASS"
 echo "ArtifactCapabilityGrants=PASS"
+
+app_sql <<'SQL'
+DO $attempt_shape$
+DECLARE
+  organization_id constant uuid := 'a1500000-0000-4000-8000-000000000001';
+  project_id constant uuid := 'a1500000-0000-4000-8000-000000000003';
+  incident_id constant uuid := 'a1500000-0000-4000-8000-000000000004';
+  run_id constant uuid := 'a1500000-0000-4000-8000-000000000005';
+  actor_id constant uuid := 'a1500000-0000-4000-8000-000000000002';
+  idempotency_key constant uuid := 'a1500000-0000-4000-8000-000000000008';
+  expected_digest constant bytea := decode(repeat('ac', 32), 'hex');
+  artifact_id uuid;
+BEGIN
+  PERFORM public.opsmind_set_tenant_context(organization_id, actor_id);
+  artifact_id := public.opsmind_evidence_artifact_id(
+    organization_id, run_id, idempotency_key
+  );
+  BEGIN
+    INSERT INTO evidence_artifacts (
+      artifact_id, organization_id, project_id, incident_id, run_id, actor_id,
+      idempotency_key, source_type, source_identity, source_version,
+      data_classification, expected_content_digest, expected_byte_count,
+      authorization_epoch, retention_class, residency_class, deletion_class,
+      storage_key, lifecycle_state, lifecycle_version, storage_generation,
+      upload_attempt_id, upload_lease_expires_at, upload_attempt_count,
+      created_at, lifecycle_updated_at
+    ) VALUES (
+      artifact_id, organization_id, project_id, incident_id, run_id, actor_id,
+      idempotency_key, 'metric', 'prometheus:invalid-attempt-shape', 'v1',
+      'redacted-metrics', expected_digest, 14, 0, 'evidence-90d',
+      'singapore', 'delete-within-24h',
+      'artifacts/v1/' || organization_id::text || '/' || artifact_id::text
+        || '/' || encode(expected_digest, 'hex'),
+      'PENDING_UPLOAD', 1, 0,
+      NULL,
+      '2035-01-01T00:01:00Z', 0,
+      '2035-01-01T00:00:00Z', '2035-01-01T00:00:00Z'
+    );
+    RAISE EXCEPTION 'pending artifact accepted a forged attempt shape'
+      USING ERRCODE = 'P7109';
+  EXCEPTION
+    WHEN check_violation THEN NULL;
+  END;
+END
+$attempt_shape$;
+SQL
+echo "PendingAttemptShapeConstraint=PASS"
 
 claim_one_log="$(mktemp)"
 claim_two_log="$(mktemp)"
@@ -390,6 +438,72 @@ if ! grep -q "a1530000-0000-4000-8000-000000000001|t" <<<"$retry_output"; then
 fi
 echo "ExpiredClaimProbeFence=PASS"
 
+app_query "
+BEGIN;
+SELECT public.opsmind_set_tenant_context(
+  'a1500000-0000-4000-8000-000000000001',
+  'a1500000-0000-4000-8000-000000000002'
+);
+SELECT transition_applied
+  FROM public.opsmind_settle_evidence_artifact_upload(
+    'a1500000-0000-4000-8000-000000000001',
+    'a1500000-0000-4000-8000-000000000003',
+    'a1500000-0000-4000-8000-000000000004',
+    'a1500000-0000-4000-8000-000000000005',
+    public.opsmind_evidence_artifact_id(
+      'a1500000-0000-4000-8000-000000000001',
+      'a1500000-0000-4000-8000-000000000005',
+      'a1500000-0000-4000-8000-000000000006'
+    ),
+    'a1530000-0000-4000-8000-000000000001', 1, 'FAILED',
+    NULL, NULL, NULL, NULL, 'artifact.storage-failed'
+  );
+COMMIT;" >/dev/null
+failed_retry_output="$(claim_once "a1540000-0000-4000-8000-000000000001" 300000)"
+if ! grep -q "a1540000-0000-4000-8000-000000000001|f" <<<"$failed_retry_output"; then
+  echo "FailedAttemptImmediateRetry=BLOCK" >&2
+  exit 1
+fi
+echo "FailedAttemptImmediateRetry=PASS"
+
+app_sql <<'SQL'
+BEGIN;
+SELECT public.opsmind_set_tenant_context(
+  'a1500000-0000-4000-8000-000000000001',
+  'a1500000-0000-4000-8000-000000000002'
+);
+DO $orphaned$
+DECLARE
+  organization_id constant uuid := 'a1500000-0000-4000-8000-000000000001';
+  project_id constant uuid := 'a1500000-0000-4000-8000-000000000003';
+  incident_id constant uuid := 'a1500000-0000-4000-8000-000000000004';
+  run_id constant uuid := 'a1500000-0000-4000-8000-000000000005';
+  artifact_id uuid;
+BEGIN
+  artifact_id := public.opsmind_evidence_artifact_id(
+    organization_id, run_id, 'a1500000-0000-4000-8000-000000000006'
+  );
+  PERFORM public.opsmind_settle_evidence_artifact_upload(
+    organization_id, project_id, incident_id, run_id, artifact_id,
+    'a1540000-0000-4000-8000-000000000001', 1, 'ORPHANED',
+    NULL, NULL, NULL, NULL, 'artifact.object-mismatch'
+  );
+  BEGIN
+    PERFORM public.opsmind_claim_evidence_artifact_upload(
+      organization_id, project_id, incident_id, run_id, artifact_id,
+      'a1560000-0000-4000-8000-000000000001', 1, 300000
+    );
+    RAISE EXCEPTION 'orphaned artifact upload was reclaimable'
+      USING ERRCODE = 'P7110';
+  EXCEPTION
+    WHEN SQLSTATE 'P7107' THEN NULL;
+  END;
+END
+$orphaned$;
+ROLLBACK;
+SQL
+echo "OrphanedAttemptReclaimDenial=PASS"
+
 expect_app_failure "StaleAttemptSettlement" "
 BEGIN;
 SELECT public.opsmind_set_tenant_context(
@@ -427,7 +541,7 @@ SELECT * FROM public.opsmind_claim_evidence_artifact_upload(
     'a1500000-0000-4000-8000-000000000005',
     'a1500000-0000-4000-8000-000000000006'
   ),
-  'a1540000-0000-4000-8000-000000000001', 1, 300000
+  'a1550000-0000-4000-8000-000000000001', 1, 300000
 );
 COMMIT;"
 
@@ -447,7 +561,7 @@ SELECT * FROM public.opsmind_settle_evidence_artifact_upload(
     'a1500000-0000-4000-8000-000000000005',
     'a1500000-0000-4000-8000-000000000006'
   ),
-  'a1530000-0000-4000-8000-000000000001', 1, 'STORED',
+  'a1540000-0000-4000-8000-000000000001', 1, 'STORED',
   decode(repeat('ab', 32), 'hex'), 14,
   'version-1', 'aws-kms-profile-v1', NULL
 );
@@ -471,7 +585,7 @@ DECLARE
   run_id constant uuid := 'a1500000-0000-4000-8000-000000000005';
   actor_id constant uuid := 'a1500000-0000-4000-8000-000000000002';
   idempotency_key constant uuid := 'a1500000-0000-4000-8000-000000000006';
-  attempt_id constant uuid := 'a1530000-0000-4000-8000-000000000001';
+  attempt_id constant uuid := 'a1540000-0000-4000-8000-000000000001';
   expected_digest constant bytea := decode(repeat('ab', 32), 'hex');
   artifact_id uuid;
   event_id uuid;
@@ -552,7 +666,7 @@ SELECT transition_applied, lifecycle_state, lifecycle_version, storage_generatio
       'a1500000-0000-4000-8000-000000000005',
       'a1500000-0000-4000-8000-000000000006'
     ),
-    'a1530000-0000-4000-8000-000000000001', 1, 'STORED',
+    'a1540000-0000-4000-8000-000000000001', 1, 'STORED',
     decode(repeat('ab', 32), 'hex'), 14,
     'version-1', 'aws-kms-profile-v1', NULL
   );
@@ -636,7 +750,7 @@ SELECT * FROM public.opsmind_settle_evidence_artifact_upload(
     'a1500000-0000-4000-8000-000000000005',
     'a1500000-0000-4000-8000-000000000006'
   ),
-  'a1530000-0000-4000-8000-000000000001', 1, 'STORED',
+  'a1540000-0000-4000-8000-000000000001', 1, 'STORED',
   decode(repeat('ab', 32), 'hex'), 14,
   'version-1', 'aws-kms-profile-v1', NULL
 );

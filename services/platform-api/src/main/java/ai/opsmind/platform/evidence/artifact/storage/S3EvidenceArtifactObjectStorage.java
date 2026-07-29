@@ -39,7 +39,11 @@ final class S3EvidenceArtifactObjectStorage implements EvidenceArtifactObjectSto
             } catch (RuntimeException failure) {
                 throw S3EvidenceArtifactStorageFailureMapper.putFailure(failure);
             }
-            bounded.verifyExactEofAndDigest(expectation.expectedDigest().bytes());
+            try {
+                bounded.verifyExactEofAndDigest(expectation.expectedDigest().bytes());
+            } catch (IOException failure) {
+                throw S3EvidenceArtifactStorageFailureMapper.sourceContractMismatch(failure);
+            }
             return requests.verifiedPut(response, expectation);
         } catch (EvidenceArtifactStorageException exception) {
             throw exception;

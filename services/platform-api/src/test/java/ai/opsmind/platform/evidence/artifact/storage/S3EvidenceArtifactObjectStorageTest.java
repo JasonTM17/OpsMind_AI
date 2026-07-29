@@ -26,7 +26,6 @@ import org.mockito.ArgumentCaptor;
 
 import software.amazon.awssdk.core.sync.RequestBody;
 import software.amazon.awssdk.services.s3.S3Client;
-import software.amazon.awssdk.services.s3.model.ChecksumAlgorithm;
 import software.amazon.awssdk.services.s3.model.ChecksumMode;
 import software.amazon.awssdk.services.s3.model.HeadObjectRequest;
 import software.amazon.awssdk.services.s3.model.HeadObjectResponse;
@@ -63,7 +62,6 @@ class S3EvidenceArtifactObjectStorageTest {
         verify(client).putObject(request.capture(), any(RequestBody.class));
         assertThat(request.getValue().ifNoneMatch()).isEqualTo("*");
         assertThat(request.getValue().contentLength()).isEqualTo((long) BODY.length);
-        assertThat(request.getValue().checksumAlgorithm()).isEqualTo(ChecksumAlgorithm.SHA256);
         assertThat(request.getValue().checksumSHA256()).isEqualTo(encodedDigest());
         assertThat(request.getValue().serverSideEncryption()).isEqualTo(ServerSideEncryption.AWS_KMS);
         assertThat(request.getValue().ssekmsKeyId()).isEqualTo(KMS_KEY);
@@ -87,7 +85,7 @@ class S3EvidenceArtifactObjectStorageTest {
         )).satisfies(failure -> {
             EvidenceArtifactStorageException storageFailure = (EvidenceArtifactStorageException) failure;
             assertThat(storageFailure.kind())
-                .isEqualTo(EvidenceArtifactStorageException.FailureKind.STREAM_REJECTED);
+                .isEqualTo(EvidenceArtifactStorageException.FailureKind.SOURCE_CONTRACT_MISMATCH);
             assertThat(storageFailure.objectMayExist()).isTrue();
         });
     }
@@ -149,7 +147,7 @@ class S3EvidenceArtifactObjectStorageTest {
     private static EvidenceArtifactStorageProperties properties() {
         return new EvidenceArtifactStorageProperties(
             true, java.net.URI.create("https://storage.example.com"), false, "ap-southeast-1",
-            "evidence-artifacts", true, "123456789012", KMS_KEY, ENCRYPTION_PROFILE,
+            "evidence-artifacts", true, "123456789012", KMS_KEY, KMS_KEY, ENCRYPTION_PROFILE,
             1_024, Duration.ofSeconds(1), Duration.ofSeconds(2), Duration.ofSeconds(5),
             Duration.ofSeconds(10), 4, Duration.ofMinutes(1)
         );

@@ -49,9 +49,10 @@ test fixtures, Docker image layers, or browser clients.
 - Require bounded timeouts, HTTPS except an explicit loopback-only component
   test mode, an external workload credential chain, and an encryption metadata
   reference rather than key material.
-- On adapter failure or checksum/length mismatch, leave metadata retryable and
-  auditable, classify possible object residue for Phase 03 reconciliation, and
-  never mark it `AVAILABLE`.
+- On a transient adapter failure, leave metadata retryable and auditable.
+  A source-contract or verified-response mismatch after a successful PUT is
+  durable `ORPHANED` residue: automated reclaim is denied until Phase 03
+  reconciliation, and the object can never be adopted as `STORED`.
 
 ## Locked Implementation Decisions
 
@@ -64,8 +65,10 @@ test fixtures, Docker image layers, or browser clients.
    bytes; V014's larger metadata bound is not advertised as upload support.
 3. After a successful PUT, consume one extra source byte and require exact EOF,
    length, constant-time digest equality, response checksum, encryption mode,
-   and an opaque version reference. A mismatch is possible residue and never
-   becomes `STORED`.
+   canonical KMS response identity, and a non-`null` opaque version reference
+   bounded to 1,024 UTF-8 bytes. The request KMS identifier and expected
+   canonical response identifier are configured separately. A mismatch is
+   possible residue and never becomes `STORED`.
 4. A retry after an ambiguous outcome, collision, or expired claim must HEAD
    first with checksum mode enabled. Exact object metadata may be adopted;
    absence permits a new conditional PUT; mismatch becomes `ORPHANED`; an
@@ -99,7 +102,9 @@ defined before branch creation and changed only by the integration lead.
 | Scenario | Expected outcome |
 |---|---|
 | Exact declared stream | Stored/finalized only after digest and length match |
-| Short, long, or digest-drift stream | No available artifact; bounded failure metadata |
+| Short stream or pre-PUT source failure | Retryable bounded failure; later claim probes first when residue is possible |
+| Long or digest-drift stream discovered after PUT | `ORPHANED`; later automated claim denied, never adopted as stored |
+| Definitive storage failure | `FAILED`; a later claim is immediately retryable without a residue probe |
 | Timeout, 5xx, credential error, duplicate object | Stable sanitized failure taxonomy; no raw body/log leak |
 | Timeout after remote Put | Later attempt HEAD-verifies immutable object then adopts or quarantines; it never writes blindly twice |
 | Concurrent or expired lease | Exactly one active attempt finalizes; stale attempt cannot advance metadata |

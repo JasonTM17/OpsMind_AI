@@ -75,13 +75,15 @@ upgrade migrations. Remote PostgreSQL/Java gates exercise the revision-bound
 contracts, but the evidence-object lifecycle, remaining incident breadth, and
 production gates remain open, so Phase 4 and G2 are not complete.
 
-Phase 4C now adds V014 durable metadata authority only: a tenant/RLS-scoped,
-run-owner-bound `PENDING_UPLOAD` artifact row, immutable initial lifecycle
-event, and exact audit binding. It does not add an object-store adapter, body
-transfer/read/citation, public ingress, finalization, scanning, hold/purge/
-restore worker, or release evidence. Static validation passes and CI is wired
-for V013-to-V014 proof, but no revision-bound remote result exists; B-006,
-B-008, and B-012 remain active.
+Phase 4C now includes V014 metadata authority and the integrated V015
+default-off upload slice. V015 adds durable lease-fenced attempts, a bounded
+single-PUT S3-compatible adapter, probe-before-retry semantics, separate
+canonical KMS response verification, and atomic `PENDING_UPLOAD -> STORED`
+event/audit finalization. It still does not expose public body ingress,
+read/citation, scanning, `AVAILABLE`, hold/purge/restore, or production backend
+conformance. Static validation passes and CI is wired for both V013-to-V014 and
+V014-to-V015 proofs, but no revision-bound remote result exists for this
+integrated revision; B-006, B-008, and B-012 remain active.
 
 Phase 5 is in progress. The provider-neutral runtime, delegated capability and
 egress controls, durable PostgreSQL state, V005 append-only synthetic-probe

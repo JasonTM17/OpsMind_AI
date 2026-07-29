@@ -1,10 +1,10 @@
 package ai.opsmind.platform.evidence.artifact.storage;
 
+import java.nio.charset.StandardCharsets;
 import java.security.MessageDigest;
 import java.util.Base64;
 import java.util.Map;
 
-import software.amazon.awssdk.services.s3.model.ChecksumAlgorithm;
 import software.amazon.awssdk.services.s3.model.ChecksumMode;
 import software.amazon.awssdk.services.s3.model.HeadObjectRequest;
 import software.amazon.awssdk.services.s3.model.HeadObjectResponse;
@@ -27,7 +27,6 @@ final class S3ArtifactObjectRequestFactory {
             .key(expectation.storageKey())
             .contentLength(expectation.expectedByteCount())
             .ifNoneMatch("*")
-            .checksumAlgorithm(ChecksumAlgorithm.SHA256)
             .checksumSHA256(encodedDigest(expectation))
             .serverSideEncryption(ServerSideEncryption.AWS_KMS)
             .ssekmsKeyId(properties.kmsKeyId())
@@ -48,7 +47,7 @@ final class S3ArtifactObjectRequestFactory {
     ArtifactObjectStored verifiedPut(PutObjectResponse response, ArtifactObjectExpectation expectation) {
         if (response == null || !matchesChecksum(response.checksumSHA256(), expectation)
             || response.serverSideEncryption() != ServerSideEncryption.AWS_KMS
-            || !properties.kmsKeyId().equals(response.ssekmsKeyId())
+            || !properties.expectedKmsKeyReference().equals(response.ssekmsKeyId())
             || !validVersionReference(response.versionId())) {
             throw remoteMetadataMismatch();
         }
@@ -65,7 +64,7 @@ final class S3ArtifactObjectRequestFactory {
             && response.contentLength() == expectation.expectedByteCount()
             && matchesChecksum(response.checksumSHA256(), expectation)
             && response.serverSideEncryption() == ServerSideEncryption.AWS_KMS
-            && properties.kmsKeyId().equals(response.ssekmsKeyId())
+            && properties.expectedKmsKeyReference().equals(response.ssekmsKeyId())
             && metadata(expectation).equals(response.metadata())
             && validVersionReference(response.versionId());
     }
@@ -116,7 +115,8 @@ final class S3ArtifactObjectRequestFactory {
     }
 
     private static boolean validVersionReference(String value) {
-        return value != null && !value.isBlank() && value.length() <= 256;
+        return value != null && !value.isBlank() && !value.equalsIgnoreCase("null")
+            && value.getBytes(StandardCharsets.UTF_8).length <= 1_024;
     }
 
     private static EvidenceArtifactStorageException remoteMetadataMismatch() {

@@ -157,7 +157,7 @@ effective write requires target idempotency or discovery/reconciliation.
 | Unverified tool security decisions | Tool Gateway global audit lane | Insert-only and append-only; never accepts tenant/project fields from the request |
 | Bounded redacted evidence records | Platform PostgreSQL schema | Immutable canonical JSON, 64 KiB maximum, run/event linkage, forced RLS |
 | Investigation workflow binding/start event | Platform PostgreSQL schema | V010 immutable target/request binding plus canonical outbox bytes; V012 contains dispatcher mutation; V013 adds function-only exact-workflow reconciliation. Default off pending remaining B-017 environment and merged-head proof. |
-| Durable evidence artifact metadata | Platform PostgreSQL schema | V014 records `PENDING_UPLOAD` metadata/event/audit/RLS authority only; no body is transferred or exposed |
+| Durable evidence artifact authority | Platform PostgreSQL schema | V014 owns metadata; V015 owns default-off upload attempts and STORED settlement; no public body ingress/read is exposed |
 | Large evidence bodies | Planned evidence object port | Streaming, finalization, scanning, holds, purge/restore, and reconciliation are not implemented |
 | Embeddings and retrieval metadata | Planned PostgreSQL/pgvector boundary | RAG is not implemented |
 | Workflow histories | External Temporal boundary | Client/reconciliation code exists; no cluster, namespace, worker, or history is deployed |
@@ -770,29 +770,48 @@ and fail-closed `/proc` identity checks prevent stale or detached processes from
 being mistaken for success. Independent Linux detached-child/controller-kill
 probes and Windows large-transport/late-cleanup probes pass.
 
-## Evidence Artifact Metadata Authority (Phase 4C in progress)
+## Evidence Artifact Object Control Plane (Phase 4C in progress)
 
-The current V014 slice adds PostgreSQL authority for artifact
-metadata, an initial lifecycle event, and its matching audit record. It does
-not add body transfer/read/citation, an S3 client, public ingress, signed URLs,
-or scan, finalization, hold, purge, restore, or reconciliation workers.
+V014 establishes PostgreSQL authority for artifact metadata, the initial
+`PENDING_UPLOAD` lifecycle event, and its exact audit row. V015 adds the
+default-off object-upload slice without turning a storage key into
+authorization or exposing a bucket, credential, object URL, or body.
 
-- Artifact and initial-event IDs are deterministic; creation binds organization,
-  project, incident, run, and actor to the authoritative run owner.
-- The row requires an expected canonical SHA-256 digest and byte count, fixes
-  retention/residency/deletion policy classes, and derives an opaque internal
-  storage key that is neither an authorization credential nor a projection.
-- Phase 4C permits only `PENDING_UPLOAD` at lifecycle version 1. The later
-  ADR-0003 vocabulary includes `quarantined`, `held`, and `expired`; it does
-  not introduce a `TOMBSTONED` state.
-- Forced RLS, insert validation, direct-mutation denial, an immutable event
-  ledger, and an exact `ARTIFACT_PENDING_UPLOAD` audit payload make metadata,
-  event, and audit append atomically or not at all.
+- Artifact and event IDs are deterministic. Creation binds organization,
+  project, incident, run, actor, authorization epoch, digest, byte count, and
+  policy classes to the authoritative run.
+- A narrowly granted claim function creates one durable attempt with a
+  five-second-to-five-minute lease. Row locks, attempt counters, a reverse
+  current-attempt foreign key, and exact settlement tokens prevent concurrent
+  or stale writers from advancing metadata.
+- The synchronous S3-compatible adapter performs one conditional
+  `If-None-Match: *` PUT with a known length, precomputed SHA-256, SSE-KMS, and
+  SDK retries disabled. It streams through a bounded digest wrapper and
+  requires exact EOF, checksum, encryption identity, and an opaque non-null
+  version reference of at most 1,024 UTF-8 bytes.
+- Ambiguous or expired attempts must HEAD with checksum mode before another
+  write. Exact metadata adopts the object, absence permits a new conditional
+  PUT, mismatch records an attempt-level `ORPHANED` result, and any unavailable
+  or denied probe preserves uncertainty.
+- A definitive pre-success storage failure is immediately reclaimable. A
+  post-PUT source-contract or response-metadata mismatch becomes `ORPHANED`;
+  the database denies every automated reclaim so a later exact HEAD cannot
+  convert quarantined residue into `STORED`.
+- The KMS identifier sent to a backend is separate from the canonical KMS
+  response reference used for verification. Credentials come only from the
+  external default workload chain.
+- Claim and settlement run in two independent current-authorization
+  transactions; object I/O runs between them with no database transaction open.
+  Applied `PENDING_UPLOAD -> STORED` settlement, its deterministic lifecycle
+  event, and redacted `ARTIFACT_STORED` audit append commit atomically.
 
-Static Phase 4C validation passes and PR Quality is wired to run a disposable
-V013-to-V014 PostgreSQL contract. No revision-bound remote PostgreSQL or CI
-result exists yet, so B-006, B-008, and B-012 remain active and the artifact
-lifecycle exit is blocked. See [ADR-0003](./adr/ADR-0003-evidence-artifact-storage.md).
+`STORED` is still unreadable and uncitable. Public ingress, malware scanning,
+`AVAILABLE`, hold, retention, purge receipts, restore, and reconciliation are
+Phase 03 work. The current static gate passes and PR Quality is wired for both
+V013-to-V014 and V014-to-V015 disposable PostgreSQL proofs, but no
+revision-bound remote result exists for this integrated revision. B-006, B-008,
+and B-012 therefore remain active. See
+[ADR-0003](./adr/ADR-0003-evidence-artifact-storage.md).
 
 ## Reliability and Degraded Modes
 

@@ -9,6 +9,7 @@ public final class EvidenceArtifactStorageException extends RuntimeException {
         UNAVAILABLE,
         ACCESS_DENIED,
         STREAM_REJECTED,
+        SOURCE_CONTRACT_MISMATCH,
         REMOTE_METADATA_MISMATCH
     }
 
