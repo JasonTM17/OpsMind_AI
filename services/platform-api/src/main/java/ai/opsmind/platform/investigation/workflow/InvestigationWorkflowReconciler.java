@@ -119,7 +119,7 @@ public final class InvestigationWorkflowReconciler {
         InvestigationWorkflowReconciliationLease lease,
         Instant now
     ) {
-        String safeCode = preflightSafeCode(
+        String safeCode = InvestigationWorkflowReconciliationPreflightPolicy.safeCode(
             lease.event().occurredAt(),
             lease.reconciliationReceivedAt(),
             lease.reconciliationAttempt(),
@@ -129,30 +129,6 @@ public final class InvestigationWorkflowReconciler {
         return safeCode == null
             ? null
             : InvestigationWorkflowObservation.blocked(safeCode);
-    }
-
-    static String preflightSafeCode(
-        Instant occurredAt,
-        Instant reconciliationReceivedAt,
-        int reconciliationAttempt,
-        InvestigationWorkflowReconcilerProperties properties,
-        Instant now
-    ) {
-        if (!now.isBefore(occurredAt.plus(properties.maximumVerifiableAge()))) {
-            return "workflow.reconciliation-retention-unverifiable";
-        }
-        if (reconciliationReceivedAt.isAfter(
-            occurredAt.plus(properties.maximumHandoffAge())
-        )) {
-            return "workflow.reconciliation-handoff-age-exceeded";
-        }
-        if (reconciliationAttempt > properties.maximumAttempts()
-            || !now.isBefore(
-                reconciliationReceivedAt.plus(properties.maximumAge())
-            )) {
-            return "workflow.reconciliation-exhausted";
-        }
-        return null;
     }
 
     private InvestigationWorkflowStartEventCodec.DecodedStart decodeExactContract(
