@@ -143,6 +143,7 @@ public final class ToolExecutionService {
             stage = "connector-execution";
             EvidenceEnvelope evidence = connectorExecutor.execute(
                 () -> evidenceNormalizer.normalize(connector.execute(request, manifest), manifest, request),
+                trustedScope,
                 request,
                 manifest
             );

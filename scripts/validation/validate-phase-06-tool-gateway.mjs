@@ -237,10 +237,55 @@ if (!gatewayTenantIsolationConformant) {
   errors.push("Tool Gateway tenant/project isolation contract is incomplete or drifted");
 }
 
+const tenantBulkheadConformant = sourceContains(
+  "services/tool-gateway/src/main/java/ai/opsmind/toolgateway/config/ConnectorBulkheadProperties.java",
+  [
+    '@ConfigurationProperties("opsmind.tool-gateway.connector-bulkhead")',
+    "DEFAULT_GLOBAL_CONCURRENCY = 32",
+    "DEFAULT_PER_TENANT_CONCURRENCY = 4",
+  ],
+) && sourceContains(
+  "services/tool-gateway/src/main/java/ai/opsmind/toolgateway/application/TenantConnectorBulkhead.java",
+  [
+    "ConcurrentMap<UUID, TenantSlot>",
+    "trustedScope.tenantId()",
+    "tenantSlots.compute(tenantId",
+    "current.references == 0 ? null : current",
+    "DenialCode.EXECUTION_BACKPRESSURE",
+  ],
+) && sourceContains(
+  "services/tool-gateway/src/main/java/ai/opsmind/toolgateway/application/BoundedConnectorExecutor.java",
+  [
+    "TenantConnectorBulkhead.Permit permit = bulkhead.acquire(trustedScope)",
+    "state.compareAndSet(QUEUED, RUNNING)",
+    "releaseIfQueued()",
+    "finally",
+  ],
+) && sourceContains(
+  "services/tool-gateway/src/main/java/ai/opsmind/toolgateway/application/ToolExecutionService.java",
+  ["trustedScope,", "connectorExecutor.execute("],
+) && sourceContains(
+  "services/tool-gateway/src/test/java/ai/opsmind/toolgateway/application/TenantConnectorBulkheadTest.java",
+  [
+    "sharesOneAllowanceAcrossProjectsOfTheSameTenant",
+    "globalAllowanceStillBoundsDifferentTenants",
+  ],
+) && sourceContains(
+  "services/tool-gateway/src/test/java/ai/opsmind/toolgateway/application/BoundedConnectorExecutorPermitLifecycleTest.java",
+  [
+    "ignoredInterruptRetainsPermitUntilConnectorReturns",
+    "cancellationBeforeTaskStartReleasesBothPermits",
+  ],
+);
+if (!tenantBulkheadConformant) {
+  errors.push("tenant-scoped connector bulkhead enforcement or proof is incomplete");
+}
+
 const blockers = [
   "durable oversized-evidence artifact adapter is absent",
   "remaining bounded logs and traces connector families are absent",
-  "tenant-scoped connector bulkhead proof is absent",
+  "named live non-production read-only connector proof is absent",
+  "provider-specific connector cancellation proof is absent",
 ];
 const lines = [
   "OpsMind Phase 6 Tool Gateway validation",
