@@ -10,6 +10,7 @@ import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
+import java.lang.reflect.Modifier;
 import java.sql.ResultSet;
 import java.sql.Timestamp;
 import java.time.Duration;
@@ -54,6 +55,11 @@ class EvidenceArtifactUploadRepositoryTest {
     @AfterEach
     void endAuthorizationTransaction() {
         TransactionSynchronizationManager.clear();
+    }
+
+    @Test
+    void repositoryRemainsSubclassProxyableForSpringExceptionTranslation() {
+        assertThat(Modifier.isFinal(EvidenceArtifactUploadRepository.class.getModifiers())).isFalse();
     }
 
     @Test
