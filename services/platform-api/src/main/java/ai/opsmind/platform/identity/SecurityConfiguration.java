@@ -68,7 +68,9 @@ public class SecurityConfiguration {
                     "The verified principal is not authorized for this operation."
                 )))
             .authorizeHttpRequests(authorize -> {
-                authorize.requestMatchers("/actuator/health", "/error").permitAll();
+                authorize.requestMatchers(
+                    "/actuator/health", "/actuator/prometheus", "/error"
+                ).permitAll();
                 if ("oidc".equals(properties.mode())) {
                     authorize.requestMatchers("/api/v1/**").authenticated();
                 }
