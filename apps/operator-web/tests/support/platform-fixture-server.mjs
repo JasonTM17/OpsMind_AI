@@ -21,6 +21,7 @@ import {
   invalidMediaRunId,
   invalidRunId,
   invalidUtf8RunId,
+  longContentRunId,
   missingRunId,
   noProgressRunId,
   oversizedRunId,
@@ -33,6 +34,10 @@ import {
   unknownOperationRunId,
   waitingRunId,
 } from "./investigation-fixtures.mjs";
+import {
+  completedVariant,
+  longContentVariant,
+} from "./investigation-projection-variants.mjs";
 import {
   analyzing,
   created,
@@ -135,6 +140,8 @@ const server = createServer((request, response) => {
           operation: "execute",
         }],
       }, true, 1);
+    case longContentRunId:
+      return sendJson(response, 200, longContentVariant(runId), true, 10);
     default:
       return sendProblem(response, 404, "Not Found");
   }
@@ -147,19 +154,6 @@ function authorized(header) {
   const actual = Buffer.from(header.slice("Bearer ".length));
   const expected = Buffer.from(bearer);
   return actual.length === expected.length && timingSafeEqual(actual, expected);
-}
-
-function completedVariant(runId, analysisOverrides = {}, rootOverrides = {}) {
-  return {
-    ...completed,
-    ...rootOverrides,
-    runId,
-    analysis: {
-      ...completed.analysis,
-      ...analysisOverrides,
-      run_id: runId,
-    },
-  };
 }
 
 function sendProblem(response, status, title) {

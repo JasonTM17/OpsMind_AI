@@ -3,6 +3,7 @@
   padding: var(--space-5);
   border-right: 1px solid var(--border-subtle);
   background: var(--surface-panel);
+  overflow-wrap: anywhere;
 }
 
 .sectionHeading {
@@ -168,9 +169,14 @@
   margin-bottom: var(--space-3);
 }
 
-@media (max-width: 1080px) {
+@media (max-width: 820px) {
   .context {
     border-right: 0;
     border-bottom: 1px solid var(--border-subtle);
+  }
+
+  .hypothesis > p,
+  .empty {
+    font-size: 1rem;
   }
 }

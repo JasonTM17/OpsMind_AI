@@ -5,6 +5,7 @@ import { IncidentSummary } from "./incident-summary";
 import { InvestigationContext } from "./investigation-context";
 import type { InvestigationWorkspaceData } from "./investigation-types";
 import { OperatorShell } from "./operator-shell";
+import { RefreshStatusButton } from "./refresh-status-button";
 import styles from "./investigation-workspace.module.css";
 
 interface InvestigationWorkspaceProps {
@@ -21,29 +22,33 @@ export function InvestigationWorkspace({ data }: InvestigationWorkspaceProps) {
       breadcrumb={`${incident.organizationId} / ${incident.projectId}`}
       sessionState="verified-read-only"
     >
-      <IncidentSummary
-        incident={incident}
-        investigation={investigation}
-        refreshedAt={data.refreshedAt}
-      />
-      {stopped ? (
-        <div className={styles.degraded} role="status">
-          <strong>{statusLabel(investigation.status)}</strong>
-          <span>
-            {investigation.terminalReason ??
-              "The investigation stopped safely. Durable state is unchanged and no write was attempted."}
-          </span>
-          <a href="">Refresh status</a>
-        </div>
-      ) : null}
-      <main id="main-content" className={styles.workspace}>
-        <InvestigationContext investigation={investigation} />
-        <EvidenceSpine investigation={investigation} />
-        <CitedConclusion
+      <main id="main-content" className={styles.main}>
+        <IncidentSummary
+          incident={incident}
           investigation={investigation}
-          correlationId={data.correlationId}
-          projectionSafety={data.projectionSafety}
+          refreshedAt={data.refreshedAt}
         />
+        {stopped ? (
+          <section className={styles.degraded} aria-label="Investigation status">
+            <div className={styles.degradedStatus} role="status" aria-live="polite">
+              <strong>{statusLabel(investigation.status)}</strong>
+              <span>
+                {investigation.terminalReason ??
+                  "The investigation stopped safely. Durable state is unchanged and no write was attempted."}
+              </span>
+            </div>
+            <RefreshStatusButton />
+          </section>
+        ) : null}
+        <div className={styles.workspace}>
+          <InvestigationContext investigation={investigation} />
+          <EvidenceSpine investigation={investigation} />
+          <CitedConclusion
+            investigation={investigation}
+            correlationId={data.correlationId}
+            projectionSafety={data.projectionSafety}
+          />
+        </div>
       </main>
       <footer className={styles.footer}>
         <span>
