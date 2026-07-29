@@ -130,7 +130,8 @@ $externalArtifactRoot = Join-Path $evidenceRoot 'external-artifacts'
 $externalArtifactCanaryPath = Join-Path $externalArtifactRoot "external-canary-$suffix.txt"
 $linkedWorktreeRoot = Join-Path $evidenceRoot 'linked-worktree'
 $linkedWorktreeBranch = "test/linked-secret-scan-$suffix"
-$linkedWorktreeArtifactCanaryPath = Join-Path $isolatedRepository "artifacts\\linked-worktree-artifact-$suffix.txt"
+$linkedWorktreeArtifactRoot = Join-Path $isolatedRepository 'artifacts'
+$linkedWorktreeArtifactCanaryPath = Join-Path $linkedWorktreeArtifactRoot "linked-worktree-artifact-$suffix.txt"
 $linkedWorktreeStagedCanaryPath = Join-Path $linkedWorktreeRoot "linked-worktree-staged-$suffix.txt"
 $linkedWorktreeHistoryCanaryPath = Join-Path $linkedWorktreeRoot "linked-worktree-history-$suffix.txt"
 $isolatedEvidenceRoot = Join-Path $isolatedRepository 'artifacts\verification'
@@ -342,6 +343,10 @@ try {
     Remove-Item -LiteralPath $externalArtifactCanaryPath -Force
     $env:OPS_ARTIFACT_ROOT = $previousArtifactRoot
 
+    # Keep the linked-worktree fixture isolated from a CI runner's outer
+    # checkout artifact root. The unset value deliberately exercises default
+    # artifact-root discovery through the linked worktree's common Git dir.
+    $env:OPS_ARTIFACT_ROOT = $null
     & git -C $isolatedRepository worktree add --quiet -b $linkedWorktreeBranch $linkedWorktreeRoot HEAD
     if ($LASTEXITCODE -ne 0) { throw 'Unable to create linked worktree secret-scan fixture.' }
     if (Test-Path -LiteralPath (Join-Path $linkedWorktreeRoot 'artifacts')) {
@@ -399,6 +404,7 @@ try {
     if (-not (Select-String -LiteralPath $linkedHistoryEvidence -SimpleMatch 'FindingPath=git-history;Rule=generic-provider-key' -Quiet)) {
         throw 'Expected linked-worktree history-only secret finding was not recorded against git-history.'
     }
+    $env:OPS_ARTIFACT_ROOT = $previousArtifactRoot
 
     [IO.File]::WriteAllText($stagedCanaryPath, "STAGED_TOKEN=$providerCanary", $encoding)
     & git -C $isolatedRepository add -- ([IO.Path]::GetFileName($stagedCanaryPath))
