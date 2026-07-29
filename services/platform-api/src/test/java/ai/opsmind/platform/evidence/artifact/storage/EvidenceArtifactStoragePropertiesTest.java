@@ -14,7 +14,7 @@ class EvidenceArtifactStoragePropertiesTest {
     @Test
     void acceptsDefaultDisabledValuesWithoutStorageDetails() {
         EvidenceArtifactStorageProperties properties = new EvidenceArtifactStorageProperties(
-            false, null, false, null, null, false, null, null, null,
+            false, null, false, null, null, false, null, null, null, null,
             0, null, null, null, null, 0, null
         );
 
@@ -44,9 +44,24 @@ class EvidenceArtifactStoragePropertiesTest {
         EvidenceArtifactStorageProperties properties = new EvidenceArtifactStorageProperties(
             true, URI.create("https://storage.example.com"), false, "ap-southeast-1",
             "evidence-artifacts", true, "123456789012",
+            "arn:aws:kms:ap-southeast-1:123456789012:key/key-1",
             "arn:aws:kms:ap-southeast-1:123456789012:key/key-1", "production-kms",
             1_024, Duration.ofSeconds(1), Duration.ofSeconds(2), Duration.ofSeconds(20),
             Duration.ofSeconds(10), 4, Duration.ofMinutes(1)
+        );
+
+        assertThatThrownBy(properties::validateForEnablement).isInstanceOf(IllegalStateException.class);
+    }
+
+    @Test
+    void rejectsLeaseAboveTheDatabaseFence() {
+        EvidenceArtifactStorageProperties properties = new EvidenceArtifactStorageProperties(
+            true, URI.create("https://storage.example.com"), false, "ap-southeast-1",
+            "evidence-artifacts", true, "123456789012",
+            "arn:aws:kms:ap-southeast-1:123456789012:key/key-1",
+            "arn:aws:kms:ap-southeast-1:123456789012:key/key-1", "production-kms",
+            1_024, Duration.ofSeconds(1), Duration.ofSeconds(2), Duration.ofSeconds(5),
+            Duration.ofSeconds(10), 4, Duration.ofMinutes(6)
         );
 
         assertThatThrownBy(properties::validateForEnablement).isInstanceOf(IllegalStateException.class);
@@ -56,7 +71,8 @@ class EvidenceArtifactStoragePropertiesTest {
         return new EvidenceArtifactStorageProperties(
             true, endpoint, allowLoopbackCleartext, "ap-southeast-1", "evidence-artifacts",
             true, "123456789012", "arn:aws:kms:ap-southeast-1:123456789012:key/key-1",
-            "production-kms", 1_024, Duration.ofSeconds(1), Duration.ofSeconds(2),
+            "arn:aws:kms:ap-southeast-1:123456789012:key/key-1", "production-kms",
+            1_024, Duration.ofSeconds(1), Duration.ofSeconds(2),
             Duration.ofSeconds(5), Duration.ofSeconds(10), 4, Duration.ofMinutes(1)
         );
     }

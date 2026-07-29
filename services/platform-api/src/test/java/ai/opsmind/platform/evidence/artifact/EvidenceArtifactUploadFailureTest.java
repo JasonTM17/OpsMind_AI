@@ -96,13 +96,41 @@ class EvidenceArtifactUploadFailureTest {
         when(repository.claim(any(), eq(ARTIFACT_ID), any(), any())).thenReturn(claim);
         when(storage.probe(claim.expectation())).thenReturn(new ArtifactObjectProbe.Mismatch());
         when(repository.settle(any(), eq(claim), eq(EvidenceArtifactUploadOutcome.ORPHANED), isNull(),
-            eq("artifact.object-mismatch"))).thenReturn(new EvidenceArtifactUploadSettlement(
-                true, EvidenceArtifactLifecycleState.ORPHANED, 2L, 0L, NOW
-            ));
+            eq("artifact.object-mismatch"))).thenReturn(pendingSettlement());
 
         assertThatThrownBy(() -> upload()).isInstanceOfSatisfying(PlatformProblemException.class, exception ->
             assertThat(exception.code()).isEqualTo("evidence-artifact.upload-orphaned"));
         verify(storage, never()).putIfAbsent(any(), any());
+    }
+
+    @Test
+    void postPutSourceContractMismatchSettlesOrphaned() {
+        EvidenceArtifactUploadClaim claim = claim(false);
+        when(repository.claim(any(), eq(ARTIFACT_ID), any(), any())).thenReturn(claim);
+        doThrow(new EvidenceArtifactStorageException(
+            EvidenceArtifactStorageException.FailureKind.SOURCE_CONTRACT_MISMATCH, true, null
+        )).when(storage).putIfAbsent(any(), any());
+        when(repository.settle(any(), eq(claim), eq(EvidenceArtifactUploadOutcome.ORPHANED), isNull(),
+            eq("artifact.object-mismatch"))).thenReturn(pendingSettlement());
+
+        assertThatThrownBy(() -> upload()).isInstanceOfSatisfying(PlatformProblemException.class, exception ->
+            assertThat(exception.code()).isEqualTo("evidence-artifact.upload-orphaned"));
+        verify(repository).settle(any(), eq(claim), eq(EvidenceArtifactUploadOutcome.ORPHANED), isNull(),
+            eq("artifact.object-mismatch"));
+    }
+
+    @Test
+    void invalidRemoteSuccessMetadataAlsoSettlesOrphaned() {
+        EvidenceArtifactUploadClaim claim = claim(false);
+        when(repository.claim(any(), eq(ARTIFACT_ID), any(), any())).thenReturn(claim);
+        doThrow(new EvidenceArtifactStorageException(
+            EvidenceArtifactStorageException.FailureKind.REMOTE_METADATA_MISMATCH, true, null
+        )).when(storage).putIfAbsent(any(), any());
+        when(repository.settle(any(), eq(claim), eq(EvidenceArtifactUploadOutcome.ORPHANED), isNull(),
+            eq("artifact.object-mismatch"))).thenReturn(pendingSettlement());
+
+        assertThatThrownBy(() -> upload()).isInstanceOfSatisfying(PlatformProblemException.class, exception ->
+            assertThat(exception.code()).isEqualTo("evidence-artifact.upload-orphaned"));
     }
 
     private void upload() {

@@ -108,6 +108,20 @@ must provision and verify a disposable database boundary independently.
   projected storage key/body.
 - Forced RLS, append-only UPDATE/DELETE/TRUNCATE denial, atomic initial
   event/audit binding, and fresh plus V013-to-V014 migration contracts.
+- V015 fresh and V014-to-V015 proofs: forced-RLS attempt authority, valid
+  zero/active attempt shapes, five-second-to-five-minute leases, one concurrent
+  claim winner, expired-claim probe requirement, immediate retry after a
+  definitive `FAILED` attempt, permanent automated reclaim denial after
+  `ORPHANED`, stale settlement denial, cross-tenant denial, exact replay, and
+  rollback when the STORED event/audit pair is absent.
+- Storage unit contracts: one conditional PUT, no SDK retry, precomputed
+  SHA-256, exact EOF/digest, canonical KMS response identity, 1,024-byte opaque
+  version bound, denied-probe ambiguity, and distinct retryable versus
+  post-PUT-quarantined short/long/mismatched stream outcomes.
+- Upload orchestration tests prove current authorization before claim and
+  settlement, no object I/O inside a database transaction, probe-before-retry,
+  and attempt-level failure/uncertain/orphan outcomes that never make an
+  artifact readable.
 - Artifact digest mismatch, truncated stream, malware result, orphan metadata, and missing object.
 - ACL applied before candidate ranking.
 - Citation points to the exact authorized version and content digest.

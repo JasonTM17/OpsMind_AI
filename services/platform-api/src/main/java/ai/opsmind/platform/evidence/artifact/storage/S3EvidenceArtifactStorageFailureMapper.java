@@ -24,7 +24,7 @@ final class S3EvidenceArtifactStorageFailureMapper {
 
     static EvidenceArtifactStorageException probeFailure(Throwable failure) {
         if (failure instanceof S3Exception s3Exception && accessDenied(s3Exception.statusCode())) {
-            return failure(EvidenceArtifactStorageException.FailureKind.ACCESS_DENIED, false, failure);
+            return failure(EvidenceArtifactStorageException.FailureKind.ACCESS_DENIED, true, failure);
         }
         return failure(EvidenceArtifactStorageException.FailureKind.UNAVAILABLE, true, failure);
     }
@@ -35,6 +35,10 @@ final class S3EvidenceArtifactStorageFailureMapper {
 
     static EvidenceArtifactStorageException streamRejected(boolean objectMayExist, Throwable cause) {
         return failure(EvidenceArtifactStorageException.FailureKind.STREAM_REJECTED, objectMayExist, cause);
+    }
+
+    static EvidenceArtifactStorageException sourceContractMismatch(Throwable cause) {
+        return failure(EvidenceArtifactStorageException.FailureKind.SOURCE_CONTRACT_MISMATCH, true, cause);
     }
 
     private static EvidenceArtifactStorageException fromS3PutFailure(S3Exception failure) {

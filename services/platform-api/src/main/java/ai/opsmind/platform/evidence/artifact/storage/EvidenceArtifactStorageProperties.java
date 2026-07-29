@@ -18,6 +18,7 @@ public record EvidenceArtifactStorageProperties(
     boolean pathStyleAccess,
     String expectedBucketOwner,
     String kmsKeyId,
+    String expectedKmsKeyReference,
     String encryptionProfile,
     long maximumObjectBytes,
     Duration connectTimeout,
@@ -40,6 +41,7 @@ public record EvidenceArtifactStorageProperties(
         bucket = trim(bucket);
         expectedBucketOwner = trim(expectedBucketOwner);
         kmsKeyId = trim(kmsKeyId);
+        expectedKmsKeyReference = trim(expectedKmsKeyReference);
         encryptionProfile = trim(encryptionProfile);
         maximumObjectBytes = maximumObjectBytes == 0
             ? MAXIMUM_SUPPORTED_OBJECT_BYTES : maximumObjectBytes;
@@ -60,7 +62,9 @@ public record EvidenceArtifactStorageProperties(
         if (!expectedBucketOwner.isBlank() && !ACCOUNT_ID.matcher(expectedBucketOwner).matches()) {
             throw new IllegalStateException("Evidence artifact storage owner setting is invalid.");
         }
-        if (!KMS_KEY.matcher(kmsKeyId).matches() || !PROFILE.matcher(encryptionProfile).matches()) {
+        if (!KMS_KEY.matcher(kmsKeyId).matches()
+            || !KMS_KEY.matcher(expectedKmsKeyReference).matches()
+            || !PROFILE.matcher(encryptionProfile).matches()) {
             throw new IllegalStateException("Evidence artifact storage encryption settings are invalid.");
         }
         if (maximumObjectBytes < 1 || maximumObjectBytes > MAXIMUM_SUPPORTED_OBJECT_BYTES) {
@@ -70,7 +74,7 @@ public record EvidenceArtifactStorageProperties(
             || !between(socketTimeout, Duration.ofMillis(100), Duration.ofMinutes(5))
             || !between(apiCallAttemptTimeout, Duration.ofSeconds(1), Duration.ofMinutes(10))
             || !between(apiCallTimeout, Duration.ofSeconds(2), Duration.ofMinutes(15))
-            || !between(uploadLeaseDuration, Duration.ofSeconds(5), Duration.ofHours(1))
+            || !between(uploadLeaseDuration, Duration.ofSeconds(5), Duration.ofMinutes(5))
             || apiCallAttemptTimeout.compareTo(apiCallTimeout) >= 0
             || apiCallTimeout.compareTo(uploadLeaseDuration) >= 0
             || maximumConnections < 1 || maximumConnections > 1_000) {

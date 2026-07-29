@@ -43,14 +43,14 @@ SET search_path = pg_catalog, public, pg_temp AS $$
 $$;
 
 ALTER TABLE evidence_artifacts
-    ADD COLUMN storage_version_reference varchar(256),
+    ADD COLUMN storage_version_reference varchar(1024),
     DROP CONSTRAINT evidence_artifacts_phase_1_pending_only,
     ADD CONSTRAINT evidence_artifacts_storage_version_reference_safe CHECK (
         storage_version_reference IS NULL
         OR (
             lower(storage_version_reference) <> 'null'
-            AND storage_version_reference
-                ~ '^[A-Za-z0-9][A-Za-z0-9_.:@/+=-]{0,255}$'
+            AND btrim(storage_version_reference) <> ''
+            AND octet_length(storage_version_reference) <= 1024
         )
     ),
     ADD CONSTRAINT evidence_artifacts_phase_2_lifecycle_fence CHECK (
@@ -61,7 +61,20 @@ ALTER TABLE evidence_artifacts
             AND storage_version_reference IS NULL
             AND encryption_metadata_reference IS NULL
             AND upload_attempt_count BETWEEN 0 AND 8
-            AND (upload_attempt_count > 0 OR last_failure_code IS NULL)
+            AND (
+                (
+                    upload_attempt_count = 0
+                    AND upload_attempt_id IS NULL
+                    AND upload_lease_expires_at IS NULL
+                    AND last_failure_code IS NULL
+                )
+                OR
+                (
+                    upload_attempt_count BETWEEN 1 AND 8
+                    AND upload_attempt_id IS NOT NULL
+                    AND upload_lease_expires_at IS NOT NULL
+                )
+            )
             AND lifecycle_updated_at = created_at
         )
         OR
@@ -120,6 +133,13 @@ CREATE INDEX evidence_artifact_upload_attempts_active_lease_idx
         organization_id, lease_expires_at, artifact_id
     )
     WHERE status IN ('CLAIMED', 'UNCERTAIN');
+
+ALTER TABLE evidence_artifacts
+    ADD CONSTRAINT evidence_artifacts_current_upload_attempt_fk
+        FOREIGN KEY (organization_id, artifact_id, upload_attempt_id)
+        REFERENCES evidence_artifact_upload_attempts(
+            organization_id, artifact_id, upload_attempt_id
+        );
 
 ALTER TABLE evidence_artifact_events
     ADD COLUMN upload_attempt_id uuid,
@@ -512,8 +532,8 @@ BEGIN
            OR p_observed_byte_count < 1
            OR p_storage_version_reference IS NULL
            OR lower(p_storage_version_reference) = 'null'
-           OR p_storage_version_reference
-                !~ '^[A-Za-z0-9][A-Za-z0-9_.:@/+=-]{0,255}$'
+           OR btrim(p_storage_version_reference) = ''
+           OR octet_length(p_storage_version_reference) > 1024
            OR p_encryption_metadata_reference IS NULL
            OR p_encryption_metadata_reference
                 !~ '^[A-Za-z0-9][A-Za-z0-9_.:@/-]{0,255}$'
@@ -647,13 +667,9 @@ BEGIN
      WHERE attempt.organization_id = p_organization_id
        AND attempt.upload_attempt_id = p_upload_attempt_id;
     UPDATE public.evidence_artifacts AS artifact
-       SET upload_lease_expires_at = CASE
-               WHEN p_outcome = 'UNCERTAIN' THEN artifact.upload_lease_expires_at
-               ELSE db_now
-           END,
-           last_failure_code = p_failure_code
-     WHERE artifact.organization_id = p_organization_id
-       AND artifact.artifact_id = p_artifact_id
+       SET last_failure_code = p_failure_code
+      WHERE artifact.organization_id = p_organization_id
+        AND artifact.artifact_id = p_artifact_id
     RETURNING * INTO artifact_row;
     RETURN QUERY
     SELECT false,

@@ -110,12 +110,23 @@ public final class EvidenceArtifactUploadService {
         EvidenceArtifactUploadClaim claim,
         EvidenceArtifactStorageException exception
     ) {
+        if (requiresOperatorReconciliation(exception)) {
+            settle(principal, organizationId, projectId, incidentId, claim,
+                EvidenceArtifactUploadOutcome.ORPHANED, null, "artifact.object-mismatch");
+            throw orphaned();
+        }
         EvidenceArtifactUploadOutcome outcome = exception.objectMayExist()
             ? EvidenceArtifactUploadOutcome.UNCERTAIN : EvidenceArtifactUploadOutcome.FAILED;
         settle(principal, organizationId, projectId, incidentId, claim, outcome, null,
             outcome == EvidenceArtifactUploadOutcome.UNCERTAIN
                 ? "artifact.storage-uncertain" : "artifact.storage-failed");
         throw exception.objectMayExist() ? uncertain() : failed();
+    }
+
+    private static boolean requiresOperatorReconciliation(EvidenceArtifactStorageException exception) {
+        return exception.objectMayExist()
+            && (exception.kind() == EvidenceArtifactStorageException.FailureKind.SOURCE_CONTRACT_MISMATCH
+                || exception.kind() == EvidenceArtifactStorageException.FailureKind.REMOTE_METADATA_MISMATCH);
     }
 
     private EvidenceArtifactUploadSettlement settle(
