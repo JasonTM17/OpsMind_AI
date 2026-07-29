@@ -440,11 +440,32 @@ requireMarkers(
     "\\quit",
   ],
 );
+const cutoverInventory = read(
+  "scripts/operations/investigation-workflow-cutover-inventory.sql",
+);
+if (cutoverInventory.includes("\\quit 3")) {
+  errors.push("cutover inventory must leave blocked exit translation to its wrapper");
+}
+requireMarkers(
+  "scripts/operations/run-investigation-workflow-cutover-inventory.sh",
+  [
+    "#!/usr/bin/env bash",
+    "set -euo pipefail",
+    "mktemp",
+    "psql \"$@\" --file \"$inventory_script\" 2>&1 | tee \"$output_file\"",
+    "PIPESTATUS",
+    "grep -Fqx",
+    "exit 3",
+    "exit 4",
+  ],
+);
 requireMarkers("scripts/validation/run-phase-04b-migration-upgrade.sh", [
   "migrate_to 10",
   "migrate_to 11",
   "migrate_to 12",
-  "CutoverBlockExit=%s",
+  "run-investigation-workflow-cutover-inventory.sh",
+  "CutoverExpectedBlock=%s",
+  "[[ \"$cutover_expected_block\" == \"PASS\" ]]",
   "NonterminalOrphansAfterReconciliation=%s",
   "VersionEleven=%s",
   "VersionTwelve=%s",
@@ -464,6 +485,10 @@ requireMarkers("scripts/validation/run-phase-04b-migration-upgrade.sh", [
   "LegacyWorkflowMarkerAfterTwelve=%s",
   "LegacyWorkflowPreflightAfterTwelve=%s",
   "LegacyWorkflowParkedAfterTwelve=%s",
+]);
+requireMarkers("docs/runbooks/investigation-workflow-cutover.md", [
+  "run-investigation-workflow-cutover-inventory.sh",
+  "Exit code `3`",
 ]);
 
 const requiredTests = {
