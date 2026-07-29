@@ -26,10 +26,12 @@ server:
     include-exception: false
 
 management:
+  server:
+    port: ${PLATFORM_MANAGEMENT_PORT:8082}
   endpoints:
     web:
       exposure:
-        include: health
+        include: ${OPSMIND_MANAGEMENT_EXPOSED_ENDPOINTS:health}
   health:
     db:
       enabled: false
@@ -63,6 +65,14 @@ opsmind:
       password: ${OPSMIND_DISPATCHER_DB_PASSWORD:}
       maximum-pool-size: ${OPSMIND_DISPATCHER_DB_POOL_MAX:4}
       connection-timeout-ms: ${OPSMIND_DISPATCHER_DB_CONNECTION_TIMEOUT_MS:3000}
+  workflow-reconciler:
+    enabled: ${OPSMIND_WORKFLOW_RECONCILER_ENABLED:false}
+    datasource:
+      url: ${OPSMIND_WORKFLOW_RECONCILER_DB_URL:disabled}
+      username: ${OPSMIND_WORKFLOW_RECONCILER_DB_USERNAME:disabled}
+      password: ${OPSMIND_WORKFLOW_RECONCILER_DB_PASSWORD:}
+      maximum-pool-size: ${OPSMIND_WORKFLOW_RECONCILER_DB_POOL_MAX:2}
+      connection-timeout-ms: ${OPSMIND_WORKFLOW_RECONCILER_DB_CONNECTION_TIMEOUT_MS:3000}
   investigation:
     enabled: ${OPSMIND_INVESTIGATION_V1_ENABLED:false}
     fixture: ${OPSMIND_INVESTIGATION_FIXTURE:false}
@@ -82,6 +92,27 @@ opsmind:
       rpc-timeout: ${OPSMIND_INVESTIGATION_TEMPORAL_RPC_TIMEOUT:PT5S}
       required-worker-identity: ${OPSMIND_INVESTIGATION_TEMPORAL_WORKER_IDENTITY:disabled}
       required-worker-build-id: ${OPSMIND_INVESTIGATION_TEMPORAL_WORKER_BUILD_ID:disabled}
+    temporal-observer:
+      enabled: ${OPSMIND_INVESTIGATION_TEMPORAL_OBSERVER_ENABLED:false}
+      cluster-id: ${OPSMIND_INVESTIGATION_TEMPORAL_CLUSTER_ID:disabled}
+      target: ${OPSMIND_INVESTIGATION_TEMPORAL_OBSERVER_TARGET:disabled}
+      tls-enabled: ${OPSMIND_INVESTIGATION_TEMPORAL_OBSERVER_TLS_ENABLED:true}
+      allow-local-cleartext: ${OPSMIND_INVESTIGATION_TEMPORAL_OBSERVER_ALLOW_LOCAL_CLEARTEXT:false}
+      rpc-timeout: ${OPSMIND_INVESTIGATION_TEMPORAL_OBSERVER_RPC_TIMEOUT:PT5S}
+      api-key: ${OPSMIND_INVESTIGATION_TEMPORAL_OBSERVER_API_KEY:}
+    workflow-reconciler:
+      enabled: ${OPSMIND_WORKFLOW_RECONCILER_ENABLED:false}
+      poll-interval: ${OPSMIND_WORKFLOW_RECONCILER_POLL_INTERVAL:PT1S}
+      lease-duration: ${OPSMIND_WORKFLOW_RECONCILER_LEASE_DURATION:PT30S}
+      settlement-margin: ${OPSMIND_WORKFLOW_RECONCILER_SETTLEMENT_MARGIN:PT5S}
+      maximum-attempts: ${OPSMIND_WORKFLOW_RECONCILER_MAX_ATTEMPTS:8}
+      maximum-age: ${OPSMIND_WORKFLOW_RECONCILER_MAX_AGE:PT1H}
+      maximum-handoff-age: ${OPSMIND_WORKFLOW_RECONCILER_MAX_HANDOFF_AGE:PT1H}
+      initial-backoff: ${OPSMIND_WORKFLOW_RECONCILER_INITIAL_BACKOFF:PT1S}
+      maximum-backoff: ${OPSMIND_WORKFLOW_RECONCILER_MAX_BACKOFF:PT1M}
+      absence-confirmation-delay: ${OPSMIND_WORKFLOW_RECONCILER_ABSENCE_CONFIRMATION_DELAY:PT10S}
+      namespace-retention: ${OPSMIND_WORKFLOW_RECONCILER_NAMESPACE_RETENTION:P30D}
+      retention-safety-margin: ${OPSMIND_WORKFLOW_RECONCILER_RETENTION_SAFETY_MARGIN:P1D}
     workflow-starter:
       enabled: ${OPSMIND_INVESTIGATION_WORKFLOW_STARTER_ENABLED:false}
       poll-interval: ${OPSMIND_INVESTIGATION_WORKFLOW_STARTER_POLL_INTERVAL:PT1S}
