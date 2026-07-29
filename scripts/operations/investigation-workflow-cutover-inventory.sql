@@ -1,8 +1,8 @@
 \set ON_ERROR_STOP on
 
--- Run with the migration/admin role while new investigation starts are frozen.
--- Example:
---   psql "$DATABASE_URL" -f scripts/operations/investigation-workflow-cutover-inventory.sql
+-- Run through scripts/operations/run-investigation-workflow-cutover-inventory.sh
+-- with the migration/admin role while new investigation starts are frozen. The
+-- wrapper owns the blocked-inventory exit contract across psql versions.
 --
 -- Legacy Phase 7 runs did not persist the canonical HTTP request digest or the
 -- authorization snapshot revision. Consequently no unbound row is safe for

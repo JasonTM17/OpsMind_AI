@@ -1021,15 +1021,20 @@ WHERE id = '70000000-0000-4000-8000-000000000016';
 
 cutover_block_output="${TMPDIR:-/tmp}/opsmind-phase9-cutover-block-${upgrade_database}.txt"
 set +e
-PGPASSWORD="$POSTGRES_PASSWORD" psql --no-password --no-psqlrc \
+PGPASSWORD="$POSTGRES_PASSWORD" scripts/operations/run-investigation-workflow-cutover-inventory.sh \
+  --no-password --no-psqlrc \
   --host "$PGHOST" --port "$PGPORT" --username "$POSTGRES_USER" \
   --dbname "$upgrade_database" \
-  --file scripts/operations/investigation-workflow-cutover-inventory.sql \
   > "$cutover_block_output" 2>&1
 cutover_block_status=$?
 set -e
 cat "$cutover_block_output"
-[[ "$cutover_block_status" == "0" ]]
+cutover_expected_block=FAIL
+if [[ "$cutover_block_status" == "3" ]] \
+  && grep -Fqx 'FAILED: unresolved legacy investigation rows block Temporal admission.' "$cutover_block_output"; then
+  cutover_expected_block=PASS
+fi
+[[ "$cutover_expected_block" == "PASS" ]]
 grep -Fq 'FAILED: unresolved legacy investigation rows block Temporal admission.' "$cutover_block_output"
 rm -f "$cutover_block_output"
 
@@ -1078,10 +1083,10 @@ INSERT INTO investigation_run_events (
 );
 COMMIT;
 "
-PGPASSWORD="$POSTGRES_PASSWORD" psql --no-password --no-psqlrc \
+PGPASSWORD="$POSTGRES_PASSWORD" scripts/operations/run-investigation-workflow-cutover-inventory.sh \
+  --no-password --no-psqlrc \
   --host "$PGHOST" --port "$PGPORT" --username "$POSTGRES_USER" \
-  --dbname "$upgrade_database" \
-  --file scripts/operations/investigation-workflow-cutover-inventory.sql
+  --dbname "$upgrade_database"
 nonterminal_orphans_after_reconciliation="$(query_upgrade_database "
 SELECT count(*)
 FROM investigation_runs run
@@ -1134,7 +1139,7 @@ printf 'VersionThirteen=%s\nReconciliationFunctionsAfterThirteen=%s\nReconciliat
   "$version_thirteen" "$reconciliation_functions_after_thirteen" \
   "$reconciliation_trigger_public_denied_after_thirteen"
 
-printf 'Database=%s\nVersionBefore=%s\nEvidenceTableBefore=%s\nVersionSeven=%s\nEvidenceTableAfterSeven=%s\nVersionEight=%s\nVersionNine=%s\nVersionTen=%s\nVersionEleven=%s\nVersionTwelve=%s\nWorkflowBindingTableAfterTen=%s\nWorkflowEventFunctionAfterTen=%s\nWorkflowPreflightFunctionAfterEleven=%s\nWorkflowSettlementFunctionAfterEleven=%s\nWorkflowTerminalizerFunctionAfterEleven=%s\nWorkflowSettlementOwnerAfterEleven=%s\nWorkflowClaimFunctionAfterTwelve=%s\nWorkflowClaimOwnerAfterTwelve=%s\nWorkflowClaimSecurityDefinerAfterTwelve=%s\nWorkflowClaimDispatcherExecuteAfterTwelve=%s\nWorkflowClaimPublicExecuteAfterTwelve=%s\nOutboxPredecessorFunctionAfterTwelve=%s\nOutboxPredecessorOwnerAfterTwelve=%s\nOutboxPredecessorSecurityDefinerAfterTwelve=%s\nOutboxPredecessorDispatcherExecuteAfterTwelve=%s\nOutboxPredecessorPublicExecuteAfterTwelve=%s\nDispatcherRoleAfterTwelve=%s\nResolverRoleAfterTwelve=%s\nDispatcherWorkflowBindingPrivilegeAfterTwelve=%s\nDispatcherInboxPrivilegeAfterTwelve=%s\nDispatcherWorkflowExclusionPolicyAfterTwelve=%s\nWorkflowPreflightOwnerAfterTwelve=%s\nWorkflowTenantSelectorOwnerAfterTwelve=%s\nLegacyWorkflowMarkerAfterTwelve=%s\nLegacyWorkflowClaimCountAfterTwelve=%s\nLegacyWorkflowPreflightAfterTwelve=%s\nLegacyWorkflowParkAfterTwelve=%s\nLegacyWorkflowParkedAfterTwelve=%s\nLegacyTerminalRunsAfterTen=%s\nLegacyBindingCountAfterTen=%s\nNonterminalOrphansAfterTen=%s\nCutoverBlockExit=%s\nNonterminalOrphansAfterReconciliation=%s\nLegacyPayloadDigestStable=%s\nRollingLegacyWriteCount=%s\nInvalidAbstainRejected=%s\nUpgradeResult=PASS\n' \
+printf 'Database=%s\nVersionBefore=%s\nEvidenceTableBefore=%s\nVersionSeven=%s\nEvidenceTableAfterSeven=%s\nVersionEight=%s\nVersionNine=%s\nVersionTen=%s\nVersionEleven=%s\nVersionTwelve=%s\nWorkflowBindingTableAfterTen=%s\nWorkflowEventFunctionAfterTen=%s\nWorkflowPreflightFunctionAfterEleven=%s\nWorkflowSettlementFunctionAfterEleven=%s\nWorkflowTerminalizerFunctionAfterEleven=%s\nWorkflowSettlementOwnerAfterEleven=%s\nWorkflowClaimFunctionAfterTwelve=%s\nWorkflowClaimOwnerAfterTwelve=%s\nWorkflowClaimSecurityDefinerAfterTwelve=%s\nWorkflowClaimDispatcherExecuteAfterTwelve=%s\nWorkflowClaimPublicExecuteAfterTwelve=%s\nOutboxPredecessorFunctionAfterTwelve=%s\nOutboxPredecessorOwnerAfterTwelve=%s\nOutboxPredecessorSecurityDefinerAfterTwelve=%s\nOutboxPredecessorDispatcherExecuteAfterTwelve=%s\nOutboxPredecessorPublicExecuteAfterTwelve=%s\nDispatcherRoleAfterTwelve=%s\nResolverRoleAfterTwelve=%s\nDispatcherWorkflowBindingPrivilegeAfterTwelve=%s\nDispatcherInboxPrivilegeAfterTwelve=%s\nDispatcherWorkflowExclusionPolicyAfterTwelve=%s\nWorkflowPreflightOwnerAfterTwelve=%s\nWorkflowTenantSelectorOwnerAfterTwelve=%s\nLegacyWorkflowMarkerAfterTwelve=%s\nLegacyWorkflowClaimCountAfterTwelve=%s\nLegacyWorkflowPreflightAfterTwelve=%s\nLegacyWorkflowParkAfterTwelve=%s\nLegacyWorkflowParkedAfterTwelve=%s\nLegacyTerminalRunsAfterTen=%s\nLegacyBindingCountAfterTen=%s\nNonterminalOrphansAfterTen=%s\nCutoverExpectedBlock=%s\nNonterminalOrphansAfterReconciliation=%s\nLegacyPayloadDigestStable=%s\nRollingLegacyWriteCount=%s\nInvalidAbstainRejected=%s\nUpgradeResult=PASS\n' \
   "$upgrade_database" "$version_before" "$table_before" \
   "$version_seven" "$table_after_seven" "$version_eight" "$version_nine" \
   "$version_ten" "$version_eleven" "$version_twelve" "$binding_table_after_ten" \
@@ -1162,7 +1167,7 @@ printf 'Database=%s\nVersionBefore=%s\nEvidenceTableBefore=%s\nVersionSeven=%s\n
   "$legacy_workflow_park_after_twelve" \
   "$legacy_workflow_parked_after_twelve" \
   "$legacy_terminal_runs_after_ten" "$legacy_binding_count_after_ten" \
-  "$nonterminal_orphans_after_ten" "$cutover_block_status" \
+  "$nonterminal_orphans_after_ten" "$cutover_expected_block" \
   "$nonterminal_orphans_after_reconciliation" \
   "$([[ "$legacy_digest_after" == "$legacy_digest_before" ]] && printf true || printf false)" \
   "$rolling_legacy_write_count" "$invalid_abstain_rejected"
