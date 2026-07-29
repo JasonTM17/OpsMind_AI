@@ -1029,8 +1029,9 @@ PGPASSWORD="$POSTGRES_PASSWORD" psql --no-password --no-psqlrc \
 cutover_block_status=$?
 set -e
 cat "$cutover_block_output"
+[[ "$cutover_block_status" == "0" ]]
+grep -Fq 'FAILED: unresolved legacy investigation rows block Temporal admission.' "$cutover_block_output"
 rm -f "$cutover_block_output"
-[[ "$cutover_block_status" == "3" ]]
 
 query_upgrade_database "
 BEGIN;
