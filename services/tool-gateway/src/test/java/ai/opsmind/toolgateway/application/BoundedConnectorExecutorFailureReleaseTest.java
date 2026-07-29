@@ -33,6 +33,19 @@ class BoundedConnectorExecutorFailureReleaseTest {
             );
             assertThat(bulkhead.trackedTenantCount()).isZero();
             queuedExecutor.runQueued();
+
+            ToolExecutionRequest retryRequest = request("1", "2", NOW.plusSeconds(5));
+            try (
+                ExecutorService retryConnectorExecutor = java.util.concurrent.Executors.newVirtualThreadPerTaskExecutor();
+                BoundedConnectorExecutor retryExecutor = new BoundedConnectorExecutor(
+                    fixedClock(), retryConnectorExecutor, bulkhead
+                )
+            ) {
+                assertThat(retryExecutor.execute(
+                    () -> "reacquired", scope(retryRequest), retryRequest, manifest
+                )).isEqualTo("reacquired");
+            }
+            assertThat(bulkhead.trackedTenantCount()).isZero();
         }
     }
 
