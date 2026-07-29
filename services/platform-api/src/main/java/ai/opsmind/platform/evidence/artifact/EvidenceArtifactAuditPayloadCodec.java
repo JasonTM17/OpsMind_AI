@@ -47,7 +47,37 @@ public final class EvidenceArtifactAuditPayloadCodec {
         );
     }
 
-    private String write(PendingUploadPayload payload) {
+    public AuditEvent stored(
+        EvidenceArtifactUploadClaim claim,
+        EvidenceArtifactUploadSettlement settlement,
+        UUID eventId
+    ) {
+        if (claim == null || settlement == null || eventId == null
+            || settlement.lifecycleState() != EvidenceArtifactLifecycleState.STORED) {
+            throw new IllegalArgumentException("Stored artifact audit inputs are invalid.");
+        }
+        EvidenceArtifactMetadata artifact = claim.artifact();
+        Instant occurredAt = settlement.lifecycleUpdatedAt();
+        return new AuditEvent(
+            eventId,
+            artifact.organizationId(),
+            artifact.actorId(),
+            "ARTIFACT_STORED",
+            AuditEvent.EVIDENCE_ARTIFACT_SCHEMA_VERSION,
+            "evidence_artifact",
+            artifact.artifactId().toString(),
+            artifact.artifactId(),
+            occurredAt,
+            write(new StoredPayload(
+                eventId, artifact.organizationId(), artifact.projectId(), artifact.incidentId(),
+                artifact.runId(), artifact.artifactId(), artifact.actorId(), settlement.lifecycleVersion(),
+                settlement.lifecycleState().name(), artifact.expectedDigest().value(), artifact.expectedByteCount(),
+                artifact.dataClassification(), artifact.retentionClass(), settlement.storageGeneration(), occurredAt
+            ))
+        );
+    }
+
+    private String write(Object payload) {
         try {
             return objectMapper.writeValueAsString(payload);
         }
@@ -75,6 +105,24 @@ public final class EvidenceArtifactAuditPayloadCodec {
         long byteCount,
         String dataClassification,
         String retentionClass,
+        Instant occurredAt
+    ) { }
+
+    private record StoredPayload(
+        UUID eventId,
+        UUID organizationId,
+        UUID projectId,
+        UUID incidentId,
+        UUID runId,
+        UUID artifactId,
+        UUID actorId,
+        long lifecycleVersion,
+        String lifecycleState,
+        String contentDigest,
+        long byteCount,
+        String dataClassification,
+        String retentionClass,
+        long storageGeneration,
         Instant occurredAt
     ) { }
 }
