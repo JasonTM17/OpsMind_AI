@@ -365,6 +365,13 @@ requireMarkers(
   [
     "WORKFLOW_ID_REUSE_POLICY_REJECT_DUPLICATE",
     "WORKFLOW_ID_CONFLICT_POLICY_FAIL",
+    "existingWorkflowReconciler.reconcile",
+  ],
+);
+requireMarkers(
+  "services/platform-api/src/main/java/ai/opsmind/platform/investigation/"
+    + "workflow/TemporalExistingWorkflowReconciler.java",
+  [
     "readFirstStartInput",
     "streamHistory",
     "workflow.temporal-outcome-ambiguous",
@@ -396,7 +403,10 @@ for (const forbiddenGenericClaimPath of [
 requireMarkers(
   "services/platform-api/src/main/java/ai/opsmind/platform/messaging/"
     + "TransactionalOutboxClaimer.java",
-  ["opsmind_has_unpublished_outbox_predecessor"],
+  [
+    "opsmind_has_unpublished_outbox_predecessor",
+    "candidate.event_type = 'investigation.workflow-start.requested'",
+  ],
 );
 requireMarkers(
   "services/platform-api/src/main/java/ai/opsmind/platform/investigation/"
@@ -429,14 +439,51 @@ requireMarkers(
     "starts_must_be_frozen",
     "eligible_for_automatic_backfill",
     "legacy_request_digest_and_authorization_revision_not_persisted",
-    "\\quit 3",
+    "FAILED: unresolved legacy investigation rows block Temporal admission.",
+    "\\quit",
   ],
 );
+const cutoverInventory = read(
+  "scripts/operations/investigation-workflow-cutover-inventory.sql",
+);
+if (cutoverInventory.includes("\\quit 3")) {
+  errors.push("cutover inventory must leave blocked exit translation to its wrapper");
+}
+requireMarkers(
+  "scripts/operations/run-investigation-workflow-cutover-inventory.sh",
+  [
+    "#!/usr/bin/env bash",
+    "set -euo pipefail",
+    "mktemp",
+    "psql \"$@\" --file \"$inventory_script\" 2>&1 | tee \"$output_file\"",
+    "PIPESTATUS",
+    "grep -Fqx",
+    "tr -d '\\r'",
+    "psql_status == 3",
+    "exit 3",
+    "exit 5",
+    "exit 4",
+  ],
+);
+requireMarkers("scripts/validation/verify-cutover-inventory-wrapper.sh", [
+  "OPSMIND_FAKE_PSQL_OUTCOME",
+  "assert_exit 3 blocked",
+  "assert_exit 3 blocked_crlf",
+  "assert_exit 0 passed",
+  "assert_exit 0 passed_crlf",
+  "assert_exit 2 error",
+  "assert_exit 5 script_error",
+  "assert_exit 4 unknown",
+  "CutoverInventoryWrapperResult=PASS",
+]);
 requireMarkers("scripts/validation/run-phase-04b-migration-upgrade.sh", [
   "migrate_to 10",
   "migrate_to 11",
   "migrate_to 12",
-  "CutoverBlockExit=%s",
+  "verify-cutover-inventory-wrapper.sh",
+  "run-investigation-workflow-cutover-inventory.sh",
+  "CutoverExpectedBlock=%s",
+  "[[ \"$cutover_expected_block\" == \"PASS\" ]]",
   "NonterminalOrphansAfterReconciliation=%s",
   "VersionEleven=%s",
   "VersionTwelve=%s",
@@ -456,6 +503,11 @@ requireMarkers("scripts/validation/run-phase-04b-migration-upgrade.sh", [
   "LegacyWorkflowMarkerAfterTwelve=%s",
   "LegacyWorkflowPreflightAfterTwelve=%s",
   "LegacyWorkflowParkedAfterTwelve=%s",
+]);
+requireMarkers("docs/runbooks/investigation-workflow-cutover.md", [
+  "run-investigation-workflow-cutover-inventory.sh",
+  "Exit code `3`",
+  "Any other nonzero exit",
 ]);
 
 const requiredTests = {

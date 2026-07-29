@@ -139,6 +139,7 @@ class InvestigationWorkflowDispatcherPersistenceIntegrationTest {
         ));
         restoreDispatcherAccount();
         quarantinePreviousWorkflowHandoffs();
+        quarantinePreviousGenericTestEvents();
         incidentId = UUID.randomUUID();
         admin.update(
             "INSERT INTO incidents (id, organization_id, project_id, title, description, severity, "
@@ -273,16 +274,28 @@ class InvestigationWorkflowDispatcherPersistenceIntegrationTest {
         );
         UUID unrelatedEventId = insertUnrelatedEvent();
 
-        OutboxLease genericLease = inDispatcherTenant(TENANT_A, () ->
-            genericOutbox.claimBatch(
+        OutboxLease genericLease = inDispatcherTenant(TENANT_A, () -> {
+            assertThat(dispatcherJdbc.queryForObject("SELECT session_user", String.class))
+                .isEqualTo("opsmind_dispatcher");
+            assertThat(dispatcherJdbc.queryForObject(
+                "SELECT public.opsmind_current_tenant_id()",
+                UUID.class
+            )).isEqualTo(TENANT_A);
+            assertThat(dispatcherJdbc.queryForObject(
+                "SELECT count(*) FROM outbox_events WHERE event_id = ?",
+                Integer.class,
+                workflowEventId
+            )).isZero();
+            return genericOutbox.claimBatch(
                 TENANT_A,
                 UUID.randomUUID(),
                 NOW,
                 Duration.ofSeconds(30),
                 1
-            ).getFirst()
-        );
+            ).getFirst();
+        });
 
+        assertThat(genericLease.event().eventType()).isEqualTo("unrelated.event");
         assertThat(genericLease.event().eventId()).isEqualTo(unrelatedEventId);
         assertThat(inDispatcherTenant(TENANT_A, () -> genericOutbox.markPublished(
             TENANT_A,
@@ -906,6 +919,17 @@ class InvestigationWorkflowDispatcherPersistenceIntegrationTest {
                 + "AND event_type = ? AND published_at IS NULL",
             TENANT_A,
             InvestigationWorkflowStartEnvelopeFactory.EVENT_TYPE
+        );
+    }
+
+    private void quarantinePreviousGenericTestEvents() {
+        admin.update(
+            "UPDATE outbox_events SET poisoned_at = COALESCE(poisoned_at, statement_timestamp()), "
+                + "last_error = COALESCE(last_error, 'test.previous-generic-event'), "
+                + "lease_token = NULL, lease_expires_at = NULL "
+                + "WHERE organization_id = ? AND published_at IS NULL "
+                + "AND event_type IN ('unrelated.event', 'investigation.workflow-followup.test')",
+            TENANT_A
         );
     }
 

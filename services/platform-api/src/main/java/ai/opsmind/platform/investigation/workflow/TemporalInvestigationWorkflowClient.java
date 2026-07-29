@@ -1,17 +1,13 @@
 package ai.opsmind.platform.investigation.workflow;
 
 import java.util.Map;
-import java.util.Optional;
 
 import io.grpc.StatusRuntimeException;
 import io.temporal.api.common.v1.WorkflowExecution;
-import io.temporal.api.enums.v1.EventType;
 import io.temporal.api.enums.v1.WorkflowIdConflictPolicy;
 import io.temporal.api.enums.v1.WorkflowIdReusePolicy;
-import io.temporal.api.history.v1.HistoryEvent;
 import io.temporal.client.WorkflowClient;
 import io.temporal.client.WorkflowExecutionAlreadyStarted;
-import io.temporal.client.WorkflowExecutionDescription;
 import io.temporal.client.WorkflowOptions;
 import io.temporal.client.WorkflowStub;
 import io.temporal.failure.TemporalException;
@@ -24,6 +20,7 @@ public final class TemporalInvestigationWorkflowClient implements InvestigationW
     private final WorkflowClient workflowClient;
     private final InvestigationTemporalClientProperties clientProperties;
     private final InvestigationWorkflowProperties workflowProperties;
+    private final TemporalExistingWorkflowReconciler existingWorkflowReconciler;
 
     public TemporalInvestigationWorkflowClient(
         WorkflowClient workflowClient,
@@ -33,6 +30,7 @@ public final class TemporalInvestigationWorkflowClient implements InvestigationW
         this.workflowClient = workflowClient;
         this.clientProperties = clientProperties;
         this.workflowProperties = workflowProperties;
+        this.existingWorkflowReconciler = new TemporalExistingWorkflowReconciler(workflowClient);
     }
 
     @Override
@@ -58,7 +56,7 @@ public final class TemporalInvestigationWorkflowClient implements InvestigationW
             return result(execution, false);
         }
         catch (WorkflowExecutionAlreadyStarted exception) {
-            return reconcileExisting(request, startPayloadDigest, exception);
+            return existingWorkflowReconciler.reconcile(request, startPayloadDigest, exception);
         }
         catch (StatusRuntimeException exception) {
             throw TemporalTransportFailureClassifier.map(
@@ -70,102 +68,6 @@ public final class TemporalInvestigationWorkflowClient implements InvestigationW
                 exception, "workflow.temporal-rejected"
             );
         }
-    }
-
-    private StartResult reconcileExisting(
-        InvestigationWorkflowStartRequest request,
-        String startPayloadDigest,
-        WorkflowExecutionAlreadyStarted exception
-    ) {
-        WorkflowExecution execution = exception.getExecution();
-        Optional<String> workflowType = exception.getWorkflowType();
-        if (execution == null
-            || execution.getWorkflowId().isBlank()
-            || execution.getRunId().isBlank()
-            || workflowType.filter(value -> !value.isBlank()).isEmpty()) {
-            throw InvestigationWorkflowStartException.outcomeUncertain(
-                "workflow.temporal-outcome-ambiguous", exception
-            );
-        }
-        if (!request.workflowId().equals(execution.getWorkflowId())
-            || !request.workflowType().equals(workflowType.orElseThrow())) {
-            throw InvestigationWorkflowStartException.permanent(
-                "workflow.existing-contract-mismatch", exception
-            );
-        }
-        try {
-            WorkflowStub existing = workflowClient.newUntypedWorkflowStub(
-                execution,
-                Optional.of(request.workflowType())
-            );
-            WorkflowExecutionDescription description = existing.describe();
-            Object storedDigest =
-                description.getMemo(PAYLOAD_DIGEST_MEMO_KEY, String.class);
-            if (!matchesExistingExecution(
-                request, startPayloadDigest, execution, description, storedDigest
-            )) {
-                throw InvestigationWorkflowStartException.permanent(
-                    "workflow.existing-contract-mismatch", exception
-                );
-            }
-            return result(description.getExecution(), true);
-        }
-        catch (InvestigationWorkflowStartException mapped) {
-            throw mapped;
-        }
-        catch (StatusRuntimeException status) {
-            throw InvestigationWorkflowStartException.outcomeUncertain(
-                "workflow.temporal-outcome-ambiguous", status
-            );
-        }
-        catch (TemporalException temporalFailure) {
-            throw InvestigationWorkflowStartException.outcomeUncertain(
-                "workflow.temporal-outcome-ambiguous", temporalFailure
-            );
-        }
-        catch (RuntimeException unverifiable) {
-            throw InvestigationWorkflowStartException.outcomeUncertain(
-                "workflow.temporal-outcome-ambiguous", unverifiable
-            );
-        }
-    }
-
-    private boolean matchesExistingExecution(
-        InvestigationWorkflowStartRequest request,
-        String startPayloadDigest,
-        WorkflowExecution execution,
-        WorkflowExecutionDescription description,
-        Object storedDigest
-    ) {
-        return request.workflowType().equals(description.getWorkflowType())
-            && request.taskQueue().equals(description.getTaskQueue())
-            && startPayloadDigest.equals(storedDigest)
-            && request.workflowId().equals(description.getExecution().getWorkflowId())
-            && !execution.getRunId().isBlank()
-            && !description.getExecution().getRunId().isBlank()
-            && execution.getRunId().equals(description.getExecution().getRunId())
-            && request.equals(readFirstStartInput(execution));
-    }
-
-    private InvestigationWorkflowStartRequest readFirstStartInput(
-        WorkflowExecution execution
-    ) {
-        HistoryEvent firstEvent = workflowClient.streamHistory(
-            execution.getWorkflowId(), execution.getRunId()
-        ).findFirst().orElseThrow(() ->
-            new IllegalStateException("Existing workflow has no start history.")
-        );
-        if (firstEvent.getEventType() != EventType.EVENT_TYPE_WORKFLOW_EXECUTION_STARTED
-            || !firstEvent.hasWorkflowExecutionStartedEventAttributes()
-            || !firstEvent.getWorkflowExecutionStartedEventAttributes().hasInput()) {
-            throw new IllegalStateException("Existing workflow start history is invalid.");
-        }
-        return workflowClient.getOptions().getDataConverter().fromPayloads(
-            0,
-            Optional.of(firstEvent.getWorkflowExecutionStartedEventAttributes().getInput()),
-            InvestigationWorkflowStartRequest.class,
-            InvestigationWorkflowStartRequest.class
-        );
     }
 
     private void requireExpectedTarget(

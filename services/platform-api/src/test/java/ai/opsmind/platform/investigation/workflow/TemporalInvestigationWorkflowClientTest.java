@@ -300,6 +300,50 @@ class TemporalInvestigationWorkflowClientTest {
     }
 
     @Test
+    void reconciliationPinsHistoryAndResultToFirstRunWhenCurrentRunDiffers() {
+        String namespace = "temporal-test-namespace";
+        InvestigationWorkflowStartRequest request = request(namespace);
+        WorkflowExecution firstExecution = execution(request);
+        WorkflowExecution currentExecution = WorkflowExecution.newBuilder()
+            .setWorkflowId(request.workflowId())
+            .setRunId("temporal-run-continued")
+            .build();
+        WorkflowClient sdkClient = mock(WorkflowClient.class);
+        WorkflowStub startStub = mock(WorkflowStub.class);
+        WorkflowStub existingStub = mock(WorkflowStub.class);
+        when(sdkClient.newUntypedWorkflowStub(
+            eq(WORKFLOW_TYPE), any(WorkflowOptions.class)
+        )).thenReturn(startStub);
+        when(startStub.start(any(Object[].class))).thenThrow(
+            new WorkflowExecutionAlreadyStarted(
+                currentExecution,
+                WORKFLOW_TYPE,
+                Status.ALREADY_EXISTS.asRuntimeException()
+            )
+        );
+        when(sdkClient.newUntypedWorkflowStub(
+            eq(currentExecution), eq(Optional.of(WORKFLOW_TYPE))
+        )).thenReturn(existingStub);
+        when(existingStub.describe()).thenReturn(
+            description(currentExecution, firstExecution.getRunId())
+        );
+        when(sdkClient.getOptions()).thenReturn(
+            WorkflowClientOptions.newBuilder()
+                .setDataConverter(DATA_CONVERTER)
+                .build()
+        );
+        when(sdkClient.streamHistory(
+            request.workflowId(), firstExecution.getRunId()
+        )).thenReturn(Stream.of(startEvent(request)));
+
+        InvestigationWorkflowClient.StartResult duplicate =
+            temporalClient(sdkClient, namespace).start(request, DIGEST);
+
+        assertThat(duplicate.alreadyStarted()).isTrue();
+        assertThat(duplicate.temporalRunId()).isEqualTo(firstExecution.getRunId());
+    }
+
+    @Test
     void statuslessLocalFailureOnStartRemainsPermanent() {
         String namespace = "temporal-test-namespace";
         InvestigationWorkflowStartRequest request = request(namespace);
@@ -587,6 +631,13 @@ class TemporalInvestigationWorkflowClientTest {
     }
 
     private WorkflowExecutionDescription description(WorkflowExecution execution) {
+        return description(execution, execution.getRunId());
+    }
+
+    private WorkflowExecutionDescription description(
+        WorkflowExecution execution,
+        String firstRunId
+    ) {
         Payload digestPayload = DATA_CONVERTER
             .toPayload(DIGEST)
             .orElseThrow();
@@ -595,6 +646,7 @@ class TemporalInvestigationWorkflowClientTest {
                 .setWorkflowExecutionInfo(
                     WorkflowExecutionInfo.newBuilder()
                         .setExecution(execution)
+                        .setFirstRunId(firstRunId)
                         .setType(
                             WorkflowType.newBuilder().setName(WORKFLOW_TYPE).build()
                         )

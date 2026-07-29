@@ -49,13 +49,19 @@ Temporal admission remains disabled until all B-017 conditions have evidence:
 ## Inventory gate
 
 ```powershell
-psql "$env:DATABASE_URL" `
-  -f scripts/operations/investigation-workflow-cutover-inventory.sql
+bash scripts/operations/run-investigation-workflow-cutover-inventory.sh `
+  "$env:DATABASE_URL"
 ```
 
 Exit code `0` proves zero nonterminal runs without durable workflow bindings.
 Exit code `3` means cutover is blocked and the emitted JSON identifies every
-row requiring reconciliation.
+row requiring reconciliation. Always use this wrapper rather than invoking the
+SQL file with bare `psql`: it preserves the blocked-inventory exit contract on
+portable psql versions while propagating actual psql failures.
+Any other nonzero exit is an execution or output-capture failure; keep Temporal
+disabled, repair the failure, and rerun the inventory before proceeding. In
+particular, the wrapper maps psql's `ON_ERROR_STOP` script-error exit `3` to
+`5`, reserving `3` only for a confirmed blocked inventory marker.
 
 The command deliberately performs no automatic backfill. Legacy inline starts
 did not persist the canonical request digest or authorization snapshot revision,
