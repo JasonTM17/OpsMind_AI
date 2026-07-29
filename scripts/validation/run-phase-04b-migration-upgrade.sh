@@ -1012,6 +1012,47 @@ WHERE run.status IN ('CREATED', 'ANALYZING', 'WAITING_FOR_EVIDENCE')
 ")"
 [[ "$nonterminal_orphans_after_reconciliation" == "0" ]]
 
+migrate_to 13
+version_thirteen="$(query_upgrade_database "
+SELECT max(version::integer)
+FROM flyway_schema_history
+WHERE success;
+")"
+[[ "$version_thirteen" == "13" ]]
+reconciliation_functions_after_thirteen="$(query_upgrade_database "
+SELECT count(*)
+FROM pg_proc procedure
+JOIN pg_namespace namespace ON namespace.oid = procedure.pronamespace
+WHERE namespace.nspname = 'public'
+  AND procedure.proname IN (
+    'opsmind_claim_investigation_workflow_reconciliation',
+    'opsmind_settle_investigation_workflow_reconciliation',
+    'opsmind_get_investigation_workflow_reconciliation_status'
+  )
+  AND has_function_privilege(
+    'opsmind_workflow_reconciler', procedure.oid, 'EXECUTE'
+  );
+")"
+[[ "$reconciliation_functions_after_thirteen" == "3" ]]
+reconciliation_trigger_public_denied_after_thirteen="$(query_upgrade_database "
+SELECT NOT EXISTS (
+  SELECT 1
+  FROM pg_proc procedure
+  CROSS JOIN LATERAL aclexplode(
+    coalesce(procedure.proacl, acldefault('f', procedure.proowner))
+  ) privilege
+  WHERE procedure.oid =
+    'public.opsmind_validate_investigation_workflow_binding_update()'::regprocedure
+    AND privilege.grantee = 0
+    AND privilege.privilege_type = 'EXECUTE'
+);
+")"
+[[ "$reconciliation_trigger_public_denied_after_thirteen" == "t" ]]
+
+printf 'VersionThirteen=%s\nReconciliationFunctionsAfterThirteen=%s\nReconciliationTriggerPublicDeniedAfterThirteen=%s\n' \
+  "$version_thirteen" "$reconciliation_functions_after_thirteen" \
+  "$reconciliation_trigger_public_denied_after_thirteen"
+
 printf 'Database=%s\nVersionBefore=%s\nEvidenceTableBefore=%s\nVersionSeven=%s\nEvidenceTableAfterSeven=%s\nVersionEight=%s\nVersionNine=%s\nVersionTen=%s\nVersionEleven=%s\nVersionTwelve=%s\nWorkflowBindingTableAfterTen=%s\nWorkflowEventFunctionAfterTen=%s\nWorkflowPreflightFunctionAfterEleven=%s\nWorkflowSettlementFunctionAfterEleven=%s\nWorkflowTerminalizerFunctionAfterEleven=%s\nWorkflowSettlementOwnerAfterEleven=%s\nWorkflowClaimFunctionAfterTwelve=%s\nWorkflowClaimOwnerAfterTwelve=%s\nWorkflowClaimSecurityDefinerAfterTwelve=%s\nWorkflowClaimDispatcherExecuteAfterTwelve=%s\nWorkflowClaimPublicExecuteAfterTwelve=%s\nOutboxPredecessorFunctionAfterTwelve=%s\nOutboxPredecessorOwnerAfterTwelve=%s\nOutboxPredecessorSecurityDefinerAfterTwelve=%s\nOutboxPredecessorDispatcherExecuteAfterTwelve=%s\nOutboxPredecessorPublicExecuteAfterTwelve=%s\nDispatcherRoleAfterTwelve=%s\nResolverRoleAfterTwelve=%s\nDispatcherWorkflowBindingPrivilegeAfterTwelve=%s\nDispatcherInboxPrivilegeAfterTwelve=%s\nDispatcherWorkflowExclusionPolicyAfterTwelve=%s\nWorkflowPreflightOwnerAfterTwelve=%s\nWorkflowTenantSelectorOwnerAfterTwelve=%s\nLegacyWorkflowMarkerAfterTwelve=%s\nLegacyWorkflowClaimCountAfterTwelve=%s\nLegacyWorkflowPreflightAfterTwelve=%s\nLegacyWorkflowParkAfterTwelve=%s\nLegacyWorkflowParkedAfterTwelve=%s\nLegacyTerminalRunsAfterTen=%s\nLegacyBindingCountAfterTen=%s\nNonterminalOrphansAfterTen=%s\nCutoverBlockExit=%s\nNonterminalOrphansAfterReconciliation=%s\nLegacyPayloadDigestStable=%s\nRollingLegacyWriteCount=%s\nInvalidAbstainRejected=%s\nUpgradeResult=PASS\n' \
   "$upgrade_database" "$version_before" "$table_before" \
   "$version_seven" "$table_after_seven" "$version_eight" "$version_nine" \

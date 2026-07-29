@@ -576,6 +576,8 @@ jobs:
       POSTGRES_APP_PASSWORD: placeholder-ci-runtime
       POSTGRES_DISPATCHER_USER: opsmind_dispatcher
       POSTGRES_DISPATCHER_PASSWORD: placeholder-ci-dispatcher
+      POSTGRES_WORKFLOW_RECONCILER_USER: opsmind_workflow_reconciler
+      POSTGRES_WORKFLOW_RECONCILER_PASSWORD: placeholder-ci-reconciler
       POSTGRES_AI_RUNTIME_USER: opsmind_ai_runtime
       POSTGRES_AI_RUNTIME_PASSWORD: placeholder-ci-ai-runtime
       POSTGRES_TOOL_GATEWAY_MIGRATOR_USER: opsmind_tool_gateway_migrator
@@ -671,7 +673,7 @@ jobs:
             -Dtest=ToolGatewayPersistenceIntegrationTest,ToolGatewayPersistenceBoundaryIntegrationTest,ToolGatewayTenantRlsPoolIntegrationTest \
             -f services/tool-gateway/pom.xml test \
             2>&1 | tee artifacts/verification/phase-07/tool-gateway-persistence.txt
-      - name: Prove V006 to V010 upgrade, recovery, and activity-index evidence
+      - name: Prove V006 to V013 upgrade, recovery, and reconciliation privileges
         shell: bash
         env:
           OPSMIND_EPHEMERAL_DB: "true"
@@ -744,6 +746,8 @@ jobs:
             java -jar services/platform-api/target/platform-api.jar \
               --spring.main.web-application-type=none \
               --opsmind.persistence.enabled=false
+          bash scripts/validation/run-phase-09-reconciliation-postgres-contract.sh \
+            2>&1 | tee "$evidence_root/reconciliation-postgres-contract.txt"
           mvn --batch-mode --no-transfer-progress \
             -Dmaven.repo.local="$OPS_CACHE_ROOT/maven" \
             -Dtest=InvestigationWorkflowHandoffPersistenceIntegrationTest,InvestigationWorkflowDispatcherPersistenceIntegrationTest \
@@ -770,6 +774,7 @@ jobs:
             artifacts/verification/phase-06/tool-gateway-rls-upgrade.txt
             artifacts/verification/phase-07/tool-gateway-persistence.txt
             artifacts/verification/phase-09-workflow-handoff/postgres-contracts.txt
+            artifacts/verification/phase-09-workflow-handoff/reconciliation-postgres-contract.txt
           if-no-files-found: error
 
   identity-conformance:
@@ -828,6 +833,7 @@ jobs:
       POSTGRES_PASSWORD: placeholder-ci-only
       POSTGRES_APP_PASSWORD: placeholder-ci-runtime
       POSTGRES_DISPATCHER_PASSWORD: placeholder-ci-dispatcher
+      POSTGRES_WORKFLOW_RECONCILER_PASSWORD: placeholder-ci-reconciler
       POSTGRES_AI_RUNTIME_PASSWORD: placeholder-ci-ai-runtime
       POSTGRES_TOOL_GATEWAY_MIGRATOR_PASSWORD: placeholder-ci-tool-migration
       POSTGRES_TOOL_GATEWAY_PASSWORD: placeholder-ci-tool-runtime

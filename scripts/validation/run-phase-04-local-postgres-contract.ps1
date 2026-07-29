@@ -181,8 +181,15 @@ $adminPassword = New-EphemeralPassword
 $migrationPassword = New-EphemeralPassword
 $appPassword = New-EphemeralPassword
 $dispatcherPassword = New-EphemeralPassword
+$workflowReconcilerPassword = New-EphemeralPassword
 $aiRuntimePassword = New-EphemeralPassword
-$knownPasswords = @($adminPassword, $migrationPassword, $appPassword, $dispatcherPassword)
+$knownPasswords = @(
+    $adminPassword, $migrationPassword, $appPassword, $dispatcherPassword
+)
+while ($workflowReconcilerPassword -in $knownPasswords) {
+    $workflowReconcilerPassword = New-EphemeralPassword
+}
+$knownPasswords += $workflowReconcilerPassword
 while ($aiRuntimePassword -in $knownPasswords) {
     $aiRuntimePassword = New-EphemeralPassword
 }
@@ -190,6 +197,7 @@ $environmentNames = @(
     'POSTGRES_DB', 'POSTGRES_USER', 'POSTGRES_PASSWORD',
     'POSTGRES_APP_USER', 'POSTGRES_APP_PASSWORD',
     'POSTGRES_DISPATCHER_USER', 'POSTGRES_DISPATCHER_PASSWORD',
+    'POSTGRES_WORKFLOW_RECONCILER_USER', 'POSTGRES_WORKFLOW_RECONCILER_PASSWORD',
     'POSTGRES_AI_RUNTIME_USER', 'POSTGRES_AI_RUNTIME_PASSWORD',
     'SPRING_PROFILES_ACTIVE', 'SPRING_DATASOURCE_URL',
     'SPRING_DATASOURCE_USERNAME', 'SPRING_DATASOURCE_PASSWORD',
@@ -241,6 +249,8 @@ try {
     $env:POSTGRES_APP_PASSWORD = $appPassword
     $env:POSTGRES_DISPATCHER_USER = 'opsmind_dispatcher'
     $env:POSTGRES_DISPATCHER_PASSWORD = $dispatcherPassword
+    $env:POSTGRES_WORKFLOW_RECONCILER_USER = 'opsmind_workflow_reconciler'
+    $env:POSTGRES_WORKFLOW_RECONCILER_PASSWORD = $workflowReconcilerPassword
     $env:POSTGRES_AI_RUNTIME_USER = 'opsmind_ai_runtime'
     $env:POSTGRES_AI_RUNTIME_PASSWORD = $aiRuntimePassword
 
@@ -250,6 +260,7 @@ try {
         --env POSTGRES_DB --env POSTGRES_USER --env POSTGRES_PASSWORD `
         --env POSTGRES_APP_USER --env POSTGRES_APP_PASSWORD `
         --env POSTGRES_DISPATCHER_USER --env POSTGRES_DISPATCHER_PASSWORD `
+        --env POSTGRES_WORKFLOW_RECONCILER_USER --env POSTGRES_WORKFLOW_RECONCILER_PASSWORD `
         --env POSTGRES_AI_RUNTIME_USER --env POSTGRES_AI_RUNTIME_PASSWORD `
         --mount $mount --tmpfs '/var/lib/postgresql:rw,noexec,nosuid,size=536870912' `
         --publish '127.0.0.1::5432' $PostgresImage | Out-Null
@@ -481,7 +492,7 @@ finally {
     [Array]::Reverse($diagnosticPaths)
     foreach ($line in Get-SanitizedTail $diagnosticPaths @(
         $adminPassword, $migrationPassword, $appPassword, $dispatcherPassword,
-        $aiRuntimePassword
+        $workflowReconcilerPassword, $aiRuntimePassword
     )) { $capturedDiagnostics.Add($line) }
     if (Test-Path -LiteralPath $temporaryDirectory) {
         $resolvedTemporary = [IO.Path]::GetFullPath($temporaryDirectory)
@@ -567,7 +578,7 @@ if ($null -ne $failure -or $cleanupErrors.Count -gt 0 -or $residualContainers -n
         $safeMessage = $failure.Exception.Message
         foreach ($secret in @(
             $adminPassword, $migrationPassword, $appPassword, $dispatcherPassword,
-            $aiRuntimePassword
+            $workflowReconcilerPassword, $aiRuntimePassword
         )) {
             $safeMessage = $safeMessage.Replace($secret, '[REDACTED]')
         }
