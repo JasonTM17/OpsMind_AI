@@ -403,7 +403,10 @@ for (const forbiddenGenericClaimPath of [
 requireMarkers(
   "services/platform-api/src/main/java/ai/opsmind/platform/messaging/"
     + "TransactionalOutboxClaimer.java",
-  ["opsmind_has_unpublished_outbox_predecessor"],
+  [
+    "opsmind_has_unpublished_outbox_predecessor",
+    "candidate.event_type = 'investigation.workflow-start.requested'",
+  ],
 );
 requireMarkers(
   "services/platform-api/src/main/java/ai/opsmind/platform/investigation/"

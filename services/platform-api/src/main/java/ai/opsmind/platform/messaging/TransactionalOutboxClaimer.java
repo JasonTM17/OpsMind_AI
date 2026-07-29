@@ -36,6 +36,16 @@ final class TransactionalOutboxClaimer {
                    AND candidate.next_attempt_at <= ?
                    AND (candidate.lease_expires_at IS NULL OR candidate.lease_expires_at <= ?)
                    %s
+                   -- Canonical investigation workflow starts are reserved for the
+                   -- resolver-owned V012 claim path. Keep this query fence in
+                   -- addition to the dispatcher RLS policy so a generic batch
+                   -- cannot lease one when the tenant also has ordinary work.
+                   AND NOT (
+                       candidate.event_type = 'investigation.workflow-start.requested'
+                       AND candidate.schema_version = '1'
+                       AND candidate.aggregate_type = 'investigation-workflow'
+                       AND candidate.aggregate_sequence = 1
+                   )
                    AND NOT public.opsmind_has_unpublished_outbox_predecessor(
                        candidate.organization_id,
                        candidate.aggregate_type,
