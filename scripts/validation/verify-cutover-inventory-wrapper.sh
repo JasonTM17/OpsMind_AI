@@ -22,6 +22,7 @@ printf '%s\n' \
   "  blocked) printf '%s\\n' 'FAILED: unresolved legacy investigation rows block Temporal admission.' ;;" \
   "  passed) printf '%s\\n' 'PASSED: zero unresolved legacy investigation rows.' ;;" \
   "  error) printf '%s\\n' 'synthetic psql failure' >&2; exit 2 ;;" \
+  "  script_error) printf '%s\\n' 'synthetic psql script failure' >&2; exit 3 ;;" \
   "  unknown) printf '%s\\n' 'synthetic unknown result' ;;" \
   '  *) exit 64 ;;' \
   'esac' > "$fake_psql"
@@ -44,5 +45,6 @@ assert_exit() {
 assert_exit 3 blocked
 assert_exit 0 passed
 assert_exit 2 error
+assert_exit 5 script_error
 assert_exit 4 unknown
 printf '%s\n' 'CutoverInventoryWrapperResult=PASS'

@@ -59,7 +59,9 @@ row requiring reconciliation. Always use this wrapper rather than invoking the
 SQL file with bare `psql`: it preserves the blocked-inventory exit contract on
 portable psql versions while propagating actual psql failures.
 Any other nonzero exit is an execution or output-capture failure; keep Temporal
-disabled, repair the failure, and rerun the inventory before proceeding.
+disabled, repair the failure, and rerun the inventory before proceeding. In
+particular, the wrapper maps psql's `ON_ERROR_STOP` script-error exit `3` to
+`5`, reserving `3` only for a confirmed blocked inventory marker.
 
 The command deliberately performs no automatic backfill. Legacy inline starts
 did not persist the canonical request digest or authorization snapshot revision,
