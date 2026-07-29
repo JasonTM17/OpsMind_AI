@@ -1,6 +1,8 @@
 #!/usr/bin/env bash
 set -euo pipefail
 
+bash scripts/validation/verify-cutover-inventory-wrapper.sh
+
 if [[ "${OPSMIND_EPHEMERAL_DB:-}" != "true" ]]; then
   echo "OPSMIND_EPHEMERAL_DB=true is required for the disposable upgrade proof." >&2
   exit 2
