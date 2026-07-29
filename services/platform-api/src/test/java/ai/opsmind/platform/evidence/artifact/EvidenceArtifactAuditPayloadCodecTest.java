@@ -3,7 +3,6 @@ package ai.opsmind.platform.evidence.artifact;
 import static org.assertj.core.api.Assertions.assertThat;
 
 import java.time.Instant;
-import java.util.HashSet;
 import java.util.Set;
 import java.util.UUID;
 
@@ -47,9 +46,7 @@ class EvidenceArtifactAuditPayloadCodecTest {
 
         assertThat(audit.schemaVersion()).isEqualTo(AuditEvent.EVIDENCE_ARTIFACT_SCHEMA_VERSION);
         assertThat(audit.resourceId()).isEqualTo(metadata.artifactId().toString());
-        Set<String> fields = new HashSet<>();
-        payload.fieldNames().forEachRemaining(fields::add);
-        assertThat(fields).containsExactlyInAnyOrderElementsOf(Set.of(
+        assertThat(payload.propertyNames()).containsExactlyInAnyOrder(Set.of(
             "eventId", "organizationId", "projectId", "incidentId", "runId", "artifactId",
             "actorId", "lifecycleVersion", "lifecycleState", "contentDigest", "byteCount",
             "dataClassification", "retentionClass", "occurredAt"
