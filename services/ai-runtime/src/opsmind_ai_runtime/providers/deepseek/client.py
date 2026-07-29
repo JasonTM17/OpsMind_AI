@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import asyncio
+import hashlib
 import json
 from typing import Any, Protocol
 
@@ -112,11 +113,10 @@ class DeepSeekClient:
             "messages": [{"role": "user", "content": prompt}],
             "response_format": {"type": "json_object"},
             "stream": False,
-            "user": user_id,
+            "user_id": _opaque_user_id(user_id),
             "max_tokens": max_tokens,
+            "thinking": {"type": "enabled" if thinking else "disabled"},
         }
-        if thinking:
-            payload["thinking"] = {"type": "enabled"}
         headers = {"Authorization": f"Bearer {self._api_key}", "Content-Type": "application/json"}
         timeout = (
             min(self._timeout, timeout_seconds) if timeout_seconds is not None else self._timeout
@@ -138,6 +138,12 @@ class DeepSeekClient:
         if status >= 400:
             raise map_status(status)
         return body
+
+
+def _opaque_user_id(user_id: str) -> str:
+    """Keep platform identities out of the provider request while preserving isolation."""
+
+    return f"opsmind_{hashlib.sha256(user_id.encode('utf-8')).hexdigest()}"
 
 
 def _deadline_error() -> ProviderError:
