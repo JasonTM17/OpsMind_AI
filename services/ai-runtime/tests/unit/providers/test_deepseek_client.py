@@ -1,4 +1,5 @@
 import asyncio
+import re
 
 import pytest
 
@@ -33,6 +34,49 @@ class SlowTransport:
         self.calls += 1
         await asyncio.sleep(0.05)
         return 200, {"choices": []}
+
+
+@pytest.mark.parametrize(
+    ("thinking", "thinking_type"),
+    [(True, "enabled"), (False, "disabled")],
+)
+def test_client_emits_exact_deepseek_v4_request_contract(
+    thinking: bool, thinking_type: str
+) -> None:
+    transport = SequenceTransport([(200, {"choices": []})])
+    client = DeepSeekClient(
+        base_url="https://provider.example/v1",
+        credential="placeholder",
+        model="deepseek-v4-flash",
+        transport=transport,
+    )
+
+    asyncio.run(
+        client.complete(
+            prompt="redacted",
+            thinking=thinking,
+            user_id="tenant-123:actor-456",
+            max_tokens=100,
+        )
+    )
+
+    expected_user_id = (
+        "opsmind_3c9b92b94c6eb28dd31d2045882c1e288372f64b09a7720f3a3eb2c721262a75"
+    )
+    assert transport.payloads == [
+        {
+            "model": "deepseek-v4-flash",
+            "messages": [{"role": "user", "content": "redacted"}],
+            "response_format": {"type": "json_object"},
+            "stream": False,
+            "user_id": expected_user_id,
+            "max_tokens": 100,
+            "thinking": {"type": thinking_type},
+        }
+    ]
+    assert re.fullmatch(r"[A-Za-z0-9_-]+", expected_user_id)
+    assert "tenant-123" not in expected_user_id
+    assert "actor-456" not in expected_user_id
 
 
 def test_client_does_not_retry_rate_limit_without_idempotency_contract() -> None:
