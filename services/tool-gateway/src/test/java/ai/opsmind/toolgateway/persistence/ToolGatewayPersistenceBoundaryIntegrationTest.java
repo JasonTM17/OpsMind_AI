@@ -105,6 +105,17 @@ class ToolGatewayPersistenceBoundaryIntegrationTest {
         )).isInstanceOf(RuntimeException.class);
         assertThat(database.migratorJdbc().queryForObject(
             "SELECT has_table_privilege('opsmind_tool_gateway', "
+                + "'tool_gateway.execution_receipts', 'SELECT') "
+                + "AND has_table_privilege('opsmind_tool_gateway', "
+                + "'tool_gateway.execution_receipts', 'INSERT') "
+                + "AND has_table_privilege('opsmind_tool_gateway', "
+                + "'tool_gateway.execution_receipts', 'UPDATE') "
+                + "AND NOT has_table_privilege('opsmind_tool_gateway', "
+                + "'tool_gateway.execution_receipts', 'DELETE,TRUNCATE')",
+            Boolean.class
+        )).isTrue();
+        assertThat(database.migratorJdbc().queryForObject(
+            "SELECT has_table_privilege('opsmind_tool_gateway', "
                 + "'tool_gateway.tool_audit_events', 'SELECT,UPDATE,DELETE,TRUNCATE')",
             Boolean.class
         )).isFalse();
@@ -219,6 +230,16 @@ class ToolGatewayPersistenceBoundaryIntegrationTest {
     }
 
     @Test
+    void receiptReadinessRejectsDeletePrivilegeDrift() {
+        assertReceiptReadinessRejectsPrivilege("DELETE");
+    }
+
+    @Test
+    void receiptReadinessRejectsTruncatePrivilegeDrift() {
+        assertReceiptReadinessRejectsPrivilege("TRUNCATE");
+    }
+
+    @Test
     void auditRejectsOwnerMutationAndTruncation() {
         String digest = ToolGatewayPostgresTestContext.digest(UUID.randomUUID().toString());
         TenantProjectScope scope = new TenantProjectScope(
@@ -301,6 +322,24 @@ class ToolGatewayPersistenceBoundaryIntegrationTest {
             UUID.randomUUID(),
             ToolGatewayPostgresTestContext.digest(UUID.randomUUID().toString())
         )).isInstanceOf(RuntimeException.class);
+    }
+
+    private void assertReceiptReadinessRejectsPrivilege(String privilege) {
+        var receiptStore = database.receiptStore(Duration.ofSeconds(5));
+        database.migratorJdbc().execute(
+            "GRANT " + privilege
+                + " ON tool_gateway.execution_receipts TO opsmind_tool_gateway"
+        );
+        try {
+            assertThat(receiptStore.available()).isFalse();
+        }
+        finally {
+            database.migratorJdbc().execute(
+                "REVOKE " + privilege
+                    + " ON tool_gateway.execution_receipts FROM opsmind_tool_gateway"
+            );
+        }
+        assertThat(receiptStore.available()).isTrue();
     }
 
     private void restoreReceiptIsolationPolicy() {

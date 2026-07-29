@@ -42,6 +42,8 @@ final class GatewayIsolationReadinessSql {
                 + "'tool_gateway.execution_receipts', 'INSERT') "
                 + "AND has_table_privilege(current_user, "
                 + "'tool_gateway.execution_receipts', 'UPDATE') "
+                + "AND NOT has_table_privilege(current_user, "
+                + "'tool_gateway.execution_receipts', 'DELETE,TRUNCATE') "
                 + "AND to_regprocedure("
                 + "'tool_gateway.set_tenant_context(uuid,uuid)') IS NOT NULL "
                 + "AND to_regprocedure("
