@@ -17,4 +17,5 @@ public record AuditEvent(
 ) {
     public static final String INCIDENT_SCHEMA_VERSION = "incident-audit-v1";
     public static final String INVESTIGATION_SCHEMA_VERSION = "investigation-audit-v1";
+    public static final String EVIDENCE_ARTIFACT_SCHEMA_VERSION = "evidence-artifact-audit-v1";
 }

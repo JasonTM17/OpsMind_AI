@@ -83,6 +83,8 @@ jobs:
         run: node scripts/validation/validate-repository-layout.mjs
       - name: Validate bounded evidence-record checkpoint
         run: node scripts/validation/validate-phase-04b-evidence-records.mjs
+      - name: Validate Phase 4C evidence artifact metadata checkpoint
+        run: node scripts/validation/validate-phase-04c-evidence-artifacts.mjs
       - name: Validate Phase 8 deterministic evaluation contracts
         shell: bash
         run: |
@@ -683,18 +685,29 @@ jobs:
           mkdir -p artifacts/verification/phase-04
           bash scripts/validation/run-phase-04b-migration-upgrade.sh \
             2>&1 | tee artifacts/verification/phase-04/evidence-migration-upgrade.txt
+      - name: Prove V013 to V014 evidence artifact metadata upgrade
+        shell: bash
+        env:
+          OPSMIND_EPHEMERAL_DB: "true"
+          OPSMIND_PHASE4C_ARTIFACT_UPGRADE_DATABASE: opsmind_phase4c_artifact_upgrade_${{ github.run_id }}
+        run: |
+          set -euo pipefail
+          mkdir -p artifacts/verification/phase-04c
+          bash scripts/validation/run-phase-04c-artifact-metadata-postgres-contract.sh \
+            2>&1 | tee artifacts/verification/phase-04c/evidence-artifact-metadata-upgrade.txt
       - name: Prove pooled tenant isolation and messaging recovery
         shell: bash
         env:
           OPSMIND_PHASE3_DB_INTEGRATION: "true"
           OPSMIND_PHASE7_DB_INTEGRATION: "true"
+          OPSMIND_PHASE4C_ARTIFACT_DB_INTEGRATION: "true"
           SPRING_DATASOURCE_URL: jdbc:postgresql://127.0.0.1:5432/opsmind
         run: |
           set -euo pipefail
           mkdir -p artifacts/verification/phase-03
           mvn --batch-mode --no-transfer-progress \
             -Dmaven.repo.local="$OPS_CACHE_ROOT/maven" \
-            -Dtest=TenantRlsPoolIntegrationTest,TransactionalOutboxIntegrationTest,TransactionalInboxIntegrationTest,PlatformUserStatusVerifierIntegrationTest,OutboxDispatcherWorkloadIntegrationTest,InvestigationPersistenceIntegrationTest,InvestigationPersistenceIntegrityIntegrationTest,InvestigationEvidencePersistenceIntegrationTest,InvestigationEvidenceRollbackIntegrationTest,InvestigationEvidenceReplayIntegrationTest \
+            -Dtest=TenantRlsPoolIntegrationTest,TransactionalOutboxIntegrationTest,TransactionalInboxIntegrationTest,PlatformUserStatusVerifierIntegrationTest,OutboxDispatcherWorkloadIntegrationTest,InvestigationPersistenceIntegrationTest,InvestigationPersistenceIntegrityIntegrationTest,InvestigationEvidencePersistenceIntegrationTest,InvestigationEvidenceRollbackIntegrationTest,InvestigationEvidenceReplayIntegrationTest,EvidenceArtifactMetadataPersistenceIntegrationTest \
             -f services/platform-api/pom.xml test \
             2>&1 | tee artifacts/verification/phase-03/authz-rls-pool-matrix.txt
       - name: Run alternating-tenant and append-only contract
@@ -773,6 +786,7 @@ jobs:
             artifacts/verification/phase-03/
             artifacts/verification/phase-04/evidence-migration-upgrade.txt
             artifacts/verification/phase-04/incident-activity-timeline.txt
+            artifacts/verification/phase-04c/evidence-artifact-metadata-upgrade.txt
             artifacts/verification/phase-06/tool-gateway-rls-upgrade.txt
             artifacts/verification/phase-07/tool-gateway-persistence.txt
             artifacts/verification/phase-09-workflow-handoff/postgres-contracts.txt
