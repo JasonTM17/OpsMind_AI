@@ -22,7 +22,7 @@
         <jackson-bom.version>3.1.5</jackson-bom.version>
         <log4j2.version>2.25.5</log4j2.version>
         <postgresql.version>42.7.13</postgresql.version>
-        <temporal.version>1.35.0</temporal.version>
+        <temporal.version>1.37.0</temporal.version>
         <tomcat.version>11.0.24</tomcat.version>
     </properties>
 
