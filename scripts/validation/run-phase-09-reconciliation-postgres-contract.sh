@@ -1,6 +1,17 @@
 #!/usr/bin/env bash
 set -euo pipefail
 
+script_dir="$(cd -- "$(dirname -- "${BASH_SOURCE[0]}")" && pwd)"
+
+if [[ "${OPSMIND_EPHEMERAL_DB:-}" != "true" ]]; then
+  echo "OPSMIND_EPHEMERAL_DB=true is required for this destructive proof." >&2
+  exit 2
+fi
+if [[ "${OPSMIND_EPHEMERAL_CLUSTER:-}" != "true" ]]; then
+  echo "OPSMIND_EPHEMERAL_CLUSTER=true is required for role-drift proof." >&2
+  exit 2
+fi
+
 for required_name in \
   PGHOST PGPORT PGDATABASE POSTGRES_USER POSTGRES_PASSWORD \
   POSTGRES_WORKFLOW_RECONCILER_USER POSTGRES_WORKFLOW_RECONCILER_PASSWORD; do
@@ -9,6 +20,11 @@ for required_name in \
     exit 2
   fi
 done
+
+if [[ ! "$PGDATABASE" =~ ^opsmind_phase9_[a-z0-9_]+$ ]]; then
+  echo "The reconciliation contract requires a disposable opsmind_phase9_* database." >&2
+  exit 2
+fi
 
 if [[ "$POSTGRES_WORKFLOW_RECONCILER_USER" != "opsmind_workflow_reconciler" ]]; then
   echo "The reconciliation contract requires the fixed reconciler login." >&2
@@ -55,6 +71,84 @@ expect_reconciler_true() {
   local label="$2"
   expect_equal "t" "$(reconciler_query "$sql")" "$label"
 }
+
+unsafe_probe_created=false
+
+cleanup_contract() {
+  local original_status=$?
+  local cleanup_status=0
+  trap - EXIT
+  set +e
+
+  admin_query "
+DROP TRIGGER IF EXISTS phase09_fail_after_starter ON public.inbox_events;
+DROP TRIGGER IF EXISTS phase09_fail_after_binding
+  ON public.investigation_workflow_bindings;
+DROP TRIGGER IF EXISTS phase09_fail_after_inbox ON public.inbox_events;
+DROP TRIGGER IF EXISTS phase09_fail_after_outbox ON public.outbox_events;
+DROP FUNCTION IF EXISTS public.opsmind_phase09_reconciliation_failpoint();
+BEGIN;
+CREATE TEMP TABLE phase09_cleanup_organizations (
+  id uuid PRIMARY KEY
+) ON COMMIT DROP;
+INSERT INTO phase09_cleanup_organizations (id) VALUES
+  ('91000000-0000-4000-8000-000000000001'),
+  ('92000000-0000-4000-8000-000000000001'),
+  ('93000000-0000-4000-8000-000000000001'),
+  ('94000000-0000-4000-8000-000000000001'),
+  ('95000000-0000-4000-8000-000000000001'),
+  ('96000000-0000-4000-8000-000000000001'),
+  ('97000000-0000-4000-8000-000000000001'),
+  ('98000000-0000-4000-8000-000000000001'),
+  ('99010000-0000-4000-8000-000000000001'),
+  ('99020000-0000-4000-8000-000000000001'),
+  ('99030000-0000-4000-8000-000000000001'),
+  ('99040000-0000-4000-8000-000000000001');
+SET LOCAL session_replication_role = replica;
+DELETE FROM public.inbox_events row
+ USING phase09_cleanup_organizations cleanup
+ WHERE row.organization_id = cleanup.id;
+DELETE FROM public.investigation_workflow_bindings row
+ USING phase09_cleanup_organizations cleanup
+ WHERE row.organization_id = cleanup.id;
+DELETE FROM public.outbox_events row
+ USING phase09_cleanup_organizations cleanup
+ WHERE row.organization_id = cleanup.id;
+DELETE FROM public.service_accounts row
+ USING phase09_cleanup_organizations cleanup
+ WHERE row.organization_id = cleanup.id;
+DELETE FROM public.organizations row
+ USING phase09_cleanup_organizations cleanup
+ WHERE row.id = cleanup.id;
+COMMIT;
+" >/dev/null || cleanup_status=$?
+
+  if [[ "$unsafe_probe_created" == "true" ]]; then
+    admin_query "
+DO \$cleanup\$
+BEGIN
+  IF EXISTS (
+    SELECT 1 FROM pg_roles WHERE rolname = 'opsmind_phase09_unsafe_probe'
+  ) THEN
+    REVOKE opsmind_phase09_unsafe_probe FROM opsmind_workflow_reconciler;
+  END IF;
+END
+\$cleanup\$;
+DROP ROLE IF EXISTS opsmind_phase09_unsafe_probe;
+" >/dev/null || cleanup_status=$?
+  fi
+
+  if [[ "$cleanup_status" -eq 0 ]]; then
+    printf 'ContractCleanup=PASS\n'
+  else
+    printf 'ContractCleanup=BLOCK\n' >&2
+    if [[ "$original_status" -eq 0 ]]; then
+      original_status=$cleanup_status
+    fi
+  fi
+  exit "$original_status"
+}
+trap cleanup_contract EXIT
 
 insert_fixture() {
   local organization_id="$1"
@@ -148,20 +242,19 @@ SELECT has_function_privilege(
 ")" "TriggerFunctionExecuteDenied"
 
 expect_admin_true "
-WITH reconciliation_api(name) AS (
-  VALUES
-    ('opsmind_claim_investigation_workflow_reconciliation'),
-    ('opsmind_settle_investigation_workflow_reconciliation'),
-    ('opsmind_get_investigation_workflow_reconciliation_status')
-)
 SELECT count(*) = 3
-  AND bool_and(
-    has_function_privilege('opsmind_workflow_reconciler', procedure.oid, 'EXECUTE')
-  )
+  AND bool_and(procedure.proname IN (
+    'opsmind_claim_investigation_workflow_reconciliation',
+    'opsmind_settle_investigation_workflow_reconciliation',
+    'opsmind_get_investigation_workflow_reconciliation_status'
+  ))
 FROM pg_proc procedure
 JOIN pg_namespace namespace ON namespace.oid = procedure.pronamespace
-JOIN reconciliation_api api ON api.name = procedure.proname
-WHERE namespace.nspname = 'public';
+WHERE namespace.nspname = 'public'
+  AND procedure.proname LIKE 'opsmind_%'
+  AND has_function_privilege(
+    'opsmind_workflow_reconciler', procedure.oid, 'EXECUTE'
+  );
 " "ExactThreeReconciliationFunctions"
 
 insert_fixture "$match_org" "$match_run" "$match_event" "phase09-match"
@@ -397,5 +490,7 @@ SELECT opsmind_settle_investigation_workflow_reconciliation(
   NULL, 'workflow.reconciliation-observer-failed', NULL, 1000, 3600000
 );
 ")" "CrossTenantSettlementDenied"
+
+source "$script_dir/phase-09-reconciliation-postgres-scenarios.sh"
 
 printf 'ReconciliationPostgresContract=PASS\n'

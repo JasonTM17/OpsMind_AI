@@ -140,6 +140,74 @@ class TemporalInvestigationWorkflowObserverTest {
             .isEqualTo(InvestigationWorkflowObservation.Outcome.BLOCKED);
     }
 
+    @Test
+    void extraStartArgumentsCannotMatchTheExactContract() {
+        InvestigationWorkflowStartRequest expected = request();
+        WorkflowExecutionStartedEventAttributes attributes =
+            WorkflowExecutionStartedEventAttributes.newBuilder()
+                .setWorkflowId(expected.workflowId())
+                .setWorkflowType(WorkflowType.newBuilder()
+                    .setName(expected.workflowType()))
+                .setTaskQueue(TaskQueue.newBuilder().setName(expected.taskQueue()))
+                .setFirstExecutionRunId(FIRST_RUN_ID)
+                .setOriginalExecutionRunId(FIRST_RUN_ID)
+                .setMemo(memo())
+                .setInput(CONVERTER.toPayloads(expected).orElseThrow().toBuilder()
+                    .addPayloads(CONVERTER.toPayload("unexpected").orElseThrow()))
+                .build();
+        HistoryEvent event = HistoryEvent.newBuilder()
+            .setEventId(1)
+            .setEventType(EventType.EVENT_TYPE_WORKFLOW_EXECUTION_STARTED)
+            .setWorkflowExecutionStartedEventAttributes(attributes)
+            .build();
+
+        assertThat(new TemporalWorkflowStartContractVerifier(CONVERTER)
+            .verifyHistory(expected, DIGEST, FIRST_RUN_ID, event).outcome())
+            .isEqualTo(InvestigationWorkflowObservation.Outcome.MISMATCH);
+    }
+
+    @Test
+    void missingMemoIsAnExplicitContractMismatch() {
+        InvestigationWorkflowStartRequest expected = request();
+        var attributes = startedAttributes(expected).clearMemo().build();
+
+        assertThat(verifyHistory(expected, attributes).outcome())
+            .isEqualTo(InvestigationWorkflowObservation.Outcome.MISMATCH);
+    }
+
+    @Test
+    void missingStartInputIsAnExplicitContractMismatch() {
+        InvestigationWorkflowStartRequest expected = request();
+        var attributes = startedAttributes(expected).clearInput().build();
+
+        assertThat(verifyHistory(expected, attributes).outcome())
+            .isEqualTo(InvestigationWorkflowObservation.Outcome.MISMATCH);
+    }
+
+    @Test
+    void currentRunMetadataCannotOverrideTheFirstRunContract() {
+        InvestigationWorkflowStartRequest expected = request();
+        WorkflowServiceStubs stubs = mock(WorkflowServiceStubs.class);
+        WorkflowServiceBlockingStub blocking = mock(WorkflowServiceBlockingStub.class);
+        when(stubs.blockingStub()).thenReturn(blocking);
+        when(blocking.describeWorkflowExecution(any())).thenReturn(
+            DescribeWorkflowExecutionResponse.newBuilder()
+                .setWorkflowExecutionInfo(WorkflowExecutionInfo.newBuilder()
+                    .setExecution(WorkflowExecution.newBuilder()
+                        .setWorkflowId(expected.workflowId())
+                        .setRunId("continued-run-id"))
+                    .setType(WorkflowType.newBuilder().setName("continued-type"))
+                    .setTaskQueue("continued-task-queue")
+                    .setFirstRunId(FIRST_RUN_ID)
+                    .setMemo(Memo.getDefaultInstance()))
+                .build()
+        );
+        when(blocking.getWorkflowExecutionHistory(any())).thenReturn(history(expected));
+
+        assertThat(observer(stubs).observeExactWorkflow(expected, DIGEST).outcome())
+            .isEqualTo(InvestigationWorkflowObservation.Outcome.MATCH);
+    }
+
     private TemporalInvestigationWorkflowObserver observer(WorkflowServiceStubs stubs) {
         return new TemporalInvestigationWorkflowObserver(
             stubs,
@@ -180,18 +248,34 @@ class TemporalInvestigationWorkflowObserverTest {
             .setHistory(History.newBuilder().addEvents(HistoryEvent.newBuilder()
                 .setEventId(1)
                 .setEventType(EventType.EVENT_TYPE_WORKFLOW_EXECUTION_STARTED)
-                .setWorkflowExecutionStartedEventAttributes(
-                    WorkflowExecutionStartedEventAttributes.newBuilder()
-                        .setWorkflowId(expected.workflowId())
-                        .setWorkflowType(WorkflowType.newBuilder()
-                            .setName(expected.workflowType()))
-                        .setTaskQueue(TaskQueue.newBuilder().setName(expected.taskQueue()))
-                        .setFirstExecutionRunId(FIRST_RUN_ID)
-                        .setOriginalExecutionRunId(FIRST_RUN_ID)
-                        .setMemo(memo())
-                        .setInput(CONVERTER.toPayloads(expected).orElseThrow())
-                )))
+                .setWorkflowExecutionStartedEventAttributes(startedAttributes(expected))))
             .build();
+    }
+
+    private InvestigationWorkflowObservation verifyHistory(
+        InvestigationWorkflowStartRequest expected,
+        WorkflowExecutionStartedEventAttributes attributes
+    ) {
+        HistoryEvent event = HistoryEvent.newBuilder()
+            .setEventId(1)
+            .setEventType(EventType.EVENT_TYPE_WORKFLOW_EXECUTION_STARTED)
+            .setWorkflowExecutionStartedEventAttributes(attributes)
+            .build();
+        return new TemporalWorkflowStartContractVerifier(CONVERTER)
+            .verifyHistory(expected, DIGEST, FIRST_RUN_ID, event);
+    }
+
+    private WorkflowExecutionStartedEventAttributes.Builder startedAttributes(
+        InvestigationWorkflowStartRequest expected
+    ) {
+        return WorkflowExecutionStartedEventAttributes.newBuilder()
+            .setWorkflowId(expected.workflowId())
+            .setWorkflowType(WorkflowType.newBuilder().setName(expected.workflowType()))
+            .setTaskQueue(TaskQueue.newBuilder().setName(expected.taskQueue()))
+            .setFirstExecutionRunId(FIRST_RUN_ID)
+            .setOriginalExecutionRunId(FIRST_RUN_ID)
+            .setMemo(memo())
+            .setInput(CONVERTER.toPayloads(expected).orElseThrow());
     }
 
     private Memo memo() {

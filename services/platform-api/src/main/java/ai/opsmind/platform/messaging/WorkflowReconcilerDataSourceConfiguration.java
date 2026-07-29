@@ -43,22 +43,31 @@ public class WorkflowReconcilerDataSourceConfiguration {
         configuration.setMaximumPoolSize(properties.getMaximumPoolSize());
         configuration.setMinimumIdle(1);
         configuration.setConnectionTimeout(properties.getConnectionTimeoutMs());
+        configuration.addDataSourceProperty(
+            "socketTimeout", properties.getQueryTimeoutSeconds()
+        );
         configuration.setReadOnly(false);
         return new HikariDataSource(configuration);
     }
 
     @Bean(name = "workflowReconcilerJdbcTemplate", defaultCandidate = false)
     JdbcTemplate workflowReconcilerJdbcTemplate(
-        @Qualifier("workflowReconcilerDataSource") DataSource dataSource
+        @Qualifier("workflowReconcilerDataSource") DataSource dataSource,
+        WorkflowReconcilerDataSourceProperties properties
     ) {
-        return new JdbcTemplate(dataSource);
+        JdbcTemplate jdbcTemplate = new JdbcTemplate(dataSource);
+        jdbcTemplate.setQueryTimeout(properties.getQueryTimeoutSeconds());
+        return jdbcTemplate;
     }
 
     @Bean(name = "workflowReconcilerTransactionManager", defaultCandidate = false)
     PlatformTransactionManager workflowReconcilerTransactionManager(
-        @Qualifier("workflowReconcilerDataSource") DataSource dataSource
+        @Qualifier("workflowReconcilerDataSource") DataSource dataSource,
+        WorkflowReconcilerDataSourceProperties properties
     ) {
-        return new JdbcTransactionManager(dataSource);
+        JdbcTransactionManager transactionManager = new JdbcTransactionManager(dataSource);
+        transactionManager.setDefaultTimeout(properties.getQueryTimeoutSeconds());
+        return transactionManager;
     }
 
     @Bean

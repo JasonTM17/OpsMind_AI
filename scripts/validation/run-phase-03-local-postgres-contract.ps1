@@ -287,7 +287,7 @@ finally {
 
 $residualObjects = & $PsqlPath -h 127.0.0.1 -p 5432 -U postgres -d postgres `
     --tuples-only --no-align -v ON_ERROR_STOP=1 `
-    -c "SELECT (SELECT count(*) FROM pg_database WHERE datname='$databaseName') + (SELECT count(*) FROM pg_roles WHERE rolname IN ('opsmind_app','opsmind_context_resolver','opsmind_dispatcher','opsmind_dispatch_resolver','opsmind_ai_runtime'));"
+    -c "SELECT (SELECT count(*) FROM pg_database WHERE datname='$databaseName') + (SELECT count(*) FROM pg_roles WHERE rolname IN ('opsmind_app','opsmind_context_resolver','opsmind_dispatcher','opsmind_dispatch_resolver','opsmind_workflow_reconciler','opsmind_workflow_reconciliation_resolver','opsmind_ai_runtime'));"
 if ($LASTEXITCODE -ne 0) {
     $cleanupErrors.Add('Unable to verify ephemeral PostgreSQL cleanup.')
 }

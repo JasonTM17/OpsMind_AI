@@ -119,20 +119,38 @@ public final class InvestigationWorkflowReconciler {
         InvestigationWorkflowReconciliationLease lease,
         Instant now
     ) {
-        if (!now.isBefore(
-            lease.event().occurredAt().plus(properties.maximumVerifiableAge())
-        )) {
-            return InvestigationWorkflowObservation.blocked(
-                "workflow.reconciliation-retention-unverifiable"
-            );
+        String safeCode = preflightSafeCode(
+            lease.event().occurredAt(),
+            lease.reconciliationReceivedAt(),
+            lease.reconciliationAttempt(),
+            properties,
+            now
+        );
+        return safeCode == null
+            ? null
+            : InvestigationWorkflowObservation.blocked(safeCode);
+    }
+
+    static String preflightSafeCode(
+        Instant occurredAt,
+        Instant reconciliationReceivedAt,
+        int reconciliationAttempt,
+        InvestigationWorkflowReconcilerProperties properties,
+        Instant now
+    ) {
+        if (!now.isBefore(occurredAt.plus(properties.maximumVerifiableAge()))) {
+            return "workflow.reconciliation-retention-unverifiable";
         }
-        if (lease.reconciliationAttempt() > properties.maximumAttempts()
+        if (reconciliationReceivedAt.isAfter(
+            occurredAt.plus(properties.maximumHandoffAge())
+        )) {
+            return "workflow.reconciliation-handoff-age-exceeded";
+        }
+        if (reconciliationAttempt > properties.maximumAttempts()
             || !now.isBefore(
-                lease.reconciliationReceivedAt().plus(properties.maximumAge())
+                reconciliationReceivedAt.plus(properties.maximumAge())
             )) {
-            return InvestigationWorkflowObservation.blocked(
-                "workflow.reconciliation-exhausted"
-            );
+            return "workflow.reconciliation-exhausted";
         }
         return null;
     }
@@ -170,14 +188,21 @@ public final class InvestigationWorkflowReconciler {
         Instant observedAt
     ) {
         var result = transactions.settle(lease, observation, retryDelay, properties);
-        String metricOutcome = "workflow.reconciliation-exhausted".equals(
-            observation.safeCode()
-        ) ? "exhausted" : result.metricOutcome();
         metrics.recordOutcome(
-            metricOutcome,
+            metricOutcome(result, observation),
             Duration.between(lease.event().occurredAt(), observedAt)
         );
         return result.handled();
+    }
+
+    static String metricOutcome(
+        InvestigationWorkflowReconciliationSettlementResult result,
+        InvestigationWorkflowObservation observation
+    ) {
+        return result == InvestigationWorkflowReconciliationSettlementResult.BLOCKED
+            && "workflow.reconciliation-exhausted".equals(observation.safeCode())
+                ? "exhausted"
+                : result.metricOutcome();
     }
 
     private static void requireNoDatabaseTransaction() {

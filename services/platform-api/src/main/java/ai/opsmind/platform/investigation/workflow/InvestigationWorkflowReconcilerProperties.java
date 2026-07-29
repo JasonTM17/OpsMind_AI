@@ -48,13 +48,16 @@ public record InvestigationWorkflowReconcilerProperties(
             || !between(initialBackoff, Duration.ofMillis(100), Duration.ofMinutes(1))
             || maximumBackoff.compareTo(initialBackoff) < 0
             || maximumBackoff.compareTo(Duration.ofMinutes(15)) > 0
+            || !between(
+                absenceConfirmationDelay, Duration.ofSeconds(1), Duration.ofMinutes(15)
+            )
             || absenceConfirmationDelay.compareTo(twoRpcs) < 0
             || retentionSafetyMargin.isNegative() || retentionSafetyMargin.isZero()
             || !between(
                 namespaceRetention, Duration.ofHours(1), Duration.ofDays(365)
             )
             || retentionSafetyMargin.compareTo(namespaceRetention) >= 0
-            || maximumVerifiableAge().isNegative() || maximumVerifiableAge().isZero()
+            || maximumVerifiableAge().compareTo(Duration.ofSeconds(10)) < 0
             || maximumHandoffAge.plus(maximumAge).plus(retentionSafetyMargin)
                 .compareTo(namespaceRetention) >= 0) {
             throw new IllegalStateException(
@@ -79,6 +82,24 @@ public record InvestigationWorkflowReconcilerProperties(
 
     public Duration maximumVerifiableAge() {
         return namespaceRetention.minus(retentionSafetyMargin);
+    }
+
+    public void validateDatabaseTimeout(
+        Duration connectionAcquisitionTimeout,
+        Duration queryTimeout
+    ) {
+        Duration acquisition = requirePositive(
+            connectionAcquisitionTimeout, "Database connection acquisition timeout"
+        );
+        Duration query = requirePositive(queryTimeout, "Database query timeout");
+        Duration total = acquisition.plus(query);
+        if (total.compareTo(settlementMargin) >= 0
+            || total.compareTo(leaseDuration.minus(settlementMargin)) >= 0) {
+            throw new IllegalStateException(
+                "Database acquisition and query timeouts must fit inside "
+                    + "reconciliation safety margins."
+            );
+        }
     }
 
     private static Duration fallback(Duration value, Duration defaultValue) {

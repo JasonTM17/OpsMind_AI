@@ -249,6 +249,53 @@ CREATE INDEX inbox_investigation_workflow_reconciliation_idx
     ON inbox_events (status, received_at, event_id)
     WHERE consumer = 'investigation-workflow-reconciler-v1';
 
+CREATE OR REPLACE FUNCTION opsmind_workflow_reconciliation_identity_is_safe()
+RETURNS boolean
+LANGUAGE sql
+SECURITY DEFINER
+STABLE
+SET search_path = pg_catalog, pg_temp AS $$
+    SELECT count(*) = 2
+       AND bool_and(
+           NOT role_row.rolsuper
+           AND NOT role_row.rolcreatedb
+           AND NOT role_row.rolcreaterole
+           AND NOT role_row.rolreplication
+           AND NOT role_row.rolbypassrls
+           AND NOT role_row.rolinherit
+           AND (
+               (
+                   role_row.rolname = 'opsmind_workflow_reconciler'
+                   AND role_row.rolcanlogin
+               )
+               OR (
+                   role_row.rolname = 'opsmind_workflow_reconciliation_resolver'
+                   AND NOT role_row.rolcanlogin
+               )
+           )
+       )
+       AND NOT EXISTS (
+           SELECT 1
+             FROM pg_catalog.pg_auth_members membership
+             JOIN pg_catalog.pg_roles protected_role
+               ON protected_role.oid IN (
+                   membership.member,
+                   membership.roleid
+               )
+            WHERE protected_role.rolname IN (
+                'opsmind_workflow_reconciler',
+                'opsmind_workflow_reconciliation_resolver'
+            )
+       )
+      FROM pg_catalog.pg_roles role_row
+     WHERE role_row.rolname IN (
+        'opsmind_workflow_reconciler',
+        'opsmind_workflow_reconciliation_resolver'
+     );
+$$;
+ALTER FUNCTION public.opsmind_workflow_reconciliation_identity_is_safe()
+    OWNER TO opsmind_workflow_reconciliation_resolver;
+
 CREATE OR REPLACE FUNCTION opsmind_claim_investigation_workflow_reconciliation(
     p_lease_token uuid,
     p_lease_duration_ms bigint,
@@ -291,8 +338,9 @@ DECLARE
     reconciliation_row record;
     affected_rows integer;
 BEGIN
-    IF session_user <> 'opsmind_workflow_reconciler' THEN
-        RAISE EXCEPTION 'dedicated workflow reconciler identity is required'
+    IF session_user <> 'opsmind_workflow_reconciler'
+       OR NOT public.opsmind_workflow_reconciliation_identity_is_safe() THEN
+        RAISE EXCEPTION 'safe dedicated workflow reconciler identity is required'
             USING ERRCODE = '42501';
     END IF;
     IF p_lease_token IS NULL THEN
@@ -566,8 +614,9 @@ DECLARE
     starter_event_id uuid;
     affected_rows integer;
 BEGIN
-    IF session_user <> 'opsmind_workflow_reconciler' THEN
-        RAISE EXCEPTION 'dedicated workflow reconciler identity is required'
+    IF session_user <> 'opsmind_workflow_reconciler'
+       OR NOT public.opsmind_workflow_reconciliation_identity_is_safe() THEN
+        RAISE EXCEPTION 'safe dedicated workflow reconciler identity is required'
             USING ERRCODE = '42501';
     END IF;
     IF p_organization_id IS NULL OR p_event_id IS NULL OR p_lease_token IS NULL THEN
@@ -645,6 +694,7 @@ BEGIN
             'workflow.reconciliation-history-disappeared',
             'workflow.reconciliation-decode-failed',
             'workflow.reconciliation-observer-failed',
+            'workflow.reconciliation-handoff-age-exceeded',
             'workflow.reconciliation-retention-unverifiable',
             'workflow.reconciliation-exhausted'
         )
@@ -1000,8 +1050,9 @@ SET search_path = pg_catalog, public, pg_temp AS $$
 DECLARE
     db_now timestamptz := statement_timestamp();
 BEGIN
-    IF session_user <> 'opsmind_workflow_reconciler' THEN
-        RAISE EXCEPTION 'dedicated workflow reconciler identity is required'
+    IF session_user <> 'opsmind_workflow_reconciler'
+       OR NOT public.opsmind_workflow_reconciliation_identity_is_safe() THEN
+        RAISE EXCEPTION 'safe dedicated workflow reconciler identity is required'
             USING ERRCODE = '42501';
     END IF;
 
@@ -1096,6 +1147,13 @@ ALTER FUNCTION public.opsmind_get_investigation_workflow_reconciliation_status()
 REVOKE ALL ON ALL TABLES IN SCHEMA public FROM opsmind_workflow_reconciler;
 REVOKE ALL ON ALL SEQUENCES IN SCHEMA public FROM opsmind_workflow_reconciler;
 REVOKE ALL ON ALL FUNCTIONS IN SCHEMA public FROM opsmind_workflow_reconciler;
+REVOKE ALL ON FUNCTION public.opsmind_enforce_outbox_sequence() FROM PUBLIC;
+REVOKE ALL ON FUNCTION public.opsmind_reject_audit_mutation() FROM PUBLIC;
+REVOKE ALL ON FUNCTION public.opsmind_validate_incident_write() FROM PUBLIC;
+REVOKE ALL ON FUNCTION public.opsmind_validate_timeline_append() FROM PUBLIC;
+REVOKE ALL ON FUNCTION
+    public.opsmind_workflow_reconciliation_identity_is_safe()
+    FROM PUBLIC;
 REVOKE ALL ON FUNCTION
     public.opsmind_validate_investigation_workflow_binding_update()
     FROM PUBLIC;

@@ -73,6 +73,7 @@ opsmind:
       password: ${OPSMIND_WORKFLOW_RECONCILER_DB_PASSWORD:}
       maximum-pool-size: ${OPSMIND_WORKFLOW_RECONCILER_DB_POOL_MAX:2}
       connection-timeout-ms: ${OPSMIND_WORKFLOW_RECONCILER_DB_CONNECTION_TIMEOUT_MS:3000}
+      query-timeout-seconds: ${OPSMIND_WORKFLOW_RECONCILER_DB_QUERY_TIMEOUT_SECONDS:1}
   investigation:
     enabled: ${OPSMIND_INVESTIGATION_V1_ENABLED:false}
     fixture: ${OPSMIND_INVESTIGATION_FIXTURE:false}

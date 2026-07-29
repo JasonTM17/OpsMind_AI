@@ -129,12 +129,12 @@ $scenarioCounts = @{
     B = @{ AnalysisPerRun = 1; EvidencePerRun = 0; ReceiptsPerRun = 0 }
     C = @{ AnalysisPerRun = 2; EvidencePerRun = 2; ReceiptsPerRun = 2 }
 }[$Scenario]
-$reservedPorts = @(Get-CrossServiceAvailablePorts -Count 7)
-if ($reservedPorts.Count -ne 7 -or @($reservedPorts | Sort-Object -Unique).Count -ne 7) {
-    throw 'Unable to reserve seven distinct cross-service ports.'
+$reservedPorts = @(Get-CrossServiceAvailablePorts -Count 8)
+if ($reservedPorts.Count -ne 8 -or @($reservedPorts | Sort-Object -Unique).Count -ne 8) {
+    throw 'Unable to reserve eight distinct cross-service ports.'
 }
 $databasePort, $identityPort, $providerPort, $prometheusPort,
-    $aiPort, $gatewayPort, $platformPort = $reservedPorts
+    $aiPort, $gatewayPort, $platformPort, $platformManagementPort = $reservedPorts
 
 $migrationPassword = New-CrossServiceSecret
 $appPassword = New-CrossServiceSecret
@@ -485,6 +485,7 @@ INSERT INTO incidents (
 
     $platformEnvironment = @{
         PLATFORM_API_PORT = "$platformPort"
+        PLATFORM_MANAGEMENT_PORT = "$platformManagementPort"
         OPSMIND_SECURITY_MODE = 'oidc'
         OIDC_ISSUER_URL = $issuer
         OIDC_AUDIENCE = 'opsmind-platform-api'
@@ -538,7 +539,8 @@ INSERT INTO incidents (
         -StdoutPath (Join-Path $runRoot 'platform-api.stdout.log') `
         -StderrPath (Join-Path $runRoot 'platform-api.stderr.log') `
         -Environment $platformEnvironment
-    Wait-CrossServiceHttp -Uri "http://127.0.0.1:$platformPort/actuator/health" `
+    Wait-CrossServiceHttp `
+        -Uri "http://127.0.0.1:$platformManagementPort/actuator/health" `
         -Process $platformProcess
 
     $tokenEnvironment = @{
