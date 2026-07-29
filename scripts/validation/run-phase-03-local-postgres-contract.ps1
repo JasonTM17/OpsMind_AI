@@ -92,6 +92,7 @@ function New-EphemeralPassword {
 }
 $appPassword = New-EphemeralPassword
 $dispatcherPassword = New-EphemeralPassword
+$workflowReconcilerPassword = New-EphemeralPassword
 $aiRuntimePassword = New-EphemeralPassword
 while ($dispatcherPassword -ceq $appPassword) {
     $dispatcherPassword = New-EphemeralPassword
@@ -108,7 +109,12 @@ while ($appPassword -ceq $adminPassword) {
 while ($dispatcherPassword -ceq $adminPassword -or $dispatcherPassword -ceq $appPassword) {
     $dispatcherPassword = New-EphemeralPassword
 }
-while ($aiRuntimePassword -in @($adminPassword, $appPassword, $dispatcherPassword)) {
+while ($workflowReconcilerPassword -in @($adminPassword, $appPassword, $dispatcherPassword)) {
+    $workflowReconcilerPassword = New-EphemeralPassword
+}
+while ($aiRuntimePassword -in @(
+    $adminPassword, $appPassword, $dispatcherPassword, $workflowReconcilerPassword
+)) {
     $aiRuntimePassword = New-EphemeralPassword
 }
 
@@ -117,6 +123,7 @@ $environmentNames = @(
     'POSTGRES_DB', 'POSTGRES_USER', 'POSTGRES_PASSWORD',
     'POSTGRES_APP_USER', 'POSTGRES_APP_PASSWORD',
     'POSTGRES_DISPATCHER_USER', 'POSTGRES_DISPATCHER_PASSWORD',
+    'POSTGRES_WORKFLOW_RECONCILER_USER', 'POSTGRES_WORKFLOW_RECONCILER_PASSWORD',
     'POSTGRES_AI_RUNTIME_USER', 'POSTGRES_AI_RUNTIME_PASSWORD',
     'SPRING_PROFILES_ACTIVE', 'SPRING_DATASOURCE_URL',
     'SPRING_DATASOURCE_USERNAME', 'SPRING_DATASOURCE_PASSWORD',
@@ -163,7 +170,7 @@ try {
 
     $existingRoles = & $PsqlPath -h 127.0.0.1 -p 5432 -U postgres -d postgres `
         --tuples-only --no-align -v ON_ERROR_STOP=1 `
-        -c "SELECT count(*) FROM pg_roles WHERE rolname IN ('opsmind_app','opsmind_context_resolver','opsmind_dispatcher','opsmind_dispatch_resolver','opsmind_ai_runtime');"
+        -c "SELECT count(*) FROM pg_roles WHERE rolname IN ('opsmind_app','opsmind_context_resolver','opsmind_dispatcher','opsmind_dispatch_resolver','opsmind_workflow_reconciler','opsmind_workflow_reconciliation_resolver','opsmind_ai_runtime');"
     if ($LASTEXITCODE -ne 0) {
         throw 'Unable to inspect local PostgreSQL roles.'
     }
@@ -175,6 +182,8 @@ try {
         'CREATE ROLE opsmind_context_resolver NOLOGIN NOSUPERUSER NOCREATEDB NOCREATEROLE NOINHERIT NOREPLICATION NOBYPASSRLS; ' +
         "CREATE ROLE opsmind_dispatcher LOGIN NOSUPERUSER NOCREATEDB NOCREATEROLE NOINHERIT NOREPLICATION NOBYPASSRLS PASSWORD '$dispatcherPassword'; " +
         'CREATE ROLE opsmind_dispatch_resolver NOLOGIN NOSUPERUSER NOCREATEDB NOCREATEROLE NOINHERIT NOREPLICATION NOBYPASSRLS; ' +
+        "CREATE ROLE opsmind_workflow_reconciler LOGIN NOSUPERUSER NOCREATEDB NOCREATEROLE NOINHERIT NOREPLICATION NOBYPASSRLS PASSWORD '$workflowReconcilerPassword'; " +
+        'CREATE ROLE opsmind_workflow_reconciliation_resolver NOLOGIN NOSUPERUSER NOCREATEDB NOCREATEROLE NOINHERIT NOREPLICATION NOBYPASSRLS; ' +
         "CREATE ROLE opsmind_ai_runtime LOGIN NOSUPERUSER NOCREATEDB NOCREATEROLE NOINHERIT NOREPLICATION NOBYPASSRLS PASSWORD '$aiRuntimePassword';"
     $roleSql | & $PsqlPath -h 127.0.0.1 -p 5432 -U postgres -d postgres --quiet -v ON_ERROR_STOP=1
     if ($LASTEXITCODE -ne 0) {
@@ -208,6 +217,8 @@ try {
     $env:POSTGRES_APP_PASSWORD = $appPassword
     $env:POSTGRES_DISPATCHER_USER = 'opsmind_dispatcher'
     $env:POSTGRES_DISPATCHER_PASSWORD = $dispatcherPassword
+    $env:POSTGRES_WORKFLOW_RECONCILER_USER = 'opsmind_workflow_reconciler'
+    $env:POSTGRES_WORKFLOW_RECONCILER_PASSWORD = $workflowReconcilerPassword
     $env:POSTGRES_AI_RUNTIME_USER = 'opsmind_ai_runtime'
     $env:POSTGRES_AI_RUNTIME_PASSWORD = $aiRuntimePassword
     $env:OPSMIND_PHASE3_DB_INTEGRATION = 'true'
@@ -265,7 +276,7 @@ finally {
         try {
             Invoke-AdminPsql -Database postgres -Arguments @(
                 '-c',
-                'DROP ROLE IF EXISTS opsmind_ai_runtime; DROP ROLE IF EXISTS opsmind_dispatcher; DROP ROLE IF EXISTS opsmind_app; DROP ROLE IF EXISTS opsmind_dispatch_resolver; DROP ROLE IF EXISTS opsmind_context_resolver;'
+                'DROP ROLE IF EXISTS opsmind_ai_runtime; DROP ROLE IF EXISTS opsmind_workflow_reconciler; DROP ROLE IF EXISTS opsmind_dispatcher; DROP ROLE IF EXISTS opsmind_app; DROP ROLE IF EXISTS opsmind_workflow_reconciliation_resolver; DROP ROLE IF EXISTS opsmind_dispatch_resolver; DROP ROLE IF EXISTS opsmind_context_resolver;'
             )
         }
         catch {
