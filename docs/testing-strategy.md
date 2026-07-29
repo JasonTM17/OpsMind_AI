@@ -103,6 +103,11 @@ must provision and verify a disposable database boundary independently.
 
 ### Evidence and RAG
 
+- V014 metadata registration: owner-bound run scope, idempotency drift,
+  digest/byte-count bounds, authorization epoch, pending-read denial, and no
+  projected storage key/body.
+- Forced RLS, append-only UPDATE/DELETE/TRUNCATE denial, atomic initial
+  event/audit binding, and fresh plus V013-to-V014 migration contracts.
 - Artifact digest mismatch, truncated stream, malware result, orphan metadata, and missing object.
 - ACL applied before candidate ranking.
 - Citation points to the exact authorized version and content digest.

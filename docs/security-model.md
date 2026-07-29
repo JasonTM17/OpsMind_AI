@@ -165,8 +165,11 @@ that fact without storing the capability.
 
 ## Planned Evidence and Retrieval Security
 
-Bounded redacted evidence records exist in PostgreSQL. The large-object
-lifecycle and RAG boundary do not. Future implementation requirements are:
+Bounded redacted evidence records exist in PostgreSQL. V014 also records a
+tenant/RLS-scoped, owner-bound `PENDING_UPLOAD` artifact metadata intent with
+expected digest/length and an opaque non-projected storage key. It does not
+accept or expose a large object body; the body lifecycle and RAG boundary do
+not. Future implementation requirements are:
 
 - content-addressed encryption through a supported object-storage port behind
   the `production-kms` boundary;
@@ -216,6 +219,11 @@ insert authority over chain fields and neither runtime nor migration paths may
 update, delete, or truncate history. A real outbox conflict test proves that an
 append failure rolls back the incident, timeline, audit, and idempotency effects
 as one transaction.
+
+For artifact registration, V014 binds the deterministic initial lifecycle event
+to an exact `ARTIFACT_PENDING_UPLOAD` audit payload in the same transaction.
+The database owns audit-chain fields, rejects direct metadata/event mutation,
+and keeps object references and bodies out of the application projection.
 
 ## Availability and Abuse Controls
 

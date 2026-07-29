@@ -24,6 +24,12 @@ absent. There is no production/live Temporal cluster, compatible worker, or
 restart/resume execution. This is not yet a deployable durable investigation
 workflow.
 
+V014 adds Phase 4C metadata authority inside Platform PostgreSQL only: a
+tenant-scoped, owner-bound pending artifact intent, immutable initial event,
+and exact audit relation. It does not configure an object store or accept an
+artifact body. The CI contract is wired but has no revision-bound remote result;
+the object lifecycle blockers remain release blockers.
+
 G0.5 approves managed Kubernetes in `ap-southeast-1` with Singapore residency,
 an enterprise OIDC profile, MinIO locally, S3-compatible production storage
 behind `production-kms`, and explicit recovery targets. Specific cloud
@@ -210,7 +216,10 @@ A failed gate cannot be converted to a warning solely to meet a schedule.
   V008 is the expand step and accepts both exact legacy and strictly validated
   response-bearing `ANALYSIS_ACCEPTED` events. Drain every legacy writer and
   verify mixed-version histories before a later forward-only contract migration
-  requires `response`; never deploy that contract step in the same rollout.
+   requires `response`; never deploy that contract step in the same rollout.
+- Apply Platform V014 before deploying any later artifact streaming or ingress
+  writer. It is additive and initially accepts only `PENDING_UPLOAD`; do not
+  treat its metadata row or opaque storage key as object-read authority.
 - Apply Tool Gateway V002 before deploying provenance-aware gateway writers.
   V002 permits the exact legacy null tuple during the rolling window and
   requires all six observed-provenance fields together from new writers.
@@ -354,7 +363,7 @@ that selects `started` rows older than the retry interval without a matching
 - For Phase 9 rollback, freeze starts, restore
   `OPSMIND_INVESTIGATION_EXECUTION_MODE=inline`, disable the Temporal client,
   observer, workflow-start dispatcher, reconciler, and both dedicated
-  datasources. V010-V013 remain applied; rollback is configuration-only. Retain
+   datasources. V010-V014 remain applied; rollback is configuration-only. Retain
   bindings, inbox rows, and outbox rows as immutable recovery evidence; do not
   reset a genuinely terminal `REJECTED` binding or delete a pending handoff.
 

@@ -157,7 +157,8 @@ effective write requires target idempotency or discovery/reconciliation.
 | Unverified tool security decisions | Tool Gateway global audit lane | Insert-only and append-only; never accepts tenant/project fields from the request |
 | Bounded redacted evidence records | Platform PostgreSQL schema | Immutable canonical JSON, 64 KiB maximum, run/event linkage, forced RLS |
 | Investigation workflow binding/start event | Platform PostgreSQL schema | V010 immutable target/request binding plus canonical outbox bytes; V012 contains dispatcher mutation; V013 adds function-only exact-workflow reconciliation. Default off pending remaining B-017 environment and merged-head proof. |
-| Large evidence bodies | Planned evidence object port | Lifecycle is not implemented |
+| Durable evidence artifact metadata | Platform PostgreSQL schema | V014 records `PENDING_UPLOAD` metadata/event/audit/RLS authority only; no body is transferred or exposed |
+| Large evidence bodies | Planned evidence object port | Streaming, finalization, scanning, holds, purge/restore, and reconciliation are not implemented |
 | Embeddings and retrieval metadata | Planned PostgreSQL/pgvector boundary | RAG is not implemented |
 | Workflow histories | External Temporal boundary | Client/reconciliation code exists; no cluster, namespace, worker, or history is deployed |
 
@@ -769,23 +770,29 @@ and fail-closed `/proc` identity checks prevent stale or detached processes from
 being mistaken for success. Independent Linux detached-child/controller-kill
 probes and Windows large-transport/late-cleanup probes pass.
 
-## Planned Evidence Artifact Port
+## Evidence Artifact Metadata Authority (Phase 4C in progress)
 
-No large-object lifecycle implementation exists. The planned port will accept
-an authorized stream plus tenant, incident, source classification, retention
-class, and expected digest, then return an opaque artifact ID, content digest,
-byte count, encryption metadata reference, and lifecycle version. ADR-0003
-originally selected MinIO locally, but that upstream is now archived; no
-replacement is silently treated as approved. B-006/B-008/B-012 keep the path
-blocked. A future implementation must support:
+The current V014 slice adds PostgreSQL authority for artifact
+metadata, an initial lifecycle event, and its matching audit record. It does
+not add body transfer/read/citation, an S3 client, public ingress, signed URLs,
+or scan, finalization, hold, purge, restore, or reconciliation workers.
 
-- tenant-scoped authorization independent of object URL;
-- server-side encryption with controlled key boundary;
-- immutable/versioned write semantics where required;
-- retention hold, deletion receipt, orphan reconciliation, malware scan, and restore verification;
-- bounded streaming without loading full artifacts into memory.
+- Artifact and initial-event IDs are deterministic; creation binds organization,
+  project, incident, run, and actor to the authoritative run owner.
+- The row requires an expected canonical SHA-256 digest and byte count, fixes
+  retention/residency/deletion policy classes, and derives an opaque internal
+  storage key that is neither an authorization credential nor a projection.
+- Phase 4C permits only `PENDING_UPLOAD` at lifecycle version 1. The later
+  ADR-0003 vocabulary includes `quarantined`, `held`, and `expired`; it does
+  not introduce a `TOMBSTONED` state.
+- Forced RLS, insert validation, direct-mutation denial, an immutable event
+  ledger, and an exact `ARTIFACT_PENDING_UPLOAD` audit payload make metadata,
+  event, and audit append atomically or not at all.
 
-See [ADR-0003](./adr/ADR-0003-evidence-artifact-storage.md).
+Static Phase 4C validation passes and PR Quality is wired to run a disposable
+V013-to-V014 PostgreSQL contract. No revision-bound remote PostgreSQL or CI
+result exists yet, so B-006, B-008, and B-012 remain active and the artifact
+lifecycle exit is blocked. See [ADR-0003](./adr/ADR-0003-evidence-artifact-storage.md).
 
 ## Reliability and Degraded Modes
 
