@@ -11,6 +11,54 @@ $testRoot = Join-Path $repositoryRoot (
 )
 $targetRoot = Join-Path $testRoot 'target'
 $linkRoot = Join-Path $testRoot 'managed-link'
+$verificationScriptPath = Join-Path $PSScriptRoot 'run-cross-service-verification.ps1'
+
+function Assert-CrossServiceWorkflowRoleProvisioning {
+    param(
+        [Parameter(Mandatory = $true)][string]$ScriptPath
+    )
+
+    $scriptText = [IO.File]::ReadAllText($ScriptPath)
+    $roleSqlMatch = [regex]::Match(
+        $scriptText,
+        '\$roleSql = @"\r?\n(?<sql>.*?)\r?\n"@',
+        [Text.RegularExpressions.RegexOptions]::Singleline
+    )
+    if (-not $roleSqlMatch.Success) {
+        throw 'Cross-service role bootstrap block was not found.'
+    }
+
+    $roleSql = $roleSqlMatch.Groups['sql'].Value
+    foreach ($requiredStatement in @(
+        'CREATE ROLE opsmind_workflow_reconciler LOGIN NOSUPERUSER NOCREATEDB NOCREATEROLE NOINHERIT NOREPLICATION NOBYPASSRLS;',
+        'CREATE ROLE opsmind_workflow_reconciliation_resolver NOLOGIN NOSUPERUSER NOCREATEDB NOCREATEROLE NOINHERIT NOREPLICATION NOBYPASSRLS;'
+    )) {
+        if (-not $roleSql.Contains($requiredStatement)) {
+            throw (
+                'Cross-service role bootstrap is missing required statement: ' +
+                    $requiredStatement
+            )
+        }
+    }
+
+    $unsafeGrantStatements = @(
+        $roleSql -split ';' |
+            ForEach-Object { [regex]::Replace($_, '\s+', ' ').Trim() } |
+            Where-Object {
+                $_ -match '^(?i:GRANT)\b' -and
+                $_ -match (
+                    '(?i)\bopsmind_workflow_' +
+                        '(?:reconciler|reconciliation_resolver)\b'
+                )
+            }
+    )
+    if ($unsafeGrantStatements.Count -gt 0) {
+        throw (
+            'Cross-service role bootstrap granted workflow roles extra memberships ' +
+                'or privileges before migrations.'
+        )
+    }
+}
 
 function Assert-CrossServiceTestProcessesExited {
     param(
@@ -58,6 +106,8 @@ function Assert-CrossServiceTestProcessesExited {
 
     throw "$FailureMessage SurvivingPids=$($alive -join ',')"
 }
+
+Assert-CrossServiceWorkflowRoleProvisioning -ScriptPath $verificationScriptPath
 
 try {
     [void](New-Item -ItemType Directory -Path $targetRoot -Force)
@@ -819,6 +869,7 @@ $ErrorActionPreference = 'Stop'
 
     Write-Output (
         'CrossServicePathSafety=PASS ReparseAncestor=BLOCKED ProcessLaunch=PASS ' +
+        'WorkflowRoleBootstrap=PASS ' +
         'ControlReparse=BLOCKED StatusForgery=BLOCKED ' +
         'GateSignedExitForgery=BLOCKED GateSignedFailure=ACCEPTED ' +
         'ExitStatusFromHandle=PASS ConcurrentCapture=PASS StandardInput=PASS ' +
