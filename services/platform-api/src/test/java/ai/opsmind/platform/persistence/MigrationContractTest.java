@@ -174,6 +174,38 @@ class MigrationContractTest {
     }
 
     @Test
+    void artifactObjectMigrationFencesClaimsAndRequiresStoredAudit() throws IOException {
+        String migration = readMigration("V015__evidence_artifact_upload_fencing.sql");
+
+        assertThat(migration)
+            .contains("CREATE TABLE evidence_artifact_upload_attempts")
+            .contains("evidence_artifacts_phase_2_lifecycle_fence")
+            .contains("evidence_artifact_events_phase_2_transition_fence")
+            .contains("opsmind_claim_evidence_artifact_upload")
+            .contains("opsmind_settle_evidence_artifact_upload")
+            .contains("opsmind_evidence_artifact_lifecycle_event_id")
+            .contains("p_lease_duration_ms NOT BETWEEN 5000 AND 300000")
+            .contains("artifact upload already has an active lease")
+            .contains("artifact.lease-expired")
+            .contains("probe_required boolean")
+            .contains("CREATE CONSTRAINT TRIGGER evidence_artifacts_require_stored_event")
+            .contains("ARTIFACT_STORED")
+            .contains("storageGeneration")
+            .contains("ALTER TABLE evidence_artifact_upload_attempts FORCE ROW LEVEL SECURITY")
+            .contains("REVOKE ALL ON evidence_artifact_upload_attempts")
+            .contains("REVOKE UPDATE, DELETE, TRUNCATE ON evidence_artifacts")
+            .contains("session_user <> 'opsmind_app'")
+            .doesNotContain(
+                "raw_prompt",
+                "chain_of_thought",
+                "api_key",
+                "credential_ref",
+                "signed_url",
+                "presigned_url"
+            );
+    }
+
+    @Test
     void acceptedAnalysisMigrationExpandsForRollingWritersWithoutRewritingHistory()
         throws IOException {
         String migration = readMigration("V008__accepted_analysis_event_binding.sql");
