@@ -365,6 +365,13 @@ requireMarkers(
   [
     "WORKFLOW_ID_REUSE_POLICY_REJECT_DUPLICATE",
     "WORKFLOW_ID_CONFLICT_POLICY_FAIL",
+    "existingWorkflowReconciler.reconcile",
+  ],
+);
+requireMarkers(
+  "services/platform-api/src/main/java/ai/opsmind/platform/investigation/"
+    + "workflow/TemporalExistingWorkflowReconciler.java",
+  [
     "readFirstStartInput",
     "streamHistory",
     "workflow.temporal-outcome-ambiguous",
