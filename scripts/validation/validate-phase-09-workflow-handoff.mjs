@@ -129,6 +129,8 @@ const reconciliationMigration = requireMarkers(reconciliationMigrationPath, [
   "CREATE OR REPLACE FUNCTION opsmind_claim_investigation_workflow_reconciliation",
   "CREATE OR REPLACE FUNCTION opsmind_settle_investigation_workflow_reconciliation",
   "CREATE OR REPLACE FUNCTION opsmind_get_investigation_workflow_reconciliation_status",
+  "CREATE OR REPLACE FUNCTION opsmind_workflow_reconciliation_identity_is_safe",
+  "safe dedicated workflow reconciler identity is required",
   "FOR UPDATE OF event_row, binding_row SKIP LOCKED",
   "event_row.attempts > 0",
   "p_maximum_attempts > 8",
@@ -142,6 +144,7 @@ const reconciliationMigration = requireMarkers(reconciliationMigrationPath, [
   "workflow.reconciliation-contract-mismatch",
   "workflow.reconciliation-retry-scheduled",
   "workflow.reconciliation-blocked",
+  "workflow.reconciliation-handoff-age-exceeded",
   "workflow.reconciliation-lease-lost",
   "claim_ready_count bigint",
   "reconciliation_status IN ('received', 'processed')",
@@ -152,6 +155,10 @@ const reconciliationMigration = requireMarkers(reconciliationMigrationPath, [
   "oldest_pending_age_seconds bigint",
   "REVOKE ALL ON ALL TABLES IN SCHEMA public FROM opsmind_workflow_reconciler",
   "public.opsmind_validate_investigation_workflow_binding_update()\n    FROM PUBLIC",
+  "public.opsmind_enforce_outbox_sequence() FROM PUBLIC",
+  "public.opsmind_reject_audit_mutation() FROM PUBLIC",
+  "public.opsmind_validate_incident_write() FROM PUBLIC",
+  "public.opsmind_validate_timeline_append() FROM PUBLIC",
   "TO opsmind_workflow_reconciliation_resolver",
   "TO opsmind_workflow_reconciler",
 ]);
@@ -195,6 +202,9 @@ requireMarkers(
   ],
 );
 requireMarkers("scripts/validation/run-phase-09-reconciliation-postgres-contract.sh", [
+  "OPSMIND_EPHEMERAL_DB",
+  "OPSMIND_EPHEMERAL_CLUSTER",
+  "^opsmind_phase9_[a-z0-9_]+$",
   "DirectTableReadDenied=PASS",
   "TriggerFunctionExecuteDenied",
   "WrongLeaseAtomic",
@@ -204,12 +214,29 @@ requireMarkers("scripts/validation/run-phase-09-reconciliation-postgres-contract
   "BlockedUncertaintyPreservesPending",
   "ExhaustionPreservesCanonicalPending",
   "CrossTenantSettlementDenied",
+  "ExactThreeReconciliationFunctions",
+  "ContractCleanup=PASS",
+  "phase-09-reconciliation-postgres-scenarios.sh",
   "ReconciliationPostgresContract=PASS",
+]);
+requireMarkers("scripts/validation/phase-09-reconciliation-postgres-scenarios.sh", [
+  "IdentityMembershipDriftDenied=PASS",
+  "MismatchAtomicState",
+  "RetryPreservesCanonicalPending",
+  "RetentionBoundaryPreservesPending",
+  "ExpiredLeaseTakeoverAtomic",
+  "RollbackAfterStarterAtomic",
+  "RollbackAfterBindingAtomic",
+  "RollbackAfterInboxAtomic",
+  "RollbackAfterOutboxAtomic",
 ]);
 requireMarkers(".github/workflows/pr-quality.yml", [
   "POSTGRES_WORKFLOW_RECONCILER_USER: opsmind_workflow_reconciler",
   "POSTGRES_WORKFLOW_RECONCILER_PASSWORD: placeholder-ci-reconciler",
   "bash scripts/validation/run-phase-09-reconciliation-postgres-contract.sh",
+  "OPSMIND_EPHEMERAL_CLUSTER: \"true\"",
+  "opsmind-reconciliation-alerts.yml\",target=/etc/prometheus/opsmind-reconciliation-alerts.yml",
+  "exec -T platform-api",
 ]);
 requireMarkers("compose.yaml", [
   "POSTGRES_WORKFLOW_RECONCILER_USER: "
@@ -221,6 +248,8 @@ requireMarkers("compose.yaml", [
   "http://127.0.0.1:8082/actuator/health",
   "OPSMIND_WORKFLOW_RECONCILER_DB_USERNAME: "
     + "${POSTGRES_WORKFLOW_RECONCILER_USER:-opsmind_workflow_reconciler}",
+  "OPSMIND_WORKFLOW_RECONCILER_DB_QUERY_TIMEOUT_SECONDS: "
+    + "${OPSMIND_WORKFLOW_RECONCILER_DB_QUERY_TIMEOUT_SECONDS:-1}",
 ]);
 
 const pom = requireMarkers("services/platform-api/pom.xml", [
@@ -241,6 +270,8 @@ requireMarkers("services/platform-api/src/main/resources/application.yaml", [
   "enabled: ${OPSMIND_INVESTIGATION_WORKFLOW_STARTER_ENABLED:false}",
   "enabled: ${OPSMIND_DISPATCHER_ENABLED:false}",
   "url: ${OPSMIND_DISPATCHER_DB_URL:disabled}",
+  "query-timeout-seconds: "
+    + "${OPSMIND_WORKFLOW_RECONCILER_DB_QUERY_TIMEOUT_SECONDS:1}",
   "batch-size: ${OPSMIND_INVESTIGATION_WORKFLOW_STARTER_BATCH_SIZE:1}",
 ]);
 requireMarkers(".env.example", [
@@ -249,8 +280,20 @@ requireMarkers(".env.example", [
   "OPSMIND_INVESTIGATION_WORKFLOW_STARTER_ENABLED=false",
   "OPSMIND_DISPATCHER_ENABLED=false",
   "OPSMIND_DISPATCHER_DB_URL=disabled",
+  "OPSMIND_WORKFLOW_RECONCILER_DB_QUERY_TIMEOUT_SECONDS=1",
   "OPSMIND_INVESTIGATION_WORKFLOW_STARTER_BATCH_SIZE=1",
 ]);
+for (const launcher of ["scripts/dev/opsmind.ps1", "scripts/dev/opsmind.sh"]) {
+  requireMarkers(launcher, [
+    "PLATFORM_MANAGEMENT_PORT",
+    "OPSMIND_MANAGEMENT_EXPOSED_ENDPOINTS",
+    "OPSMIND_INVESTIGATION_TEMPORAL_OBSERVER_ENABLED",
+    "OPSMIND_INVESTIGATION_TEMPORAL_OBSERVER_API_KEY",
+    "OPSMIND_WORKFLOW_RECONCILER_DB_URL",
+    "OPSMIND_WORKFLOW_RECONCILER_DB_PASSWORD",
+    "OPSMIND_WORKFLOW_RECONCILER_DB_QUERY_TIMEOUT_SECONDS",
+  ]);
+}
 
 const requestPath =
   "services/platform-api/src/main/java/ai/opsmind/platform/investigation/"

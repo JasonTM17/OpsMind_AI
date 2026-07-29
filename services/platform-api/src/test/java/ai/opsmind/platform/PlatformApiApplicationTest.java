@@ -14,17 +14,24 @@ import ai.opsmind.platform.incident.CreateIncidentRequest;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
+import org.springframework.boot.test.web.server.LocalManagementPort;
 import org.springframework.boot.test.web.server.LocalServerPort;
 
 import tools.jackson.databind.DeserializationFeature;
 import tools.jackson.databind.exc.UnrecognizedPropertyException;
 import tools.jackson.databind.json.JsonMapper;
 
-@SpringBootTest(webEnvironment = SpringBootTest.WebEnvironment.RANDOM_PORT)
+@SpringBootTest(
+    webEnvironment = SpringBootTest.WebEnvironment.RANDOM_PORT,
+    properties = "management.server.port=0"
+)
 class PlatformApiApplicationTest {
 
     @LocalServerPort
     private int port;
+
+    @LocalManagementPort
+    private int managementPort;
 
     @Autowired
     private JsonMapper jsonMapper;
@@ -35,7 +42,9 @@ class PlatformApiApplicationTest {
             .connectTimeout(Duration.ofSeconds(5))
             .build();
         HttpRequest request = HttpRequest.newBuilder()
-            .uri(URI.create("http://127.0.0.1:" + port + "/actuator/health"))
+            .uri(URI.create(
+                "http://127.0.0.1:" + managementPort + "/actuator/health"
+            ))
             .timeout(Duration.ofSeconds(5))
             .GET()
             .build();

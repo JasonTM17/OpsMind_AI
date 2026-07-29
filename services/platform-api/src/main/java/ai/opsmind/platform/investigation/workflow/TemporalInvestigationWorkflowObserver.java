@@ -63,7 +63,7 @@ public final class TemporalInvestigationWorkflowObserver
             return ready(TemporalObservationFailureClassifier.describe(failure));
         }
         var descriptionResult = verifier.verifyDescription(
-            expected, startPayloadDigest, description
+            expected, description
         );
         if (!descriptionResult.matched()) {
             return ready(descriptionResult.observation());

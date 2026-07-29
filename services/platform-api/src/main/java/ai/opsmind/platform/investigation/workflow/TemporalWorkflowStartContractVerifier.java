@@ -22,27 +22,19 @@ final class TemporalWorkflowStartContractVerifier {
 
     DescriptionVerification verifyDescription(
         InvestigationWorkflowStartRequest expected,
-        String expectedDigest,
         DescribeWorkflowExecutionResponse response
     ) {
         if (response == null || !response.hasWorkflowExecutionInfo()) {
             return DescriptionVerification.blocked();
         }
         WorkflowExecutionInfo info = response.getWorkflowExecutionInfo();
-        if (!info.hasExecution() || !info.hasType() || info.getFirstRunId().isBlank()) {
+        if (!info.hasExecution() || info.getFirstRunId().isBlank()) {
             return DescriptionVerification.blocked();
         }
-        if (!expected.workflowId().equals(info.getExecution().getWorkflowId())
-            || !expected.workflowType().equals(info.getType().getName())
-            || !expected.taskQueue().equals(info.getTaskQueue())) {
+        if (!expected.workflowId().equals(info.getExecution().getWorkflowId())) {
             return DescriptionVerification.mismatch();
         }
-        Verification memo = verifyMemo(info.hasMemo() ? info.getMemo() : null, expectedDigest);
-        return switch (memo) {
-            case MATCH -> DescriptionVerification.match(info.getFirstRunId());
-            case MISMATCH -> DescriptionVerification.mismatch();
-            case BLOCKED -> DescriptionVerification.blocked();
-        };
+        return DescriptionVerification.match(info.getFirstRunId());
     }
 
     InvestigationWorkflowObservation verifyHistory(
@@ -66,6 +58,9 @@ final class TemporalWorkflowStartContractVerifier {
             || !expected.taskQueue().equals(attributes.getTaskQueue().getName())
             || !firstRunId.equals(attributes.getFirstExecutionRunId())
             || !firstRunId.equals(attributes.getOriginalExecutionRunId())) {
+            return InvestigationWorkflowObservation.mismatch();
+        }
+        if (attributes.getInput().getPayloadsCount() != 1) {
             return InvestigationWorkflowObservation.mismatch();
         }
         Verification memo = verifyMemo(attributes.getMemo(), expectedDigest);
@@ -109,11 +104,7 @@ final class TemporalWorkflowStartContractVerifier {
     }
 
     private static boolean complete(WorkflowExecutionStartedEventAttributes attributes) {
-        return attributes.hasWorkflowType()
-            && attributes.hasTaskQueue()
-            && attributes.hasInput()
-            && attributes.hasMemo()
-            && !attributes.getWorkflowId().isBlank()
+        return !attributes.getWorkflowId().isBlank()
             && !attributes.getFirstExecutionRunId().isBlank()
             && !attributes.getOriginalExecutionRunId().isBlank();
     }

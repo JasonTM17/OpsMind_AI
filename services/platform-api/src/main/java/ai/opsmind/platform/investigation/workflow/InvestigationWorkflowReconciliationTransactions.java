@@ -6,6 +6,8 @@ import java.util.Optional;
 import java.util.UUID;
 import java.util.function.Supplier;
 
+import ai.opsmind.platform.messaging.WorkflowReconcilerDataSourceProperties;
+
 import org.springframework.beans.factory.annotation.Qualifier;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
 import org.springframework.jdbc.core.JdbcTemplate;
@@ -29,11 +31,17 @@ public final class InvestigationWorkflowReconciliationTransactions {
         @Qualifier("workflowReconcilerJdbcTemplate") JdbcTemplate jdbcTemplate,
         @Qualifier("workflowReconcilerTransactionManager")
         PlatformTransactionManager transactionManager,
-        InvestigationTemporalObserverProperties observerProperties
+        InvestigationTemporalObserverProperties observerProperties,
+        InvestigationWorkflowReconcilerProperties reconcilerProperties,
+        WorkflowReconcilerDataSourceProperties dataSourceProperties
     ) {
         this.jdbcTemplate = jdbcTemplate;
         this.transactions = new TransactionTemplate(transactionManager);
         this.observerProperties = observerProperties;
+        reconcilerProperties.validateDatabaseTimeout(
+            Duration.ofMillis(dataSourceProperties.getConnectionTimeoutMs()),
+            Duration.ofSeconds(dataSourceProperties.getQueryTimeoutSeconds())
+        );
     }
 
     public Optional<InvestigationWorkflowReconciliationLease> claim(

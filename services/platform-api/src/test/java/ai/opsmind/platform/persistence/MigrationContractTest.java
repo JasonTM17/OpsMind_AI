@@ -339,6 +339,11 @@ class MigrationContractTest {
             .contains("membership.roleid = role_row.oid")
             .contains(
                 "CREATE OR REPLACE FUNCTION "
+                    + "opsmind_workflow_reconciliation_identity_is_safe"
+            )
+            .contains("safe dedicated workflow reconciler identity is required")
+            .contains(
+                "CREATE OR REPLACE FUNCTION "
                     + "opsmind_claim_investigation_workflow_reconciliation"
             )
             .contains("FOR UPDATE OF event_row, binding_row SKIP LOCKED")
@@ -364,6 +369,7 @@ class MigrationContractTest {
             .contains("workflow.reconciliation-blocked")
             .contains("workflow.reconciliation-lease-lost")
             .contains("workflow.reconciliation-retention-unverifiable")
+            .contains("workflow.reconciliation-handoff-age-exceeded")
             .contains(
                 "CREATE OR REPLACE FUNCTION "
                     + "opsmind_get_investigation_workflow_reconciliation_status"
@@ -379,6 +385,22 @@ class MigrationContractTest {
             .contains(
                 "public.opsmind_validate_investigation_workflow_binding_update()\n"
                     + "    FROM PUBLIC"
+            )
+            .contains(
+                "REVOKE ALL ON FUNCTION public.opsmind_enforce_outbox_sequence() "
+                    + "FROM PUBLIC"
+            )
+            .contains(
+                "REVOKE ALL ON FUNCTION public.opsmind_reject_audit_mutation() "
+                    + "FROM PUBLIC"
+            )
+            .contains(
+                "REVOKE ALL ON FUNCTION public.opsmind_validate_incident_write() "
+                    + "FROM PUBLIC"
+            )
+            .contains(
+                "REVOKE ALL ON FUNCTION public.opsmind_validate_timeline_append() "
+                    + "FROM PUBLIC"
             )
             .contains(
                 "TO opsmind_workflow_reconciliation_resolver"
@@ -434,6 +456,10 @@ class MigrationContractTest {
             .contains(
                 "OPSMIND_WORKFLOW_RECONCILER_DB_USERNAME: "
                     + "${POSTGRES_WORKFLOW_RECONCILER_USER:-opsmind_workflow_reconciler}"
+            )
+            .contains(
+                "OPSMIND_WORKFLOW_RECONCILER_DB_QUERY_TIMEOUT_SECONDS: "
+                    + "${OPSMIND_WORKFLOW_RECONCILER_DB_QUERY_TIMEOUT_SECONDS:-1}"
             );
     }
 }

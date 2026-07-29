@@ -149,7 +149,7 @@ $environmentNames = @(
     'OPSMIND_SECURITY_MODE', 'OIDC_ISSUER_URL', 'OIDC_AUDIENCE',
     'OIDC_REQUIRED_AMR', 'OIDC_MAX_TOKEN_LIFETIME', 'OIDC_CLOCK_SKEW',
     'OIDC_JWKS_REFRESH_MINIMUM_INTERVAL',
-    'PLATFORM_API_PORT'
+    'PLATFORM_API_PORT', 'PLATFORM_MANAGEMENT_PORT'
 )
 $previousEnvironment = @{}
 foreach ($name in $environmentNames) {
@@ -243,6 +243,10 @@ try {
     $platformPort = Get-OpsMindAvailableTcpPort
     while ($platformPort -eq $keycloakPort) {
         $platformPort = Get-OpsMindAvailableTcpPort
+    }
+    $platformManagementPort = Get-OpsMindAvailableTcpPort
+    while ($platformManagementPort -in @($keycloakPort, $platformPort)) {
+        $platformManagementPort = Get-OpsMindAvailableTcpPort
     }
     $keycloakBaseUrl = "https://127.0.0.1:$keycloakPort"
     $issuer = "$keycloakBaseUrl/realms/$realmName"
@@ -394,6 +398,7 @@ try {
     $env:OIDC_CLOCK_SKEW = 'PT30S'
     $env:OIDC_JWKS_REFRESH_MINIMUM_INTERVAL = 'PT1S'
     $env:PLATFORM_API_PORT = [string]$platformPort
+    $env:PLATFORM_MANAGEMENT_PORT = [string]$platformManagementPort
     $javaArguments = @(
         "-Djavax.net.ssl.trustStore=$javaTrustStore",
         '-Djavax.net.ssl.trustStorePassword=changeit',
@@ -412,7 +417,9 @@ try {
         $startParameters.WindowStyle = 'Hidden'
     }
     $platformProcess = Start-Process @startParameters
-    Wait-OpsMindHttpReady -Uri "http://127.0.0.1:$platformPort/actuator/health" -Process $platformProcess
+    Wait-OpsMindHttpReady `
+        -Uri "http://127.0.0.1:$platformManagementPort/actuator/health" `
+        -Process $platformProcess
 
     $env:OPSMIND_KEYCLOAK_TEST_PASSWORD = $userPassword
     $initial = Invoke-ConformanceClient -Command run -ResultPath $initialResultPath `

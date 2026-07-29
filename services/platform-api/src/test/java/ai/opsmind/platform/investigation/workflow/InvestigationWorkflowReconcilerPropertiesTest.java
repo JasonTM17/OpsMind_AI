@@ -72,6 +72,53 @@ class InvestigationWorkflowReconcilerPropertiesTest {
             .isInstanceOf(IllegalStateException.class);
     }
 
+    @Test
+    void settlementDurationsMatchDatabaseFunctionBounds() {
+        assertThatThrownBy(() -> properties(
+            Duration.ofSeconds(30),
+            Duration.ofSeconds(5),
+            Duration.ofMillis(999),
+            Duration.ofDays(30),
+            Duration.ofDays(1)
+        ).validate(Duration.ofMillis(100)))
+            .isInstanceOf(IllegalStateException.class);
+
+        assertThatThrownBy(() -> properties(
+            Duration.ofSeconds(30),
+            Duration.ofSeconds(5),
+            Duration.ofMinutes(15).plusMillis(1),
+            Duration.ofDays(30),
+            Duration.ofDays(1)
+        ).validate(Duration.ofMillis(100)))
+            .isInstanceOf(IllegalStateException.class);
+
+        assertThatThrownBy(() -> properties(
+            Duration.ofSeconds(30),
+            Duration.ofSeconds(5),
+            Duration.ofSeconds(1),
+            Duration.ofHours(1),
+            Duration.ofHours(1).minusSeconds(9)
+        ).validate(Duration.ofMillis(100)))
+            .isInstanceOf(IllegalStateException.class);
+    }
+
+    @Test
+    void databaseTimeoutMustFitInsideSettlementMargin() {
+        InvestigationWorkflowReconcilerProperties properties = defaults();
+
+        assertThatCode(() ->
+            properties.validateDatabaseTimeout(
+                Duration.ofSeconds(3), Duration.ofSeconds(1)
+            )
+        ).doesNotThrowAnyException();
+        assertThatThrownBy(() ->
+            properties.validateDatabaseTimeout(
+                Duration.ofSeconds(3), Duration.ofSeconds(2)
+            )
+        ).isInstanceOf(IllegalStateException.class)
+            .hasMessageContaining("safety margins");
+    }
+
     private InvestigationWorkflowReconcilerProperties defaults() {
         return new InvestigationWorkflowReconcilerProperties(
             false, null, null, null, 0, null, null, null, null, null, null, null

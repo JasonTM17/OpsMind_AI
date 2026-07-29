@@ -91,7 +91,7 @@ jobs:
           - component: Platform API
             image: opsmind-platform-api
             dockerfile: services/platform-api/Dockerfile
-            container_port: 8080
+            container_port: 8082
             health_path: /actuator/health
             extra_tmpfs: ""
           - component: AI Runtime
