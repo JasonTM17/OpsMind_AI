@@ -429,6 +429,73 @@ version_nine="$(query_upgrade_database "SELECT max(version::integer) FROM flyway
 
 query_upgrade_database "
 BEGIN;
+DO \$\$
+DECLARE
+  fixture_run_count bigint;
+  fixture_event_count bigint;
+  append_only_trigger_state \"char\";
+BEGIN
+  SELECT count(*)
+    INTO fixture_run_count
+    FROM investigation_runs
+   WHERE started_at >= TIMESTAMPTZ '2031-01-01T00:00:00Z'
+     AND started_at < TIMESTAMPTZ '2033-01-01T00:00:00Z';
+  SELECT count(*)
+    INTO fixture_event_count
+    FROM investigation_run_events
+   WHERE occurred_at >= TIMESTAMPTZ '2031-01-01T00:00:00Z'
+     AND occurred_at < TIMESTAMPTZ '2033-01-01T00:00:00Z';
+  SELECT trigger_row.tgenabled
+    INTO append_only_trigger_state
+    FROM pg_trigger trigger_row
+   WHERE trigger_row.tgrelid = 'public.investigation_run_events'::regclass
+     AND trigger_row.tgname = 'investigation_run_events_no_update'
+     AND NOT trigger_row.tgisinternal;
+
+  IF fixture_run_count IS DISTINCT FROM 60000
+     OR fixture_event_count IS DISTINCT FROM 60000 THEN
+    RAISE EXCEPTION
+      'expected 60000 V009 investigation fixtures, found % runs and % events',
+      fixture_run_count, fixture_event_count;
+  END IF;
+  IF append_only_trigger_state IS DISTINCT FROM 'O' THEN
+    RAISE EXCEPTION 'V009 cleanup requires the append-only trigger to be enabled';
+  END IF;
+END
+\$\$;
+ALTER TABLE investigation_run_events
+  DISABLE TRIGGER investigation_run_events_no_update;
+DELETE FROM investigation_run_events
+WHERE occurred_at >= TIMESTAMPTZ '2031-01-01T00:00:00Z'
+  AND occurred_at < TIMESTAMPTZ '2033-01-01T00:00:00Z';
+DELETE FROM investigation_runs
+WHERE started_at >= TIMESTAMPTZ '2031-01-01T00:00:00Z'
+  AND started_at < TIMESTAMPTZ '2033-01-01T00:00:00Z';
+ALTER TABLE investigation_run_events
+  ENABLE TRIGGER investigation_run_events_no_update;
+DO \$\$
+BEGIN
+  IF EXISTS (
+    SELECT 1
+      FROM investigation_runs
+     WHERE started_at >= TIMESTAMPTZ '2031-01-01T00:00:00Z'
+       AND started_at < TIMESTAMPTZ '2033-01-01T00:00:00Z'
+  ) OR EXISTS (
+    SELECT 1
+      FROM investigation_run_events
+     WHERE occurred_at >= TIMESTAMPTZ '2031-01-01T00:00:00Z'
+       AND occurred_at < TIMESTAMPTZ '2033-01-01T00:00:00Z'
+  ) THEN
+    RAISE EXCEPTION 'V009 investigation fixtures remain after cleanup';
+  END IF;
+END
+\$\$;
+COMMIT;
+"
+printf 'V009UpgradeFixtureCleanup=PASS\n'
+
+query_upgrade_database "
+BEGIN;
 INSERT INTO investigation_runs (
   run_id, organization_id, project_id, incident_id, actor_id, status,
   max_rounds, max_tool_calls, max_evidence_items, max_tokens, event_count,
