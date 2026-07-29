@@ -2,6 +2,7 @@ package ai.opsmind.platform.incident;
 
 import java.util.List;
 import java.util.UUID;
+import java.util.function.Function;
 
 import ai.opsmind.platform.common.api.PlatformProblemException;
 import ai.opsmind.platform.evidence.EvidenceRecordReader;
@@ -89,6 +90,22 @@ public final class IncidentAnalysisAuthorizer {
                         organizationId, projectId, incidentId, runId, evidenceIds
                     )
                 )
+        );
+    }
+
+    /** Runs a metadata-only collaborator inside the existing analyze authorization transaction. */
+    public <T> T withAnalyzeAccess(
+        OpsMindPrincipal principal,
+        UUID organizationId,
+        UUID projectId,
+        UUID incidentId,
+        Function<AuthorizedIncidentAnalysisScope, T> work
+    ) {
+        if (work == null) throw new IllegalArgumentException("Authorized analysis work is required.");
+        return authorize(
+            principal, organizationId, projectId, incidentId,
+            IncidentScopePolicy.ANALYZE_SCOPE, IncidentAccessMode.ANALYZE,
+            (incident, actor) -> work.apply(AuthorizedIncidentAnalysisScope.from(incident, actor.id()))
         );
     }
 

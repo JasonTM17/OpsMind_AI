@@ -16,6 +16,8 @@ class MigrationContractTest {
         "7fce0dc7639490c6a888d949d8857c28f8fb94fc8d4fafbfc7246465115e39f0";
     private static final String V002_SHA256 =
         "809536725bbf37623802531bf0574323c4e3e86513664a8d921c68516c874faf";
+    private static final String V007_SHA256 =
+        "c575328c022433f91610c7631028b8842a543f2fde65b84b07deebba4c59c316";
 
     @Test
     void migrationContainsForcedRlsAndTransactionalMessagingTables() throws IOException {
@@ -148,6 +150,30 @@ class MigrationContractTest {
     }
 
     @Test
+    void artifactMetadataMigrationIsAdditiveTenantBoundAndAuditLinked() throws IOException {
+        String migration = readMigration("V014__evidence_artifact_metadata.sql");
+
+        assertThat(migration)
+            .contains("CREATE TABLE evidence_artifacts")
+            .contains("CREATE TABLE evidence_artifact_events")
+            .contains("PRIMARY KEY (organization_id, artifact_id)")
+            .contains("UNIQUE (organization_id, run_id, idempotency_key)")
+            .contains("REFERENCES investigation_runs(run_id, organization_id, project_id, incident_id)")
+            .contains("opsmind_evidence_artifact_id")
+            .contains("opsmind_evidence_artifact_initial_event_id")
+            .contains("evidence-artifact-audit-v1")
+            .contains("ARTIFACT_PENDING_UPLOAD")
+            .contains("DEFERRABLE INITIALLY DEFERRED")
+            .contains("evidence_artifacts_phase_1_pending_only")
+            .contains("ALTER TABLE evidence_artifacts FORCE ROW LEVEL SECURITY")
+            .contains("ALTER TABLE evidence_artifact_events FORCE ROW LEVEL SECURITY")
+            .contains("REVOKE UPDATE, DELETE, TRUNCATE ON evidence_artifacts, evidence_artifact_events")
+            .contains("storage_key IS DISTINCT FROM 'artifacts/v1/'")
+            .contains("NEW.actor_id IS DISTINCT FROM run_row.actor_id")
+            .doesNotContain("raw_prompt", "chain_of_thought", "api_key", "credential_ref", "signed_url");
+    }
+
+    @Test
     void acceptedAnalysisMigrationExpandsForRollingWritersWithoutRewritingHistory()
         throws IOException {
         String migration = readMigration("V008__accepted_analysis_event_binding.sql");
@@ -178,6 +204,7 @@ class MigrationContractTest {
         throws IOException, NoSuchAlgorithmException {
         assertThat(sha256("V001__identity_tenant_foundation.sql")).isEqualTo(V001_SHA256);
         assertThat(sha256("V002__outbox_dispatcher_workload.sql")).isEqualTo(V002_SHA256);
+        assertThat(sha256("V007__bounded_evidence_records.sql")).isEqualTo(V007_SHA256);
     }
 
     private static String readMigration(String fileName) throws IOException {

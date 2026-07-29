@@ -116,6 +116,27 @@ class IncidentAnalysisAuthorizerTest {
     }
 
     @Test
+    void exposesOnlyTheMinimumAuthorizedAnalyzeScopeToInternalCallers() {
+        when(access.requireAccess(
+            any(), eq(ORGANIZATION_ID), eq(PROJECT_ID), eq(IncidentAccessMode.ANALYZE)
+        )).thenReturn(new IncidentActor(ACTOR_ID, "SRE", "SRE"));
+        when(incidents.find(ORGANIZATION_ID, PROJECT_ID, INCIDENT_ID))
+            .thenReturn(Optional.of(snapshot()));
+
+        AuthorizedIncidentAnalysisScope result = authorizer.withAnalyzeAccess(
+            principal(Set.of("incident:analyze")), ORGANIZATION_ID, PROJECT_ID, INCIDENT_ID,
+            scope -> scope
+        );
+
+        assertThat(result.organizationId()).isEqualTo(ORGANIZATION_ID);
+        assertThat(result.projectId()).isEqualTo(PROJECT_ID);
+        assertThat(result.incidentId()).isEqualTo(INCIDENT_ID);
+        assertThat(result.actorId()).isEqualTo(ACTOR_ID);
+        assertThat(result.authorizationEpoch()).isEqualTo(1L);
+        verify(transactions).commit(transaction);
+    }
+
+    @Test
     void rejectsMissingScopeBeforeDatabaseAndViewerAnalyzeRole() {
         assertThatThrownBy(() -> authorizer.requireAccess(
             principal(Set.of("incident:read")), ORGANIZATION_ID, PROJECT_ID, INCIDENT_ID
