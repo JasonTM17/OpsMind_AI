@@ -39,10 +39,15 @@ if (( tee_status != 0 )); then
   exit 4
 fi
 
-if grep -Fqx -- "$failed_marker" "$output_file"; then
+has_marker() {
+  local marker="$1"
+  tr -d '\r' < "$output_file" | grep -Fqx -- "$marker"
+}
+
+if has_marker "$failed_marker"; then
   exit 3
 fi
-if grep -Fqx -- "$passed_marker" "$output_file"; then
+if has_marker "$passed_marker"; then
   exit 0
 fi
 

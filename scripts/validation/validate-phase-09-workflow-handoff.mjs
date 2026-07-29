@@ -455,6 +455,7 @@ requireMarkers(
     "psql \"$@\" --file \"$inventory_script\" 2>&1 | tee \"$output_file\"",
     "PIPESTATUS",
     "grep -Fqx",
+    "tr -d '\\r'",
     "psql_status == 3",
     "exit 3",
     "exit 5",
@@ -464,7 +465,9 @@ requireMarkers(
 requireMarkers("scripts/validation/verify-cutover-inventory-wrapper.sh", [
   "OPSMIND_FAKE_PSQL_OUTCOME",
   "assert_exit 3 blocked",
+  "assert_exit 3 blocked_crlf",
   "assert_exit 0 passed",
+  "assert_exit 0 passed_crlf",
   "assert_exit 2 error",
   "assert_exit 5 script_error",
   "assert_exit 4 unknown",
