@@ -4,12 +4,25 @@ import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
 import java.time.Duration;
+import java.util.List;
 
 import io.micrometer.core.instrument.simple.SimpleMeterRegistry;
 
 import org.junit.jupiter.api.Test;
 
 class InvestigationWorkflowReconciliationMetricsTest {
+
+    private static final List<String> EXPECTED_OUTCOMES = List.of(
+        "match",
+        "absence_candidate",
+        "verified_absence",
+        "released",
+        "mismatch",
+        "retry",
+        "blocked",
+        "lease_lost",
+        "exhausted"
+    );
 
     @Test
     void convergenceTimersUseOnlyTheBoundedTerminalResultLabels() {
@@ -29,17 +42,7 @@ class InvestigationWorkflowReconciliationMetricsTest {
         assertThat(registry.find(
             "opsmind.workflow.reconciliation.outcomes"
         ).counters()).extracting(counter -> counter.getId().getTag("outcome"))
-            .containsExactlyInAnyOrder(
-                "match",
-                "absence_candidate",
-                "verified_absence",
-                "released",
-                "mismatch",
-                "retry",
-                "blocked",
-                "lease_lost",
-                "exhausted"
-            );
+            .containsExactlyInAnyOrderElementsOf(EXPECTED_OUTCOMES);
         assertThat(registry.get(
             "opsmind.workflow.reconciliation.outcomes"
         ).tag("outcome", "absence_candidate").counter().count()).isZero();
@@ -67,8 +70,27 @@ class InvestigationWorkflowReconciliationMetricsTest {
         assertThat(registry.get(
             "opsmind.workflow.reconciliation.oldest.pending.age.seconds"
         ).gauge().value()).isEqualTo(7);
-        assertThat(registry.getMeters())
-            .allMatch(meter -> meter.getId().getTags().isEmpty());
+        assertThat(List.of(
+            "opsmind.workflow.reconciliation.ready",
+            "opsmind.workflow.reconciliation.pending",
+            "opsmind.workflow.reconciliation.blocked",
+            "opsmind.workflow.reconciliation.retention.ineligible",
+            "opsmind.workflow.reconciliation.oldest.pending.age.seconds"
+        )).allSatisfy(name -> assertThat(
+            registry.get(name).gauge().getId().getTags()
+        ).isEmpty());
+        var outcomeCounters = registry.find(
+            "opsmind.workflow.reconciliation.outcomes"
+        ).counters();
+        assertThat(outcomeCounters)
+            .extracting(counter -> counter.getId().getTags().size())
+            .containsOnly(1);
+        assertThat(outcomeCounters)
+            .extracting(counter -> counter.getId().getTags().get(0).getKey())
+            .containsOnly("outcome");
+        assertThat(outcomeCounters)
+            .extracting(counter -> counter.getId().getTag("outcome"))
+            .containsExactlyInAnyOrderElementsOf(EXPECTED_OUTCOMES);
     }
 
     @Test
