@@ -35,7 +35,7 @@ than inferred from the compaction.
 | Phase 6 | In progress; durable PostgreSQL and synthetic Prometheus checkpoint passes revision-bound CI. Artifact/broader-connector exit remains blocked. |
 | Phase 7 | In progress; cross-service trace, 100-warm-run fixture, CK/Stitch UI/browser E2E, and the metadata-only incident activity route plus V009 CI fixture gates pass. G3 remains blocked by live non-production connector/provider/legal conformance and BFF/session proof. |
 | Phase 8 | In progress; Phase 8B contracts, V008 binding, bounded projection, production-path A/B/C, artifact attestation, and blocking review pass. Parent exit remains blocked by unavailable held-out/human/calibration evidence. |
-| Phase 9 | In progress; default-off atomic workflow-start handoff and V012 capability-only dispatcher containment exist. Static and rollback-only PostgreSQL probes pass. B-017 still blocks admission pending full fresh/upgrade real-role and atomicity proof plus a no-Start exact-workflow reconciliation/alert lane; exact-head CI/Flyway runtime evidence, a compatible worker, and restart/resume remain open. B-013 is active. |
+| Phase 9 | In progress; default-off atomic workflow-start handoff, V012 dispatcher containment, and V013 read-only exact-workflow reconciliation source exist. Corrected disposable PostgreSQL fresh/upgrade/atomicity contracts and lightweight Java/static checks pass; the database gates are wired into PR Quality but lack a revision-bound updated run. B-017 still blocks admission pending merged-head Maven/Docker/CI/performance/DR evidence, live namespace read-only credential conformance, `promtool`/scrape proof, and external alert delivery. A compatible worker and restart/resume remain open. B-013 is active. |
 | Later phases | RAG, remediation, complete operator UX, and production-hardening outcomes remain pending. |
 
 Phase 7's local Operator Web and fixture-backed cross-service checkpoints are
@@ -59,7 +59,7 @@ claimed.
 | Path | Current responsibility |
 |---|---|
 | `apps/operator-web/` | Next.js server-rendered operator investigation workspace with a server-only Platform client, versioned safe-projection parser, degraded states, and Playwright coverage. |
-| `services/platform-api/` | Spring Boot control plane for OIDC identity, tenant/project access, persistence, messaging, incidents, deterministic investigation, and the default-off Phase 9 Temporal client/dispatcher handoff. |
+| `services/platform-api/` | Spring Boot control plane for OIDC identity, tenant/project access, persistence, messaging, incidents, deterministic investigation, and the default-off Phase 9 Temporal client/dispatcher/read-only reconciler. |
 | `services/ai-runtime/` | FastAPI bounded analysis runtime with provider-neutral contracts, DeepSeek adapter, shared PostgreSQL replay/accounting, startup/periodic capability probe, `/health` liveness, and `/ready` readiness; live egress remains disabled. |
 | `services/tool-gateway/` | Spring Boot fail-closed Tool Gateway: separated workload/delegated JWT trust, capability-derived tenant/project scope, exact-policy forced-RLS receipt/verified-audit state, tenant-free unverified audit, lease safety, bounded DLP, and read-only Prometheus. Default profiles remain fail closed; V003 isolation has immutable CI evidence. |
 | `evaluation/` | Versioned, training-ineligible A/B/C smoke contracts; strict export/projector, scorer, held-out and human-input validators, schemas, and regression fixtures. Production-path smoke passes; release-scale held-out/human evidence is unavailable. |
@@ -278,21 +278,60 @@ the bounded policy and then retains `PENDING` with
 `workflow.reconciliation-required` at attempt, age, deadline, authorization, or
 lease exhaustion rather than recording `REJECTED`. Attempted V011 legacy
 `workflow.temporal-unavailable` rows are normalized conservatively, and durable
-ambiguity preflight precedes payload validation/decode. B-017 still requires
-a separately authorized read-only lane limited to Describe and first-history
-reads, with no Start authority and bounded `PENDING` alerts; this lane is not
-implemented or proven.
+ambiguity preflight precedes payload validation/decode.
+
+V013 adds the separate LOGIN role `opsmind_workflow_reconciler` and NOLOGIN
+owner `opsmind_workflow_reconciliation_resolver`. Blanket privilege revocation
+precedes grants on exactly three fixed functions: one-item claim, lease-fenced
+settlement, and aggregate status. The runtime has no direct table access,
+tenant-context setter, or trigger-function execution. Claim does not increment
+normal starter attempts. Settlement records an exact match, requires two
+retention-bounded absence samples before rejection, releases work when a normal
+dispatcher becomes eligible, and preserves binding/outbox `PENDING` for retry,
+permission/configuration/history uncertainty, or exhaustion.
+
+The default-off `InvestigationWorkflowObserver` has one exact-observation
+method. `TemporalInvestigationWorkflowObserver` issues
+`DescribeWorkflowExecution` by workflow ID, then requests one first-history
+event pinned to `first_run_id`. This remains correct across Continue-As-New:
+the first-run event supplies workflow type, task queue, memo digest, and decoded
+start input rather than mutable current-execution description fields. The port
+exposes no Start, signal, update, or query surface. A pre-observation maximum
+handoff-age fence emits `workflow.reconciliation-handoff-age-exceeded` and
+preserves canonical `PENDING` state.
+
+`.env.example` declares the fixed reconciler role plus disabled datasource.
+Both launchers reject reconciler secrets in `.env`, require a distinct
+process-scoped password for application Compose, and enforce the fixed username.
+The datasource pool is bounded to 1-4 connections. Its 3,000 ms default
+connection timeout is validated within 250-30,000 ms; its 1-second default query
+timeout is validated within 1-30 seconds and applied to JDBC statements,
+PostgreSQL socket reads, and JDBC transactions. Reconciler startup additionally
+requires connection acquisition plus query timeout to fit strictly inside both
+the settlement margin and lease-minus-settlement window. Aggregate-only metrics
+use management port `8082`. Application defaults expose health only; Compose
+explicitly enables `health,prometheus` on the internal network. Prometheus
+retains bounded metric/label allowlists and evaluates seven reconciliation
+alerts.
 
 This checkpoint implements the start handoff only. There is no production/live
 Temporal cluster or namespace, Compose service, workflow worker, or
 restart/resume execution. V010 performs no legacy backfill; nonterminal
 binding-less runs block Temporal admission pending operator reconciliation.
-The Phase 9 static gate and rollback-only PostgreSQL probes pass on the
-integration source, including canonical-row invisibility, predecessor blocking,
-and unsafe role-membership rejection. Exact-head CI, full Flyway fresh/upgrade
-execution, real-role denial/success matrices, atomic failure injection, and
-latency evidence are missing. Master Phase 9 and roadmap G4 remain in progress,
-and B-013 and B-017 remain active.
+The Phase 9 static gate, observability validator, lightweight `javac` main/test
+compile, and disposable PostgreSQL V001-V013 contract pass. The database
+contract produced 55 PASS markers, including cleanup, and proves
+direct/PUBLIC denial, the global exact-three executable set,
+membership-drift denial, match, two-sample absence,
+reactivation, mismatch, retry, blocked/retention/exhaustion `PENDING`
+preservation, lease fencing/takeover, cross-tenant denial, four settlement
+rollback failpoints, and cleanup. A local V012-to-V013 upgrade probe also passes
+exact-three/PUBLIC denial, and both database paths are wired into PR Quality.
+Exact-head Maven/Docker/CI, database-gate rerun, performance, and DR proof remain
+deferred by the `D:` capacity guard. Production namespace retention/read-only
+credential conformance, pinned `promtool` plus live scrape, and an Alertmanager
+receiver with page-delivery proof are also missing. Master Phase 9 and roadmap
+G4 remain in progress; B-013 and B-017 remain active.
 
 ## Phase 8B Evaluation Boundary
 
@@ -361,9 +400,11 @@ Two independent process-supervision reviews pass.
   role cannot access incident tables and sees no tenant payload before bounded
   workload binding.
 - For Phase 9 settlement, V012 removes direct dispatcher access to workflow
-  binding/inbox rows and canonical workflow-start outbox rows. B-017 remains
-  active because full real-role fresh/upgrade and atomicity proof plus the
-  separate reconciliation/alert lane are still absent.
+  binding/inbox rows and canonical workflow-start outbox rows. V013 gives the
+  reconciler function execution only; corrected disposable fresh, upgrade, and
+  four-failpoint atomicity contracts pass. B-017 remains active for a
+  revision-bound database-gate run, merged-head Maven/Docker/CI/performance/DR,
+  live Temporal authorization/retention, live scrape, and page-delivery proof.
 - Evidence, model output, connector content, and request bodies are untrusted
   inputs. Runtime secrets belong in process/secret-manager channels, not source,
   fixtures, evidence, or documentation.
@@ -384,7 +425,9 @@ See [Security Model](./security-model.md) for the complete threat model and
 | `scripts/validation/validate-phase-06-tool-gateway.mjs` | Durable Prometheus connector checkpoint PASS with schemas, canonical fixtures, digest/manifest/OpenAPI/source abuse checks | Phase exit BLOCK: artifact adapter, remaining connector families, tenant bulkhead, and provider-specific cancellation proof |
 | `scripts/validation/validate-phase-07-investigation-slice.mjs` | Artifact `8649696519` records OperatorWorkspace/CrossService/Checkpoint/PhaseExit PASS; Scenario A has 100 warm runs | G3 still requires live provider/connector/legal and BFF/session proof |
 | `scripts/validation/validate-phase-08-evaluation-foundation.mjs` | Six schemas, ten families/three implemented, three results/eight metrics/four negative cases, zero errors, checkpoint PASS | Phase exit BLOCK; held-out and human inputs unavailable |
-| `scripts/validation/validate-phase-09-workflow-handoff.mjs` | Integration-worktree static gate PASS with V010/V011/V012, one Temporal pin, 18 payload fields, seven required test files, and zero errors | Does not prove B-017: full real-role fresh/upgrade and atomicity execution, no-Start exact-workflow reconciliation/alerts, exact-head CI/Flyway runtime, live Temporal, worker, and restart/resume proof remain absent |
+| `scripts/validation/validate-phase-09-workflow-handoff.mjs` | Integration static gate PASS with V010-V013, one Temporal pin, 18 payload fields, seven required test files, and zero errors | Source-only; does not prove merged-head Maven/Docker/CI, live Temporal authorization, worker, or restart/resume |
+| `scripts/validation/run-phase-09-reconciliation-postgres-contract.sh` | Corrected disposable PostgreSQL V001-V013 real-role run PASS with 55 markers including cleanup: global exact-three privileges; direct/PUBLIC/membership denial; match/absence/reactivation/mismatch/retry/block/retention/exhaustion; lease/takeover/cross-tenant; four atomic rollback failpoints. Local V012-to-V013 exact-three/PUBLIC-deny upgrade also passes | PR Quality wiring exists, but revision-bound updated CI, query-plan/latency, DR, and production database proof remain |
+| `scripts/validation/validate-phase-09-reconciliation-observability.mjs` | Internal port-8082 scrape contract, bounded labels, aggregate recordings, and seven alert rules pass static validation | Pinned `promtool`, live scrape, Alertmanager receiver, and end-to-end delivery proof remain |
 | GitHub Actions `30257587569` | PASS on revision `a975f922`: bootstrap, secrets, actionlint, service/UI suites, dependency security, PostgreSQL job `89950772823`, Keycloak, Compose; artifact `8650178111` proves V009/activity gates | CI fixture/non-production evidence; not production latency, SLO, or conformance |
 | GitHub Actions `30257587543` | PASS on revision `a975f922`: A/B/C samples `100/1/1`, all metrics PASS, `GitTree=0`, Phase 7 regression PASS, artifact `8649696519` | Deterministic authored smoke; not held-out quality, calibration, or human benefit |
 
@@ -433,11 +476,11 @@ semantics.
   remediation, and production object storage/lifecycle. The default-off
   Temporal start handoff, bounded Operator workspace, and real
   Platform-to-Tool-Gateway read-only path are implemented checkpoints.
-- Full Phase 9 V012 real-role fresh/upgrade/atomicity proof and the separately
-  authorized read-only exact-workflow reconciliation/alert lane. V012 already
-  parks potentially accepted post-RPC starts as `PENDING` with
-  `workflow.reconciliation-required`; the component that resolves and alerts
-  those rows is not implemented.
+- Full Phase 9 merged-head Maven/Docker/CI, V012-to-V013 upgrade,
+  settlement-step failure injection, query-plan/latency, production Temporal
+  retention/read-only credential conformance, pinned `promtool`/live scrape,
+  and external Alertmanager delivery proof. The default-off V013 reconciler and
+  seven source alert rules are implemented; they are not rollout authorization.
 - Production IdP/federation/session/break-glass conformance.
 - Measured load/SLO proof, DR proof, or a production release.
 

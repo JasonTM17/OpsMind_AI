@@ -23,9 +23,10 @@ flowchart TB
 ```
 
 Dashed future concerns are intentionally not represented as current runtime
-behavior. Phase 9 now provides a default-off Temporal client and workflow-start
-handoff inside the Platform API artifact, but no Temporal service, namespace,
-worker, or live execution environment is deployed. G0.5 approves managed
+behavior. Phase 9 now provides a default-off Temporal client/workflow-start
+handoff and read-only reconciliation lane inside the Platform API artifact, but
+no Temporal service, namespace, worker, or live execution environment is
+deployed. G0.5 approves managed
 Kubernetes in Singapore, enterprise OIDC, MinIO locally, S3-compatible
 production evidence storage, and read-only Prometheus against synthetic
 non-production metrics; later phases must implement and verify them.
@@ -155,7 +156,7 @@ effective write requires target idempotency or discovery/reconciliation.
 | Connector execution receipts and verified audit | Tool Gateway schema | Capability-derived scope, forced tenant/project RLS, idempotency, and reconciliation authority |
 | Unverified tool security decisions | Tool Gateway global audit lane | Insert-only and append-only; never accepts tenant/project fields from the request |
 | Bounded redacted evidence records | Platform PostgreSQL schema | Immutable canonical JSON, 64 KiB maximum, run/event linkage, forced RLS |
-| Investigation workflow binding/start event | Platform PostgreSQL schema | V010 immutable target/request binding plus canonical outbox bytes; V012 removes direct dispatcher binding/inbox access and hides canonical workflow-start outbox rows. Default off pending full real-role/atomicity proof and reconciliation (B-017). |
+| Investigation workflow binding/start event | Platform PostgreSQL schema | V010 immutable target/request binding plus canonical outbox bytes; V012 contains dispatcher mutation; V013 adds function-only exact-workflow reconciliation. Default off pending remaining B-017 environment and merged-head proof. |
 | Large evidence bodies | Planned evidence object port | Lifecycle is not implemented |
 | Embeddings and retrieval metadata | Planned PostgreSQL/pgvector boundary | RAG is not implemented |
 | Workflow histories | External Temporal boundary | Client/reconciliation code exists; no cluster, namespace, worker, or history is deployed |
@@ -290,9 +291,9 @@ latency or SLO evidence.
   outside every database transaction; a later transaction atomically reconciles
   binding, inbox, and outbox state.
 - V012 wraps the V011 Phase 9 preflight/settlement path with a dedicated
-  workflow claim and direct-row containment. Full real-role fresh/upgrade and
-  atomicity proof plus the separate no-Start reconciliation/alert lane remain
-  required by B-017 before Temporal admission.
+  workflow claim and direct-row containment. V013 adds separate, function-only
+  exact-workflow reconciliation. Remaining B-017 environment and merged-head
+  evidence still blocks Temporal admission.
 - Future workflow code changes use version/build routing and golden-history replay.
 - External effects are never inferred only from message delivery; they use execution receipts and reconciliation.
 
@@ -601,10 +602,7 @@ DML, and exposes a one-item resolver-owned claim function. A resolver-owned
 predecessor predicate lets the generic outbox claim path continue to respect
 same-aggregate ordering even though the canonical predecessor is hidden.
 Protected dispatcher/resolver memberships are rejected in both membership
-directions. Static validation and rollback-only PostgreSQL probes pass; full
-fresh/upgrade real-role, rollback-atomicity, and latency proof is pending. B-017
-blocks Temporal admission and roadmap G4 enablement until that proof and the
-reconciliation lane below exist.
+directions. Static validation and rollback-only PostgreSQL probes pass.
 
 After a possibly accepted Temporal RPC, an ambiguous retryable response cannot
 be converted to `REJECTED` merely because local retry attempts, age, or deadline
@@ -613,12 +611,52 @@ binding `PENDING`, and sets the canonical event's `last_error` to
 `workflow.reconciliation-required`; normal selection excludes the parked row,
 preventing unbounded attempt churn or a second Start RPC. Only an outcome known
 before any RPC or independently verified against the exact remote workflow can
-be terminalized. Before admission opens,
-a separately authorized read-only lane must be able to Describe the exact
-workflow and read its first history input, without permission to Start a
-workflow. That lane must produce bounded `PENDING` aging/alert behavior when it
-cannot establish the remote outcome; it is required, not yet implemented or
-proven.
+be terminalized.
+
+V013 adds a separate `opsmind_workflow_reconciler` LOGIN and
+`opsmind_workflow_reconciliation_resolver` NOLOGIN owner. The login receives
+execution on exactly three fixed functions—claim, settle, and aggregate
+status—after table, sequence, function, and PUBLIC revocation. It receives no
+direct data access or tenant-context capability. Claim leases one row without
+incrementing normal starter attempts. Settlement requires two qualified absence
+samples before rejection, releases a reactivated dispatcher row to the normal
+starter, and preserves canonical `PENDING` state for blocked/exhausted
+uncertainty.
+
+The default-off observer uses a distinct Temporal service stub. It calls
+`DescribeWorkflowExecution` for the exact workflow ID and then reads one first
+history event pinned to the described first run. For Continue-As-New, workflow
+type, task queue, memo digest, and decoded start input come from that immutable
+first-run event rather than the current execution description. Its port exposes
+no Start, signal, update, or query operation. A maximum-handoff-age fence emits
+`workflow.reconciliation-handoff-age-exceeded` before remote observation and
+settles the uncertainty as blocked while preserving canonical `PENDING` state.
+A corrected disposable PostgreSQL real-role contract passes the global
+exact-three privilege set, direct/PUBLIC/membership denial, the settlement
+outcome matrix, retention and lease-takeover boundaries, cross-tenant denial,
+four rollback failpoints, and cleanup. A local V012-to-V013 upgrade also proves
+exact-three/PUBLIC denial. Lightweight Java compile/static checks pass.
+
+Application launchers require a process-scoped, pairwise-distinct reconciler
+database password and fixed `opsmind_workflow_reconciler` username; `.env`
+cannot carry that secret. The datasource accepts pool size 1-4 and connection
+timeout 250-30,000 ms, default 3,000 ms. Its query timeout defaults to 1 second
+within a 1-30 second bound and is enforced on JDBC statements, PostgreSQL socket
+reads, and JDBC transactions. Bean creation fails unless connection acquisition
+plus query timeout is strictly shorter than both the settlement margin and
+`lease duration - settlement margin`; the 3-second plus 1-second defaults fit
+inside the 5-second settlement margin.
+
+Reconciliation emits aggregate-only metrics from management port `8082`.
+Application defaults expose health only; Compose explicitly exposes
+`health,prometheus` to the internal scrape. Metric relabeling keeps fixed series
+and label values, and seven alert rules cover blocked, exhausted,
+retention-ineligible, lag, not-ready/scrape-down, and no-progress states.
+B-017 remains active because the revision-bound updated database gate,
+merged-head Maven/Docker/CI/performance/DR gates, production namespace read-only
+credential/retention conformance, `promtool` plus live scrape, and external
+Alertmanager delivery proof do not
+exist.
 
 An `AlreadyStarted` response is success only after exact verification of
 workflow ID/type, task queue, execution/run identity, memo payload digest, and
@@ -781,12 +819,14 @@ V009 recovery/catalog/query-plan/latency/storage/upgrade/cleanup gates and the
 3/3 activity timeline matrix. Cross-service run `30257587543` and artifact
 `8649696519` prove A/B/C plus the Phase 7 OperatorWorkspace/CrossService/
 Checkpoint/PhaseExit regression. The Phase 9 handoff and V012 containment source
-exist only on the current integration branch; exact-head CI/Flyway runtime,
-full real-role fresh/upgrade/atomicity, and no-Start reconciliation/alert proof
-are missing. Neither historical run proves live
-DeepSeek/legal approval, a named live non-production connector, RAG,
-remediation, a live Temporal cluster/worker or restart/resume, object lifecycle,
-staging/production, DR, production latency/SLOs, or release readiness.
+exist only on the current integration branch. Corrected local
+fresh/upgrade/four-failpoint reconciliation database proofs pass and the gates
+are wired into PR Quality, but an updated revision-bound CI/Flyway run,
+live read-only/no-Start credential conformance, and live scrape/alert delivery
+proof are missing. Neither historical run proves live DeepSeek/legal approval,
+a named live non-production connector, RAG, remediation, a live Temporal
+cluster/worker or restart/resume, object lifecycle, staging/production, DR,
+production latency/SLOs, or release readiness.
 
 For the current AI Runtime checkpoint, the Python suite reports 159 passed and five
 PostgreSQL-gated tests skipped when that database gate is not enabled; Ruff and

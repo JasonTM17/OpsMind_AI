@@ -10,16 +10,19 @@ provider/legal terms, a named live non-production connector, object lifecycle,
 staging, DR, and release evidence. Keycloak 26.7 remains non-production
 reference conformance and does not authorize a vendor or rollout.
 
-The current worktree adds a default-off Phase 9 Temporal start handoff in the
-Platform API artifact and Platform V010-V012. V012 removes the V011 direct-DML
-bypass for workflow-start state, introduces a dedicated claim capability, and
-parks exhausted ambiguous remote outcomes for reconciliation. Static and
-rollback-only PostgreSQL probes pass, but B-017 still blocks admission until
-full fresh/upgrade real-role and atomicity proof plus a no-Start exact-workflow
-reconciliation/alert lane exist. There is no exact-head CI/Flyway runtime
-evidence, production/live Temporal cluster or namespace, Compose service,
-compatible worker, or restart/resume execution. It is not deployable as a
-durable investigation workflow yet.
+The current worktree adds a default-off Phase 9 Temporal start handoff and V013
+read-only exact-workflow reconciliation inside the Platform API artifact.
+V012 contains dispatcher mutation; V013 grants a separate reconciler login
+execution on exactly three fixed database functions. The observer uses only
+Describe plus one first-history read, and seven source-validated alerts cover
+bounded aggregate state. A disposable PostgreSQL real-role contract and
+lightweight Java/static checks pass. B-017 still blocks admission: merged-head
+Maven/Docker/CI/performance/DR evidence, a revision-bound run of the wired
+database gate, live namespace read-only credential/retention conformance, pinned
+`promtool` plus live scrape, and an external Alertmanager delivery receipt are
+absent. There is no production/live Temporal cluster, compatible worker, or
+restart/resume execution. This is not yet a deployable durable investigation
+workflow.
 
 G0.5 approves managed Kubernetes in `ap-southeast-1` with Singapore residency,
 an enterprise OIDC profile, MinIO locally, S3-compatible production storage
@@ -256,6 +259,26 @@ A failed gate cannot be converted to a warning solely to meet a schedule.
   apply and prove V012 under the real application, dispatcher, resolver, and
   migration roles on both fresh and V001-to-current upgrade paths before
   enabling this path; source/static and rollback-only probes are insufficient.
+- Apply V013 with the reconciler disabled. The database login must be exactly
+  `opsmind_workflow_reconciler`, use a secret distinct from every other database
+  role, and receive no direct table or tenant-context privilege. Its only
+  executable application capabilities are
+  `opsmind_claim_investigation_workflow_reconciliation`,
+  `opsmind_settle_investigation_workflow_reconciliation`, and
+  `opsmind_get_investigation_workflow_reconciliation_status`.
+- `.env.example` keeps `POSTGRES_WORKFLOW_RECONCILER_PASSWORD` and
+  `OPSMIND_WORKFLOW_RECONCILER_DB_PASSWORD` blank and the datasource disabled.
+  Supply the role password only through the process environment/secret manager.
+  Both launchers require it for application Compose, reject reuse with another
+  database role, and reject username drift. The datasource pool accepts 1-4
+  connections; `OPSMIND_WORKFLOW_RECONCILER_DB_CONNECTION_TIMEOUT_MS` defaults
+  to `3000` and must remain within 250-30,000 ms.
+  `OPSMIND_WORKFLOW_RECONCILER_DB_QUERY_TIMEOUT_SECONDS` defaults to `1`, must
+  remain within 1-30 seconds, and controls the JDBC statement, PostgreSQL socket,
+  and JDBC transaction timeouts. Startup also requires connection acquisition
+  timeout plus query timeout to be strictly less than both the reconciliation
+  settlement margin and `lease duration - settlement margin`; the defaults are
+  `3s + 1s < 5s`.
 - Before Temporal admission, freeze new starts and run
   [the workflow cutover gate](./runbooks/investigation-workflow-cutover.md).
   Every nonterminal binding-less run requires explicit operator reconciliation;
@@ -275,14 +298,24 @@ A failed gate cannot be converted to a warning solely to meet a schedule.
   poller with the exact required identity and build ID. This repository does not
   provide that worker or a Temporal service, so a repository-only rollout must
   remain disabled.
-- Admission also cannot open until all B-017 proofs exist: V012 fresh and
-  V001-to-current real-role containment with atomic failure injection; a
-  predecessor-query `EXPLAIN` and accepted latency threshold; and a separately
-  authorized, read-only exact-workflow reconciliation lane limited to Describe
-  plus first-history reads (never Start). That lane must keep a potentially
-  accepted post-RPC handoff `PENDING` and alert within its configured bound when
-  it cannot verify the remote outcome; exhausted local retry, age, or deadline
-  budget is not remote rejection evidence.
+- Admission also cannot open until all B-017 proofs exist: merged-head
+  fresh/upgrade real-role containment with atomic failure injection and accepted
+  query-plan/latency evidence; namespace retention plus a credential conformance
+  test where Describe/history succeeds and Start, signal-with-start, and
+  update-with-start are denied; pinned `promtool` plus bounded-label live scrape;
+  and a configured Alertmanager receiver with end-to-end page delivery. V013
+  source and its local PostgreSQL contract do not replace these proofs.
+- Continue-As-New conformance must verify type, task queue, memo digest, and
+  decoded start input from event 1 of the first run. Current-execution
+  description fields are not the immutable start contract.
+- Management binds separately on `PLATFORM_MANAGEMENT_PORT=8082`. The
+  checked-in default `OPSMIND_MANAGEMENT_EXPOSED_ENDPOINTS=health` must remain
+  unless a network-scoped scrape is explicitly provisioned. Compose uses
+  `health,prometheus` only on its internal network; do not publish port `8082`
+  through public ingress.
+- `workflow.reconciliation-handoff-age-exceeded` means the row crossed the
+  configured pre-observation handoff bound. It must stay `PENDING`, page as
+  blocked, and never be interpreted as remote absence.
 - When an approved external cluster, namespace, and compatible worker exist,
   enable the client and dispatcher role while starts stay frozen, verify the
   cutover, B-017 containment/reconciliation, and bounded pending-alert checks,
@@ -319,13 +352,11 @@ that selects `started` rows older than the retry interval without a matching
 - Quarantine a model alias rather than deleting lineage evidence.
 - Preserve audit and incident evidence during rollback.
 - For Phase 9 rollback, freeze starts, restore
-  `OPSMIND_INVESTIGATION_EXECUTION_MODE=inline`, and disable the Temporal client,
-  workflow-start dispatcher, and dispatcher datasource. V010-V012 remain
-  applied; rollback is configuration-only. Retain bindings, inbox rows, and
-  outbox rows as immutable recovery evidence; do not reset a genuinely terminal
-  `REJECTED` binding or delete a pending handoff. A retryable post-RPC ambiguity
-  remains `PENDING` until the no-Start reconciliation lane establishes its exact
-  remote outcome.
+  `OPSMIND_INVESTIGATION_EXECUTION_MODE=inline`, disable the Temporal client,
+  observer, workflow-start dispatcher, reconciler, and both dedicated
+  datasources. V010-V013 remain applied; rollback is configuration-only. Retain
+  bindings, inbox rows, and outbox rows as immutable recovery evidence; do not
+  reset a genuinely terminal `REJECTED` binding or delete a pending handoff.
 
 ## Disaster Recovery
 
@@ -376,11 +407,20 @@ conformance, and Compose build/health on
 adds the V009/activity evidence above. This is CI fixture/checkpoint evidence,
 not production identity, latency, SLO, or deployment proof.
 
-Phase 9 source/static checks do not replace the missing exact-head PR-quality
-and disposable PostgreSQL evidence. They also do not prove B-017 real-role
-containment or the no-Start reconciliation lane. No rollout may infer a live
-Temporal cluster, namespace, poller, workflow history, or restart/resume proof
-from them.
+Phase 9 source validators and lightweight Java compile pass. A disposable
+PostgreSQL V001-V013 real-role contract produced 55 PASS markers, including
+cleanup.
+It proves the global exact-three executable set, direct/PUBLIC/membership
+denial, match, two-sample absence, reactivation, mismatch, retry,
+blocked/retention/exhaustion `PENDING` preservation, lease fencing/takeover,
+cross-tenant denial, and four atomic settlement rollback failpoints. A local
+V012-to-V013 upgrade also passes exact-three/PUBLIC denial. PR Quality is wired
+to run the reconciliation contract and V006-to-V013 upgrade/recovery checks,
+but no revision-bound run of that updated job is claimed. These targeted local
+results do not replace exact-head Maven/Docker/CI, performance/DR, live Temporal
+authorization/retention, `promtool`/scrape, or external alert-delivery evidence.
+No rollout may infer a live cluster, namespace, poller, workflow history, or
+restart/resume proof.
 
 Evidence schema v2 now binds the source/profile manifest and packaged Platform
 API JAR digests, verifies cleanup before atomic publication, and has a separate

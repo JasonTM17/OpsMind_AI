@@ -140,15 +140,27 @@ Phase 9 static validator; focused rollback-only PostgreSQL probes pass for V012
 migration application, canonical row visibility, hidden-predecessor ordering,
 unsafe role-membership rejection, and V012 transaction application. Regression
 source now covers V011 legacy ambiguity normalization and preflight-before-decode
-parking, but the capacity guard blocks its full runtime/upgrade execution. No
-full fresh/upgrade real-role, injected atomicity, latency, reconciliation-lane,
-exact-head CI, or disposable PostgreSQL result is claimed.
+parking. Corrected local fresh/upgrade/atomicity reconciliation database proofs
+are described below; the capacity guard still blocks exact-head
+Maven/Docker/CI, latency, DR, and production PostgreSQL proof.
 
-Phase 7 now defines the implementation-ready B-017 contract: a separate
-database login and NOLOGIN owner, a one-item capability-only claim/settlement
-lane, a Java observer with no start surface, two-sample retention-bounded
-absence proof, and aggregate-only metrics/alerts. Implementation and mandatory
-runtime evidence remain in progress.
+Phase 7 source is integrated: V013 creates a separate function-only reconciler
+login/owner and exact three-function database surface; the default-off observer
+uses only Describe plus one first-history read; aggregate metrics and seven
+alert rules use the internal management port. A disposable PostgreSQL
+V001-V013 real-role contract passes 55 corrected checks including cleanup, including
+the global exact-three surface, full database outcome matrix, lease/retention
+boundaries, and four rollback failpoints. A local V012-to-V013
+exact-three/PUBLIC-deny upgrade and lightweight `javac`/static validators pass.
+The database contract and V006-to-V013 upgrade/recovery path are wired into PR
+Quality, but the updated job has no revision-bound result.
+
+Phase 7 and B-017 remain in progress. The `D:` capacity guard blocks exact-head
+Maven, Docker, performance/DR, and CI gates.
+Production namespace retention and read-only credential conformance are absent.
+Pinned `promtool` plus live scrape and an external Alertmanager receiver/page
+delivery proof are also absent. No Temporal admission, G4, Phase 9 exit,
+Docker Hub publication, or release is claimed.
 
 ## Unresolved Questions
 
@@ -156,9 +168,10 @@ runtime evidence remain in progress.
   topology remain deployment-owner decisions. Defaults must stay local-invalid
   or disabled until those decisions are recorded.
 - B-013 still blocks production threshold freeze and the Phase 9 exit.
-- B-017 blocks Temporal admission/G4 until V012 has full real-role
-  fresh/upgrade and atomicity evidence and read-only exact-workflow
-  reconciliation/alerts are implemented and proven.
+- B-017 blocks Temporal admission/G4 until the wired database gate has a
+  revision-bound run and remaining merged-head Maven/Docker/CI/performance/DR,
+  live Temporal authorization/retention, scrape, and external alert-delivery
+  evidence is proven.
 
 ## Red Team Review
 
@@ -201,7 +214,10 @@ runtime evidence remain in progress.
   this plan.
 - B-017 is an explicit unresolved safety condition: V012 removes the V011
   direct-DML bypass and prevents ambiguous post-RPC exhaustion from becoming
-  `REJECTED`, but full real-role runtime/upgrade/atomicity proof and the
-  reconciliation/alert owner are still absent. Production cluster identity,
+  `REJECTED`; V013 now supplies the function-only reconciliation/alert source
+  and corrected local fresh/upgrade/four-failpoint database contracts.
+  Revision-bound database-gate execution, merged-head
+  Maven/Docker/CI/performance/DR, live authorization/retention, scrape, and
+  external alert delivery proof remain absent. Production cluster identity,
   mTLS ownership, compatible worker implementation, B-013, and B-017 remain
-  explicit external/downstream gates.
+  explicit gates.
