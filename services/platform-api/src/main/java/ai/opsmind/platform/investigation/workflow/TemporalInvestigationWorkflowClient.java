@@ -101,14 +101,23 @@ public final class TemporalInvestigationWorkflowClient implements InvestigationW
             WorkflowExecutionDescription description = existing.describe();
             Object storedDigest =
                 description.getMemo(PAYLOAD_DIGEST_MEMO_KEY, String.class);
+            String firstRunId = description.getFirstRunId();
+            if (firstRunId == null || firstRunId.isBlank()) {
+                throw InvestigationWorkflowStartException.outcomeUncertain(
+                    "workflow.temporal-outcome-ambiguous", exception
+                );
+            }
             if (!matchesExistingExecution(
-                request, startPayloadDigest, execution, description, storedDigest
+                request, startPayloadDigest, execution, description, storedDigest, firstRunId
             )) {
                 throw InvestigationWorkflowStartException.permanent(
                     "workflow.existing-contract-mismatch", exception
                 );
             }
-            return result(description.getExecution(), true);
+            return result(WorkflowExecution.newBuilder()
+                .setWorkflowId(request.workflowId())
+                .setRunId(firstRunId)
+                .build(), true);
         }
         catch (InvestigationWorkflowStartException mapped) {
             throw mapped;
@@ -135,16 +144,23 @@ public final class TemporalInvestigationWorkflowClient implements InvestigationW
         String startPayloadDigest,
         WorkflowExecution execution,
         WorkflowExecutionDescription description,
-        Object storedDigest
+        Object storedDigest,
+        String firstRunId
     ) {
+        WorkflowExecution describedExecution = description.getExecution();
         return request.workflowType().equals(description.getWorkflowType())
             && request.taskQueue().equals(description.getTaskQueue())
             && startPayloadDigest.equals(storedDigest)
-            && request.workflowId().equals(description.getExecution().getWorkflowId())
+            && describedExecution != null
+            && request.workflowId().equals(describedExecution.getWorkflowId())
             && !execution.getRunId().isBlank()
-            && !description.getExecution().getRunId().isBlank()
-            && execution.getRunId().equals(description.getExecution().getRunId())
-            && request.equals(readFirstStartInput(execution));
+            && !describedExecution.getRunId().isBlank()
+            && execution.equals(describedExecution)
+            && firstRunId.equals(description.getFirstRunId())
+            && request.equals(readFirstStartInput(WorkflowExecution.newBuilder()
+                .setWorkflowId(request.workflowId())
+                .setRunId(firstRunId)
+                .build()));
     }
 
     private InvestigationWorkflowStartRequest readFirstStartInput(
