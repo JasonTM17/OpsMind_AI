@@ -321,4 +321,119 @@ class MigrationContractTest {
             .contains("workflow.ambiguous-retry-allowed")
             .contains("workflow.reconciliation-required");
     }
+
+    @Test
+    void workflowReconciliationMigrationExposesOnlyExactCapabilities()
+        throws IOException {
+        String migration = readMigration(
+            "V013__investigation_workflow_exact_reconciliation.sql"
+        );
+
+        assertThat(migration)
+            .contains("opsmind_workflow_reconciler has unsafe attributes or role memberships")
+            .contains(
+                "opsmind_workflow_reconciliation_resolver has unsafe attributes "
+                    + "or role memberships"
+            )
+            .contains("membership.member = role_row.oid")
+            .contains("membership.roleid = role_row.oid")
+            .contains(
+                "CREATE OR REPLACE FUNCTION "
+                    + "opsmind_claim_investigation_workflow_reconciliation"
+            )
+            .contains("FOR UPDATE OF event_row, binding_row SKIP LOCKED")
+            .contains("event_row.attempts > 0")
+            .contains("p_maximum_attempts > 8")
+            .contains("ON CONFLICT ON CONSTRAINT inbox_events_pkey DO UPDATE")
+            .contains("ELSE public.inbox_events.processed_at")
+            .contains("SET lease_token = p_lease_token")
+            .doesNotContain("SET attempts = event_row.attempts + 1")
+            .contains(
+                "CREATE OR REPLACE FUNCTION "
+                    + "opsmind_settle_investigation_workflow_reconciliation"
+            )
+            .contains(
+                "p_outcome NOT IN ('MATCH', 'ABSENT', 'MISMATCH', 'RETRY', 'BLOCKED')"
+            )
+            .contains("workflow.reconciliation-started")
+            .contains("workflow.reconciliation-absence-candidate")
+            .contains("workflow.reconciliation-released-to-starter")
+            .contains("workflow.reconciliation-verified-absence")
+            .contains("workflow.reconciliation-contract-mismatch")
+            .contains("workflow.reconciliation-retry-scheduled")
+            .contains("workflow.reconciliation-blocked")
+            .contains("workflow.reconciliation-lease-lost")
+            .contains("workflow.reconciliation-retention-unverifiable")
+            .contains(
+                "CREATE OR REPLACE FUNCTION "
+                    + "opsmind_get_investigation_workflow_reconciliation_status"
+            )
+            .contains("claim_ready_count bigint")
+            .contains("reconciliation_status IN ('received', 'processed')")
+            .contains("retention_ineligible_count bigint")
+            .contains("oldest_pending_age_seconds bigint")
+            .contains(
+                "REVOKE ALL ON ALL TABLES IN SCHEMA public "
+                    + "FROM opsmind_workflow_reconciler"
+            )
+            .contains(
+                "public.opsmind_validate_investigation_workflow_binding_update()\n"
+                    + "    FROM PUBLIC"
+            )
+            .contains(
+                "TO opsmind_workflow_reconciliation_resolver"
+            )
+            .contains("TO opsmind_workflow_reconciler")
+            .doesNotContain(
+                "opsmind_set_tenant_context",
+                "opsmind_set_dispatcher_tenant_context",
+                "StartWorkflowExecution",
+                "raw_prompt",
+                "chain_of_thought",
+                "api_key",
+                "credential_ref"
+            );
+    }
+
+    @Test
+    void workflowReconcilerBootstrapAndComposeUseTheFixedRole()
+        throws IOException {
+        String bootstrap = new String(
+            MigrationContractTest.class.getResourceAsStream(
+                "/db/bootstrap/001-create-runtime-role.sh"
+            ).readAllBytes(),
+            StandardCharsets.UTF_8
+        );
+        String compose = java.nio.file.Files.readString(
+            java.nio.file.Path.of("../../compose.yaml"),
+            StandardCharsets.UTF_8
+        );
+
+        assertThat(bootstrap)
+            .contains("POSTGRES_WORKFLOW_RECONCILER_PASSWORD")
+            .contains("CREATE ROLE opsmind_workflow_reconciler LOGIN NOSUPERUSER")
+            .contains(
+                "CREATE ROLE opsmind_workflow_reconciliation_resolver "
+                    + "NOLOGIN NOSUPERUSER"
+            )
+            .contains("\\password opsmind_workflow_reconciler");
+        assertThat(compose)
+            .contains(
+                "POSTGRES_WORKFLOW_RECONCILER_USER: "
+                    + "${POSTGRES_WORKFLOW_RECONCILER_USER:-opsmind_workflow_reconciler}"
+            )
+            .contains(
+                "source: ./deploy/prometheus/opsmind-reconciliation-alerts.yml"
+            )
+            .contains(
+                "target: /etc/prometheus/opsmind-reconciliation-alerts.yml"
+            )
+            .contains("PLATFORM_MANAGEMENT_PORT: 8082")
+            .contains("OPSMIND_MANAGEMENT_EXPOSED_ENDPOINTS: health,prometheus")
+            .contains("http://127.0.0.1:8082/actuator/health")
+            .contains(
+                "OPSMIND_WORKFLOW_RECONCILER_DB_USERNAME: "
+                    + "${POSTGRES_WORKFLOW_RECONCILER_USER:-opsmind_workflow_reconciler}"
+            );
+    }
 }

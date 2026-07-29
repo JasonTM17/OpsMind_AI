@@ -88,6 +88,7 @@ function Get-SafeDiagnostics {
         $env:POSTGRES_PASSWORD,
         $env:POSTGRES_APP_PASSWORD,
         $env:POSTGRES_DISPATCHER_PASSWORD,
+        $env:POSTGRES_WORKFLOW_RECONCILER_PASSWORD,
         $env:SPRING_DATASOURCE_PASSWORD
     ) | Where-Object { -not [string]::IsNullOrWhiteSpace($_) }
     $safe = foreach ($item in $Output | Select-Object -Last 25) {
