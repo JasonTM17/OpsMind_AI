@@ -18,10 +18,10 @@ import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.stereotype.Repository;
 import org.springframework.transaction.support.TransactionSynchronizationManager;
 
-/** JDBC calls to the fenced claim and settlement capabilities; never performs object I/O. */
+/** JDBC capabilities; kept non-final so Spring can proxy this no-interface repository. */
 @Repository
 @ConditionalOnProperty(prefix = "opsmind.persistence", name = "enabled", havingValue = "true")
-public final class EvidenceArtifactUploadRepository {
+public class EvidenceArtifactUploadRepository {
 
     private final JdbcTemplate jdbcTemplate;
     private final EvidenceArtifactMetadataReader metadataReader;
