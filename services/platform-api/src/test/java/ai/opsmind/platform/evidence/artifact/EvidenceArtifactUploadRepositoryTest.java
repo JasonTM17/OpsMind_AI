@@ -26,6 +26,7 @@ import ai.opsmind.platform.incident.AuthorizedIncidentAnalysisScope;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
+import org.springframework.dao.DataAccessResourceFailureException;
 import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.jdbc.core.RowMapper;
 import org.springframework.transaction.support.TransactionSynchronizationManager;
@@ -97,6 +98,21 @@ class EvidenceArtifactUploadRepositoryTest {
 
         assertThat(claim.reconciliationRequired()).isTrue();
         assertThat(claim.probeRequired()).isFalse();
+    }
+
+    @Test
+    void persistenceFailurePreservesItsCauseBehindTheSafeContract() {
+        when(metadataReader.findVisible(scope(), ARTIFACT_ID)).thenReturn(Optional.of(metadata()));
+        DataAccessResourceFailureException cause = new DataAccessResourceFailureException("internal-sql-detail");
+        when(jdbcTemplate.query(anyString(), any(RowMapper.class), any(Object[].class))).thenThrow(cause);
+
+        assertThatThrownBy(() ->
+            repository.claim(scope(), ARTIFACT_ID, UUID.randomUUID(), Duration.ofSeconds(30))
+        ).isInstanceOfSatisfying(PlatformProblemException.class, exception -> {
+            assertThat(exception.code()).isEqualTo("evidence-artifact.persistence-unavailable");
+            assertThat(exception.getMessage()).doesNotContain("internal-sql-detail");
+            assertThat(exception.getCause()).isSameAs(cause);
+        });
     }
 
     @Test

@@ -12,7 +12,6 @@ import ai.opsmind.platform.evidence.artifact.storage.ArtifactObjectStored;
 import ai.opsmind.platform.incident.AuthorizedIncidentAnalysisScope;
 
 import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
-import org.springframework.dao.DataAccessException;
 import org.springframework.http.HttpStatus;
 import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.stereotype.Repository;
@@ -36,7 +35,6 @@ public class EvidenceArtifactUploadRepository {
         this.metadataReader = metadataReader;
         this.storedLifecycleAppender = storedLifecycleAppender;
     }
-
     public EvidenceArtifactUploadClaim claim(
         AuthorizedIncidentAnalysisScope scope,
         UUID artifactId,
@@ -64,11 +62,8 @@ public class EvidenceArtifactUploadRepository {
         catch (PlatformProblemException exception) {
             throw exception;
         }
-        catch (DataAccessException exception) {
-            throw unavailable();
-        }
         catch (RuntimeException exception) {
-            throw unavailable();
+            throw unavailable(exception);
         }
     }
 
@@ -107,11 +102,8 @@ public class EvidenceArtifactUploadRepository {
         catch (PlatformProblemException exception) {
             throw exception;
         }
-        catch (DataAccessException exception) {
-            throw unavailable();
-        }
         catch (RuntimeException exception) {
-            throw unavailable();
+            throw unavailable(exception);
         }
     }
     private EvidenceArtifactMetadata pendingArtifact(AuthorizedIncidentAnalysisScope scope, UUID artifactId) {
@@ -190,10 +182,15 @@ public class EvidenceArtifactUploadRepository {
     }
 
     private PlatformProblemException unavailable() {
+        return unavailable(null);
+    }
+
+    private PlatformProblemException unavailable(RuntimeException cause) {
         return new PlatformProblemException(
             HttpStatus.SERVICE_UNAVAILABLE,
             "evidence-artifact.persistence-unavailable",
-            "Artifact metadata persistence is temporarily unavailable."
+            "Artifact metadata persistence is temporarily unavailable.",
+            cause
         );
     }
 }

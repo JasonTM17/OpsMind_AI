@@ -60,19 +60,65 @@ class EvidenceArtifactUploadFailureTest {
     @Test
     void storageFailureWithoutPossibleResidueSettlesFailedAndDoesNotLeakItsCause() {
         EvidenceArtifactUploadClaim claim = claim(false);
-        when(repository.claim(any(), eq(ARTIFACT_ID), any(), any())).thenReturn(claim);
-        doThrow(new EvidenceArtifactStorageException(
+        EvidenceArtifactStorageException storageFailure = new EvidenceArtifactStorageException(
             EvidenceArtifactStorageException.FailureKind.UNAVAILABLE, false,
             new IllegalStateException("bucket/key/kms/url/body")
-        )).when(storage).putIfAbsent(any(), any());
+        );
+        when(repository.claim(any(), eq(ARTIFACT_ID), any(), any())).thenReturn(claim);
+        doThrow(storageFailure).when(storage).putIfAbsent(any(), any());
         when(repository.settle(any(), eq(claim), eq(EvidenceArtifactUploadOutcome.FAILED), isNull(),
             eq("artifact.storage-failed"))).thenReturn(pendingSettlement());
 
         assertThatThrownBy(() -> upload()).isInstanceOfSatisfying(PlatformProblemException.class, exception -> {
             assertThat(exception.code()).isEqualTo("evidence-artifact.upload-failed");
             assertThat(exception.getMessage()).doesNotContain("bucket", "key", "kms", "url", "body");
-            assertThat(exception.getCause()).isNull();
+            assertThat(exception.getCause()).isSameAs(storageFailure);
         });
+    }
+
+    @Test
+    void settlementFailureRetainsTheAmbiguousStorageFailureAsSuppressed() {
+        EvidenceArtifactUploadClaim claim = claim(false);
+        EvidenceArtifactStorageException storageFailure = new EvidenceArtifactStorageException(
+            EvidenceArtifactStorageException.FailureKind.OUTCOME_UNCERTAIN, true, null
+        );
+        PlatformProblemException settlementFailure = new PlatformProblemException(
+            org.springframework.http.HttpStatus.SERVICE_UNAVAILABLE,
+            "evidence-artifact.persistence-unavailable",
+            "Artifact metadata persistence is temporarily unavailable."
+        );
+        when(repository.claim(any(), eq(ARTIFACT_ID), any(), any())).thenReturn(claim);
+        doThrow(storageFailure).when(storage).putIfAbsent(any(), any());
+        when(repository.settle(any(), eq(claim), eq(EvidenceArtifactUploadOutcome.UNCERTAIN), isNull(),
+            eq("artifact.storage-uncertain"))).thenThrow(settlementFailure);
+
+        assertThatThrownBy(this::upload).isSameAs(settlementFailure);
+        assertThat(settlementFailure.getSuppressed()).containsExactly(storageFailure);
+    }
+
+    @Test
+    void unclassifiedSettlementFailureIsWrappedBeforeStorageFailureIsAttached() {
+        EvidenceArtifactUploadClaim claim = claim(false);
+        EvidenceArtifactStorageException storageFailure = new EvidenceArtifactStorageException(
+            EvidenceArtifactStorageException.FailureKind.OUTCOME_UNCERTAIN, true,
+            new IllegalStateException("sensitive-storage-provider-detail")
+        );
+        IllegalStateException settlementFailure =
+            new IllegalStateException("sensitive-settlement-detail");
+        when(repository.claim(any(), eq(ARTIFACT_ID), any(), any())).thenReturn(claim);
+        doThrow(storageFailure).when(storage).putIfAbsent(any(), any());
+        when(repository.settle(any(), eq(claim), eq(EvidenceArtifactUploadOutcome.UNCERTAIN), isNull(),
+            eq("artifact.storage-uncertain"))).thenThrow(settlementFailure);
+
+        assertThatThrownBy(this::upload)
+            .isInstanceOfSatisfying(PlatformProblemException.class, classifiedFailure -> {
+                assertThat(classifiedFailure.code())
+                    .isEqualTo("evidence-artifact.settlement-failed");
+                assertThat(classifiedFailure.getCause()).isSameAs(settlementFailure);
+                assertThat(classifiedFailure.getSuppressed()).containsExactly(storageFailure);
+                assertThat(classifiedFailure.getMessage())
+                    .doesNotContain("sensitive-storage", "sensitive-settlement");
+            });
     }
 
     @Test

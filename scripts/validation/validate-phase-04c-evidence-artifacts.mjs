@@ -322,7 +322,7 @@ const uploadService = requireMarkers(
     + "EvidenceArtifactUploadService.java",
   [
     "requireObjectIoOutsideTransaction()",
-    "if (claim.reconciliationRequired()) throw orphaned();",
+    "if (claim.reconciliationRequired()) throw EvidenceArtifactUploadProblems.orphaned();",
     "if (!claim.probeRequired())",
     "storage.probe(claim.expectation())",
     "EvidenceArtifactUploadOutcome.UNCERTAIN",
@@ -346,6 +346,36 @@ const uploadRepository = requireMarkers(
 );
 if (/S3Client|putObject|headObject|InputStream/iu.test(uploadRepository)) {
   errors.push("upload repository must not own object I/O");
+}
+const platformExceptionHandler = requireMarkers(
+  "services/platform-api/src/main/java/ai/opsmind/platform/common/api/PlatformExceptionHandler.java",
+  ["failureType={} causeType={}", "cause.getClass().getName()"],
+);
+const classifiedHandlerScope = platformExceptionHandler.split(
+  "@ExceptionHandler(Exception.class)",
+)[0];
+if (/LOGGER\.error\([\s\S]{0,400},\s*exception\s*\)/u.test(classifiedHandlerScope)) {
+  errors.push("classified platform failures must not render raw throwable chains");
+}
+requireMarkers(
+  "services/platform-api/src/test/java/ai/opsmind/platform/common/api/"
+    + "PlatformExceptionHandlerTest.java",
+  [
+    "doesNotContain(SENSITIVE_CAUSE_DETAIL, \"sensitive-suppressed-detail\")",
+    "causeType=java.lang.IllegalStateException",
+  ],
+);
+const uploadFailureTest = requireMarkers(
+  "services/platform-api/src/test/java/ai/opsmind/platform/evidence/artifact/"
+    + "EvidenceArtifactUploadFailureTest.java",
+  [
+    "getCause()).isSameAs(storageFailure)",
+    "getSuppressed()).containsExactly(storageFailure)",
+    "\"evidence-artifact.settlement-failed\"",
+  ],
+);
+if (uploadFailureTest.includes("getCause()).isNull()")) {
+  errors.push("artifact upload failure tests must preserve classified causal exceptions");
 }
 
 const application = requireMarkers("services/platform-api/src/main/resources/application.yaml", [
