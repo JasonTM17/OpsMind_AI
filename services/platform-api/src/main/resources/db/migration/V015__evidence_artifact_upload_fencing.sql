@@ -507,6 +507,7 @@ DECLARE
     attempt_row record;
     bound_actor_id uuid := public.opsmind_current_actor_id();
     db_now timestamptz;
+    transition_at timestamptz;
 BEGIN
     IF session_user <> 'opsmind_app'
        OR p_organization_id IS DISTINCT FROM public.opsmind_current_tenant_id()
@@ -634,9 +635,12 @@ BEGIN
             RAISE EXCEPTION 'stored artifact does not match its immutable expectation'
                 USING ERRCODE = 'P7108';
         END IF;
+        -- Lease validity uses wall time above. The durable lifecycle clock must
+        -- remain nondecreasing and match the attempt/event settlement time.
+        transition_at := GREATEST(db_now, artifact_row.lifecycle_updated_at);
         UPDATE public.evidence_artifact_upload_attempts AS attempt
            SET status = 'STORED',
-               settled_at = db_now,
+               settled_at = transition_at,
                failure_code = NULL
          WHERE attempt.organization_id = p_organization_id
            AND attempt.upload_attempt_id = p_upload_attempt_id;
@@ -647,7 +651,7 @@ BEGIN
                storage_version_reference = p_storage_version_reference,
                encryption_metadata_reference = p_encryption_metadata_reference,
                last_failure_code = NULL,
-               lifecycle_updated_at = db_now
+               lifecycle_updated_at = transition_at
          WHERE artifact.organization_id = p_organization_id
            AND artifact.artifact_id = p_artifact_id
         RETURNING * INTO artifact_row;

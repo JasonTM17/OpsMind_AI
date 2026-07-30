@@ -205,6 +205,9 @@ const v015 = requireMarkers(v015Path, [
   "REVOKE UPDATE, DELETE, TRUNCATE ON evidence_artifacts, evidence_artifact_events",
   "GRANT EXECUTE ON FUNCTION public.opsmind_claim_evidence_artifact_upload",
   "GRANT EXECUTE ON FUNCTION public.opsmind_settle_evidence_artifact_upload",
+  "transition_at := GREATEST(db_now, artifact_row.lifecycle_updated_at)",
+  "settled_at = transition_at",
+  "lifecycle_updated_at = transition_at",
 ]);
 if (!v015.includes("p_storage_version_reference IS NULL")
     || !v015.includes("lower(p_storage_version_reference) = 'null'")
@@ -377,9 +380,13 @@ const objectRunner = requireMarkers(
     "ExpiredClaimProbeFence=PASS",
     "FailedAttemptImmediateRetry=PASS",
     "OrphanedAttemptReclaimDenial=PASS",
+    "--set VERBOSITY=verbose",
     "StaleAttemptSettlement",
     "MissingStoredAuditRollback",
+    "\"P7104\"",
+    "stored artifact metadata requires its lifecycle event and audit row",
     "StoredAuditRollbackState=PASS",
+    "attempt.settled_at IS NOT DISTINCT FROM artifact.lifecycle_updated_at",
     "ExactStoredReplay=PASS",
     "StoredEventAuditAtomicity=PASS",
     "StoredAuditRedaction=PASS",
