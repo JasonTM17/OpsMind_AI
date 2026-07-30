@@ -339,6 +339,30 @@ SELECT CASE WHEN
     'opsmind_app', 'public.evidence_artifact_upload_attempts', 'SELECT'
   )
   AND NOT has_table_privilege('opsmind_app', 'public.evidence_artifacts', 'UPDATE')
+  AND NOT has_column_privilege(
+    'opsmind_app', 'public.evidence_artifacts', 'upload_attempt_id', 'INSERT'
+  )
+  AND NOT has_column_privilege(
+    'opsmind_app',
+    'public.evidence_artifacts',
+    'upload_lease_expires_at',
+    'INSERT'
+  )
+  AND NOT has_column_privilege(
+    'opsmind_app',
+    'public.evidence_artifacts',
+    'storage_version_reference',
+    'INSERT'
+  )
+  AND NOT has_column_privilege(
+    'opsmind_app',
+    'public.evidence_artifacts',
+    'encryption_metadata_reference',
+    'INSERT'
+  )
+  AND NOT has_column_privilege(
+    'opsmind_app', 'public.evidence_artifacts', 'last_failure_code', 'INSERT'
+  )
   AND EXISTS (
     SELECT 1 FROM evidence_artifacts
      WHERE lifecycle_state = 'PENDING_UPLOAD'
@@ -352,7 +376,7 @@ echo "V014MetadataPreserved=PASS"
 echo "ArtifactAttemptRls=PASS"
 echo "ArtifactCapabilityGrants=PASS"
 
-app_sql <<'SQL'
+admin_sql <<'SQL'
 DO $attempt_shape$
 DECLARE
   organization_id constant uuid := 'a1500000-0000-4000-8000-000000000001';
