@@ -10,7 +10,13 @@ function requireStep(jobs, name, errors) {
   if (!step) errors.push(`step.missing:${name}`);
 }
 
+function occurrenceCount(source, token) {
+  return source.split(token).length - 1;
+}
+
 export function validateReleaseFlow(jobs, errors) {
+  const expectedSignerWorkflow =
+    "${{ github.repository }}/.github/workflows/container-publish.yml";
   const candidate = jobs["build-candidate"];
   const metadata = findStep(candidate, "Derive immutable candidate metadata");
   const build = findStep(candidate, "Build immutable candidate");
@@ -29,6 +35,7 @@ export function validateReleaseFlow(jobs, errors) {
   }
 
   for (const name of [
+    "Require atomic dual-registry release",
     "Verify exact-revision quality gates",
     "Inspect candidate evidence",
     "Smoke-test candidate runtime",
@@ -50,6 +57,22 @@ export function validateReleaseFlow(jobs, errors) {
     requireStep(jobs, name, errors);
   }
   requirePromotionOrder(jobs.promote, errors);
+
+  const dualRegistry =
+    findStep(jobs.authorize, "Require atomic dual-registry release") ?? {};
+  if (
+    dualRegistry.env?.PUBLISH_DOCKERHUB !==
+      "${{ inputs.publish_dockerhub }}" ||
+    !dualRegistry.run?.includes(
+      'if [[ "$PUBLISH_DOCKERHUB" != "true" ]]; then',
+    ) ||
+    !dualRegistry.run?.includes(
+      "A releasable version requires coordinated publication to both GHCR and Docker Hub.",
+    ) ||
+    !dualRegistry.run?.includes("exit 1")
+  ) {
+    errors.push("release.dual-registry-required");
+  }
 
   const inspect = findStep(candidate, "Inspect candidate evidence")?.run ?? "";
   if (
@@ -148,11 +171,9 @@ export function validateReleaseFlow(jobs, errors) {
   ) {
     errors.push("release.registry-logins");
   }
-  const stageVerify =
-    findStep(
-      jobs.promote,
-      "Verify staged immutable release set",
-    )?.run ?? "";
+  const stageVerifyStep =
+    findStep(jobs.promote, "Verify staged immutable release set") ?? {};
+  const stageVerify = stageVerifyStep.run ?? "";
   if (
     !stageVerify.includes("gh attestation verify") ||
     !stageVerify.includes('.visibility == "public"') ||
@@ -160,16 +181,80 @@ export function validateReleaseFlow(jobs, errors) {
   ) {
     errors.push("release.staged-verification");
   }
+  if (
+    occurrenceCount(stageVerify, "--bundle-from-oci") !== 2 ||
+    occurrenceCount(
+      stageVerify,
+      '--signer-workflow "$SIGNER_WORKFLOW"',
+    ) !== 2 ||
+    occurrenceCount(stageVerify, '--source-digest "$GITHUB_SHA"') !== 2 ||
+    occurrenceCount(stageVerify, '--source-ref "$GITHUB_REF"') !== 2 ||
+    occurrenceCount(stageVerify, "--deny-self-hosted-runners") !== 2 ||
+    !stageVerify.includes(
+      `jq -e 'length > 0' "$dockerhub_attestation_file"`,
+    )
+  ) {
+    errors.push("release.registry-attestation-policy");
+  }
+  if (
+    !stageVerify.includes(
+      'anonymous_config="${RUNNER_TEMP}/opsmind-anonymous-registry-',
+    ) ||
+    !stageVerify.includes('[[ ! -e "$anonymous_config" ]]') ||
+    !stageVerify.includes(
+      `printf '%s\\n' '{}' > "$anonymous_config/config.json"`,
+    ) ||
+    !stageVerify.includes('chmod 600 "$anonymous_config/config.json"') ||
+    !stageVerify.includes("unset REGISTRY_AUTH_FILE") ||
+    !stageVerify.includes('export DOCKER_CONFIG="$anonymous_config"') ||
+    !stageVerify.includes("trap 'rm -rf -- \"$anonymous_config\"' EXIT") ||
+    stageVerify.includes("docker login")
+  ) {
+    errors.push("release.anonymous-registry-verification");
+  }
   const receipt =
     findStep(jobs.promote, "Write observed immutable release receipt")?.run ??
     "";
   if (
-    !receipt.includes("opsmind-oci-publication-v3") ||
+    !receipt.includes("opsmind-oci-publication-v4") ||
     !receipt.includes("atomicMarkerTag") ||
     receipt.includes("MAJOR_MINOR") ||
     receipt.includes(" latest")
   ) {
     errors.push("release.immutable-receipt");
+  }
+  if (
+    occurrenceCount(receipt, ".dockerHub.published == true") < 2 ||
+    occurrenceCount(receipt, ".dockerHub.digest == .digest") < 2 ||
+    occurrenceCount(receipt, ".dockerHub.tag == .tag") < 2 ||
+    !receipt.includes('registryAccess: "ANONYMOUS"') ||
+    !receipt.includes('attestationBundles: "OCI_REGISTRY"') ||
+    !receipt.includes("signerWorkflow: $signerWorkflow") ||
+    !receipt.includes("sourceDigest: $sourceSha") ||
+    !receipt.includes("sourceRef: $sourceRef")
+  ) {
+    errors.push("release.dual-registry-receipt");
+  }
+  const aggregateVerifyStep =
+    findStep(jobs.promote, "Verify aggregate release evidence attestation") ??
+    {};
+  const aggregateVerify = aggregateVerifyStep.run ?? "";
+  if (
+    !aggregateVerify.includes('--signer-workflow "$SIGNER_WORKFLOW"') ||
+    !aggregateVerify.includes('--source-digest "$GITHUB_SHA"') ||
+    !aggregateVerify.includes('--source-ref "$GITHUB_REF"') ||
+    !aggregateVerify.includes("--deny-self-hosted-runners")
+  ) {
+    errors.push("release.aggregate-attestation-policy");
+  }
+  if (
+    stageVerifyStep.env?.SIGNER_WORKFLOW !== expectedSignerWorkflow ||
+    aggregateVerifyStep.env?.SIGNER_WORKFLOW !== expectedSignerWorkflow ||
+    !receipt.includes(
+      '--arg signerWorkflow "$GITHUB_REPOSITORY/.github/workflows/container-publish.yml"',
+    )
+  ) {
+    errors.push("release.signer-workflow-binding");
   }
   const markerStep = findStep(
     jobs.promote,
