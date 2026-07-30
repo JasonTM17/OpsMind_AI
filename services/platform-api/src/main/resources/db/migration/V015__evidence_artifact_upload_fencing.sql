@@ -299,14 +299,14 @@ DECLARE
     artifact_row record;
     active_attempt record;
     supplied_attempt record;
-    actor_id uuid := public.opsmind_current_actor_id();
+    bound_actor_id uuid := public.opsmind_current_actor_id();
     db_now timestamptz;
     lease_deadline timestamptz;
     requires_probe boolean := false;
 BEGIN
     IF session_user <> 'opsmind_app'
        OR p_organization_id IS DISTINCT FROM public.opsmind_current_tenant_id()
-       OR actor_id IS NULL THEN
+       OR bound_actor_id IS NULL THEN
         RAISE EXCEPTION 'artifact upload claim requires the bound application identity'
             USING ERRCODE = '42501';
     END IF;
@@ -341,10 +341,10 @@ BEGIN
        AND artifact.incident_id = p_incident_id
        AND artifact.run_id = p_run_id
        AND artifact.artifact_id = p_artifact_id
-       AND artifact.actor_id = actor_id
+       AND artifact.actor_id = bound_actor_id
      FOR UPDATE OF artifact, incident;
     IF NOT FOUND
-       OR artifact_row.run_actor_id IS DISTINCT FROM actor_id
+       OR artifact_row.run_actor_id IS DISTINCT FROM bound_actor_id
        OR artifact_row.authorization_epoch
             IS DISTINCT FROM artifact_row.current_authorization_epoch
        OR artifact_row.lifecycle_state IS DISTINCT FROM 'PENDING_UPLOAD'
@@ -505,12 +505,12 @@ SET search_path = pg_catalog, public, pg_temp AS $$
 DECLARE
     artifact_row record;
     attempt_row record;
-    actor_id uuid := public.opsmind_current_actor_id();
+    bound_actor_id uuid := public.opsmind_current_actor_id();
     db_now timestamptz;
 BEGIN
     IF session_user <> 'opsmind_app'
        OR p_organization_id IS DISTINCT FROM public.opsmind_current_tenant_id()
-       OR actor_id IS NULL THEN
+       OR bound_actor_id IS NULL THEN
         RAISE EXCEPTION 'artifact upload settlement requires the bound application identity'
             USING ERRCODE = '42501';
     END IF;
@@ -570,10 +570,10 @@ BEGIN
        AND artifact.incident_id = p_incident_id
        AND artifact.run_id = p_run_id
        AND artifact.artifact_id = p_artifact_id
-       AND artifact.actor_id = actor_id
+       AND artifact.actor_id = bound_actor_id
      FOR UPDATE OF artifact, incident;
     IF NOT FOUND
-       OR artifact_row.run_actor_id IS DISTINCT FROM actor_id
+       OR artifact_row.run_actor_id IS DISTINCT FROM bound_actor_id
        OR artifact_row.authorization_epoch
             IS DISTINCT FROM artifact_row.current_authorization_epoch THEN
         RAISE EXCEPTION 'artifact upload settlement does not match authorized metadata'

@@ -204,6 +204,11 @@ class MigrationContractTest {
             .contains("REVOKE ALL ON evidence_artifact_upload_attempts")
             .contains("REVOKE UPDATE, DELETE, TRUNCATE ON evidence_artifacts")
             .contains("session_user <> 'opsmind_app'")
+            .contains("artifact.actor_id = bound_actor_id")
+            .doesNotContain(
+                "artifact.actor_id = actor_id",
+                "run_actor_id IS DISTINCT FROM actor_id"
+            )
             .doesNotContain(
                 "raw_prompt",
                 "chain_of_thought",
