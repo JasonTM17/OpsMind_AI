@@ -96,6 +96,15 @@ for (const relativePath of [
   "scripts/validation/run-phase-04c-artifact-metadata-postgres-contract.sh",
 ]) read(relativePath);
 
+requireMarkers(
+  "services/platform-api/src/test/java/ai/opsmind/platform/evidence/artifact/"
+    + "EvidenceArtifactMetadataPersistenceIntegrationTest.java",
+  [
+    "TRUNCATE TABLE evidence_artifact_upload_attempts",
+    "evidence_artifacts, evidence_artifact_events",
+  ],
+);
+
 const authorizer = requireMarkers(
   "services/platform-api/src/main/java/ai/opsmind/platform/incident/IncidentAnalysisAuthorizer.java",
   ["withAnalyzeAccess", "AuthorizedIncidentAnalysisScope.from", "IncidentAccessMode.ANALYZE"],
