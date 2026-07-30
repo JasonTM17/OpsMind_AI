@@ -13,7 +13,6 @@ import ai.opsmind.platform.identity.OpsMindPrincipal;
 import ai.opsmind.platform.incident.IncidentAnalysisAuthorizer;
 
 import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
-import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.support.TransactionSynchronizationManager;
 
@@ -57,15 +56,11 @@ public final class EvidenceArtifactUploadService {
             principal, organizationId, projectId, incidentId,
             scope -> repository.claim(scope, artifactId, UUID.randomUUID(), storageProperties.uploadLeaseDuration())
         );
-        if (claim.reconciliationRequired()) throw orphaned();
+        if (claim.reconciliationRequired()) throw EvidenceArtifactUploadProblems.orphaned();
         if (claim.artifact().expectedByteCount() > storageProperties.maximumObjectBytes()) {
             settle(principal, organizationId, projectId, incidentId, claim,
                 EvidenceArtifactUploadOutcome.FAILED, null, "artifact.object-too-large");
-            throw new PlatformProblemException(
-                HttpStatus.PAYLOAD_TOO_LARGE,
-                "evidence-artifact.object-too-large",
-                "The evidence artifact exceeds the configured upload limit."
-            );
+            throw EvidenceArtifactUploadProblems.objectTooLarge();
         }
         requireObjectIoOutsideTransaction();
         ArtifactObjectStored stored;
@@ -76,20 +71,22 @@ public final class EvidenceArtifactUploadService {
             return failStorage(principal, organizationId, projectId, incidentId, claim, exception);
         }
         catch (RuntimeException exception) {
-            settle(principal, organizationId, projectId, incidentId, claim,
-                EvidenceArtifactUploadOutcome.UNCERTAIN, null, "artifact.storage-uncertain");
-            throw uncertain();
+            settleAfterObjectFailure(
+                principal, organizationId, projectId, incidentId, claim,
+                EvidenceArtifactUploadOutcome.UNCERTAIN, "artifact.storage-uncertain", exception
+            );
+            throw EvidenceArtifactUploadProblems.uncertain(exception);
         }
         if (!matchesExpectation(claim, stored)) {
             settle(principal, organizationId, projectId, incidentId, claim,
                 EvidenceArtifactUploadOutcome.ORPHANED, null, "artifact.object-mismatch");
-            throw orphaned();
+            throw EvidenceArtifactUploadProblems.orphaned();
         }
         EvidenceArtifactUploadSettlement settlement = settle(
             principal, organizationId, projectId, incidentId, claim,
             EvidenceArtifactUploadOutcome.STORED, stored, null
         );
-        if (!settlement.isStored()) throw finalizationRejected();
+        if (!settlement.isStored()) throw EvidenceArtifactUploadProblems.finalizationRejected();
         return EvidenceArtifactUploadResult.from(claim, settlement);
     }
 
@@ -112,16 +109,23 @@ public final class EvidenceArtifactUploadService {
         EvidenceArtifactStorageException exception
     ) {
         if (requiresOperatorReconciliation(exception)) {
-            settle(principal, organizationId, projectId, incidentId, claim,
-                EvidenceArtifactUploadOutcome.ORPHANED, null, "artifact.object-mismatch");
-            throw orphaned();
+            settleAfterObjectFailure(
+                principal, organizationId, projectId, incidentId, claim,
+                EvidenceArtifactUploadOutcome.ORPHANED, "artifact.object-mismatch", exception
+            );
+            throw EvidenceArtifactUploadProblems.orphaned(exception);
         }
         EvidenceArtifactUploadOutcome outcome = exception.objectMayExist()
             ? EvidenceArtifactUploadOutcome.UNCERTAIN : EvidenceArtifactUploadOutcome.FAILED;
-        settle(principal, organizationId, projectId, incidentId, claim, outcome, null,
+        settleAfterObjectFailure(
+            principal, organizationId, projectId, incidentId, claim, outcome,
             outcome == EvidenceArtifactUploadOutcome.UNCERTAIN
-                ? "artifact.storage-uncertain" : "artifact.storage-failed");
-        throw exception.objectMayExist() ? uncertain() : failed();
+                ? "artifact.storage-uncertain" : "artifact.storage-failed",
+            exception
+        );
+        throw exception.objectMayExist()
+            ? EvidenceArtifactUploadProblems.uncertain(exception)
+            : EvidenceArtifactUploadProblems.failed(exception);
     }
 
     private static boolean requiresOperatorReconciliation(EvidenceArtifactStorageException exception) {
@@ -146,6 +150,31 @@ public final class EvidenceArtifactUploadService {
         );
     }
 
+    private EvidenceArtifactUploadSettlement settleAfterObjectFailure(
+        OpsMindPrincipal principal,
+        UUID organizationId,
+        UUID projectId,
+        UUID incidentId,
+        EvidenceArtifactUploadClaim claim,
+        EvidenceArtifactUploadOutcome outcome,
+        String failureCode,
+        Throwable objectFailure
+    ) {
+        try {
+            return settle(
+                principal, organizationId, projectId, incidentId,
+                claim, outcome, null, failureCode
+            );
+        } catch (PlatformProblemException settlementFailure) {
+            settlementFailure.addSuppressed(objectFailure);
+            throw settlementFailure;
+        } catch (RuntimeException settlementFailure) {
+            PlatformProblemException classifiedFailure =
+                EvidenceArtifactUploadProblems.settlementFailed(settlementFailure);
+            classifiedFailure.addSuppressed(objectFailure);
+            throw classifiedFailure;
+        }
+    }
     private static boolean matchesExpectation(
         EvidenceArtifactUploadClaim claim,
         ArtifactObjectStored stored
@@ -160,35 +189,4 @@ public final class EvidenceArtifactUploadService {
         }
     }
 
-    private static PlatformProblemException failed() {
-        return new PlatformProblemException(
-            HttpStatus.SERVICE_UNAVAILABLE,
-            "evidence-artifact.upload-failed",
-            "The artifact upload could not be completed safely."
-        );
-    }
-
-    private static PlatformProblemException uncertain() {
-        return new PlatformProblemException(
-            HttpStatus.SERVICE_UNAVAILABLE,
-            "evidence-artifact.upload-uncertain",
-            "The artifact upload outcome could not be verified safely."
-        );
-    }
-
-    private static PlatformProblemException orphaned() {
-        return new PlatformProblemException(
-            HttpStatus.CONFLICT,
-            "evidence-artifact.upload-orphaned",
-            "The artifact upload could not be verified safely."
-        );
-    }
-
-    private static PlatformProblemException finalizationRejected() {
-        return new PlatformProblemException(
-            HttpStatus.CONFLICT,
-            "evidence-artifact.finalization-rejected",
-            "The artifact upload could not be finalized safely."
-        );
-    }
 }

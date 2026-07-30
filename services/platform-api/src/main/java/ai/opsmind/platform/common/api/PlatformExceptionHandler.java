@@ -33,11 +33,13 @@ public final class PlatformExceptionHandler {
     ProblemDetail handlePlatformProblem(PlatformProblemException exception, HttpServletRequest request) {
         if (exception.status().is5xxServerError()) {
             LOGGER.error(
-                "Handled platform service failure. traceId={} code={} status={}",
+                "Handled platform service failure. traceId={} code={} status={} "
+                    + "failureType={} causeType={}",
                 request.getAttribute(CorrelationIdFilter.ATTRIBUTE_NAME),
                 exception.code(),
                 exception.status().value(),
-                exception
+                exception.getClass().getName(),
+                causeType(exception)
             );
         }
         return createProblem(exception.status(), exception.code(), exception.getMessage(), request);
@@ -161,6 +163,11 @@ public final class PlatformExceptionHandler {
 
     private String safeMessage(String message) {
         return message == null || message.isBlank() ? "Invalid value." : message;
+    }
+
+    private static String causeType(Throwable failure) {
+        Throwable cause = failure.getCause();
+        return cause == null ? "none" : cause.getClass().getName();
     }
 
     private record FieldViolation(String field, String message) {
