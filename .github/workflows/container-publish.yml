@@ -9,7 +9,7 @@ on:
         default: 0.1.0
         type: string
       publish_dockerhub:
-        description: Copy the exact tested GHCR digests to Docker Hub
+        description: Required for one gated GHCR and Docker Hub release
         required: true
         default: false
         type: boolean
@@ -52,6 +52,17 @@ jobs:
           set -euo pipefail
           node scripts/validation/strict-semver.mjs "$RELEASE_VERSION" \
             | tee -a "$GITHUB_OUTPUT"
+
+      - name: Require atomic dual-registry release
+        shell: bash
+        env:
+          PUBLISH_DOCKERHUB: ${{ inputs.publish_dockerhub }}
+        run: |
+          set -euo pipefail
+          if [[ "$PUBLISH_DOCKERHUB" != "true" ]]; then
+            echo "::error::A releasable version requires coordinated publication to both GHCR and Docker Hub."
+            exit 1
+          fi
 
       - name: Verify exact-revision quality gates
         shell: bash
@@ -744,11 +755,20 @@ jobs:
           RELEASE_TAG: ${{ needs.authorize.outputs.release_tag }}
           DOCKERHUB_ENABLED: ${{ steps.targets.outputs.dockerhub_enabled }}
           DOCKERHUB_NAMESPACE: ${{ steps.targets.outputs.dockerhub_namespace }}
+          SIGNER_WORKFLOW: ${{ github.repository }}/.github/workflows/container-publish.yml
         run: |
           set -euo pipefail
           owner="${GITHUB_REPOSITORY_OWNER,,}"
           output_dir="artifacts/container-publication/verification"
           mkdir -p "$output_dir"
+          anonymous_config="${RUNNER_TEMP}/opsmind-anonymous-registry-${GITHUB_RUN_ID}-${GITHUB_RUN_ATTEMPT}"
+          [[ ! -e "$anonymous_config" ]]
+          mkdir -m 700 "$anonymous_config"
+          trap 'rm -rf -- "$anonymous_config"' EXIT
+          printf '%s\n' '{}' > "$anonymous_config/config.json"
+          chmod 600 "$anonymous_config/config.json"
+          unset REGISTRY_AUTH_FILE
+          export DOCKER_CONFIG="$anonymous_config"
 
           while IFS= read -r receipt; do
             image="$(jq -r .imageName "$receipt")"
@@ -778,7 +798,12 @@ jobs:
             docker buildx imagetools inspect "${ghcr}@${digest}" \
               --format '{{json .Provenance}}' | jq -e 'length > 0' >/dev/null
             gh attestation verify "oci://${ghcr}@${digest}" \
+              --bundle-from-oci \
               --repo "$GITHUB_REPOSITORY" \
+              --signer-workflow "$SIGNER_WORKFLOW" \
+              --source-digest "$GITHUB_SHA" \
+              --source-ref "$GITHUB_REF" \
+              --deny-self-hosted-runners \
               --format json > "$attestation_file"
             jq -e 'length > 0' "$attestation_file" >/dev/null
 
@@ -792,6 +817,7 @@ jobs:
 
             if [[ "$DOCKERHUB_ENABLED" == "true" ]]; then
               dockerhub="docker.io/${DOCKERHUB_NAMESPACE}/${image}"
+              dockerhub_attestation_file="$output_dir/${image}-dockerhub-attestation.json"
               observed="$(
                 docker buildx imagetools inspect \
                   "${dockerhub}:${RELEASE_TAG}" \
@@ -799,9 +825,15 @@ jobs:
               )"
               [[ "$observed" == "$digest" ]]
               gh attestation verify "oci://${dockerhub}@${digest}" \
+                --bundle-from-oci \
                 --repo "$GITHUB_REPOSITORY" \
+                --signer-workflow "$SIGNER_WORKFLOW" \
+                --source-digest "$GITHUB_SHA" \
+                --source-ref "$GITHUB_REF" \
+                --deny-self-hosted-runners \
                 --format json \
-                > "$output_dir/${image}-dockerhub-attestation.json"
+                > "$dockerhub_attestation_file"
+              jq -e 'length > 0' "$dockerhub_attestation_file" >/dev/null
             fi
           done < <(
             find artifacts/candidates -type f -name receipt.json | sort
@@ -891,10 +923,11 @@ jobs:
           )
 
           jq -n \
-            --arg schemaVersion "opsmind-oci-publication-v3" \
+            --arg schemaVersion "opsmind-oci-publication-v4" \
             --arg repository "$GITHUB_REPOSITORY" \
             --arg sourceSha "$GITHUB_SHA" \
             --arg sourceRef "$GITHUB_REF" \
+            --arg signerWorkflow "$GITHUB_REPOSITORY/.github/workflows/container-publish.yml" \
             --arg releaseVersion "$RELEASE_VERSION" \
             --arg releaseTag "$RELEASE_TAG" \
             --arg githubTag "v${RELEASE_VERSION}" \
@@ -911,10 +944,24 @@ jobs:
                 componentTag: $releaseTag,
                 atomicMarkerTag: $githubTag
               },
+              verification: {
+                registryAccess: "ANONYMOUS",
+                attestationBundles: "OCI_REGISTRY",
+                signerWorkflow: $signerWorkflow,
+                sourceDigest: $sourceSha,
+                sourceRef: $sourceRef
+              },
               workflow: {runId: $runId, runAttempt: $runAttempt},
               components: $components,
               result: (
-                if ($components | length) == 4
+                if (
+                  ($components | length) == 4
+                  and all($components[];
+                    .dockerHub.published == true
+                    and .dockerHub.digest == .digest
+                    and .dockerHub.tag == .tag
+                  )
+                )
                 then "PASS"
                 else "BLOCK"
                 end
@@ -929,6 +976,9 @@ jobs:
                 and .signedAttestation == "VERIFIED"
                 and .package.visibility == "public"
                 and .package.repositoryLinked == true
+                and .dockerHub.published == true
+                and .dockerHub.digest == .digest
+                and .dockerHub.tag == .tag
               )' \
             "$output_dir/release-receipt.json" >/dev/null
           tar \
@@ -955,6 +1005,7 @@ jobs:
         env:
           ATTESTATION_BUNDLE: ${{ steps.attest_release_evidence.outputs.bundle-path }}
           GH_TOKEN: ${{ github.token }}
+          SIGNER_WORKFLOW: ${{ github.repository }}/.github/workflows/container-publish.yml
         run: |
           set -euo pipefail
           output_dir="artifacts/container-publication"
@@ -966,6 +1017,10 @@ jobs:
             output="$output_dir/$(basename "$subject").verification.json"
             gh attestation verify "$subject" \
               --repo "$GITHUB_REPOSITORY" \
+              --signer-workflow "$SIGNER_WORKFLOW" \
+              --source-digest "$GITHUB_SHA" \
+              --source-ref "$GITHUB_REF" \
+              --deny-self-hosted-runners \
               --format json > "$output"
             jq -e 'length > 0' "$output" >/dev/null
           done
