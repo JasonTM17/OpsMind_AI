@@ -112,7 +112,8 @@ app_query() {
   PGPASSWORD="$POSTGRES_APP_PASSWORD" psql --no-password --no-psqlrc \
     --host "$PGHOST" --port "$PGPORT" --username "$POSTGRES_APP_USER" \
     --dbname "$upgrade_database" --quiet --tuples-only --no-align \
-    --set ON_ERROR_STOP=1 --command "$sql" | tr -d '\r'
+    --set ON_ERROR_STOP=1 --set VERBOSITY=verbose \
+    --command "$sql" | tr -d '\r'
 }
 
 app_sql() {
@@ -124,8 +125,28 @@ app_sql() {
 expect_app_failure() {
   local label="$1"
   local sql="$2"
-  if app_query "$sql" >/dev/null 2>&1; then
+  local expected_sqlstate="${3:-}"
+  local expected_error="${4:-}"
+  local output
+  local status
+  set +e
+  output="$(app_query "$sql" 2>&1)"
+  status=$?
+  set -e
+  if [[ "$status" -eq 0 ]]; then
     echo "${label}=BLOCK" >&2
+    exit 1
+  fi
+  if [[ -n "$expected_sqlstate" ]] \
+     && ! grep -Eq -- "ERROR:[[:space:]]+${expected_sqlstate}:" <<<"$output"; then
+    echo "${label}=BLOCK expected_sqlstate=${expected_sqlstate}" >&2
+    printf '%s\n' "$output" >&2
+    exit 1
+  fi
+  if [[ -n "$expected_error" ]] \
+     && ! grep -Fq -- "$expected_error" <<<"$output"; then
+    echo "${label}=BLOCK expected_error=${expected_error}" >&2
+    printf '%s\n' "$output" >&2
     exit 1
   fi
   echo "${label}=PASS"
@@ -547,7 +568,9 @@ SELECT * FROM public.opsmind_settle_evidence_artifact_upload(
   '${winner_attempt}', 1, 'STORED', decode(repeat('ab', 32), 'hex'), 14,
   'version-1', 'aws-kms-profile-v1', NULL
 );
-COMMIT;"
+COMMIT;" \
+  "P7107" \
+  "artifact upload settlement lost its active fence"
 
 expect_app_failure "CrossTenantClaimDenial" "
 BEGIN;
@@ -567,7 +590,9 @@ SELECT * FROM public.opsmind_claim_evidence_artifact_upload(
   ),
   'a1550000-0000-4000-8000-000000000001', 1, 300000
 );
-COMMIT;"
+COMMIT;" \
+  "42501" \
+  "artifact upload claim requires the bound application identity"
 
 expect_app_failure "MissingStoredAuditRollback" "
 BEGIN;
@@ -589,15 +614,26 @@ SELECT * FROM public.opsmind_settle_evidence_artifact_upload(
   decode(repeat('ab', 32), 'hex'), 14,
   'version-1', 'aws-kms-profile-v1', NULL
 );
-COMMIT;"
+COMMIT;" \
+  "P7104" \
+  "stored artifact metadata requires its lifecycle event and audit row"
 rollback_state="$(admin_query "
-SELECT lifecycle_state || '|' || attempt.status
+SELECT CASE WHEN
+       artifact.lifecycle_state = 'PENDING_UPLOAD'
+       AND artifact.lifecycle_version = 1
+       AND artifact.storage_generation = 0
+       AND artifact.storage_version_reference IS NULL
+       AND artifact.encryption_metadata_reference IS NULL
+       AND artifact.last_failure_code IS NULL
+       AND attempt.status = 'CLAIMED'
+       AND attempt.settled_at IS NULL
+     THEN 'PASS' ELSE 'BLOCK' END
   FROM evidence_artifacts artifact
   JOIN evidence_artifact_upload_attempts attempt
     ON attempt.organization_id = artifact.organization_id
    AND attempt.upload_attempt_id = artifact.upload_attempt_id
  WHERE artifact.organization_id = 'a1500000-0000-4000-8000-000000000001';")"
-[[ "$rollback_state" == "PENDING_UPLOAD|CLAIMED" ]]
+[[ "$rollback_state" == "PASS" ]]
 echo "StoredAuditRollbackState=PASS"
 
 app_sql <<'SQL'
@@ -707,6 +743,8 @@ SELECT CASE WHEN
   AND artifact.lifecycle_version = 2
   AND artifact.storage_generation = 1
   AND attempt.status = 'STORED'
+  AND attempt.settled_at IS NOT DISTINCT FROM artifact.lifecycle_updated_at
+  AND artifact.lifecycle_updated_at >= artifact.created_at
   AND (
     SELECT count(*) FROM evidence_artifact_events event_row
      WHERE event_row.organization_id = artifact.organization_id
@@ -745,9 +783,13 @@ SELECT public.opsmind_set_tenant_context(
 );
 UPDATE evidence_artifacts SET last_failure_code = 'forbidden'
  WHERE organization_id = 'a1500000-0000-4000-8000-000000000001';
-COMMIT;"
+COMMIT;" \
+  "42501" \
+  "permission denied for table evidence_artifacts"
 expect_app_failure "DirectAttemptReadDenial" "
-SELECT count(*) FROM evidence_artifact_upload_attempts;"
+SELECT count(*) FROM evidence_artifact_upload_attempts;" \
+  "42501" \
+  "permission denied for table evidence_artifact_upload_attempts"
 
 admin_sql <<'SQL'
 BEGIN;
@@ -778,7 +820,9 @@ SELECT * FROM public.opsmind_settle_evidence_artifact_upload(
   decode(repeat('ab', 32), 'hex'), 14,
   'version-1', 'aws-kms-profile-v1', NULL
 );
-COMMIT;"
+COMMIT;" \
+  "P7103" \
+  "artifact upload settlement does not match authorized metadata"
 
 printf '%s\n' \
   "ArtifactObjectUpgradeDatabase=${upgrade_database}" \
