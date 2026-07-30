@@ -57,6 +57,7 @@ public final class EvidenceArtifactUploadService {
             principal, organizationId, projectId, incidentId,
             scope -> repository.claim(scope, artifactId, UUID.randomUUID(), storageProperties.uploadLeaseDuration())
         );
+        if (claim.reconciliationRequired()) throw orphaned();
         if (claim.artifact().expectedByteCount() > storageProperties.maximumObjectBytes()) {
             settle(principal, organizationId, projectId, incidentId, claim,
                 EvidenceArtifactUploadOutcome.FAILED, null, "artifact.object-too-large");

@@ -69,10 +69,11 @@ test fixtures, Docker image layers, or browser clients.
    bounded to 1,024 UTF-8 bytes. The request KMS identifier and expected
    canonical response identifier are configured separately. A mismatch is
    possible residue and never becomes `STORED`.
-4. A retry after an ambiguous outcome, collision, or expired claim must HEAD
+4. A retry after an explicitly settled ambiguous outcome or collision must HEAD
    first with checksum mode enabled. Exact object metadata may be adopted;
    absence permits a new conditional PUT; mismatch becomes `ORPHANED`; an
-   unavailable probe prohibits a write.
+   unavailable probe prohibits a write. An expired `CLAIMED` attempt with no
+   durable settlement is conservatively `ORPHANED` and cannot be auto-adopted.
 5. V015 is additive. It removes only Phase-01-only state constraints, adds an
    opaque storage-version reference and immutable upload-attempt authority,
    and exposes narrowly granted `SECURITY DEFINER` claim/settle functions.
@@ -107,7 +108,7 @@ defined before branch creation and changed only by the integration lead.
 | Definitive storage failure | `FAILED`; a later claim is immediately retryable without a residue probe |
 | Timeout, 5xx, credential error, duplicate object | Stable sanitized failure taxonomy; no raw body/log leak |
 | Timeout after remote Put | Later attempt HEAD-verifies immutable object then adopts or quarantines; it never writes blindly twice |
-| Concurrent or expired lease | Exactly one active attempt finalizes; stale attempt cannot advance metadata |
+| Concurrent or expired lease | Exactly one active attempt finalizes; an explicitly uncertain predecessor requires a probe, while an expired unsettled claim is quarantined for reconciliation |
 | Invalid endpoint/KMS/bucket/timeout config | Startup/enablement fails closed |
 | Repeated exact upload/finalize | One logical metadata/object identity, retry safe |
 | SDK retry attempt | Disabled; a non-repeatable stream is never replayed behind the durable protocol |

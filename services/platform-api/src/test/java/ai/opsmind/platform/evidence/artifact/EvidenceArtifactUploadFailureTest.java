@@ -145,7 +145,7 @@ class EvidenceArtifactUploadFailureTest {
 
     private EvidenceArtifactUploadClaim claim(boolean probeRequired) {
         return new EvidenceArtifactUploadClaim(metadata(), "artifacts/v1/internal", UUID.randomUUID(), 1,
-            NOW.plusSeconds(30), probeRequired);
+            NOW.plusSeconds(30), probeRequired, false);
     }
 
     private EvidenceArtifactMetadata metadata() {

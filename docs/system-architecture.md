@@ -789,10 +789,11 @@ authorization or exposing a bucket, credential, object URL, or body.
   SDK retries disabled. It streams through a bounded digest wrapper and
   requires exact EOF, checksum, encryption identity, and an opaque non-null
   version reference of at most 1,024 UTF-8 bytes.
-- Ambiguous or expired attempts must HEAD with checksum mode before another
+- An explicitly `UNCERTAIN` attempt must HEAD with checksum mode before another
   write. Exact metadata adopts the object, absence permits a new conditional
   PUT, mismatch records an attempt-level `ORPHANED` result, and any unavailable
-  or denied probe preserves uncertainty.
+  or denied probe preserves uncertainty. An expired `CLAIMED` attempt with no
+  durable settlement is itself persisted as `ORPHANED` and blocks auto-adoption.
 - A definitive pre-success storage failure is immediately reclaimable. A
   post-PUT source-contract or response-metadata mismatch becomes `ORPHANED`;
   the database denies every automated reclaim so a later exact HEAD cannot

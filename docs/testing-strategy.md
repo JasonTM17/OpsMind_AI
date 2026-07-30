@@ -110,10 +110,11 @@ must provision and verify a disposable database boundary independently.
   event/audit binding, and fresh plus V013-to-V014 migration contracts.
 - V015 fresh and V014-to-V015 proofs: forced-RLS attempt authority, valid
   zero/active attempt shapes, five-second-to-five-minute leases, one concurrent
-  claim winner, expired-claim probe requirement, immediate retry after a
-  definitive `FAILED` attempt, permanent automated reclaim denial after
-  `ORPHANED`, stale settlement denial, cross-tenant denial, exact replay, and
-  rollback when the STORED event/audit pair is absent.
+  claim winner, probe-after-explicit-uncertainty, quarantine of an expired
+  unsettled claim, immediate retry after a definitive `FAILED` attempt,
+  permanent automated reclaim denial after `ORPHANED`, stale settlement denial,
+  cross-tenant denial, exact replay, and rollback when the STORED event/audit
+  pair is absent.
 - Storage unit contracts: one conditional PUT, no SDK retry, precomputed
   SHA-256, exact EOF/digest, canonical KMS response identity, 1,024-byte opaque
   version bound, denied-probe ambiguity, and distinct retryable versus

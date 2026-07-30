@@ -289,7 +289,8 @@ CREATE OR REPLACE FUNCTION opsmind_claim_evidence_artifact_upload(
     upload_attempt_id uuid,
     upload_attempt_count integer,
     upload_lease_expires_at timestamptz,
-    probe_required boolean
+    probe_required boolean,
+    reconciliation_required boolean
 )
 LANGUAGE plpgsql
 SECURITY DEFINER
@@ -392,7 +393,8 @@ BEGIN
                artifact_row.upload_attempt_id,
                artifact_row.upload_attempt_count,
                artifact_row.upload_lease_expires_at,
-               requires_probe;
+               requires_probe,
+               false;
         RETURN;
     END IF;
 
@@ -428,15 +430,32 @@ BEGIN
             RAISE EXCEPTION 'artifact upload already has an active lease'
                 USING ERRCODE = 'P7107';
         END IF;
-        requires_probe := active_attempt.status IN ('CLAIMED', 'UNCERTAIN');
         IF active_attempt.status = 'CLAIMED' THEN
             UPDATE public.evidence_artifact_upload_attempts AS attempt
-               SET status = 'UNCERTAIN',
+               SET status = 'ORPHANED',
                    settled_at = db_now,
-                   failure_code = 'artifact.lease-expired'
+                   failure_code = 'artifact.lease-expired-unsettled'
              WHERE attempt.organization_id = p_organization_id
                AND attempt.upload_attempt_id = active_attempt.upload_attempt_id;
+            UPDATE public.evidence_artifacts AS artifact
+               SET last_failure_code = 'artifact.lease-expired-unsettled'
+             WHERE artifact.organization_id = p_organization_id
+               AND artifact.artifact_id = p_artifact_id;
+            RETURN QUERY
+            SELECT artifact_row.artifact_id,
+                   artifact_row.storage_key,
+                   artifact_row.expected_content_digest,
+                   artifact_row.expected_byte_count,
+                   artifact_row.authorization_epoch,
+                   artifact_row.lifecycle_version,
+                   active_attempt.upload_attempt_id,
+                   active_attempt.attempt_number,
+                   active_attempt.lease_expires_at,
+                   false,
+                   true;
+            RETURN;
         END IF;
+        requires_probe := active_attempt.status = 'UNCERTAIN';
     END IF;
 
     IF artifact_row.upload_attempt_count >= 8 THEN
@@ -473,7 +492,8 @@ BEGIN
            artifact_row.upload_attempt_id,
            artifact_row.upload_attempt_count,
            artifact_row.upload_lease_expires_at,
-           requires_probe;
+           requires_probe,
+           false;
 END
 $$;
 
@@ -1128,7 +1148,7 @@ COMMENT ON COLUMN evidence_artifacts.storage_version_reference IS
     'Opaque immutable object generation reference; never projected as a credential or URL.';
 COMMENT ON FUNCTION public.opsmind_claim_evidence_artifact_upload(
     uuid, uuid, uuid, uuid, uuid, uuid, bigint, bigint
-) IS 'Claims one bounded upload lease; ambiguous predecessors force an object probe.';
+) IS 'Claims one bounded upload lease; explicit ambiguity forces a probe and an expired unsettled claim requires reconciliation.';
 COMMENT ON FUNCTION public.opsmind_settle_evidence_artifact_upload(
     uuid, uuid, uuid, uuid, uuid, uuid, bigint, varchar, bytea, bigint,
     varchar, varchar, varchar

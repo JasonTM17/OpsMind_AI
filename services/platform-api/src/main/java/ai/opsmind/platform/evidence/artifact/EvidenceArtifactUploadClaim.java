@@ -13,11 +13,13 @@ public record EvidenceArtifactUploadClaim(
     UUID uploadAttemptId,
     int uploadAttemptCount,
     Instant uploadLeaseExpiresAt,
-    boolean probeRequired
+    boolean probeRequired,
+    boolean reconciliationRequired
 ) {
     public EvidenceArtifactUploadClaim {
         if (artifact == null || storageKey == null || storageKey.isBlank() || storageKey.length() > 512
-            || uploadAttemptId == null || uploadAttemptCount < 1 || uploadLeaseExpiresAt == null) {
+            || uploadAttemptId == null || uploadAttemptCount < 1 || uploadLeaseExpiresAt == null
+            || probeRequired && reconciliationRequired) {
             throw new IllegalArgumentException("Artifact upload claim is invalid.");
         }
     }

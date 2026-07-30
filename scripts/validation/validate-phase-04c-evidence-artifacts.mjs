@@ -200,6 +200,8 @@ const v015 = requireMarkers(v015Path, [
   "CREATE OR REPLACE FUNCTION opsmind_claim_evidence_artifact_upload",
   "p_lease_duration_ms NOT BETWEEN 5000 AND 300000",
   "probe_required boolean",
+  "reconciliation_required boolean",
+  "artifact.lease-expired-unsettled",
   "CREATE OR REPLACE FUNCTION opsmind_settle_evidence_artifact_upload",
   "SECURITY DEFINER",
   "FOR UPDATE OF artifact, incident",
@@ -320,6 +322,7 @@ const uploadService = requireMarkers(
     + "EvidenceArtifactUploadService.java",
   [
     "requireObjectIoOutsideTransaction()",
+    "if (claim.reconciliationRequired()) throw orphaned();",
     "if (!claim.probeRequired())",
     "storage.probe(claim.expectation())",
     "EvidenceArtifactUploadOutcome.UNCERTAIN",
