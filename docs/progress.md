@@ -800,13 +800,15 @@ The integration branch now combines three independently reviewed workstreams:
   authorization-epoch fencing, and atomic STORED event/audit settlement;
 - a default-off AWS SDK v2 S3-compatible adapter with one conditional bounded
   PUT, precomputed SHA-256, SSE-KMS, disabled SDK retry, exact EOF/digest, and
-  probe-before-retry behavior;
+  probe-before-retry behavior for durably recorded ambiguity;
 - application orchestration that performs object I/O between two independent
   ANALYZE authorization transactions and exposes no storage reference.
 
 Review corrections preserve ambiguity on every denied/unavailable probe,
 separate the request KMS key from its canonical response reference, reject
 unversioned `null`, and accept opaque version IDs up to 1,024 UTF-8 bytes.
+An expired `CLAIMED` attempt with no durable outcome is now conservatively
+`ORPHANED`; it cannot be converted into a later matching-HEAD adoption.
 Further adversarial review separated post-PUT source/response mismatches from
 retryable transport failures: the former settle `ORPHANED` and cannot later be
 HEAD-adopted, while a definitive `FAILED` attempt preserves its lease tuple and

@@ -83,6 +83,23 @@ class EvidenceArtifactUploadRepositoryTest {
     }
 
     @Test
+    void mapsExpiredUnsettledAttemptAsReconciliationOnly() throws Exception {
+        when(metadataReader.findVisible(scope(), ARTIFACT_ID)).thenReturn(Optional.of(metadata()));
+        ResultSet row = claimRow(true);
+        when(jdbcTemplate.query(anyString(), any(RowMapper.class), any(Object[].class))).thenAnswer(invocation -> {
+            RowMapper<?> mapper = invocation.getArgument(1);
+            return List.of(mapper.mapRow(row, 0));
+        });
+
+        EvidenceArtifactUploadClaim claim = repository.claim(
+            scope(), ARTIFACT_ID, UUID.randomUUID(), Duration.ofSeconds(30)
+        );
+
+        assertThat(claim.reconciliationRequired()).isTrue();
+        assertThat(claim.probeRequired()).isFalse();
+    }
+
+    @Test
     void exactStoredSettlementAppendsOnceButRepeatedFinalizationDoesNotDuplicateIt() throws Exception {
         when(metadataReader.findVisible(scope(), ARTIFACT_ID)).thenReturn(Optional.of(metadata()));
         ResultSet claimRow = claimRow();
@@ -115,7 +132,7 @@ class EvidenceArtifactUploadRepositoryTest {
     @Test
     void settlementRefusesAChangedAuthorizationScopeWithoutCallingTheFunction() {
         EvidenceArtifactUploadClaim claim = new EvidenceArtifactUploadClaim(
-            metadata(), "artifacts/v1/internal", UUID.randomUUID(), 1, NOW.plusSeconds(30), false
+            metadata(), "artifacts/v1/internal", UUID.randomUUID(), 1, NOW.plusSeconds(30), false, false
         );
         AuthorizedIncidentAnalysisScope foreignScope = new AuthorizedIncidentAnalysisScope(
             ORGANIZATION_ID, PROJECT_ID, INCIDENT_ID, UUID.randomUUID(), 7L
@@ -129,6 +146,10 @@ class EvidenceArtifactUploadRepositoryTest {
     }
 
     private ResultSet claimRow() throws Exception {
+        return claimRow(false);
+    }
+
+    private ResultSet claimRow(boolean reconciliationRequired) throws Exception {
         ResultSet row = mock(ResultSet.class);
         when(row.getObject("artifact_id", UUID.class)).thenReturn(ARTIFACT_ID);
         when(row.getString("storage_key")).thenReturn("artifacts/v1/internal");
@@ -140,6 +161,7 @@ class EvidenceArtifactUploadRepositoryTest {
         when(row.getInt("upload_attempt_count")).thenReturn(1);
         when(row.getTimestamp("upload_lease_expires_at")).thenReturn(Timestamp.from(NOW.plusSeconds(30)));
         when(row.getBoolean("probe_required")).thenReturn(false);
+        when(row.getBoolean("reconciliation_required")).thenReturn(reconciliationRequired);
         return row;
     }
 

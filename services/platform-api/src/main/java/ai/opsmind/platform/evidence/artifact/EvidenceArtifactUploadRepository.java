@@ -52,7 +52,8 @@ public class EvidenceArtifactUploadRepository {
             List<EvidenceArtifactUploadClaim> rows = jdbcTemplate.query("""
                 SELECT artifact_id, storage_key, expected_content_digest, expected_byte_count,
                        authorization_epoch, lifecycle_version, upload_attempt_id,
-                       upload_attempt_count, upload_lease_expires_at, probe_required
+                       upload_attempt_count, upload_lease_expires_at, probe_required,
+                       reconciliation_required
                   FROM public.opsmind_claim_evidence_artifact_upload(?, ?, ?, ?, ?, ?, ?, ?)
                 """, (resultSet, rowNumber) -> mapClaim(artifact, resultSet),
                 scope.organizationId(), scope.projectId(), scope.incidentId(), artifact.runId(), artifactId,
@@ -113,7 +114,6 @@ public class EvidenceArtifactUploadRepository {
             throw unavailable();
         }
     }
-
     private EvidenceArtifactMetadata pendingArtifact(AuthorizedIncidentAnalysisScope scope, UUID artifactId) {
         EvidenceArtifactMetadata artifact = metadataReader.findVisible(scope, artifactId).orElseThrow(this::hidden);
         if (artifact.lifecycleState() != EvidenceArtifactLifecycleState.PENDING_UPLOAD
@@ -123,8 +123,7 @@ public class EvidenceArtifactUploadRepository {
         return artifact;
     }
 
-    private EvidenceArtifactUploadClaim mapClaim(EvidenceArtifactMetadata artifact, ResultSet resultSet)
-        throws SQLException {
+    private EvidenceArtifactUploadClaim mapClaim(EvidenceArtifactMetadata artifact, ResultSet resultSet) throws SQLException {
         UUID artifactId = resultSet.getObject("artifact_id", UUID.class);
         EvidenceArtifactDigest digest = new EvidenceArtifactDigest(
             "sha256:" + HexFormat.of().formatHex(resultSet.getBytes("expected_content_digest"))
@@ -136,9 +135,10 @@ public class EvidenceArtifactUploadRepository {
             throw unavailable();
         }
         return new EvidenceArtifactUploadClaim(
-            artifact, resultSet.getString("storage_key"), resultSet.getObject("upload_attempt_id", UUID.class),
-            resultSet.getInt("upload_attempt_count"),
-            resultSet.getTimestamp("upload_lease_expires_at").toInstant(), resultSet.getBoolean("probe_required")
+            artifact, resultSet.getString("storage_key"),
+            resultSet.getObject("upload_attempt_id", UUID.class), resultSet.getInt("upload_attempt_count"),
+            resultSet.getTimestamp("upload_lease_expires_at").toInstant(), resultSet.getBoolean("probe_required"),
+            resultSet.getBoolean("reconciliation_required")
         );
     }
 
@@ -150,7 +150,6 @@ public class EvidenceArtifactUploadRepository {
             resultSet.getTimestamp("lifecycle_updated_at").toInstant()
         );
     }
-
     private static void validateSettlement(
         EvidenceArtifactUploadOutcome outcome,
         EvidenceArtifactUploadClaim claim,

@@ -197,6 +197,8 @@ class MigrationContractTest {
             .contains("artifact upload already has an active lease")
             .contains("artifact.lease-expired")
             .contains("probe_required boolean")
+            .contains("reconciliation_required boolean")
+            .contains("artifact.lease-expired-unsettled")
             .contains("transition_at := GREATEST(db_now, artifact_row.lifecycle_updated_at)")
             .contains("settled_at = transition_at")
             .contains("lifecycle_updated_at = transition_at")

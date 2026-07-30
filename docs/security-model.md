@@ -174,7 +174,8 @@ not exposed through an API or retrieval path.
 The upload slice enforces:
 
 - a predeclared digest and length, one immutable-create attempt, no SDK retry,
-  exact EOF/digest, and probe-before-retry after any ambiguous outcome;
+  exact EOF/digest, and probe-before-retry only after durably recorded
+  ambiguity; an expired unsettled claim is quarantined instead of auto-adopted;
 - separate request and canonical response KMS identifiers, external workload
   credentials, a non-`null` opaque object version, and no storage reference in
   audit or application projections;

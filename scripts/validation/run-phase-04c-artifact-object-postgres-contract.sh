@@ -155,13 +155,14 @@ expect_app_failure() {
 claim_once() {
   local attempt_id="$1"
   local lease_ms="$2"
+  local idempotency_key="${3:-a1500000-0000-4000-8000-000000000006}"
   app_query "
 BEGIN;
 SELECT public.opsmind_set_tenant_context(
   'a1500000-0000-4000-8000-000000000001',
   'a1500000-0000-4000-8000-000000000002'
 );
-SELECT upload_attempt_id, probe_required
+SELECT upload_attempt_id, probe_required, reconciliation_required
   FROM public.opsmind_claim_evidence_artifact_upload(
     'a1500000-0000-4000-8000-000000000001',
     'a1500000-0000-4000-8000-000000000003',
@@ -170,7 +171,7 @@ SELECT upload_attempt_id, probe_required
     public.opsmind_evidence_artifact_id(
       'a1500000-0000-4000-8000-000000000001',
       'a1500000-0000-4000-8000-000000000005',
-      'a1500000-0000-4000-8000-000000000006'
+      '${idempotency_key}'
     ),
     '${attempt_id}', 1, ${lease_ms}
   );
@@ -237,7 +238,7 @@ INSERT INTO investigation_runs (
   'a1500000-0000-4000-8000-000000000003',
   'a1500000-0000-4000-8000-000000000004',
   'a1500000-0000-4000-8000-000000000002',
-  'CREATED', 2, 0, 1, 100, 1,
+  'CREATED', 2, 0, 2, 100, 1,
   '2035-01-01T00:00:00Z', '2035-01-01T00:02:00Z'
 );
 INSERT INTO investigation_run_events (
@@ -475,9 +476,30 @@ fi
 echo "ConcurrentClaimSingleWinner=PASS"
 echo "ActiveLeaseDenial=PASS"
 
+app_query "
+BEGIN;
+SELECT public.opsmind_set_tenant_context(
+  'a1500000-0000-4000-8000-000000000001',
+  'a1500000-0000-4000-8000-000000000002'
+);
+SELECT transition_applied
+  FROM public.opsmind_settle_evidence_artifact_upload(
+    'a1500000-0000-4000-8000-000000000001',
+    'a1500000-0000-4000-8000-000000000003',
+    'a1500000-0000-4000-8000-000000000004',
+    'a1500000-0000-4000-8000-000000000005',
+    public.opsmind_evidence_artifact_id(
+      'a1500000-0000-4000-8000-000000000001',
+      'a1500000-0000-4000-8000-000000000005',
+      'a1500000-0000-4000-8000-000000000006'
+    ),
+    '${winner_attempt}', 1, 'UNCERTAIN',
+    NULL, NULL, NULL, NULL, 'artifact.storage-uncertain'
+  );
+COMMIT;" >/dev/null
 admin_query "SELECT pg_sleep(5.2);" >/dev/null
 retry_output="$(claim_once "a1530000-0000-4000-8000-000000000001" 300000)"
-if ! grep -q "a1530000-0000-4000-8000-000000000001|t" <<<"$retry_output"; then
+if ! grep -q "a1530000-0000-4000-8000-000000000001|t|f" <<<"$retry_output"; then
   echo "ExpiredClaimProbeFence=BLOCK" >&2
   exit 1
 fi
@@ -548,6 +570,135 @@ $orphaned$;
 ROLLBACK;
 SQL
 echo "OrphanedAttemptReclaimDenial=PASS"
+
+app_sql <<'SQL'
+DO $expired_unsettled_artifact$
+DECLARE
+  organization_id constant uuid := 'a1500000-0000-4000-8000-000000000001';
+  project_id constant uuid := 'a1500000-0000-4000-8000-000000000003';
+  incident_id constant uuid := 'a1500000-0000-4000-8000-000000000004';
+  run_id constant uuid := 'a1500000-0000-4000-8000-000000000005';
+  actor_id constant uuid := 'a1500000-0000-4000-8000-000000000002';
+  idempotency_key constant uuid := 'a1500000-0000-4000-8000-000000000009';
+  occurred_at constant timestamptz := '2035-01-01T00:00:01Z';
+  expected_digest constant bytea := decode(repeat('ae', 32), 'hex');
+  artifact_id uuid;
+  event_id uuid;
+BEGIN
+  PERFORM public.opsmind_set_tenant_context(organization_id, actor_id);
+  artifact_id := public.opsmind_evidence_artifact_id(
+    organization_id, run_id, idempotency_key
+  );
+  event_id := public.opsmind_evidence_artifact_initial_event_id(
+    organization_id, artifact_id
+  );
+  INSERT INTO evidence_artifacts (
+    artifact_id, organization_id, project_id, incident_id, run_id, actor_id,
+    idempotency_key, source_type, source_identity, source_version,
+    data_classification, expected_content_digest, expected_byte_count,
+    authorization_epoch, retention_class, residency_class, deletion_class,
+    storage_key, lifecycle_state, lifecycle_version, storage_generation,
+    upload_attempt_count, created_at, lifecycle_updated_at
+  ) VALUES (
+    artifact_id, organization_id, project_id, incident_id, run_id, actor_id,
+    idempotency_key, 'metric', 'prometheus:artifact-expiry', 'v1',
+    'redacted-metrics', expected_digest, 15, 0, 'evidence-90d',
+    'singapore', 'delete-within-24h',
+    'artifacts/v1/' || organization_id::text || '/' || artifact_id::text
+      || '/' || encode(expected_digest, 'hex'),
+    'PENDING_UPLOAD', 1, 0, 0, occurred_at, occurred_at
+  );
+  INSERT INTO evidence_artifact_events (
+    event_id, organization_id, project_id, incident_id, run_id, artifact_id,
+    actor_id, lifecycle_version, lifecycle_from_state, lifecycle_to_state,
+    occurred_at, audit_event_id
+  ) VALUES (
+    event_id, organization_id, project_id, incident_id, run_id, artifact_id,
+    actor_id, 1, NULL, 'PENDING_UPLOAD', occurred_at, event_id
+  );
+  INSERT INTO audit_events (
+    event_id, organization_id, actor_id, action, resource_type, resource_id,
+    correlation_id, occurred_at, payload, schema_version
+  ) VALUES (
+    event_id, organization_id, actor_id, 'ARTIFACT_PENDING_UPLOAD',
+    'evidence_artifact', artifact_id::text, artifact_id, occurred_at,
+    jsonb_build_object(
+      'eventId', event_id,
+      'organizationId', organization_id,
+      'projectId', project_id,
+      'incidentId', incident_id,
+      'runId', run_id,
+      'artifactId', artifact_id,
+      'actorId', actor_id,
+      'lifecycleVersion', 1,
+      'lifecycleState', 'PENDING_UPLOAD',
+      'contentDigest', 'sha256:' || encode(expected_digest, 'hex'),
+      'byteCount', 15,
+      'dataClassification', 'redacted-metrics',
+      'retentionClass', 'evidence-90d',
+      'occurredAt', occurred_at
+    ),
+    'evidence-artifact-audit-v1'
+  );
+END
+$expired_unsettled_artifact$;
+SQL
+
+claim_once "a1570000-0000-4000-8000-000000000001" 5000 \
+  "a1500000-0000-4000-8000-000000000009" >/dev/null
+admin_query "SELECT pg_sleep(5.2);" >/dev/null
+expired_unsettled_output="$(
+  claim_once "a1580000-0000-4000-8000-000000000001" 300000 \
+    "a1500000-0000-4000-8000-000000000009"
+)"
+if ! grep -q "a1570000-0000-4000-8000-000000000001|f|t" \
+  <<<"$expired_unsettled_output"; then
+  echo "ExpiredUnsettledClaimQuarantine=BLOCK" >&2
+  exit 1
+fi
+expired_unsettled_state="$(admin_query "
+SELECT attempt.status || '|' || attempt.failure_code || '|' ||
+       artifact.last_failure_code || '|' ||
+       CASE WHEN EXISTS (
+         SELECT 1
+           FROM evidence_artifact_upload_attempts later
+          WHERE later.organization_id = attempt.organization_id
+            AND later.upload_attempt_id =
+                'a1580000-0000-4000-8000-000000000001'
+       ) THEN 'new-present' ELSE 'new-absent' END
+  FROM evidence_artifact_upload_attempts attempt
+  JOIN evidence_artifacts artifact
+    ON artifact.organization_id = attempt.organization_id
+   AND artifact.artifact_id = attempt.artifact_id
+ WHERE attempt.organization_id = 'a1500000-0000-4000-8000-000000000001'
+   AND attempt.upload_attempt_id = 'a1570000-0000-4000-8000-000000000001';"
+)"
+if [[ "$expired_unsettled_state" != \
+  "ORPHANED|artifact.lease-expired-unsettled|artifact.lease-expired-unsettled|new-absent" ]]; then
+  echo "ExpiredUnsettledClaimState=BLOCK state=${expired_unsettled_state}" >&2
+  exit 1
+fi
+echo "ExpiredUnsettledClaimQuarantine=PASS"
+
+expect_app_failure "ExpiredUnsettledClaimReclaimDenial" "
+BEGIN;
+SELECT public.opsmind_set_tenant_context(
+  'a1500000-0000-4000-8000-000000000001',
+  'a1500000-0000-4000-8000-000000000002'
+);
+SELECT * FROM public.opsmind_claim_evidence_artifact_upload(
+  'a1500000-0000-4000-8000-000000000001',
+  'a1500000-0000-4000-8000-000000000003',
+  'a1500000-0000-4000-8000-000000000004',
+  'a1500000-0000-4000-8000-000000000005',
+  public.opsmind_evidence_artifact_id(
+    'a1500000-0000-4000-8000-000000000001',
+    'a1500000-0000-4000-8000-000000000005',
+    'a1500000-0000-4000-8000-000000000009'
+  ),
+  'a1590000-0000-4000-8000-000000000001', 1, 300000
+);
+COMMIT;" "P7107" "orphaned artifact object requires operator reconciliation"
 
 expect_app_failure "StaleAttemptSettlement" "
 BEGIN;

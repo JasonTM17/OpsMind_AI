@@ -73,7 +73,7 @@ class EvidenceArtifactAuditPayloadCodecTest {
             1L, occurredAt.minusSeconds(1)
         );
         EvidenceArtifactUploadClaim claim = new EvidenceArtifactUploadClaim(
-            metadata, "artifacts/v1/internal", attemptId, 1, occurredAt.plusSeconds(30), false
+            metadata, "artifacts/v1/internal", attemptId, 1, occurredAt.plusSeconds(30), false, false
         );
         EvidenceArtifactUploadSettlement settlement = new EvidenceArtifactUploadSettlement(
             true, EvidenceArtifactLifecycleState.STORED, 2L, 1L, occurredAt

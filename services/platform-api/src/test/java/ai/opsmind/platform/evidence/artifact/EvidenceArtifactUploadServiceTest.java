@@ -99,6 +99,22 @@ class EvidenceArtifactUploadServiceTest {
     }
 
     @Test
+    void expiredUnsettledClaimRequiresReconciliationWithoutObjectIoOrSettlement() {
+        EvidenceArtifactUploadClaim claim = claim(false, true);
+        when(repository.claim(any(), eq(ARTIFACT_ID), any(), any())).thenReturn(claim);
+
+        assertThatThrownBy(() -> service.upload(
+            principal, ORGANIZATION_ID, PROJECT_ID, INCIDENT_ID, ARTIFACT_ID,
+            new ByteArrayInputStream(new byte[4])
+        )).isInstanceOfSatisfying(PlatformProblemException.class, exception ->
+            assertThat(exception.code()).isEqualTo("evidence-artifact.upload-orphaned"));
+
+        verify(storage, never()).probe(any());
+        verify(storage, never()).putIfAbsent(any(), any());
+        verify(repository, never()).settle(any(), any(), any(), any(), any());
+    }
+
+    @Test
     void rejectsObjectIoIfAnAuthorizationTransactionWereStillActive() {
         EvidenceArtifactUploadClaim claim = claim(false);
         when(repository.claim(any(), eq(ARTIFACT_ID), any(), any())).thenReturn(claim);
@@ -122,8 +138,12 @@ class EvidenceArtifactUploadServiceTest {
     }
 
     private EvidenceArtifactUploadClaim claim(boolean probeRequired) {
+        return claim(probeRequired, false);
+    }
+
+    private EvidenceArtifactUploadClaim claim(boolean probeRequired, boolean reconciliationRequired) {
         return new EvidenceArtifactUploadClaim(metadata(), "artifacts/v1/internal", UUID.randomUUID(), 1,
-            NOW.plusSeconds(30), probeRequired);
+            NOW.plusSeconds(30), probeRequired, reconciliationRequired);
     }
 
     private EvidenceArtifactMetadata metadata() {
