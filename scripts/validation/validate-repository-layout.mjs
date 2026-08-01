@@ -265,16 +265,11 @@ const operatorDockerfilePath = path.join(
 );
 if (fs.existsSync(operatorDockerfilePath)) {
   const operatorDockerfile = fs.readFileSync(operatorDockerfilePath, "utf8");
-  const patchCopy = /^\s*COPY\s+patches\s+\.\/patches\s*$/mu.exec(
-    operatorDockerfile,
-  );
   const frozenInstall = /\bpnpm\s+install\s+--frozen-lockfile\b/u.exec(
     operatorDockerfile,
   );
-  if (!patchCopy || !frozenInstall || patchCopy.index > frozenInstall.index) {
-    errors.push(
-      "Operator Web Dockerfile must copy pnpm patch inputs before frozen install",
-    );
+  if (!frozenInstall || /^\s*COPY\s+patches\s+\.\/patches\s*$/mu.test(operatorDockerfile)) {
+    errors.push("Operator Web Dockerfile retains a retired pnpm patch input");
   }
 }
 
