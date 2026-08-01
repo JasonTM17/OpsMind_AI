@@ -10,8 +10,8 @@ public record InvestigationTemporalWorkerProperties(
     boolean enabled,
     String identity,
     String buildId,
-    int maxConcurrentWorkflowTaskExecutors,
-    int maxConcurrentWorkflowTaskPollers,
+    Integer maxConcurrentWorkflowTaskExecutors,
+    Integer maxConcurrentWorkflowTaskPollers,
     Duration shutdownTimeout
 ) {
     private static final String NAME_PATTERN = "[A-Za-z0-9][A-Za-z0-9._-]*";
@@ -20,9 +20,9 @@ public record InvestigationTemporalWorkerProperties(
     public InvestigationTemporalWorkerProperties {
         identity = defaultValue(identity);
         buildId = defaultValue(buildId);
-        maxConcurrentWorkflowTaskExecutors = maxConcurrentWorkflowTaskExecutors == 0
+        maxConcurrentWorkflowTaskExecutors = maxConcurrentWorkflowTaskExecutors == null
             ? 32 : maxConcurrentWorkflowTaskExecutors;
-        maxConcurrentWorkflowTaskPollers = maxConcurrentWorkflowTaskPollers == 0
+        maxConcurrentWorkflowTaskPollers = maxConcurrentWorkflowTaskPollers == null
             ? 5 : maxConcurrentWorkflowTaskPollers;
         shutdownTimeout = shutdownTimeout == null
             ? Duration.ofSeconds(10) : shutdownTimeout;
