@@ -847,7 +847,7 @@ def batch_process(
                 else:
                     api_key = all_keys[0]
                     if verbose:
-                        print(f"✓ Using single API key: {api_key[:8]}...", file=sys.stderr)
+                        print("✓ Using configured API key", file=sys.stderr)
 
         if not api_key:
             api_key = find_api_key()

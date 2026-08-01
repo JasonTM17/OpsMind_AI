@@ -130,7 +130,7 @@ def find_api_key():
 
     if api_key:
         print_success("GEMINI_API_KEY found")
-        print_info(f"Key preview: {api_key[:20]}...{api_key[-4:]}")
+        print_info("Credential value remains hidden")
         print_info("\nTo see where the key was found, run:")
         print_info("python ~/.claude/scripts/resolve_env.py GEMINI_API_KEY --skill ai-multimodal --verbose")
         return api_key
