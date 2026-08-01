@@ -178,9 +178,10 @@ export function validateContainerPublishWorkflow(document) {
   const allowedSecretOwners = new Set([
     "promote:Validate Docker Hub credentials",
     "promote:Log in to Docker Hub for promotion and attestation",
+    "promote:Verify staged immutable release set",
   ]);
   if (
-    dockerHubTokenOwners.length !== 2 ||
+    dockerHubTokenOwners.length !== 3 ||
     dockerHubTokenOwners.some(
       (owner) => !allowedSecretOwners.has(owner),
     ) ||

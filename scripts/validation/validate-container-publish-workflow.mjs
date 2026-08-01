@@ -296,6 +296,26 @@ const mutations = [
     },
     "release.signer-workflow-binding",
   ],
+  [
+    "signer workflow digest drifted",
+    (value) => {
+      const workflowDigest = "${{ github.sha }}";
+      const stageStep = value.jobs.promote.steps.find(
+        (entry) => entry.name === "Verify staged immutable release set",
+      );
+      const receiptStep = value.jobs.promote.steps.find(
+        (entry) => entry.name === "Write observed immutable release receipt",
+      );
+      const aggregateStep = value.jobs.promote.steps.find(
+        (entry) =>
+          entry.name === "Verify aggregate release evidence attestation",
+      );
+      stageStep.env.SIGNER_DIGEST = workflowDigest;
+      receiptStep.env.SIGNER_DIGEST = workflowDigest;
+      aggregateStep.env.SIGNER_DIGEST = workflowDigest;
+    },
+    "release.signer-workflow-binding",
+  ],
 ];
 
 for (const [name, mutate, expectedErrorPrefix] of mutations) {

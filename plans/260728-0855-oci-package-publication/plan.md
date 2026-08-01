@@ -56,6 +56,12 @@ environment; a single-registry run is not release-authoritative.
   job-scoped.
 - Published registry digests, observed platforms, scan counts, health, package
   visibility/linkage, and signatures are verified before the atomic marker.
+  Public manifests use a credential-free configuration; OCI attestation bundles
+  use a separately created, short-lived authenticated configuration because the
+  GitHub CLI requires registry authentication for OCI bundle reads.
+- Component and aggregate attestations bind the signer workflow, immutable
+  workflow-file digest, source SHA, and source ref. Aggregate verification uses
+  the exact copied Sigstore bundle that becomes the release asset.
 - PR quality, Compose build/health, actionlint, secret scanning, and static
   publication validation pass on the exact source revision.
 

@@ -756,18 +756,41 @@ jobs:
           DOCKERHUB_ENABLED: ${{ steps.targets.outputs.dockerhub_enabled }}
           DOCKERHUB_NAMESPACE: ${{ steps.targets.outputs.dockerhub_namespace }}
           SIGNER_WORKFLOW: ${{ github.repository }}/.github/workflows/container-publish.yml
+          SIGNER_DIGEST: ${{ github.workflow_sha }}
+          GHCR_USERNAME: ${{ github.actor }}
+          GHCR_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          DOCKERHUB_USERNAME: ${{ vars.DOCKERHUB_USERNAME }}
+          DOCKERHUB_TOKEN: ${{ secrets.DOCKERHUB_TOKEN }}
         run: |
           set -euo pipefail
           owner="${GITHUB_REPOSITORY_OWNER,,}"
           output_dir="artifacts/container-publication/verification"
           mkdir -p "$output_dir"
           anonymous_config="${RUNNER_TEMP}/opsmind-anonymous-registry-${GITHUB_RUN_ID}-${GITHUB_RUN_ATTEMPT}"
+          attestation_config="${RUNNER_TEMP}/opsmind-attestation-registry-${GITHUB_RUN_ID}-${GITHUB_RUN_ATTEMPT}"
           [[ ! -e "$anonymous_config" ]]
+          [[ ! -e "$attestation_config" ]]
           mkdir -m 700 "$anonymous_config"
-          trap 'rm -rf -- "$anonymous_config"' EXIT
           printf '%s\n' '{}' > "$anonymous_config/config.json"
           chmod 600 "$anonymous_config/config.json"
+          mkdir -m 700 "$attestation_config"
+          printf '%s\n' '{}' > "$attestation_config/config.json"
+          chmod 600 "$attestation_config/config.json"
+          cleanup_registry_configs() {
+            docker --config "$attestation_config" logout ghcr.io >/dev/null 2>&1 || true
+            docker --config "$attestation_config" logout docker.io >/dev/null 2>&1 || true
+            rm -rf -- "$anonymous_config" "$attestation_config"
+          }
+          trap cleanup_registry_configs EXIT
           unset REGISTRY_AUTH_FILE
+          [[ "$DOCKERHUB_ENABLED" == "true" ]]
+          [[ -n "$DOCKERHUB_NAMESPACE" && -n "$DOCKERHUB_USERNAME" && -n "$DOCKERHUB_TOKEN" ]]
+          printf '%s' "$GHCR_TOKEN" \
+            | docker --config "$attestation_config" login ghcr.io \
+              --username "$GHCR_USERNAME" --password-stdin
+          printf '%s' "$DOCKERHUB_TOKEN" \
+            | docker --config "$attestation_config" login docker.io \
+              --username "$DOCKERHUB_USERNAME" --password-stdin
           export DOCKER_CONFIG="$anonymous_config"
 
           while IFS= read -r receipt; do
@@ -775,7 +798,6 @@ jobs:
             digest="$(jq -r .digest "$receipt")"
             ghcr="ghcr.io/${owner}/${image}"
             manifest_file="$output_dir/${image}-manifest.json"
-            attestation_file="$output_dir/${image}-attestation.json"
             package_file="$output_dir/${image}-package.json"
 
             docker buildx imagetools inspect "${ghcr}:${RELEASE_TAG}" \
@@ -797,16 +819,6 @@ jobs:
               --format '{{json .SBOM}}' | jq -e 'length > 0' >/dev/null
             docker buildx imagetools inspect "${ghcr}@${digest}" \
               --format '{{json .Provenance}}' | jq -e 'length > 0' >/dev/null
-            gh attestation verify "oci://${ghcr}@${digest}" \
-              --bundle-from-oci \
-              --repo "$GITHUB_REPOSITORY" \
-              --signer-workflow "$SIGNER_WORKFLOW" \
-              --source-digest "$GITHUB_SHA" \
-              --source-ref "$GITHUB_REF" \
-              --deny-self-hosted-runners \
-              --format json > "$attestation_file"
-            jq -e 'length > 0' "$attestation_file" >/dev/null
-
             gh api "/users/${GITHUB_REPOSITORY_OWNER}/packages/container/${image}" \
               > "$package_file"
             jq -e \
@@ -817,24 +829,46 @@ jobs:
 
             if [[ "$DOCKERHUB_ENABLED" == "true" ]]; then
               dockerhub="docker.io/${DOCKERHUB_NAMESPACE}/${image}"
-              dockerhub_attestation_file="$output_dir/${image}-dockerhub-attestation.json"
               observed="$(
                 docker buildx imagetools inspect \
                   "${dockerhub}:${RELEASE_TAG}" \
                   --format '{{json .Manifest}}' | jq -r .digest
               )"
               [[ "$observed" == "$digest" ]]
-              gh attestation verify "oci://${dockerhub}@${digest}" \
-                --bundle-from-oci \
-                --repo "$GITHUB_REPOSITORY" \
-                --signer-workflow "$SIGNER_WORKFLOW" \
-                --source-digest "$GITHUB_SHA" \
-                --source-ref "$GITHUB_REF" \
-                --deny-self-hosted-runners \
-                --format json \
-                > "$dockerhub_attestation_file"
-              jq -e 'length > 0' "$dockerhub_attestation_file" >/dev/null
             fi
+          done < <(
+            find artifacts/candidates -type f -name receipt.json | sort
+          )
+
+          export DOCKER_CONFIG="$attestation_config"
+          while IFS= read -r receipt; do
+            image="$(jq -r .imageName "$receipt")"
+            digest="$(jq -r .digest "$receipt")"
+            ghcr="ghcr.io/${owner}/${image}"
+            attestation_file="$output_dir/${image}-attestation.json"
+            gh attestation verify "oci://${ghcr}@${digest}" \
+              --bundle-from-oci \
+              --repo "$GITHUB_REPOSITORY" \
+              --signer-workflow "$SIGNER_WORKFLOW" \
+              --signer-digest "$SIGNER_DIGEST" \
+              --source-digest "$GITHUB_SHA" \
+              --source-ref "$GITHUB_REF" \
+              --deny-self-hosted-runners \
+              --format json > "$attestation_file"
+            jq -e 'length > 0' "$attestation_file" >/dev/null
+
+            dockerhub="docker.io/${DOCKERHUB_NAMESPACE}/${image}"
+            dockerhub_attestation_file="$output_dir/${image}-dockerhub-attestation.json"
+            gh attestation verify "oci://${dockerhub}@${digest}" \
+              --bundle-from-oci \
+              --repo "$GITHUB_REPOSITORY" \
+              --signer-workflow "$SIGNER_WORKFLOW" \
+              --signer-digest "$SIGNER_DIGEST" \
+              --source-digest "$GITHUB_SHA" \
+              --source-ref "$GITHUB_REF" \
+              --deny-self-hosted-runners \
+              --format json > "$dockerhub_attestation_file"
+            jq -e 'length > 0' "$dockerhub_attestation_file" >/dev/null
           done < <(
             find artifacts/candidates -type f -name receipt.json | sort
           )
@@ -846,6 +880,7 @@ jobs:
           RELEASE_TAG: ${{ needs.authorize.outputs.release_tag }}
           DOCKERHUB_ENABLED: ${{ steps.targets.outputs.dockerhub_enabled }}
           DOCKERHUB_NAMESPACE: ${{ steps.targets.outputs.dockerhub_namespace }}
+          SIGNER_DIGEST: ${{ github.workflow_sha }}
         run: |
           set -euo pipefail
           owner="${GITHUB_REPOSITORY_OWNER,,}"
@@ -928,6 +963,7 @@ jobs:
             --arg sourceSha "$GITHUB_SHA" \
             --arg sourceRef "$GITHUB_REF" \
             --arg signerWorkflow "$GITHUB_REPOSITORY/.github/workflows/container-publish.yml" \
+            --arg signerDigest "$SIGNER_DIGEST" \
             --arg releaseVersion "$RELEASE_VERSION" \
             --arg releaseTag "$RELEASE_TAG" \
             --arg githubTag "v${RELEASE_VERSION}" \
@@ -945,9 +981,10 @@ jobs:
                 atomicMarkerTag: $githubTag
               },
               verification: {
-                registryAccess: "ANONYMOUS",
+                registryAccess: "ANONYMOUS_MANIFESTS_ISOLATED_AUTHENTICATED_ATTESTATIONS",
                 attestationBundles: "OCI_REGISTRY",
                 signerWorkflow: $signerWorkflow,
+                signerDigest: $signerDigest,
                 sourceDigest: $sourceSha,
                 sourceRef: $sourceRef
               },
@@ -1006,6 +1043,7 @@ jobs:
           ATTESTATION_BUNDLE: ${{ steps.attest_release_evidence.outputs.bundle-path }}
           GH_TOKEN: ${{ github.token }}
           SIGNER_WORKFLOW: ${{ github.repository }}/.github/workflows/container-publish.yml
+          SIGNER_DIGEST: ${{ github.workflow_sha }}
         run: |
           set -euo pipefail
           output_dir="artifacts/container-publication"
@@ -1016,8 +1054,10 @@ jobs:
             "$output_dir/publication-evidence.tar.gz"; do
             output="$output_dir/$(basename "$subject").verification.json"
             gh attestation verify "$subject" \
+              --bundle "$output_dir/release-evidence-attestation.sigstore.json" \
               --repo "$GITHUB_REPOSITORY" \
               --signer-workflow "$SIGNER_WORKFLOW" \
+              --signer-digest "$SIGNER_DIGEST" \
               --source-digest "$GITHUB_SHA" \
               --source-ref "$GITHUB_REF" \
               --deny-self-hosted-runners \
