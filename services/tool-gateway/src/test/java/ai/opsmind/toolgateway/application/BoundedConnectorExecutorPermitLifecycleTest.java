@@ -174,6 +174,7 @@ class BoundedConnectorExecutorPermitLifecycleTest {
                 allowExit.countDown();
             }
             await(exited);
+            awaitTenantPermitRelease(bulkhead);
             assertThat(executor.execute(
                 () -> "reacquired",
                 scope(retryRequest),
@@ -182,6 +183,14 @@ class BoundedConnectorExecutorPermitLifecycleTest {
             )).isEqualTo("reacquired");
             assertThat(bulkhead.trackedTenantCount()).isZero();
         }
+    }
+
+    private void awaitTenantPermitRelease(TenantConnectorBulkhead bulkhead) throws InterruptedException {
+        long timeoutAt = System.nanoTime() + TimeUnit.SECONDS.toNanos(1);
+        while (bulkhead.trackedTenantCount() != 0 && System.nanoTime() < timeoutAt) {
+            TimeUnit.MILLISECONDS.sleep(10);
+        }
+        assertThat(bulkhead.trackedTenantCount()).isZero();
     }
 
 }
