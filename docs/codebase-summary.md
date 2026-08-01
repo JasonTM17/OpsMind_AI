@@ -30,7 +30,7 @@ than inferred from the compaction.
 | Phase 1 | Complete; operating-envelope and governance gates passed. |
 | Phase 2 | Complete; immutable clean-runner evidence closes G1. |
 | Phase 3 | In progress; identity, tenant/RLS, persistence, and messaging substrate exists. Production-authorized IdP conformance remains open. |
-| Phase 4 | In progress; 4A and bounded 4B checkpoints exist, while 4C adds metadata-only V014 authority with a passing source gate. Full Phase 4 and G2/G3 are not complete. |
+| Phase 4 | In progress; 4A and bounded 4B checkpoints exist, while 4C integrates V014 metadata authority with the default-off V015 fenced upload slice and a passing source gate. Full Phase 4, remote integrated proof, and G2/G3 are not complete. |
 | Phase 5 | In progress; provider-neutral analysis, DeepSeek adapter, egress guards, durable PostgreSQL state, V005 append-only probe audit, Platform API integration, and stream assembly exist. Static checkpoint passes; exit remains blocked by B-004 and missing rotated-key synthetic smoke. |
 | Phase 6 | In progress; durable PostgreSQL, synthetic Prometheus, and tenant-scoped bulkhead checkpoints pass. Artifact/broader-connector/live/provider-cancellation exit remains blocked. |
 | Phase 7 | In progress; cross-service trace, 100-warm-run fixture, CK/Stitch UI/browser E2E, and the metadata-only incident activity route plus V009 CI fixture gates pass. G3 remains blocked by live non-production connector/provider/legal conformance and BFF/session proof. |
@@ -234,17 +234,28 @@ clients and loopback synthetic Prometheus path run in the disposable
 cross-service harness; they do not establish a named live non-production
 connector or provider/legal conformance, so G3 remains open.
 
-### Phase 4C Durable Artifact Metadata Authority
+### Phase 4C Durable Artifact Object Authority
 
-V014 is separate from V007 `evidence_records`: it records a tenant-scoped,
-owner-bound durable artifact intent with deterministic UUIDv8 identity, source
-metadata, expected SHA-256/byte count, fixed policy classes, an opaque
-non-projected storage key, and one `PENDING_UPLOAD` lifecycle event with an
-exact audit binding. PostgreSQL enforces forced RLS, idempotency, current
-authorization epoch, append-only mutation denial, and no object reference in
-the application projection. It does not accept, store, retrieve, cite, or
-stream an artifact body; object streaming/finalization and controlled ingress
-remain Phase 4C follow-up work under B-006/B-008/B-012.
+V014 remains separate from V007 `evidence_records`: it records a
+tenant-scoped, owner-bound artifact intent with deterministic UUIDv8 identity,
+expected digest/length, policy classes, an opaque non-projected storage key,
+and one exact `PENDING_UPLOAD` event/audit pair.
+
+V015 adds forced-RLS upload attempts, a five-second-to-five-minute claim lease,
+single-winner and stale-settlement fences, and deferred validation requiring
+the exact STORED lifecycle event and redacted audit row in the settlement
+transaction. The default-off AWS SDK v2 adapter performs one bounded
+conditional S3-compatible PUT with a precomputed SHA-256 and SSE-KMS, disables
+SDK retries, and HEAD-verifies ambiguous retries before another write. It
+separates the request KMS identifier from the canonical response identifier
+and retains only a non-null opaque version reference bounded to 1,024 UTF-8
+bytes. Definitive failures are reclaimable, while post-PUT source/response
+mismatches settle `ORPHANED` and block automated reclaim. Object I/O runs
+between two current-authorization transactions.
+
+No route accepts or returns artifact bodies yet. `STORED` remains unreadable
+until scanning and `AVAILABLE`; retention, deletion receipts, restore, and
+backend/KMS conformance remain follow-up work under B-006/B-008/B-012.
 
 V009 adds concurrent ordering indexes on both activity sources and opts that
 script out of Flyway transactions. Rollout order is migration before code;
@@ -435,7 +446,7 @@ See [Security Model](./security-model.md) for the complete threat model and
 | Platform API Maven suite | Pass | Local verification, including pgJDBC `42.7.13` and V005 migration contracts |
 | `scripts/validation/validate-phase-05-ai-runtime.mjs` | Static checkpoint PASS | Exit gate remains BLOCK: active B-004 plus absent passing rotated-key synthetic smoke |
 | `scripts/validation/validate-phase-06-tool-gateway.mjs` | Durable Prometheus connector plus tenant-scoped bulkhead checkpoint PASS with schemas, canonical fixtures, digest/manifest/OpenAPI/source abuse checks, lifecycle and eviction markers | Phase exit BLOCK: artifact adapter, remaining connector families, named live connector, and provider-specific cancellation proof |
-| `scripts/validation/validate-phase-04c-evidence-artifacts.mjs` | Metadata/audit/RLS source checkpoint PASS; object streaming and ingress explicitly deferred | PR Quality wiring exists, but the V013-to-V014 disposable PostgreSQL proof and integration test have no revision-bound CI result yet |
+| `scripts/validation/validate-phase-04c-evidence-artifacts.mjs` | V014 immutability plus V015 metadata/upload/RLS/S3 source checkpoint PASS; object storage remains default-off | PR Quality wiring exists for both disposable upgrade proofs, but the integrated revision has no revision-bound CI result or production backend/KMS conformance; ingress/readability remain deferred |
 | `scripts/validation/validate-phase-07-investigation-slice.mjs` | Artifact `8649696519` records OperatorWorkspace/CrossService/Checkpoint/PhaseExit PASS; Scenario A has 100 warm runs | G3 still requires live provider/connector/legal and BFF/session proof |
 | `scripts/validation/validate-phase-08-evaluation-foundation.mjs` | Six schemas, ten families/three implemented, three results/eight metrics/four negative cases, zero errors, checkpoint PASS | Phase exit BLOCK; held-out and human inputs unavailable |
 | `scripts/validation/validate-phase-09-workflow-handoff.mjs` | Integration static gate PASS with V010-V013, one Temporal pin, 18 payload fields, seven required test files, and zero errors | Source-only; does not prove merged-head Maven/Docker/CI, live Temporal authorization, worker, or restart/resume |

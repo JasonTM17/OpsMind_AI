@@ -174,6 +174,57 @@ class MigrationContractTest {
     }
 
     @Test
+    void artifactObjectMigrationFencesClaimsAndRequiresStoredAudit() throws IOException {
+        String migration = readMigration("V015__evidence_artifact_upload_fencing.sql");
+
+        assertThat(migration)
+            .contains("CREATE TABLE evidence_artifact_upload_attempts")
+            .contains("evidence_artifacts_phase_2_lifecycle_fence")
+            .contains("evidence_artifacts_current_upload_attempt_fk")
+            .contains("evidence_artifact_events_phase_2_transition_fence")
+            .contains("storage_version_reference varchar(1024)")
+            .contains("octet_length(storage_version_reference) <= 1024")
+            .contains("opsmind_claim_evidence_artifact_upload")
+            .contains("opsmind_settle_evidence_artifact_upload")
+            .contains("opsmind_evidence_artifact_lifecycle_event_id")
+            .contains("p_lease_duration_ms NOT BETWEEN 5000 AND 300000")
+            .contains("upload_attempt_count = 0")
+            .contains("upload_attempt_id IS NULL")
+            .contains("active_attempt.status = 'ORPHANED'")
+            .contains("orphaned artifact object requires operator reconciliation")
+            .contains("upload_attempt_count BETWEEN 1 AND 8")
+            .contains("upload_attempt_id IS NOT NULL")
+            .contains("artifact upload already has an active lease")
+            .contains("artifact.lease-expired")
+            .contains("probe_required boolean")
+            .contains("reconciliation_required boolean")
+            .contains("artifact.lease-expired-unsettled")
+            .contains("transition_at := GREATEST(db_now, artifact_row.lifecycle_updated_at)")
+            .contains("settled_at = transition_at")
+            .contains("lifecycle_updated_at = transition_at")
+            .contains("CREATE CONSTRAINT TRIGGER evidence_artifacts_require_stored_event")
+            .contains("ARTIFACT_STORED")
+            .contains("storageGeneration")
+            .contains("ALTER TABLE evidence_artifact_upload_attempts FORCE ROW LEVEL SECURITY")
+            .contains("REVOKE ALL ON evidence_artifact_upload_attempts")
+            .contains("REVOKE UPDATE, DELETE, TRUNCATE ON evidence_artifacts")
+            .contains("session_user <> 'opsmind_app'")
+            .contains("artifact.actor_id = bound_actor_id")
+            .doesNotContain(
+                "artifact.actor_id = actor_id",
+                "run_actor_id IS DISTINCT FROM actor_id"
+            )
+            .doesNotContain(
+                "raw_prompt",
+                "chain_of_thought",
+                "api_key",
+                "credential_ref",
+                "signed_url",
+                "presigned_url"
+            );
+    }
+
+    @Test
     void acceptedAnalysisMigrationExpandsForRollingWritersWithoutRewritingHistory()
         throws IOException {
         String migration = readMigration("V008__accepted_analysis_event_binding.sql");

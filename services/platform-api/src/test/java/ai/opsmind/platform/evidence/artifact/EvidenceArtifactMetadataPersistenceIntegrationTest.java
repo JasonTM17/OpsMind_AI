@@ -140,7 +140,8 @@ class EvidenceArtifactMetadataPersistenceIntegrationTest {
             "DELETE FROM evidence_artifacts WHERE organization_id = ?", TENANT_A
         ), "42501");
         assertSqlState(() -> admin.execute(
-            "TRUNCATE TABLE evidence_artifacts, evidence_artifact_events"
+            "TRUNCATE TABLE evidence_artifact_upload_attempts, "
+                + "evidence_artifacts, evidence_artifact_events"
         ), "42501");
     }
 

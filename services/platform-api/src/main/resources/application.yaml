@@ -55,6 +55,30 @@ opsmind:
       key-id: ${OPSMIND_AI_CAPABILITY_KEY_ID:}
       private-key-path: ${OPSMIND_AI_CAPABILITY_PRIVATE_KEY_FILE:}
       maximum-lifetime: ${OPSMIND_AI_CAPABILITY_MAX_LIFETIME:PT4M}
+  evidence:
+    artifact:
+      storage:
+        # This boundary is deliberately off until an approved S3-compatible
+        # backend, external workload credentials, and KMS references exist.
+        enabled: ${OPSMIND_EVIDENCE_ARTIFACT_STORAGE_ENABLED:false}
+        endpoint: ${OPSMIND_EVIDENCE_ARTIFACT_STORAGE_ENDPOINT:https://s3.invalid.example}
+        allow-loopback-cleartext: ${OPSMIND_EVIDENCE_ARTIFACT_STORAGE_ALLOW_LOOPBACK_CLEARTEXT:false}
+        region: ${OPSMIND_EVIDENCE_ARTIFACT_STORAGE_REGION:disabled}
+        bucket: ${OPSMIND_EVIDENCE_ARTIFACT_STORAGE_BUCKET:disabled}
+        path-style-access: ${OPSMIND_EVIDENCE_ARTIFACT_STORAGE_PATH_STYLE_ACCESS:false}
+        expected-bucket-owner: ${OPSMIND_EVIDENCE_ARTIFACT_STORAGE_EXPECTED_BUCKET_OWNER:}
+        kms-key-id: ${OPSMIND_EVIDENCE_ARTIFACT_STORAGE_KMS_KEY_ID:}
+        expected-kms-key-reference: ${OPSMIND_EVIDENCE_ARTIFACT_STORAGE_EXPECTED_KMS_KEY_REFERENCE:}
+        encryption-profile: ${OPSMIND_EVIDENCE_ARTIFACT_STORAGE_ENCRYPTION_PROFILE:production-kms}
+        maximum-object-bytes: ${OPSMIND_EVIDENCE_ARTIFACT_STORAGE_MAXIMUM_OBJECT_BYTES:0}
+        connect-timeout: ${OPSMIND_EVIDENCE_ARTIFACT_STORAGE_CONNECT_TIMEOUT:PT2S}
+        socket-timeout: ${OPSMIND_EVIDENCE_ARTIFACT_STORAGE_SOCKET_TIMEOUT:PT30S}
+        api-call-attempt-timeout: ${OPSMIND_EVIDENCE_ARTIFACT_STORAGE_API_CALL_ATTEMPT_TIMEOUT:PT30S}
+        api-call-timeout: ${OPSMIND_EVIDENCE_ARTIFACT_STORAGE_API_CALL_TIMEOUT:PT35S}
+        source-verification-budget: ${OPSMIND_EVIDENCE_ARTIFACT_STORAGE_SOURCE_VERIFICATION_BUDGET:PT5S}
+        settlement-safety-margin: ${OPSMIND_EVIDENCE_ARTIFACT_STORAGE_SETTLEMENT_SAFETY_MARGIN:PT5S}
+        maximum-connections: ${OPSMIND_EVIDENCE_ARTIFACT_STORAGE_MAXIMUM_CONNECTIONS:8}
+        upload-lease-duration: ${OPSMIND_EVIDENCE_ARTIFACT_STORAGE_UPLOAD_LEASE_DURATION:PT1M}
   http:
     max-json-body-bytes: ${OPSMIND_MAX_JSON_BODY_BYTES:65536}
   dispatcher:

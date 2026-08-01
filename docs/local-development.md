@@ -162,7 +162,7 @@ Use either launcher consistently:
 | `dev` | Build and run the Compose `application` profile in the foreground. |
 | `up` | Build and run the profile detached, waiting for health checks. |
 | `down` | Stop the profile; remains available when capacity is below threshold. |
-| `migrate` | Applies the current Platform Flyway sequence through V014 using the supplied migration-role datasource; it does not start the web server. |
+| `migrate` | Applies the current Platform Flyway sequence through V015 using the supplied migration-role datasource; it does not start the web server. |
 | `seed` | Exit 3 until deterministic seed data has an owning phase. |
 | `evaluate` | Run evaluation tests/contracts, then score an existing managed Phase 7 trace for Scenario A, B, or C; it does not generate a trace and exits non-zero when projection, revision binding, or storage policy is incomplete. |
 
@@ -222,6 +222,14 @@ The first Java dependency scan can take substantially longer while it builds
 the NVD database. Its data remains in the D-backed cache. The disabled
 `minio-review` profile is deliberately non-routable while blocker B-012 is
 unresolved; do not replace its deliberately invalid image sentinel locally.
+
+Phase 4C object storage remains disabled by default. The checked-in values are
+non-secret sentinels; enabled environments must supply endpoint, bucket,
+request KMS key, canonical KMS response reference, and workload identity
+outside source control. The adapter accepts only a five-second-to-five-minute
+upload lease, and its API call timeout must be shorter than that lease. Do not
+enable the local object backend until B-012 has an approved immutable
+supply-chain decision.
 
 The frontend audit exception for `GHSA-mh99-v99m-4gvg` is not a bare risk
 waiver. Both launchers and CI first run

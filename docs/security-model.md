@@ -163,16 +163,30 @@ tokens: consumption commits before reservation, so a crash may burn one attempt
 but can never make bearer authority reusable; the hashed nonce row preserves
 that fact without storing the capability.
 
-## Planned Evidence and Retrieval Security
+## Evidence and Retrieval Security
 
-Bounded redacted evidence records exist in PostgreSQL. V014 also records a
-tenant/RLS-scoped, owner-bound `PENDING_UPLOAD` artifact metadata intent with
-expected digest/length and an opaque non-projected storage key. It does not
-accept or expose a large object body; the body lifecycle and RAG boundary do
-not. Future implementation requirements are:
+Bounded redacted evidence records exist in PostgreSQL. V014 records a
+tenant/RLS-scoped, owner-bound `PENDING_UPLOAD` artifact intent. V015 adds
+forced-RLS upload attempts, bounded leases, conditional streaming, and exact
+STORED settlement behind a default-off S3-compatible/SSE-KMS port. The body is
+not exposed through an API or retrieval path.
 
-- content-addressed encryption through a supported object-storage port behind
-  the `production-kms` boundary;
+The upload slice enforces:
+
+- a predeclared digest and length, one immutable-create attempt, no SDK retry,
+  exact EOF/digest, and probe-before-retry only after durably recorded
+  ambiguity; an expired unsettled claim is quarantined instead of auto-adopted;
+- separate request and canonical response KMS identifiers, external workload
+  credentials, a non-`null` opaque object version, and no storage reference in
+  audit or application projections;
+- current tenant/project/incident authorization before claim and settlement,
+  with object I/O outside both database transactions;
+- stale-token, cross-tenant, authorization-epoch, direct-DML, and missing-audit
+  denial.
+
+Future implementation requirements remain:
+
+- production backend/KMS/residency conformance and restore drills;
 - source, classification, digest, authorization epoch, retention, and incident
   metadata;
 - safe scanning/rendering and exact source/version provenance;
@@ -222,8 +236,11 @@ as one transaction.
 
 For artifact registration, V014 binds the deterministic initial lifecycle event
 to an exact `ARTIFACT_PENDING_UPLOAD` audit payload in the same transaction.
-The database owns audit-chain fields, rejects direct metadata/event mutation,
-and keeps object references and bodies out of the application projection.
+V015 additionally requires an applied STORED settlement, its attempt-bound
+deterministic event, and exact redacted `ARTIFACT_STORED` audit row to commit
+together. The database owns audit-chain fields, rejects direct metadata/event
+mutation, and keeps object references, KMS identifiers, and bodies out of the
+application projection and audit payload.
 
 ## Availability and Abuse Controls
 
