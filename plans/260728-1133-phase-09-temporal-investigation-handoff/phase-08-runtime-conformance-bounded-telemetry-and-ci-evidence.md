@@ -14,8 +14,8 @@ dependsOn:
 
 Close the remaining repository-owned portion of B-017 without claiming a
 functional investigation executor or production provider proof. Deliver a
-default-off workflow-only Temporal worker, prove restart/replay with the official
-test environment, reject stale compatible-poller records, scrape the real
+default-off workflow-only Temporal worker, prove restart/replay against a pinned
+local Temporal development server, reject stale compatible-poller records, scrape the real
 reconciliation metrics through pinned Prometheus, and prove secretless local
 Alertmanager routing. Phase 10 remains blocked.
 
@@ -23,6 +23,9 @@ Alertmanager routing. Phase 10 remains blocked.
 
 - Reuse the existing Platform API artifact as a separate worker-only process;
   do not create a Python worker or a new microservice/image boundary.
+- The worker bootstrap configuration lives outside the Platform API component
+  scan. Enabling the worker can never create a poller inside the API process,
+  and the Compose API service never receives worker activation variables.
 - Register exactly `opsmind-investigation-v1` and accept the existing bounded
   `InvestigationWorkflowStartRequest`. The implementation validates immutable
   workflow metadata, schedules no activities, and parks durably. It must remain
@@ -48,8 +51,9 @@ Owns only:
 
 - new worker interface, implementation, configuration, and properties under
   `services/platform-api/src/main/java/ai/opsmind/platform/investigation/workflow/`;
-- a worker-only application entrypoint in that package which explicitly boots
-  only the Temporal worker configuration with `WebApplicationType.NONE`;
+- a worker-only application entrypoint plus a bootstrap configuration outside
+  `ai.opsmind.platform`, which explicitly boots only the Temporal worker
+  configuration with `WebApplicationType.NONE`;
 - `InvestigationTemporalClientProperties.java`;
 - `InvestigationTemporalClientConfiguration.java`;
 - `TemporalInvestigationWorkerReadinessProbe.java`;
@@ -62,12 +66,16 @@ Acceptance:
 2. Worker-only context contains no web server, DataSource, Flyway, application
    service, dispatcher, reconciler, AI Runtime, Tool Gateway, or connector bean;
    its process needs Temporal connectivity only.
+   Enabling the worker must not add an `InvestigationTemporalWorkerRuntime` to
+   the full Platform API component scan.
 3. Fresh exact poller opens admission; wrong, missing, stale, malformed,
    implausibly future,
    or RPC-failed poller closes it.
-4. Official Temporal test environment proves start, first task, worker stop,
-   replacement worker replay, and terminal test cancellation without duplicate
-   start or activity events.
+4. A pinned local Temporal development server proves start, first task, worker
+   stop, replacement-worker replay, and terminal test cancellation without
+   duplicate start or activity events. The in-process test server is retained
+   only for deterministic unit/history tests because it does not implement the
+   `DescribeTaskQueue` or `ResetStickyTaskQueue` RPCs needed for this proof.
 5. Every history event is scanned across payloads, memo, headers, search
    attributes, workflow failure details, and cancellation reasons. History and
    artifacts contain none of the prohibited prompt, evidence, token,
@@ -105,6 +113,9 @@ Controller alone owns:
 - `.github/workflows/pr-quality.yml`;
 - `compose.yaml`;
 - `services/platform-api/src/main/resources/application.yaml`;
+- `services/platform-api/src/main/java/ai/opsmind/platform/investigation/workflow/`
+  metrics wiring needed to expose default-off reconciliation gauges without
+  enabling an observer or reconciler in the general application smoke lane;
 - `.env.example`;
 - `scripts/dev/opsmind.ps1` and `scripts/dev/opsmind.sh`;
 - `services/platform-api/pom.xml` and `services/platform-api/Dockerfile` only if
@@ -126,9 +137,18 @@ Artifacts under `artifacts/verification/phase-09-workflow-handoff/` must record:
 - exact commit SHA and UTC timestamps;
 - exact Prometheus and Alertmanager image references/digests;
 - configuration/rule digests and executed commands;
-- Temporal restart test class plus zero-failure/zero-skip counts;
+- pinned Temporal development-server image digest, startup command, retained server log,
+  restart test class, and zero-failure/zero-skip counts;
 - target health, series count, exact observed label names, and response bounds;
 - one sanitized local routing receipt digest/status.
+
+Each CI-live lane writes an `opsmind-phase9-evidence-v1` manifest with those
+revision-bound fields. The Compose worker conformance service shares the worker
+network namespace solely with a pinned local Temporal development sidecar, so
+its strict `127.0.0.1` cleartext policy is not widened for Docker DNS. The
+general application smoke leaves the observer/reconciler disabled; its scrape
+proves bounded zero-state metric exposure and local routing, not a reachable
+reconciliation attempt.
 
 Evidence classification is mandatory:
 
@@ -164,10 +184,12 @@ Evidence classification is mandatory:
 
 ## Rollback
 
-Disable/remove the profile-gated worker and Alertmanager conformance services;
-disable the worker and reconciliation observer flags. Do not edit V010-V013 or
-terminalize any uncertain `PENDING` binding. Remove only the new source/config
-surface through a reviewed forward commit; preserve immutable evidence.
+Disable/remove the profile-gated worker and its local Temporal conformance
+sidecar; disable the worker and reconciliation observer flags. Retain
+Alertmanager when the application profile needs its explicitly configured
+receiver. Do not edit V010-V013 or terminalize any uncertain `PENDING` binding.
+Remove only the new source/config surface through a reviewed forward commit;
+preserve immutable evidence.
 
 ## Remaining external blockers
 

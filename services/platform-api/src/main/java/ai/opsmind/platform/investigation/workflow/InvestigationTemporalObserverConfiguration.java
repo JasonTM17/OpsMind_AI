@@ -1,6 +1,5 @@
 package ai.opsmind.platform.investigation.workflow;
 
-import io.micrometer.core.instrument.MeterRegistry;
 import io.temporal.common.converter.DefaultDataConverter;
 import io.temporal.serviceclient.WorkflowServiceStubs;
 import io.temporal.serviceclient.WorkflowServiceStubsOptions;
@@ -48,13 +47,6 @@ public class InvestigationTemporalObserverConfiguration {
             options.addApiKey(observerProperties::getApiKey);
         }
         return WorkflowServiceStubs.newServiceStubs(options.build());
-    }
-
-    @Bean
-    InvestigationWorkflowReconciliationMetrics investigationWorkflowReconciliationMetrics(
-        MeterRegistry registry
-    ) {
-        return new InvestigationWorkflowReconciliationMetrics(registry);
     }
 
     @Bean

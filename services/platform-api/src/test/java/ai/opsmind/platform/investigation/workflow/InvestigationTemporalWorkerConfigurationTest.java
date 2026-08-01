@@ -1,5 +1,7 @@
 package ai.opsmind.platform.investigation.workflow;
 
+import ai.opsmind.temporalworker.InvestigationTemporalWorkerBootstrapConfiguration;
+
 import static org.assertj.core.api.Assertions.assertThat;
 
 import java.time.Duration;
@@ -18,12 +20,14 @@ class InvestigationTemporalWorkerConfigurationTest {
 
     private final ApplicationContextRunner contextRunner =
         new ApplicationContextRunner()
-            .withUserConfiguration(InvestigationTemporalWorkerConfiguration.class);
+            .withUserConfiguration(InvestigationTemporalWorkerBootstrapConfiguration.class);
 
     @Test
     void workerIsAbsentByDefaultAndApplicationIsNonWeb() {
         assertThat(InvestigationTemporalWorkerApplication.createApplication()
             .getWebApplicationType()).isEqualTo(WebApplicationType.NONE);
+        assertThat(InvestigationTemporalWorkerBootstrapConfiguration.class.getPackageName())
+            .doesNotStartWith("ai.opsmind.platform");
 
         contextRunner.run(context -> {
             assertThat(context).doesNotHaveBean(InvestigationTemporalWorkerRuntime.class);
