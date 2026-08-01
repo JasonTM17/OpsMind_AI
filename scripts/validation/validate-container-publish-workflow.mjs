@@ -151,6 +151,171 @@ const mutations = [
     },
     "release.credential-lifecycle",
   ],
+  [
+    "dual-registry requirement removed",
+    (value) => {
+      const step = value.jobs.authorize.steps.find(
+        (entry) => entry.name === "Require atomic dual-registry release",
+      );
+      step.run = step.run.replace(
+        'if [[ "$PUBLISH_DOCKERHUB" != "true" ]]; then',
+        "if false; then",
+      );
+    },
+    "release.dual-registry-required",
+  ],
+  [
+    "registry OCI bundle requirement removed",
+    (value) => {
+      const step = value.jobs.promote.steps.find(
+        (entry) => entry.name === "Verify staged immutable release set",
+      );
+      step.run = step.run.replaceAll("--bundle-from-oci", "");
+    },
+    "release.registry-attestation-policy",
+  ],
+  [
+    "anonymous registry Docker config removed",
+    (value) => {
+      const step = value.jobs.promote.steps.find(
+        (entry) => entry.name === "Verify staged immutable release set",
+      );
+      step.run = step.run.replace(
+        'export DOCKER_CONFIG="$anonymous_config"',
+        "",
+      );
+    },
+    "release.anonymous-registry-verification",
+  ],
+  [
+    "anonymous registry config file removed",
+    (value) => {
+      const step = value.jobs.promote.steps.find(
+        (entry) => entry.name === "Verify staged immutable release set",
+      );
+      step.run = step.run.replace(
+        `printf '%s\\n' '{}' > "$anonymous_config/config.json"`,
+        "",
+      );
+    },
+    "release.anonymous-registry-verification",
+  ],
+  [
+    "isolated attestation registry Docker config removed",
+    (value) => {
+      const step = value.jobs.promote.steps.find(
+        (entry) => entry.name === "Verify staged immutable release set",
+      );
+      step.run = step.run.replace(
+        'export DOCKER_CONFIG="$attestation_config"',
+        "",
+      );
+    },
+    "release.anonymous-registry-verification",
+  ],
+  [
+    "Docker Hub receipt parity removed",
+    (value) => {
+      const step = value.jobs.promote.steps.find(
+        (entry) => entry.name === "Write observed immutable release receipt",
+      );
+      step.run = step.run.replace(
+        ".dockerHub.digest == .digest",
+        "",
+      );
+    },
+    "release.dual-registry-receipt",
+  ],
+  [
+    "aggregate signer policy removed",
+    (value) => {
+      const step = value.jobs.promote.steps.find(
+        (entry) => entry.name === "Verify aggregate release evidence attestation",
+      );
+      step.run = step.run.replace(
+        '--signer-workflow "$SIGNER_WORKFLOW"',
+        "",
+      );
+    },
+    "release.aggregate-attestation-policy",
+  ],
+  [
+    "registry signer digest policy removed",
+    (value) => {
+      const step = value.jobs.promote.steps.find(
+        (entry) => entry.name === "Verify staged immutable release set",
+      );
+      step.run = step.run.replaceAll('--signer-digest "$SIGNER_DIGEST"', "");
+    },
+    "release.registry-attestation-policy",
+  ],
+  [
+    "aggregate signer digest policy removed",
+    (value) => {
+      const step = value.jobs.promote.steps.find(
+        (entry) => entry.name === "Verify aggregate release evidence attestation",
+      );
+      step.run = step.run.replace('--signer-digest "$SIGNER_DIGEST"', "");
+    },
+    "release.aggregate-attestation-policy",
+  ],
+  [
+    "aggregate evidence bundle binding removed",
+    (value) => {
+      const step = value.jobs.promote.steps.find(
+        (entry) => entry.name === "Verify aggregate release evidence attestation",
+      );
+      step.run = step.run.replace(
+        '--bundle "$output_dir/release-evidence-attestation.sigstore.json"',
+        "",
+      );
+    },
+    "release.aggregate-attestation-policy",
+  ],
+  [
+    "signer workflow identity drifted",
+    (value) => {
+      const signerWorkflow =
+        "${{ github.repository }}/.github/workflows/alternate.yml";
+      const stageStep = value.jobs.promote.steps.find(
+        (entry) => entry.name === "Verify staged immutable release set",
+      );
+      const receiptStep = value.jobs.promote.steps.find(
+        (entry) => entry.name === "Write observed immutable release receipt",
+      );
+      const aggregateStep = value.jobs.promote.steps.find(
+        (entry) =>
+          entry.name === "Verify aggregate release evidence attestation",
+      );
+      stageStep.env.SIGNER_WORKFLOW = signerWorkflow;
+      aggregateStep.env.SIGNER_WORKFLOW = signerWorkflow;
+      receiptStep.run = receiptStep.run.replace(
+        '--arg signerWorkflow "$GITHUB_REPOSITORY/.github/workflows/container-publish.yml"',
+        '--arg signerWorkflow "$GITHUB_REPOSITORY/.github/workflows/alternate.yml"',
+      );
+    },
+    "release.signer-workflow-binding",
+  ],
+  [
+    "signer workflow digest drifted",
+    (value) => {
+      const workflowDigest = "${{ github.sha }}";
+      const stageStep = value.jobs.promote.steps.find(
+        (entry) => entry.name === "Verify staged immutable release set",
+      );
+      const receiptStep = value.jobs.promote.steps.find(
+        (entry) => entry.name === "Write observed immutable release receipt",
+      );
+      const aggregateStep = value.jobs.promote.steps.find(
+        (entry) =>
+          entry.name === "Verify aggregate release evidence attestation",
+      );
+      stageStep.env.SIGNER_DIGEST = workflowDigest;
+      receiptStep.env.SIGNER_DIGEST = workflowDigest;
+      aggregateStep.env.SIGNER_DIGEST = workflowDigest;
+    },
+    "release.signer-workflow-binding",
+  ],
 ];
 
 for (const [name, mutate, expectedErrorPrefix] of mutations) {
@@ -192,7 +357,7 @@ for (const value of [
 }
 
 console.log("OpsMind OCI publication workflow validation");
-console.log("EvidenceSchemaVersion=oci-publication-static-v3");
+console.log("EvidenceSchemaVersion=oci-publication-static-v4");
 console.log(
   `Workflow=${path.relative(repositoryRoot, workflowPath).replaceAll("\\", "/")}`,
 );
@@ -201,7 +366,7 @@ console.log("CandidateGate=BUILD_SCAN_SMOKE");
 console.log("PromotionGate=SIGNED_IMMUTABLE_RELEASE_SET");
 console.log("Images=4");
 console.log("Platforms=linux/amd64,linux/arm64");
-console.log("NegativeMutations=15");
+console.log(`NegativeMutations=${mutations.length}`);
 console.log(`Errors=${errors.length}`);
 for (const error of errors) console.error(`Error=${error}`);
 console.log(`Result=${errors.length === 0 ? "PASS" : "BLOCK"}`);
