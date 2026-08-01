@@ -66,7 +66,7 @@ class PrometheusHttpExchangeTest {
                  respond(exchange, 200, "application/json", new byte[2_048]));
              TestServer slow = new TestServer(exchange -> {
                  try {
-                     Thread.sleep(250);
+                      Thread.sleep(1_000);
                      respond(exchange, 200, "application/json", "{}".getBytes(StandardCharsets.UTF_8));
                  }
                  catch (InterruptedException exception) {
@@ -81,7 +81,7 @@ class PrometheusHttpExchangeTest {
                 .isInstanceOfSatisfying(ToolDeniedException.class, exception ->
                     assertThat(exception.code()).isEqualTo(DenialCode.RESULT_OVERSIZE));
             assertThatThrownBy(() -> client(slow.endpoint(), 1_024)
-                .getJson(slow.endpoint(), Duration.ofMillis(50)))
+                .getJson(slow.endpoint(), Duration.ofMillis(200)))
                 .isInstanceOfSatisfying(ToolDeniedException.class, exception ->
                     assertThat(exception.code()).isEqualTo(DenialCode.CONNECTOR_TIMEOUT));
             assertThat(oversized.requests()).isEqualTo(1);

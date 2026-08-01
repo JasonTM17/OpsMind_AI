@@ -185,13 +185,21 @@ production, or release blocker.
 Dependabot alert #16 (`GHSA-mh99-v99m-4gvg`, CVE-2026-14257) is dismissed as
 `tolerable_risk` with a recorded compensating-control rationale. The repository
 still keeps the high finding visible to local audit policy: `pnpm audit` reports
-one ignored high finding, while the verifier
-`node scripts/security/verify-brace-expansion-patch.mjs` passes with the
-4,000,000-character bound and review date `2026-08-09`. The ESLint graph still
-requires CommonJS `minimatch@3`, so the patched `brace-expansion@1.1.16` and
-the `5.0.7` to `5.0.8` override remain until that graph can move safely.
+one ignored high finding, while the then-current verifier passed with the
+4,000,000-character bound and review date `2026-08-09`. At that point the
+ESLint graph still required CommonJS `minimatch@3`, so the local
+`brace-expansion@1.1.16` patch and the `5.0.7` to `5.0.8` override remained.
 Dependency policy run `30282520687` is terminal green. This resolves B-015's
 alert-disposition gate, not the future dependency-upgrade follow-up.
+
+## 2026-08-01 — B-015 upstream dependency remediation
+
+The former temporary disposition is superseded by the upstream fixed legacy
+release `brace-expansion@1.1.17`. The lockfile no longer selects `1.1.16`, and
+the workspace has neither a local patch nor an audit ignore for
+`GHSA-mh99-v99m-4gvg`. The renamed resolution verifier proves the resolved
+runtime version and bounded expansion behavior in CI. This update is only
+release evidence after the exact-commit PR Quality dependency gate is green.
 
 ## 2026-07-28 — DeepSeek V4 Flash endpoint alignment
 

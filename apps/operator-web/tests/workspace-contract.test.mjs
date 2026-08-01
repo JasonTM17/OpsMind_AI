@@ -227,16 +227,15 @@ test("workspace pins the patched sharp line used by Next.js", async () => {
   assert.match(lockfile, new RegExp(`^  sharp@${version}:$`, "m"));
 });
 
-test("operator image copies pnpm patch inputs before frozen install", async () => {
+test("operator image excludes retired pnpm patch inputs before frozen install", async () => {
   const dockerfile = await readFile(dockerfileUrl, "utf8");
-  const patchCopy = /^\s*COPY\s+patches\s+\.\/patches\s*$/mu.exec(dockerfile);
   const frozenInstall = /\bpnpm\s+install\s+--frozen-lockfile\b/u.exec(dockerfile);
 
-  assert.ok(patchCopy, "Docker build context must include pnpm patches");
   assert.ok(frozenInstall, "container install must remain frozen");
-  assert.ok(
-    patchCopy.index < frozenInstall.index,
-    "pnpm patches must be available before dependency installation",
+  assert.doesNotMatch(
+    dockerfile,
+    /^\s*COPY\s+patches\s+\.\/patches\s*$/mu,
+    "Docker build context must not retain removed pnpm patches",
   );
 });
 
