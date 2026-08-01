@@ -643,7 +643,7 @@ case "$command_name" in
     security)
         require_command pwsh
         run_checked pwsh -NoProfile -File scripts/governance/scan-project-secrets.ps1
-        run_checked node scripts/security/verify-brace-expansion-patch.mjs
+        run_checked node scripts/security/verify-brace-expansion-resolution.mjs
         run_checked corepack pnpm "--config.store-dir=$pnpm_store" audit --audit-level moderate
         capacity_guard
         run_checked "$venv_python" -m pip_audit

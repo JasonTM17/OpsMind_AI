@@ -231,13 +231,13 @@ upload lease, and its API call timeout must be shorter than that lease. Do not
 enable the local object backend until B-012 has an approved immutable
 supply-chain decision.
 
-The frontend audit exception for `GHSA-mh99-v99m-4gvg` is not a bare risk
-waiver. Both launchers and CI first run
-`scripts/security/verify-brace-expansion-patch.mjs`, which fails unless the
-lockfile selects only patched brace-expansion artifacts and the legacy
-CommonJS/minimatch path proves its bounded runtime behavior. Platform Security
-must review and remove this temporary exception by 2026-08-09, or earlier when
-the dependency graph no longer resolves the legacy 1.x line.
+The frontend dependency gate resolves the legacy CommonJS/minimatch path to the
+upstream-fixed `brace-expansion@1.1.17`, not to a local patch or audit waiver.
+Both launchers and CI first run
+`scripts/security/verify-brace-expansion-resolution.mjs`, which fails unless
+the lockfile excludes vulnerable `1.1.16`, the installed legacy dependency is
+exactly `1.1.17`, and its bounded runtime probe succeeds. Do not restore an
+audit ignore for `GHSA-mh99-v99m-4gvg`.
 
 Before `dev` or `up`, verify Docker's daemon/build storage is backed by an
 approved capacity-monitored volume, then set

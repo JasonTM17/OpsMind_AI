@@ -117,7 +117,7 @@ class BoundedConnectorExecutorPermitLifecycleTest {
                 release.countDown();
             }
             await(returned);
-            assertThat(bulkhead.trackedTenantCount()).isZero();
+            awaitTenantPermitRelease(bulkhead);
         }
     }
 

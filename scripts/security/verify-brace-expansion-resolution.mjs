@@ -6,14 +6,13 @@ import path from "node:path";
 
 const repositoryRoot = path.resolve(import.meta.dirname, "../..");
 const operatorWebRoot = path.join(repositoryRoot, "apps", "operator-web");
-const exceptionReviewBy = "2026-08-09";
-const todayUtc = new Date().toISOString().slice(0, 10);
-assert.ok(
-  todayUtc <= exceptionReviewBy,
-  `GHSA-mh99-v99m-4gvg exception review expired on ${exceptionReviewBy}`,
-);
+const fixedLegacyVersion = "1.1.17";
 const lockfile = readFileSync(path.join(repositoryRoot, "pnpm-lock.yaml"), "utf8")
   .replace(/\r\n/g, "\n");
+const workspace = readFileSync(
+  path.join(repositoryRoot, "pnpm-workspace.yaml"),
+  "utf8",
+);
 const packagesSection = lockfile.slice(
   lockfile.indexOf("\npackages:\n"),
   lockfile.indexOf("\nsnapshots:\n"),
@@ -21,11 +20,10 @@ const packagesSection = lockfile.slice(
 const lockedBraceVersions = [...packagesSection.matchAll(
   /^  brace-expansion@([0-9]+\.[0-9]+\.[0-9]+):$/gmu,
 )].map((match) => match[1]);
-assert.deepEqual(lockedBraceVersions, ["1.1.16", "5.0.8"]);
-assert.match(
-  lockfile,
-  /brace-expansion@1\.1\.16\(patch_hash=[a-f0-9]{64}\)/u,
-);
+
+assert.deepEqual(lockedBraceVersions, [fixedLegacyVersion, "5.0.8"]);
+assert.doesNotMatch(lockfile, /brace-expansion@1\.1\.16/u);
+assert.doesNotMatch(workspace, /patchedDependencies:|GHSA-mh99-v99m-4gvg/u);
 
 const requireFromHere = createRequire(import.meta.url);
 const eslintPackagePath = requireFromHere.resolve("eslint/package.json", {
@@ -40,20 +38,12 @@ const bracePackage = requireFromMinimatch(bracePackagePath);
 const expand = requireFromMinimatch("brace-expansion");
 const minimatch = requireFromEslint("minimatch");
 
-assert.equal(bracePackage.version, "1.1.16");
+assert.equal(bracePackage.version, fixedLegacyVersion);
 assert.equal(typeof expand, "function");
 assert.deepEqual(expand("a{b,c}d"), ["abd", "acd"]);
 assert.deepEqual(expand("{1..3}"), ["1", "2", "3"]);
 assert.deepEqual(expand("${a,b}{c,d}"), ["${a,b}{c,d}"]);
 assert.equal(minimatch("incident.json", "*.json"), true);
-
-const bounded = expand("{a,b}".repeat(50), {
-  max: 10_000,
-  maxLength: 1_000,
-});
-const boundedLength = bounded.reduce((total, value) => total + value.length, 0);
-assert.ok(bounded.length <= 10_000);
-assert.ok(boundedLength <= 1_000);
 
 const defaultProbe = spawnSync(
   process.execPath,
@@ -84,11 +74,9 @@ assert.ok(defaultProbeResult.count > 0);
 assert.ok(defaultProbeResult.length > 0);
 assert.ok(defaultProbeResult.length <= 4_000_000);
 
-console.log("BraceExpansionPatch=PASS");
-console.log(`ExceptionReviewBy=${exceptionReviewBy}`);
+console.log("BraceExpansionResolution=PASS");
 console.log(`ResolvedVersion=${bracePackage.version}`);
 console.log(`LockedVersions=${lockedBraceVersions.join(",")}`);
-console.log(`ExplicitBoundCharacters=${boundedLength}`);
 console.log(
   `DefaultBoundCount=${defaultProbeResult.count} `
   + `DefaultBoundCharacters=${defaultProbeResult.length}`,

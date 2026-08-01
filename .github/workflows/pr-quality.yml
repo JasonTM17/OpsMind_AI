@@ -357,7 +357,7 @@ jobs:
             set -e
             echo "Node=$(node --version)"
             echo "Pnpm=$(pnpm --version)"
-            node scripts/security/verify-brace-expansion-patch.mjs
+            node scripts/security/verify-brace-expansion-resolution.mjs
             pnpm audit --audit-level moderate
             pnpm --filter @opsmind/operator-web test
             pnpm --filter @opsmind/operator-web lint
