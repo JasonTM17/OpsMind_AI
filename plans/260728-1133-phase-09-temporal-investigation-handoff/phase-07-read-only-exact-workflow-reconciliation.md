@@ -330,21 +330,23 @@ configuration join after the three branches are reviewed.
 
 ### Mandatory before B-017 closes
 
-- [ ] focused and full Maven tests on the exact merged head;
-- [ ] revision-bound CI execution of the wired fresh V001-V013,
+- [x] focused and full Maven tests on exact main commit `8092b38`;
+- [x] revision-bound CI execution of the wired fresh V001-V013,
   V006-to-V013 upgrade/recovery, real-role, and four-failpoint atomicity gates;
 - [ ] query-plan/latency, DR, and production database proof;
-- [ ] exact-head runtime tests for matching, continued-as-new, closed, not-found
+- [x] exact-head runtime tests for matching, continued-as-new, closed, not-found
   double sample, reactivation, mismatch, transient, permission, corrupt payload,
   missing history, retention, exhaustion, and lease loss;
 - [ ] Temporal authorization conformance proving read RPC success and every
   start/signal/update-with-start mutation denied;
 - [ ] namespace retention conformance against configured timing bounds;
-- [ ] pinned `promtool` rule/config validation and a live scrape showing only
-  bounded labels;
+- [x] pinned `promtool` rule/config validation;
+- [ ] non-vacuous live scrape of real reconciliation series showing only bounded
+  labels;
 - [ ] configured external Alertmanager receiver and end-to-end page-delivery
   receipt;
-- [ ] exact-head Docker/Compose, full CI, and independent final review.
+- [x] exact-main Docker/Compose and full PR Quality run `30699950577`;
+- [ ] independent final production-readiness review after Phase 8 integration.
 
 ## Acceptance criteria
 
@@ -386,11 +388,10 @@ uncertain row without exact target-side evidence.
 
 ## Capacity gate
 
-As of 2026-07-29, C has 11.66 GiB free and D has 17.86 GiB free. Source and
-lightweight static work may continue. Maven, full Flyway, Docker builds,
-package installation, and other heavy gates remain prohibited until D has at
-least 20 GiB free. A scoped cleanup attempt against regenerable workspace
-artifacts was blocked before deletion; no project data was removed.
+As of 2026-08-01, C has 11.21 GiB free and D has 23.24 GiB free. Work may
+continue only while every heavy operation rechecks and preserves C at or above
+10 GiB and D at or above 20 GiB. Prefer revision-bound CI for heavy validation;
+stop before dependency downloads or Docker builds when either guard fails.
 
 ## Unresolved questions
 
