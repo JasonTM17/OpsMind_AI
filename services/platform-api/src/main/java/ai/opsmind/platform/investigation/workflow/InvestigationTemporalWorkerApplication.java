@@ -1,5 +1,7 @@
 package ai.opsmind.platform.investigation.workflow;
 
+import ai.opsmind.temporalworker.InvestigationTemporalWorkerBootstrapConfiguration;
+
 import org.springframework.boot.Banner;
 import org.springframework.boot.SpringApplication;
 import org.springframework.boot.WebApplicationType;
@@ -15,7 +17,7 @@ public final class InvestigationTemporalWorkerApplication {
 
     static SpringApplication createApplication() {
         SpringApplication application = new SpringApplication(
-            InvestigationTemporalWorkerConfiguration.class
+            InvestigationTemporalWorkerBootstrapConfiguration.class
         );
         application.setBannerMode(Banner.Mode.OFF);
         application.setWebApplicationType(WebApplicationType.NONE);

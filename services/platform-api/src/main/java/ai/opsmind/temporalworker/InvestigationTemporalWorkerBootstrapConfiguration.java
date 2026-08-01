@@ -1,4 +1,9 @@
-package ai.opsmind.platform.investigation.workflow;
+package ai.opsmind.temporalworker;
+
+import ai.opsmind.platform.investigation.workflow.InvestigationTemporalClientProperties;
+import ai.opsmind.platform.investigation.workflow.InvestigationTemporalWorkerProperties;
+import ai.opsmind.platform.investigation.workflow.InvestigationTemporalWorkerRuntime;
+import ai.opsmind.platform.investigation.workflow.InvestigationWorkflowProperties;
 
 import org.springframework.boot.autoconfigure.condition.ConditionalOnMissingBean;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
@@ -17,7 +22,7 @@ import org.springframework.context.annotation.Configuration;
     name = "enabled",
     havingValue = "true"
 )
-public class InvestigationTemporalWorkerConfiguration {
+public class InvestigationTemporalWorkerBootstrapConfiguration {
 
     @Bean(destroyMethod = "close")
     @ConditionalOnMissingBean(InvestigationTemporalWorkerRuntime.class)

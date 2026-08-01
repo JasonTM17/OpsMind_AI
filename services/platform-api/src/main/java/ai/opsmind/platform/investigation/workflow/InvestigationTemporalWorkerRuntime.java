@@ -12,7 +12,7 @@ import io.temporal.worker.WorkerOptions;
 
 import org.springframework.context.SmartLifecycle;
 
-final class InvestigationTemporalWorkerRuntime implements SmartLifecycle, AutoCloseable {
+public final class InvestigationTemporalWorkerRuntime implements SmartLifecycle, AutoCloseable {
 
     private final InvestigationTemporalWorkerProperties workerProperties;
     private final WorkflowServiceStubs serviceStubs;
@@ -20,7 +20,7 @@ final class InvestigationTemporalWorkerRuntime implements SmartLifecycle, AutoCl
     private final boolean ownsServiceStubs;
     private volatile boolean running;
 
-    InvestigationTemporalWorkerRuntime(
+    public InvestigationTemporalWorkerRuntime(
         InvestigationTemporalClientProperties clientProperties,
         InvestigationWorkflowProperties workflowProperties,
         InvestigationTemporalWorkerProperties workerProperties
