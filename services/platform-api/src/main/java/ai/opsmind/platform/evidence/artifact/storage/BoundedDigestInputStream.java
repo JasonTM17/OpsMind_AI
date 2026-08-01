@@ -8,17 +8,21 @@ import java.util.Objects;
 
 /**
  * Streams no more than the declared object length and hashes only those bytes.
- * The caller must verify the exact EOF after the remote write completes.
+ * Replay owners verify exact EOF and the expected digest before another view
+ * can be opened and again after the remote write returns.
  */
 final class BoundedDigestInputStream extends InputStream {
 
-    private final InputStream source;
+    private final DeadlineBoundedArtifactInputStream source;
     private final long expectedByteCount;
     private final MessageDigest digest;
     private long bytesRead;
     private boolean verified;
 
-    BoundedDigestInputStream(InputStream source, long expectedByteCount) {
+    BoundedDigestInputStream(
+        DeadlineBoundedArtifactInputStream source,
+        long expectedByteCount
+    ) {
         this.source = Objects.requireNonNull(source, "Artifact source is required.");
         if (expectedByteCount < 1) throw new IllegalArgumentException("Artifact length must be positive.");
         this.expectedByteCount = expectedByteCount;
@@ -49,24 +53,24 @@ final class BoundedDigestInputStream extends InputStream {
     }
 
     void verifyExactEofAndDigest(byte[] expectedDigest) throws IOException {
-        if (verified) throw new IllegalStateException("Artifact stream was already verified.");
-        verified = true;
+        if (verified) return;
+        if (bytesRead != expectedByteCount) throw shortStream();
         int trailingByte = source.read();
-        if (bytesRead != expectedByteCount || trailingByte != -1) {
-            throw new IOException("Artifact stream length does not match the declared value.");
+        if (trailingByte != -1) {
+            throw new ArtifactSourceContractViolationException(
+                "Artifact stream length does not match the declared value."
+            );
         }
         if (!MessageDigest.isEqual(digest.digest(), expectedDigest)) {
-            throw new IOException("Artifact stream digest does not match the declared value.");
+            throw new ArtifactSourceContractViolationException(
+                "Artifact stream digest does not match the declared value."
+            );
         }
+        verified = true;
     }
 
     long bytesRead() {
         return bytesRead;
-    }
-
-    @Override
-    public void close() throws IOException {
-        source.close();
     }
 
     private static MessageDigest sha256() {
@@ -77,7 +81,9 @@ final class BoundedDigestInputStream extends InputStream {
         }
     }
 
-    private static IOException shortStream() {
-        return new IOException("Artifact stream ended before the declared byte count.");
+    private static ArtifactSourceContractViolationException shortStream() {
+        return new ArtifactSourceContractViolationException(
+            "Artifact stream ended before the declared byte count."
+        );
     }
 }
