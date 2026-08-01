@@ -23,6 +23,7 @@ import io.temporal.serviceclient.WorkflowServiceStubs;
 
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.condition.EnabledIfEnvironmentVariable;
+import org.springframework.context.ConfigurableApplicationContext;
 
 @EnabledIfEnvironmentVariable(
     named = "OPSMIND_PHASE9_TEMPORAL_INTEGRATION",
@@ -47,9 +48,6 @@ class InvestigationTemporalWorkerRestartTest {
             CLUSTER_ID, temporalTarget(), false, true, Duration.ofSeconds(5),
             IDENTITY, BUILD_ID, Duration.ofSeconds(30), Duration.ofSeconds(5)
         );
-        InvestigationTemporalWorkerProperties worker = new InvestigationTemporalWorkerProperties(
-            true, IDENTITY, BUILD_ID, 8, 2, Duration.ofSeconds(5)
-        );
         WorkflowServiceStubs controlStubs =
             InvestigationTemporalClientConfiguration.createServiceStubs(client, workflow);
         try {
@@ -60,9 +58,7 @@ class InvestigationTemporalWorkerRestartTest {
             InvestigationWorkflowStartRequest request = request();
             InvestigationWorkflowClient.StartResult started;
 
-            try (InvestigationTemporalWorkerRuntime firstWorker =
-                new InvestigationTemporalWorkerRuntime(client, workflow, worker)) {
-                firstWorker.start();
+            try (ConfigurableApplicationContext firstWorker = startWorker()) {
                 awaitReady(controlStubs, client, workflow);
                 started = new TemporalInvestigationWorkflowClient(
                     controlClient, client, workflow
@@ -72,9 +68,7 @@ class InvestigationTemporalWorkerRestartTest {
                 );
             }
 
-            try (InvestigationTemporalWorkerRuntime replacementWorker =
-                new InvestigationTemporalWorkerRuntime(client, workflow, worker)) {
-                replacementWorker.start();
+            try (ConfigurableApplicationContext replacementWorker = startWorker()) {
                 awaitReady(controlStubs, client, workflow);
                 WorkflowStub stub = controlClient.newUntypedWorkflowStub(
                     execution(request, started), Optional.of(InvestigationWorkflow.TYPE)
@@ -100,6 +94,12 @@ class InvestigationTemporalWorkerRestartTest {
         finally {
             controlStubs.shutdownNow();
         }
+    }
+
+    private static ConfigurableApplicationContext startWorker() {
+        return TemporalWorkerTestApplication.start(
+            temporalTarget(), CLUSTER_ID, NAMESPACE, TASK_QUEUE, IDENTITY, BUILD_ID
+        );
     }
 
     private static void awaitReady(

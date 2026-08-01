@@ -46,6 +46,12 @@ class InvestigationTemporalWorkerPropertiesTest {
             "opsmind-worker", "opsmind-worker-v1", 4, 5, Duration.ofSeconds(10)
         ));
         assertRejected(properties(
+            "opsmind-worker", "opsmind-worker-v1", 0, 5, Duration.ofSeconds(10)
+        ));
+        assertRejected(properties(
+            "opsmind-worker", "opsmind-worker-v1", 32, 0, Duration.ofSeconds(10)
+        ));
+        assertRejected(properties(
             "opsmind-worker", "opsmind-worker-v1", 32, 5, Duration.ofSeconds(31)
         ));
     }

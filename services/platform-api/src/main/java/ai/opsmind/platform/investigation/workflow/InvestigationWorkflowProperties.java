@@ -29,6 +29,9 @@ public record InvestigationWorkflowProperties(
         if (isDisabledTarget()) {
             throw new IllegalStateException("Temporal workflow target is disabled.");
         }
+        if (!InvestigationWorkflow.TYPE.equals(workflowType)) {
+            throw new IllegalStateException("Temporal workflow type is outside policy.");
+        }
     }
 
     private boolean isDisabledTarget() {

@@ -97,16 +97,25 @@ final class InvestigationTemporalWorkerRuntime implements SmartLifecycle, AutoCl
         if (!running) {
             return;
         }
+        long deadlineNanos = System.nanoTime() + workerProperties.shutdownTimeout().toNanos();
         workerFactory.shutdown();
-        awaitWorkerTermination(workerProperties.shutdownTimeout());
-        if (!workerFactory.isTerminated()) {
+        if (!awaitWorkerTermination(deadlineNanos)) {
             workerFactory.shutdownNow();
+            if (!awaitWorkerTermination(deadlineNanos)) {
+                throw new IllegalStateException(
+                    "Temporal worker did not terminate before its shutdown deadline."
+                );
+            }
         }
         running = false;
     }
 
-    private void awaitWorkerTermination(Duration timeout) {
-        workerFactory.awaitTermination(timeout.toMillis(), TimeUnit.MILLISECONDS);
+    private boolean awaitWorkerTermination(long deadlineNanos) {
+        long remainingNanos = Math.max(0, deadlineNanos - System.nanoTime());
+        workerFactory.awaitTermination(
+            TimeUnit.NANOSECONDS.toMillis(remainingNanos), TimeUnit.MILLISECONDS
+        );
+        return workerFactory.isTerminated();
     }
 
     @Override
