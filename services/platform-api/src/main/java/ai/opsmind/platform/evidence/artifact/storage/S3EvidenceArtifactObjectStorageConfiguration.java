@@ -42,7 +42,7 @@ class S3EvidenceArtifactObjectStorageConfiguration {
             .build();
     }
 
-    @Bean
+    @Bean(destroyMethod = "close")
     EvidenceArtifactObjectStorage evidenceArtifactObjectStorage(
         @Qualifier("evidenceArtifactS3Client") S3Client client,
         EvidenceArtifactStorageProperties properties
