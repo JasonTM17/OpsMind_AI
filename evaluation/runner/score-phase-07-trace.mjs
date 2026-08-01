@@ -140,7 +140,7 @@ function main() {
     throw new Error(`Benchmark result contract is invalid: ${resultFindings.join("; ")}`);
   }
 
-  const timestamp = result.generated_at.replaceAll(/[-:.]/gu, "").replace("Z", "Z");
+  const timestamp = result.generated_at.replaceAll(/[-:.]/gu, "");
   const prepared = prepareValidationEvidence({
     repositoryRoot,
     configuredArtifactRoot: process.env.OPS_ARTIFACT_ROOT,

@@ -401,7 +401,7 @@ def get_client(skill_dir: Optional[Path] = None):
 if __name__ == '__main__':
     # Test the API key detection
     api_key = get_api_key_or_exit()
-    print(f"✓ Found API key: {api_key[:8]}..." + "*" * (len(api_key) - 8))
+    print("✓ API key configured")
 
     # Test Vertex AI config
     vertex_config = get_vertex_config()
