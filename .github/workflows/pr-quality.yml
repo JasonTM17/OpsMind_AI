@@ -1179,7 +1179,7 @@ jobs:
             for attempt in $(seq 1 20); do
               end="$(date +%s)"
               start=$((end - 120))
-              if curl --fail-with-body --show-error --silent --get \
+              if curl --fail-with-body --show-error --silent --request POST \
                 --data-urlencode 'query=opsmind_workflow_reconciliation_ready{job="opsmind-workflow-reconciliation"}' \
                 --data-urlencode "start=$start" \
                 --data-urlencode "end=$end" \
