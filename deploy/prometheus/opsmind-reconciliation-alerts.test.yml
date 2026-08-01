@@ -1,0 +1,39 @@
+rule_files:
+  - opsmind-reconciliation-alerts.yml
+
+evaluation_interval: 15s
+
+tests:
+  - name: immediate blocked reconciliation page
+    interval: 15s
+    input_series:
+      - series: opsmind:workflow_reconciliation:blocked
+        values: 0 1 1
+    alert_rule_test:
+      - eval_time: 15s
+        alertname: OpsMindWorkflowReconciliationBlocked
+        exp_alerts:
+          - exp_labels:
+              component: workflow-reconciliation
+              severity: critical
+            exp_annotations:
+              summary: Workflow reconciliation is blocked
+              description: At least one uncertain workflow handoff requires operator intervention.
+              runbook_url: https://github.com/JasonTM17/OpsMind_AI/blob/main/docs/runbooks/investigation-workflow-cutover.md#terminal-and-ambiguous-binding-alertrecovery
+
+  - name: sustained reconciliation lag warning
+    interval: 15s
+    input_series:
+      - series: opsmind:workflow_reconciliation:oldest_pending_age_seconds
+        values: 31x12
+    alert_rule_test:
+      - eval_time: 2m15s
+        alertname: OpsMindWorkflowReconciliationLagWarning
+        exp_alerts:
+          - exp_labels:
+              component: workflow-reconciliation
+              severity: warning
+            exp_annotations:
+              summary: Workflow reconciliation lag exceeds 30 seconds
+              description: The oldest pending workflow handoff has exceeded the normal convergence target for two minutes.
+              runbook_url: https://github.com/JasonTM17/OpsMind_AI/blob/main/docs/runbooks/investigation-workflow-cutover.md#terminal-and-ambiguous-binding-alertrecovery
