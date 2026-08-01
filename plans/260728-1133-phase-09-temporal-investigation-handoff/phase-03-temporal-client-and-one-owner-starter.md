@@ -1,7 +1,7 @@
 ---
 phase: 3
 title: "Temporal client and one-owner starter"
-status: in-progress
+status: completed
 effort: "2 days"
 ---
 
@@ -109,10 +109,11 @@ is the second idempotency fence.
 
 ## Success Criteria
 
-- [ ] Every valid crash window converges to one logical Temporal start.
-- [ ] Unrelated outbox events are never claimed by this dispatcher.
-- [ ] External RPC never occurs inside a database transaction.
-- [ ] Starter remains disabled by default and fails closed when misconfigured.
-- [ ] API/app and dispatcher SQL execute through distinct proven database roles.
-- [ ] Retry exhaustion and permanent invalid events become visible `REJECTED`,
-  never silent PENDING backlog.
+- [x] Every valid crash window converges to one logical Temporal start.
+- [x] Unrelated outbox events are never claimed by this dispatcher.
+- [x] External RPC never occurs inside a database transaction.
+- [x] Starter remains disabled by default and fails closed when misconfigured.
+- [x] API/app and dispatcher SQL execute through distinct proven database roles.
+- [x] Permanent pre-RPC invalid events become visible `REJECTED`. Retryable
+  exhaustion after a possibly accepted RPC remains bounded `PENDING` for exact
+  reconciliation and alerting; it is never treated as remote rejection proof.
