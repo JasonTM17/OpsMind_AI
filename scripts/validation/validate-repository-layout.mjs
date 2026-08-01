@@ -187,8 +187,6 @@ if (fs.existsSync(pnpmWorkspacePath)) {
   for (const policy of [
     "postcss: 8.5.18",
     "'brace-expansion@5.0.7': 5.0.8",
-    "brace-expansion@1.1.16: patches/brace-expansion@1.1.16.patch",
-    "GHSA-mh99-v99m-4gvg",
     "'sharp@0.35.3': true",
     "'unrs-resolver@1.12.2': true",
     "strictDepBuilds: true",
@@ -196,6 +194,9 @@ if (fs.existsSync(pnpmWorkspacePath)) {
     "enableGlobalVirtualStore: false",
   ]) {
     if (!workspace.includes(policy)) errors.push(`pnpm supply-chain policy is missing: ${policy}`);
+  }
+  if (/patchedDependencies:|GHSA-mh99-v99m-4gvg/.test(workspace)) {
+    errors.push("pnpm workspace retains the retired brace-expansion exception");
   }
   if (/set this to true or false|onlyBuiltDependencies:/i.test(workspace)) {
     errors.push("pnpm workspace contains an unresolved or obsolete build-script policy");
@@ -302,7 +303,7 @@ if (fs.existsSync(workflowPath)) {
     ".\\scripts\\dev\\opsmind.ps1 setup",
     "os: [ubuntu-latest, windows-latest]",
     'OPS_MIN_D_FREE_GB: "5"',
-    "verify-brace-expansion-patch.mjs",
+    "verify-brace-expansion-resolution.mjs",
     "pnpm audit --audit-level moderate",
     "scan-project-secrets.ps1",
     "Verify Docker storage attestation",
@@ -361,7 +362,7 @@ for (const commandScript of ["scripts/dev/opsmind.ps1", "scripts/dev/opsmind.sh"
     "--config.ci=true",
     "--audit-level",
     "moderate",
-    "verify-brace-expansion-patch.mjs",
+    "verify-brace-expansion-resolution.mjs",
     "-DdataDirectory=",
     "-DfailBuildOnCVSS=7",
     "-DfailOnError=true",

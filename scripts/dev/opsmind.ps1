@@ -691,7 +691,7 @@ switch ($CommandName) {
     }
     'security' {
         Invoke-Checked powershell.exe @('-NoProfile', '-ExecutionPolicy', 'Bypass', '-File', '.\scripts\governance\scan-project-secrets.ps1')
-        Invoke-Checked node @('.\scripts\security\verify-brace-expansion-patch.mjs')
+        Invoke-Checked node @('.\scripts\security\verify-brace-expansion-resolution.mjs')
         Invoke-Checked corepack @('pnpm', "--config.store-dir=$pnpmStore", 'audit', '--audit-level', 'moderate')
         Invoke-CapacityGuard
         Invoke-Checked $pythonExecutable @('-m', 'pip_audit')
