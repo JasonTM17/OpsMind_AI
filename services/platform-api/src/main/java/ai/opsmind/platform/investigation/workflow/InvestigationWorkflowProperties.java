@@ -1,6 +1,7 @@
 package ai.opsmind.platform.investigation.workflow;
 
 import org.springframework.boot.context.properties.ConfigurationProperties;
+import org.springframework.boot.context.properties.bind.ConstructorBinding;
 
 @ConfigurationProperties(prefix = "opsmind.investigation.workflow")
 public record InvestigationWorkflowProperties(
@@ -12,6 +13,7 @@ public record InvestigationWorkflowProperties(
     private static final String DISABLED = "disabled";
     private static final String NAME_PATTERN = "[A-Za-z0-9][A-Za-z0-9._-]*";
 
+    @ConstructorBinding
     public InvestigationWorkflowProperties {
         clusterId = defaultValue(clusterId, DISABLED);
         namespace = defaultValue(namespace, DISABLED);
