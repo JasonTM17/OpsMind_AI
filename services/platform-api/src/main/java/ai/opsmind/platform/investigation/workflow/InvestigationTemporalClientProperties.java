@@ -3,6 +3,7 @@ package ai.opsmind.platform.investigation.workflow;
 import java.time.Duration;
 
 import org.springframework.boot.context.properties.ConfigurationProperties;
+import org.springframework.boot.context.properties.bind.ConstructorBinding;
 
 @ConfigurationProperties(prefix = "opsmind.investigation.temporal-client")
 public record InvestigationTemporalClientProperties(
@@ -12,16 +13,45 @@ public record InvestigationTemporalClientProperties(
     boolean allowLocalCleartext,
     Duration rpcTimeout,
     String requiredWorkerIdentity,
-    String requiredWorkerBuildId
+    String requiredWorkerBuildId,
+    Duration requiredWorkerPollerMaxAge,
+    Duration requiredWorkerPollerFutureSkew
 ) {
     private static final String NAME_PATTERN = "[A-Za-z0-9][A-Za-z0-9._-]*";
 
+    @ConstructorBinding
     public InvestigationTemporalClientProperties {
         clusterId = defaultValue(clusterId, "disabled");
         target = defaultValue(target, "disabled");
         rpcTimeout = rpcTimeout == null ? Duration.ofSeconds(5) : rpcTimeout;
         requiredWorkerIdentity = defaultValue(requiredWorkerIdentity, "disabled");
         requiredWorkerBuildId = defaultValue(requiredWorkerBuildId, "disabled");
+        requiredWorkerPollerMaxAge = requiredWorkerPollerMaxAge == null
+            ? Duration.ofSeconds(30) : requiredWorkerPollerMaxAge;
+        requiredWorkerPollerFutureSkew = requiredWorkerPollerFutureSkew == null
+            ? Duration.ofSeconds(5) : requiredWorkerPollerFutureSkew;
+    }
+
+    public InvestigationTemporalClientProperties(
+        String clusterId,
+        String target,
+        boolean tlsEnabled,
+        boolean allowLocalCleartext,
+        Duration rpcTimeout,
+        String requiredWorkerIdentity,
+        String requiredWorkerBuildId
+    ) {
+        this(
+            clusterId,
+            target,
+            tlsEnabled,
+            allowLocalCleartext,
+            rpcTimeout,
+            requiredWorkerIdentity,
+            requiredWorkerBuildId,
+            null,
+            null
+        );
     }
 
     public void validate(InvestigationWorkflowProperties workflow) {
@@ -32,6 +62,10 @@ public record InvestigationTemporalClientProperties(
             || rpcTimeout.compareTo(Duration.ofSeconds(30)) > 0
             || !validName(requiredWorkerIdentity, 160)
             || !validName(requiredWorkerBuildId, 128)
+            || requiredWorkerPollerMaxAge.compareTo(Duration.ofSeconds(1)) < 0
+            || requiredWorkerPollerMaxAge.compareTo(Duration.ofMinutes(5)) > 0
+            || requiredWorkerPollerFutureSkew.isNegative()
+            || requiredWorkerPollerFutureSkew.compareTo(Duration.ofSeconds(30)) > 0
             || (!tlsEnabled && !validLocalCleartextTarget())) {
             throw new IllegalStateException("Temporal client configuration is outside policy.");
         }
