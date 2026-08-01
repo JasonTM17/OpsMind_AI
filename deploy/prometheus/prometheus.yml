@@ -6,6 +6,17 @@ rule_files:
   - /etc/prometheus/opsmind-recording-rules.yml
   - /etc/prometheus/opsmind-reconciliation-alerts.yml
 
+alerting:
+  alertmanagers:
+    - scheme: http
+      path_prefix: /
+      timeout: 5s
+      follow_redirects: false
+      enable_http2: false
+      static_configs:
+        - targets:
+            - alertmanager:9093
+
 scrape_configs:
   - job_name: opsmind-workflow-reconciliation
     honor_labels: false

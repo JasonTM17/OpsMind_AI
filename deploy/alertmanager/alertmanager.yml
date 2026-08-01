@@ -1,0 +1,19 @@
+global:
+  resolve_timeout: 5m
+
+route:
+  receiver: opsmind-phase-09-receiver
+  group_by:
+    - alertname
+    - severity
+    - component
+  group_wait: 5s
+  group_interval: 5m
+  repeat_interval: 4h
+
+receivers:
+  - name: opsmind-phase-09-receiver
+    webhook_configs:
+      - send_resolved: false
+        url_file: /run/secrets/opsmind_alertmanager_receiver_url
+        max_alerts: 8
