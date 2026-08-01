@@ -1180,7 +1180,7 @@ jobs:
               end="$(date +%s)"
               start=$((end - 120))
               if curl --fail-with-body --show-error --silent --get \
-                --data-urlencode 'query={__name__="opsmind:http_request_duration_seconds:synthetic",service="opsmind-api"}' \
+                --data-urlencode 'query=opsmind_workflow_reconciliation_ready{job="opsmind-workflow-reconciliation"}' \
                 --data-urlencode "start=$start" \
                 --data-urlencode "end=$end" \
                 --data-urlencode "step=60" \
