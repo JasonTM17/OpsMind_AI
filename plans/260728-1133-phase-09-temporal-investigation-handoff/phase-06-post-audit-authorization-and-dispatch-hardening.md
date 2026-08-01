@@ -1,6 +1,6 @@
 ---
 title: Post-audit authorization and dispatch hardening
-status: in-progress
+status: completed
 priority: P1
 created: '2026-07-28T17:30:00+07:00'
 dependsOn:
@@ -91,9 +91,9 @@ revoke/missing-account tests pass.
 
 **Acceptance:** the V011 pre-RPC DB gate blocks revoked/expired/ineligible
 events before RPC, timestamps use DB time, and one lease is processed per claim.
-V012 must additionally prove real-role capability containment and the no-Start
-reconciliation lane on fresh/upgrade paths; no such runtime proof is currently
-claimed.
+ V012 additionally has exact-main real-role capability-containment proof; V013
+ supplies the separately authorized no-Start reconciliation lane. Live provider
+ authorization remains a Phase 7/B-017 deployment proof, not a Phase 6 source gap.
 
 ### C — Temporal ambiguity classification
 
@@ -148,12 +148,12 @@ reconciliation remains exact.
 | Batch safety | controlled multi-item dispatch test with only one claimed item |
 | Migration | V001–V012 fresh migration and V001–V011 upgrade once V012 lands; real-role containment and cutover/inventory proof |
 | No secret/history leak | Phase 9 validator, secret scanner and history-leak tests |
-| Runtime/upgrade execution | Pending: the capacity guard currently blocks heavy local verification; no result is inferred |
+| Runtime/upgrade execution | Exact-main run `30699950577` passed Platform API Maven verify, V006-to-V013 upgrade/recovery, real-role, and 32 focused Phase 9 PostgreSQL tests on `8092b38` |
 
 ## Unresolved Questions
 
 - Production Temporal namespace/mTLS/worker topology remains external and is
   intentionally not solved by this hardening phase.
-- B-017 remains unresolved until V012 has full real-role fresh/upgrade and
-  atomicity evidence and the separately authorized no-Start reconciliation/
-  alert lane is implemented and proven.
+- B-017 remains unresolved for live Temporal authorization/retention,
+  production performance/DR, bounded-label scrape, external paging receipt,
+  compatible worker proof, and final production-readiness review.
