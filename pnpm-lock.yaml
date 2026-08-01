@@ -9,9 +9,6 @@ overrides:
   brace-expansion@5.0.7: 5.0.8
   sharp: 0.35.3
 
-patchedDependencies:
-  brace-expansion@1.1.16: fa8159bba9efcf4a348aa9f43eec7cb62701b78762505d9566a7e671a04899e1
-
 importers:
 
   .:
@@ -759,8 +756,8 @@ packages:
     engines: {node: '>=6.0.0'}
     hasBin: true
 
-  brace-expansion@1.1.16:
-    resolution: {integrity: sha512-IDw48K2/2kRkg9LdJxurvq3lV3aBgq0REY89duEqFRthjlPdXHKMj7EnQOXVckxzgisinf3nHfrcE2FufFLXMw==}
+  brace-expansion@1.1.17:
+    resolution: {integrity: sha512-w+aeW/mkgM4PyRMOJCgi3fOrTm5Q8QY1OSfn2TO2iuDj3ezIHqejmuxbjfPrqUkgqRew1iqkyAn0tr0ZwHD9+w==}
 
   brace-expansion@5.0.8:
     resolution: {integrity: sha512-JZyDyq3D4AUifKTPOB7DELf6XsB3WdPuNxCtob1vFXPsSXhdAiHBWJ/tJ8HAc9aH84BK+5JFZLNkJKx3G9kzQg==}
@@ -2516,7 +2513,7 @@ snapshots:
 
   baseline-browser-mapping@2.10.43: {}
 
-  brace-expansion@1.1.16(patch_hash=fa8159bba9efcf4a348aa9f43eec7cb62701b78762505d9566a7e671a04899e1):
+  brace-expansion@1.1.17:
     dependencies:
       balanced-match: 1.0.2
       concat-map: 0.0.1
@@ -3325,7 +3322,7 @@ snapshots:
 
   minimatch@3.1.5:
     dependencies:
-      brace-expansion: 1.1.16(patch_hash=fa8159bba9efcf4a348aa9f43eec7cb62701b78762505d9566a7e671a04899e1)
+      brace-expansion: 1.1.17
 
   minimist@1.2.8: {}
 
