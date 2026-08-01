@@ -210,3 +210,17 @@ exit, Docker Hub publication, or release is claimed.
   external alert delivery proof remain absent. Production cluster identity,
   mTLS ownership, compatible worker implementation, B-013, and B-017 remain
   explicit gates.
+
+### Session — 2026-08-01
+
+**Findings:** 3 (2 accepted, 1 rejected with exact-main evidence)
+
+| # | Finding | Disposition | Applied To |
+|---|---|---|---|
+| 1 | Phase 4 history proof allegedly depends on the new worker | Rejected: `TemporalInvestigationWorkflowHistoryLeakTest` already uses the official test environment for the existing client/start contract, and exact-main Maven verify passed it; worker restart history remains a distinct Phase 8 proof | Phase 4 clarified |
+| 2 | Worker-only process had no explicit isolated bootstrap owner | Accepted | Phase 8 Lane A/controller ownership and context acceptance |
+| 3 | Durable-history leak scan omitted headers, search attributes, failure details, and cancellation reasons | Accepted | Phase 8 security and test acceptance |
+
+The review also confirmed non-overlapping Lane A/Lane B/controller ownership,
+SDK 1.35.0 poller identity/build/timestamp feasibility, CI-local versus external
+evidence separation, continued B-017/Phase 9 blocking, and the Phase 10 hold.
