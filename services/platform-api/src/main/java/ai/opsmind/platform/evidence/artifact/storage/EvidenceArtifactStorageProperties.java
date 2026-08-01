@@ -25,6 +25,8 @@ public record EvidenceArtifactStorageProperties(
     Duration socketTimeout,
     Duration apiCallAttemptTimeout,
     Duration apiCallTimeout,
+    Duration sourceVerificationBudget,
+    Duration settlementSafetyMargin,
     int maximumConnections,
     Duration uploadLeaseDuration
 ) {
@@ -49,6 +51,11 @@ public record EvidenceArtifactStorageProperties(
         socketTimeout = defaultDuration(socketTimeout, Duration.ofSeconds(10));
         apiCallAttemptTimeout = defaultDuration(apiCallAttemptTimeout, Duration.ofSeconds(20));
         apiCallTimeout = defaultDuration(apiCallTimeout, Duration.ofSeconds(30));
+        sourceVerificationBudget = defaultDuration(
+            sourceVerificationBudget,
+            Duration.ofSeconds(5)
+        );
+        settlementSafetyMargin = defaultDuration(settlementSafetyMargin, Duration.ofSeconds(5));
         maximumConnections = maximumConnections == 0 ? 10 : maximumConnections;
         uploadLeaseDuration = defaultDuration(uploadLeaseDuration, Duration.ofMinutes(2));
     }
@@ -74,9 +81,11 @@ public record EvidenceArtifactStorageProperties(
             || !between(socketTimeout, Duration.ofMillis(100), Duration.ofMinutes(5))
             || !between(apiCallAttemptTimeout, Duration.ofSeconds(1), Duration.ofMinutes(10))
             || !between(apiCallTimeout, Duration.ofSeconds(2), Duration.ofMinutes(15))
+            || !between(sourceVerificationBudget, Duration.ofMillis(100), Duration.ofMinutes(1))
+            || !between(settlementSafetyMargin, Duration.ofMillis(100), Duration.ofMinutes(1))
             || !between(uploadLeaseDuration, Duration.ofSeconds(5), Duration.ofMinutes(5))
             || apiCallAttemptTimeout.compareTo(apiCallTimeout) >= 0
-            || apiCallTimeout.compareTo(uploadLeaseDuration) >= 0
+            || !uploadBudgetFitsLease()
             || maximumConnections < 1 || maximumConnections > 1_000) {
             throw new IllegalStateException("Evidence artifact storage timeout settings are invalid.");
         }
@@ -115,6 +124,20 @@ public record EvidenceArtifactStorageProperties(
     private static boolean between(Duration value, Duration minimum, Duration maximum) {
         return value != null && !value.isNegative() && !value.isZero()
             && value.compareTo(minimum) >= 0 && value.compareTo(maximum) <= 0;
+    }
+
+    private boolean uploadBudgetFitsLease() {
+        try {
+            return requiredUploadBudget().compareTo(uploadLeaseDuration) < 0;
+        } catch (ArithmeticException overflow) {
+            return false;
+        }
+    }
+
+    Duration requiredUploadBudget() {
+        return apiCallTimeout
+            .plus(sourceVerificationBudget)
+            .plus(settlementSafetyMargin);
     }
 
     private static String trim(String value) {

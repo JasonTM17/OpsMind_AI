@@ -5,6 +5,7 @@ import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.verify;
+import static org.mockito.Mockito.verifyNoInteractions;
 import static org.mockito.Mockito.when;
 
 import java.io.ByteArrayInputStream;
@@ -15,12 +16,17 @@ import java.nio.charset.StandardCharsets;
 import java.security.MessageDigest;
 import java.security.NoSuchAlgorithmException;
 import java.time.Duration;
+import java.time.Instant;
 import java.util.Base64;
 import java.util.HexFormat;
 import java.util.Map;
 import java.util.UUID;
+import java.util.concurrent.CountDownLatch;
+import java.util.concurrent.TimeUnit;
+import java.util.concurrent.atomic.AtomicInteger;
 
 import ai.opsmind.platform.evidence.artifact.EvidenceArtifactDigest;
+import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.Test;
 import org.mockito.ArgumentCaptor;
 
@@ -47,16 +53,26 @@ class S3EvidenceArtifactObjectStorageTest {
     private static final String KMS_KEY = "arn:aws:kms:ap-southeast-1:123456789012:key/key-1";
     private static final String ENCRYPTION_PROFILE = "production-kms";
 
+    private final ArtifactSourceIoExecutor sourceIoExecutor = new ArtifactSourceIoExecutor(4);
+
+    @AfterEach
+    void closeExecutor() {
+        sourceIoExecutor.close();
+    }
+
     @Test
-    void putsOneBoundedImmutableChecksumVerifiedObject() {
+    void putsAReplayableChecksumVerifiedImmutableObject() {
         S3Client client = mock(S3Client.class);
         when(client.putObject(any(PutObjectRequest.class), any(RequestBody.class))).thenAnswer(call -> {
-            consume(call.getArgument(1));
+            byte[][] views = consumeBothSdkViews(call.getArgument(1));
+            assertThat(views[0]).isEqualTo(BODY);
+            assertThat(views[1]).isEqualTo(BODY);
             return storedResponse();
         });
-        S3EvidenceArtifactObjectStorage storage = new S3EvidenceArtifactObjectStorage(client, properties());
 
-        ArtifactObjectStored stored = storage.putIfAbsent(EXPECTATION, new ByteArrayInputStream(BODY));
+        ArtifactObjectStored stored = storage(client).putIfAbsent(
+            EXPECTATION, source(BODY, BODY.length), leaseDeadline()
+        );
 
         ArgumentCaptor<PutObjectRequest> request = ArgumentCaptor.forClass(PutObjectRequest.class);
         verify(client).putObject(request.capture(), any(RequestBody.class));
@@ -72,22 +88,83 @@ class S3EvidenceArtifactObjectStorageTest {
     }
 
     @Test
-    void rejectsTrailingInputAfterTheRemotePutMayHaveSucceeded() {
+    void rejectsAnOversizedSpoolBeforeTheClientCanWrite() {
+        S3Client client = mock(S3Client.class);
+
+        assertThatThrownBy(() -> storage(client).putIfAbsent(
+            EXPECTATION,
+            source("durable evidence!".getBytes(StandardCharsets.UTF_8), BODY.length + 1L),
+            leaseDeadline()
+        )).isInstanceOfSatisfying(EvidenceArtifactStorageException.class, failure -> {
+            assertThat(failure.kind()).isEqualTo(EvidenceArtifactStorageException.FailureKind.STREAM_REJECTED);
+            assertThat(failure.objectMayExist()).isFalse();
+        });
+        verifyNoInteractions(client);
+    }
+
+    @Test
+    void releasesADirectCallerSourceWhenPreflightRejectsIt() throws InterruptedException {
+        S3Client client = mock(S3Client.class);
+        CountDownLatch closed = new CountDownLatch(1);
+        ManagedArtifactSource source = ManagedArtifactSource.forTesting(
+            () -> new ByteArrayInputStream(BODY),
+            () -> BODY.length + 1L,
+            closed::countDown
+        );
+
+        assertThatThrownBy(() -> storage(client).putIfAbsent(EXPECTATION, source, leaseDeadline()))
+            .isInstanceOf(EvidenceArtifactStorageException.class);
+
+        assertThat(closed.await(1, TimeUnit.SECONDS)).isTrue();
+        verifyNoInteractions(client);
+    }
+
+    @Test
+    void quarantinesAChangedSpoolLengthAfterTheRemotePutMayHaveSucceeded() {
         S3Client client = mock(S3Client.class);
         when(client.putObject(any(PutObjectRequest.class), any(RequestBody.class))).thenAnswer(call -> {
-            consume(call.getArgument(1));
+            consumeBothSdkViews(call.getArgument(1));
             return storedResponse();
         });
-        S3EvidenceArtifactObjectStorage storage = new S3EvidenceArtifactObjectStorage(client, properties());
+        AtomicInteger sizeReads = new AtomicInteger();
+        ManagedArtifactSource source = ManagedArtifactSource.forTesting(
+            () -> new ByteArrayInputStream(BODY),
+            () -> sizeReads.getAndIncrement() == 0 ? (long) BODY.length : BODY.length + 1L,
+            () -> { }
+        );
 
-        assertThatThrownBy(() -> storage.putIfAbsent(
-            EXPECTATION, new ByteArrayInputStream("durable evidence!".getBytes(StandardCharsets.UTF_8))
-        )).satisfies(failure -> {
-            EvidenceArtifactStorageException storageFailure = (EvidenceArtifactStorageException) failure;
-            assertThat(storageFailure.kind())
-                .isEqualTo(EvidenceArtifactStorageException.FailureKind.SOURCE_CONTRACT_MISMATCH);
-            assertThat(storageFailure.objectMayExist()).isTrue();
+        assertThatThrownBy(() -> storage(client).putIfAbsent(EXPECTATION, source, leaseDeadline()))
+            .isInstanceOfSatisfying(EvidenceArtifactStorageException.class, failure -> {
+                assertThat(failure.kind()).isEqualTo(
+                    EvidenceArtifactStorageException.FailureKind.SOURCE_CONTRACT_MISMATCH
+                );
+                assertThat(failure.objectMayExist()).isTrue();
+            });
+    }
+
+    @Test
+    void quarantinesDifferentBytesObservedByAReplayView() {
+        S3Client client = mock(S3Client.class);
+        when(client.putObject(any(PutObjectRequest.class), any(RequestBody.class))).thenAnswer(call -> {
+            consumeBothSdkViews(call.getArgument(1));
+            return storedResponse();
         });
+        AtomicInteger opens = new AtomicInteger();
+        byte[] changedBody = BODY.clone();
+        changedBody[0] ^= 1;
+        ManagedArtifactSource source = ManagedArtifactSource.forTesting(
+            () -> new ByteArrayInputStream(opens.getAndIncrement() == 0 ? BODY : changedBody),
+            () -> (long) BODY.length,
+            () -> { }
+        );
+
+        assertThatThrownBy(() -> storage(client).putIfAbsent(EXPECTATION, source, leaseDeadline()))
+            .isInstanceOfSatisfying(EvidenceArtifactStorageException.class, failure -> {
+                assertThat(failure.kind()).isEqualTo(
+                    EvidenceArtifactStorageException.FailureKind.SOURCE_CONTRACT_MISMATCH
+                );
+                assertThat(failure.objectMayExist()).isTrue();
+            });
     }
 
     @Test
@@ -95,36 +172,37 @@ class S3EvidenceArtifactObjectStorageTest {
         S3Client client = mock(S3Client.class);
         when(client.putObject(any(PutObjectRequest.class), any(RequestBody.class)))
             .thenThrow(S3Exception.builder().statusCode(412).build());
-        S3EvidenceArtifactObjectStorage storage = new S3EvidenceArtifactObjectStorage(client, properties());
 
-        assertThatThrownBy(() -> storage.putIfAbsent(EXPECTATION, new ByteArrayInputStream(BODY)))
-            .satisfies(failure -> {
-                EvidenceArtifactStorageException storageFailure = (EvidenceArtifactStorageException) failure;
-                assertThat(storageFailure.kind())
-                    .isEqualTo(EvidenceArtifactStorageException.FailureKind.IMMUTABLE_CONFLICT);
-                assertThat(storageFailure.objectMayExist()).isTrue();
-            });
+        assertThatThrownBy(() -> storage(client).putIfAbsent(
+            EXPECTATION, source(BODY, BODY.length), leaseDeadline()
+        )).isInstanceOfSatisfying(EvidenceArtifactStorageException.class, failure -> {
+            assertThat(failure.kind()).isEqualTo(EvidenceArtifactStorageException.FailureKind.IMMUTABLE_CONFLICT);
+            assertThat(failure.objectMayExist()).isTrue();
+        });
     }
 
     @Test
     void requiresThePutResponseChecksumBeforeReturningStored() {
         S3Client client = mock(S3Client.class);
         when(client.putObject(any(PutObjectRequest.class), any(RequestBody.class))).thenAnswer(call -> {
-            consume(call.getArgument(1));
+            consumeBothSdkViews(call.getArgument(1));
             return storedResponse().toBuilder().checksumSHA256(null).build();
         });
-        S3EvidenceArtifactObjectStorage storage = new S3EvidenceArtifactObjectStorage(client, properties());
 
-        assertThatThrownBy(() -> storage.putIfAbsent(EXPECTATION, new ByteArrayInputStream(BODY)))
-            .satisfies(failure -> assertThat(((EvidenceArtifactStorageException) failure).kind())
-                .isEqualTo(EvidenceArtifactStorageException.FailureKind.REMOTE_METADATA_MISMATCH));
+        assertThatThrownBy(() -> storage(client).putIfAbsent(
+            EXPECTATION, source(BODY, BODY.length), leaseDeadline()
+        )).isInstanceOfSatisfying(EvidenceArtifactStorageException.class, failure ->
+            assertThat(failure.kind()).isEqualTo(
+                EvidenceArtifactStorageException.FailureKind.REMOTE_METADATA_MISMATCH
+            )
+        );
     }
 
     @Test
     void probesWithChecksumModeAndReturnsOnlyMatchAbsentOrMismatch() {
         S3Client client = mock(S3Client.class);
         when(client.headObject(any(HeadObjectRequest.class))).thenReturn(headResponse());
-        S3EvidenceArtifactObjectStorage storage = new S3EvidenceArtifactObjectStorage(client, properties());
+        S3EvidenceArtifactObjectStorage storage = storage(client);
 
         ArtifactObjectProbe probe = storage.probe(EXPECTATION);
 
@@ -149,8 +227,25 @@ class S3EvidenceArtifactObjectStorageTest {
             true, java.net.URI.create("https://storage.example.com"), false, "ap-southeast-1",
             "evidence-artifacts", true, "123456789012", KMS_KEY, KMS_KEY, ENCRYPTION_PROFILE,
             1_024, Duration.ofSeconds(1), Duration.ofSeconds(2), Duration.ofSeconds(5),
-            Duration.ofSeconds(10), 4, Duration.ofMinutes(1)
+            Duration.ofSeconds(10), Duration.ofSeconds(5), Duration.ofSeconds(5),
+            4, Duration.ofMinutes(1)
         );
+    }
+
+    private S3EvidenceArtifactObjectStorage storage(S3Client client) {
+        return new S3EvidenceArtifactObjectStorage(client, properties(), sourceIoExecutor);
+    }
+
+    private static ManagedArtifactSource source(byte[] body, long reportedSize) {
+        return ManagedArtifactSource.forTesting(
+            () -> new ByteArrayInputStream(body),
+            () -> reportedSize,
+            () -> { }
+        );
+    }
+
+    private static Instant leaseDeadline() {
+        return Instant.now().plusSeconds(30);
     }
 
     private static PutObjectResponse storedResponse() {
@@ -175,9 +270,13 @@ class S3EvidenceArtifactObjectStorageTest {
         return Base64.getEncoder().encodeToString(DIGEST.bytes());
     }
 
-    private static void consume(RequestBody requestBody) {
+    private static byte[][] consumeBothSdkViews(RequestBody requestBody) {
+        return new byte[][] {consume(requestBody), consume(requestBody)};
+    }
+
+    private static byte[] consume(RequestBody requestBody) {
         try (InputStream stream = requestBody.contentStreamProvider().newStream()) {
-            stream.transferTo(java.io.OutputStream.nullOutputStream());
+            return stream.readAllBytes();
         } catch (IOException exception) {
             throw new UncheckedIOException(exception);
         }

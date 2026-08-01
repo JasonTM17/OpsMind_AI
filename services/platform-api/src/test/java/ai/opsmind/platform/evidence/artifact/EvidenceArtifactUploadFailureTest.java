@@ -12,10 +12,14 @@ import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
-import java.io.ByteArrayInputStream;
+import java.io.IOException;
+import java.io.UncheckedIOException;
+import java.nio.file.Files;
+import java.nio.file.Path;
 import java.time.Duration;
 import java.time.Instant;
 import java.util.UUID;
+import java.util.concurrent.atomic.AtomicInteger;
 import java.util.function.Function;
 
 import ai.opsmind.platform.common.api.PlatformProblemException;
@@ -23,12 +27,14 @@ import ai.opsmind.platform.evidence.artifact.storage.ArtifactObjectProbe;
 import ai.opsmind.platform.evidence.artifact.storage.EvidenceArtifactObjectStorage;
 import ai.opsmind.platform.evidence.artifact.storage.EvidenceArtifactStorageException;
 import ai.opsmind.platform.evidence.artifact.storage.EvidenceArtifactStorageProperties;
+import ai.opsmind.platform.evidence.artifact.storage.ManagedArtifactSource;
 import ai.opsmind.platform.identity.OpsMindPrincipal;
 import ai.opsmind.platform.incident.AuthorizedIncidentAnalysisScope;
 import ai.opsmind.platform.incident.IncidentAnalysisAuthorizer;
 
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.io.TempDir;
 
 class EvidenceArtifactUploadFailureTest {
 
@@ -44,9 +50,12 @@ class EvidenceArtifactUploadFailureTest {
     private final EvidenceArtifactUploadRepository repository = mock(EvidenceArtifactUploadRepository.class);
     private final EvidenceArtifactObjectStorage storage = mock(EvidenceArtifactObjectStorage.class);
     private final EvidenceArtifactStorageProperties properties = mock(EvidenceArtifactStorageProperties.class);
+    private final AtomicInteger sourceSequence = new AtomicInteger();
     private final EvidenceArtifactUploadService service = new EvidenceArtifactUploadService(
         authorizer, repository, storage, properties
     );
+    @TempDir
+    Path temporaryDirectory;
 
     @BeforeEach
     void configureAuthorization() {
@@ -55,17 +64,21 @@ class EvidenceArtifactUploadFailureTest {
         doAnswer(invocation -> work(invocation.getArgument(4))).when(authorizer).withAnalyzeAccess(
             any(), any(), any(), any(), any()
         );
+        doAnswer(invocation -> {
+            invocation.getArgument(0, ManagedArtifactSource.class).close();
+            return null;
+        }).when(storage).release(any());
     }
 
     @Test
-    void storageFailureWithoutPossibleResidueSettlesFailedAndDoesNotLeakItsCause() {
+    void storageFailureWithoutPossibleResidueSettlesFailedAndPreservesItsSafeCauseChain() {
         EvidenceArtifactUploadClaim claim = claim(false);
         EvidenceArtifactStorageException storageFailure = new EvidenceArtifactStorageException(
             EvidenceArtifactStorageException.FailureKind.UNAVAILABLE, false,
             new IllegalStateException("bucket/key/kms/url/body")
         );
         when(repository.claim(any(), eq(ARTIFACT_ID), any(), any())).thenReturn(claim);
-        doThrow(storageFailure).when(storage).putIfAbsent(any(), any());
+        doThrow(storageFailure).when(storage).putIfAbsent(any(), any(), any());
         when(repository.settle(any(), eq(claim), eq(EvidenceArtifactUploadOutcome.FAILED), isNull(),
             eq("artifact.storage-failed"))).thenReturn(pendingSettlement());
 
@@ -88,7 +101,7 @@ class EvidenceArtifactUploadFailureTest {
             "Artifact metadata persistence is temporarily unavailable."
         );
         when(repository.claim(any(), eq(ARTIFACT_ID), any(), any())).thenReturn(claim);
-        doThrow(storageFailure).when(storage).putIfAbsent(any(), any());
+        doThrow(storageFailure).when(storage).putIfAbsent(any(), any(), any());
         when(repository.settle(any(), eq(claim), eq(EvidenceArtifactUploadOutcome.UNCERTAIN), isNull(),
             eq("artifact.storage-uncertain"))).thenThrow(settlementFailure);
 
@@ -106,7 +119,7 @@ class EvidenceArtifactUploadFailureTest {
         IllegalStateException settlementFailure =
             new IllegalStateException("sensitive-settlement-detail");
         when(repository.claim(any(), eq(ARTIFACT_ID), any(), any())).thenReturn(claim);
-        doThrow(storageFailure).when(storage).putIfAbsent(any(), any());
+        doThrow(storageFailure).when(storage).putIfAbsent(any(), any(), any());
         when(repository.settle(any(), eq(claim), eq(EvidenceArtifactUploadOutcome.UNCERTAIN), isNull(),
             eq("artifact.storage-uncertain"))).thenThrow(settlementFailure);
 
@@ -133,7 +146,8 @@ class EvidenceArtifactUploadFailureTest {
 
         assertThatThrownBy(() -> upload()).isInstanceOfSatisfying(PlatformProblemException.class, exception ->
             assertThat(exception.code()).isEqualTo("evidence-artifact.upload-uncertain"));
-        verify(storage, never()).putIfAbsent(any(), any());
+        verify(storage, never()).putIfAbsent(any(), any(), any());
+        verify(storage).release(any());
     }
 
     @Test
@@ -146,7 +160,8 @@ class EvidenceArtifactUploadFailureTest {
 
         assertThatThrownBy(() -> upload()).isInstanceOfSatisfying(PlatformProblemException.class, exception ->
             assertThat(exception.code()).isEqualTo("evidence-artifact.upload-orphaned"));
-        verify(storage, never()).putIfAbsent(any(), any());
+        verify(storage, never()).putIfAbsent(any(), any(), any());
+        verify(storage).release(any());
     }
 
     @Test
@@ -155,7 +170,7 @@ class EvidenceArtifactUploadFailureTest {
         when(repository.claim(any(), eq(ARTIFACT_ID), any(), any())).thenReturn(claim);
         doThrow(new EvidenceArtifactStorageException(
             EvidenceArtifactStorageException.FailureKind.SOURCE_CONTRACT_MISMATCH, true, null
-        )).when(storage).putIfAbsent(any(), any());
+        )).when(storage).putIfAbsent(any(), any(), any());
         when(repository.settle(any(), eq(claim), eq(EvidenceArtifactUploadOutcome.ORPHANED), isNull(),
             eq("artifact.object-mismatch"))).thenReturn(pendingSettlement());
 
@@ -171,7 +186,7 @@ class EvidenceArtifactUploadFailureTest {
         when(repository.claim(any(), eq(ARTIFACT_ID), any(), any())).thenReturn(claim);
         doThrow(new EvidenceArtifactStorageException(
             EvidenceArtifactStorageException.FailureKind.REMOTE_METADATA_MISMATCH, true, null
-        )).when(storage).putIfAbsent(any(), any());
+        )).when(storage).putIfAbsent(any(), any(), any());
         when(repository.settle(any(), eq(claim), eq(EvidenceArtifactUploadOutcome.ORPHANED), isNull(),
             eq("artifact.object-mismatch"))).thenReturn(pendingSettlement());
 
@@ -181,7 +196,7 @@ class EvidenceArtifactUploadFailureTest {
 
     private void upload() {
         service.upload(mock(OpsMindPrincipal.class), ORGANIZATION_ID, PROJECT_ID, INCIDENT_ID, ARTIFACT_ID,
-            new ByteArrayInputStream(new byte[4]));
+            source());
     }
 
     @SuppressWarnings("unchecked")
@@ -205,6 +220,18 @@ class EvidenceArtifactUploadFailureTest {
     private EvidenceArtifactUploadSettlement pendingSettlement() {
         return new EvidenceArtifactUploadSettlement(false, EvidenceArtifactLifecycleState.PENDING_UPLOAD,
             1L, 0L, NOW);
+    }
+
+    private ManagedArtifactSource source() {
+        try {
+            Path sourcePath = temporaryDirectory.resolve(
+                "artifact-source-" + sourceSequence.incrementAndGet()
+            );
+            Files.write(sourcePath, new byte[4]);
+            return ManagedArtifactSource.open(sourcePath);
+        } catch (IOException failure) {
+            throw new UncheckedIOException(failure);
+        }
     }
 
     private AuthorizedIncidentAnalysisScope scope() {

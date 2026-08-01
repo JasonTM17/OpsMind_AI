@@ -77,6 +77,18 @@ conform to this baseline.
 
 Filesystem storage may be used only for narrow unit/component tests and cannot be production evidence.
 
+### Bounded replay source ownership
+
+The Phase 4C object adapter receives a `ManagedArtifactSource`, not a generic
+`InputStream`. The source pins a non-symlink spool descriptor and provides
+independent positional views so an SDK inspection pass cannot consume the HTTP
+transfer pass. Ownership transfers at the port boundary: `putIfAbsent` and
+`release` close the source idempotently on every success, rejection, timeout,
+and provider-failure path. New callers must spool first, then pass the source
+and the claim lease deadline; there is no compatibility overload for the
+former single-use stream contract because no production caller exists in this
+phase. Future callers changing this boundary require an API migration review.
+
 ## Consequences
 
 Positive:

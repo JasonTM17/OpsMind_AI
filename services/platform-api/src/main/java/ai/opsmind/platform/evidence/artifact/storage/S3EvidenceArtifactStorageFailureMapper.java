@@ -13,6 +13,9 @@ final class S3EvidenceArtifactStorageFailureMapper {
         if (failure instanceof EvidenceArtifactStorageException storageException) {
             return storageException;
         }
+        if (hasCause(failure, ArtifactSourceContractViolationException.class)) {
+            return sourceContractMismatch(failure);
+        }
         if (hasCause(failure, IOException.class)) {
             return failure(EvidenceArtifactStorageException.FailureKind.STREAM_REJECTED, true, failure);
         }
