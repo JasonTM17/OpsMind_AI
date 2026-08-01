@@ -145,9 +145,11 @@ gh workflow run container-publish.yml --ref main `
 
 The workflow is manual-only, rejects any ref except `main`, requires strict
 SemVer, and serializes production publication. The protected job exposes the
-Docker Hub variable and secret only to credential validation and login, uses a
-temporary registry credential session for promotion and attestation, then logs
-out and restores or removes the Docker configuration before public verification.
+Docker Hub variable and secret only to credential validation, promotion login,
+and a separate short-lived OCI attestation-read login. It logs out and restores
+or removes the promotion Docker configuration before verification. The
+attestation-read configuration is newly created, used only for OCI bundle reads,
+logged out, and deleted before the job exits.
 
 ### Release receipt v4
 
@@ -157,16 +159,20 @@ for one four-component release set:
 
 - The verification pass uses a newly created empty Docker configuration after
   registry logout. Anonymous registry pulls/reads resolve every GHCR and Docker
-  Hub version tag to the observed candidate digest; the receipt records
-  `registryAccess: "ANONYMOUS"`.
+  Hub version tag to the observed candidate digest. OCI attestation bundles
+  require registry authentication, so they are read through a second newly
+  created, isolated configuration with only the protected credentials. The
+  receipt records
+  `registryAccess: "ANONYMOUS_MANIFESTS_ISOLATED_AUTHENTICATED_ATTESTATIONS"`.
 - Each component attestation bundle is attached to its OCI registry subject and
   is read back with `--bundle-from-oci`; the receipt records
   `attestationBundles: "OCI_REGISTRY"`.
 - Attestation verification is constrained to signer workflow
-  `JasonTM17/OpsMind_AI/.github/workflows/container-publish.yml`, the exact
-  dispatched source SHA, and source ref `refs/heads/main`, with self-hosted
-  runners denied. Receipt fields `signerWorkflow`, `sourceDigest`, and
-  `sourceRef` record those exact constraints.
+  `JasonTM17/OpsMind_AI/.github/workflows/container-publish.yml`, the immutable
+  workflow-file digest (`github.workflow_sha`), the exact dispatched source SHA,
+  and source ref `refs/heads/main`, with self-hosted runners denied. Receipt
+  fields `signerWorkflow`, `signerDigest`, `sourceDigest`, and `sourceRef`
+  record those exact constraints.
 - Each GHCR package is public and repository-linked, and its manifest, SBOM,
   provenance, platforms, scan result, and signed attestation are verified.
 - GHCR-Docker Hub digest/tag parity holds for every component:
@@ -176,9 +182,11 @@ for one four-component release set:
   the receipt `BLOCK`.
 
 The aggregate receipt and evidence archive are separately attested and verified
-against the same signer workflow, source SHA, and source ref before attachment
-to the GitHub Release. Only the `PASS` receipt plus the published immutable
-`v<SemVer>` marker makes the staged set release-approved.
+against the exact copied Sigstore bundle that will become the GitHub Release
+asset, the same signer workflow and workflow-file digest, source SHA, and
+source ref before attachment to the GitHub Release. Only the `PASS` receipt
+plus the published immutable `v<SemVer>` marker makes the staged set
+release-approved.
 
 The workflow normalizes valid SemVer build metadata for OCI tags, for example
 `1.2.3+build.7` becomes `1.2.3_build.7`, while the receipt retains the original
