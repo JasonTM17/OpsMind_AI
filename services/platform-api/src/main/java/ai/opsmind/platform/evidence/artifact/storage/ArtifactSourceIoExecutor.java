@@ -8,7 +8,6 @@ import java.util.concurrent.Callable;
 import java.util.concurrent.ExecutionException;
 import java.util.concurrent.LinkedBlockingQueue;
 import java.util.concurrent.Future;
-import java.util.concurrent.SynchronousQueue;
 import java.util.concurrent.ThreadPoolExecutor;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.TimeoutException;
@@ -32,7 +31,7 @@ final class ArtifactSourceIoExecutor implements AutoCloseable {
             maximumConcurrency,
             IDLE_THREAD_SECONDS,
             TimeUnit.SECONDS,
-            new SynchronousQueue<>(),
+            new ArrayBlockingQueue<>(maximumConcurrency),
             new DaemonThreadFactory("artifact-source-read-"),
             new ThreadPoolExecutor.AbortPolicy()
         );
