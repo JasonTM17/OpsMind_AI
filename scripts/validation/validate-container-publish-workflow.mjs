@@ -201,6 +201,19 @@ const mutations = [
     "release.anonymous-registry-verification",
   ],
   [
+    "isolated attestation registry Docker config removed",
+    (value) => {
+      const step = value.jobs.promote.steps.find(
+        (entry) => entry.name === "Verify staged immutable release set",
+      );
+      step.run = step.run.replace(
+        'export DOCKER_CONFIG="$attestation_config"',
+        "",
+      );
+    },
+    "release.anonymous-registry-verification",
+  ],
+  [
     "Docker Hub receipt parity removed",
     (value) => {
       const step = value.jobs.promote.steps.find(
@@ -221,6 +234,39 @@ const mutations = [
       );
       step.run = step.run.replace(
         '--signer-workflow "$SIGNER_WORKFLOW"',
+        "",
+      );
+    },
+    "release.aggregate-attestation-policy",
+  ],
+  [
+    "registry signer digest policy removed",
+    (value) => {
+      const step = value.jobs.promote.steps.find(
+        (entry) => entry.name === "Verify staged immutable release set",
+      );
+      step.run = step.run.replaceAll('--signer-digest "$SIGNER_DIGEST"', "");
+    },
+    "release.registry-attestation-policy",
+  ],
+  [
+    "aggregate signer digest policy removed",
+    (value) => {
+      const step = value.jobs.promote.steps.find(
+        (entry) => entry.name === "Verify aggregate release evidence attestation",
+      );
+      step.run = step.run.replace('--signer-digest "$SIGNER_DIGEST"', "");
+    },
+    "release.aggregate-attestation-policy",
+  ],
+  [
+    "aggregate evidence bundle binding removed",
+    (value) => {
+      const step = value.jobs.promote.steps.find(
+        (entry) => entry.name === "Verify aggregate release evidence attestation",
+      );
+      step.run = step.run.replace(
+        '--bundle "$output_dir/release-evidence-attestation.sigstore.json"',
         "",
       );
     },

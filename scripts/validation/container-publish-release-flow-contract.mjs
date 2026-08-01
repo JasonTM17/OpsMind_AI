@@ -17,6 +17,7 @@ function occurrenceCount(source, token) {
 export function validateReleaseFlow(jobs, errors) {
   const expectedSignerWorkflow =
     "${{ github.repository }}/.github/workflows/container-publish.yml";
+  const expectedSignerDigest = "${{ github.workflow_sha }}";
   const candidate = jobs["build-candidate"];
   const metadata = findStep(candidate, "Derive immutable candidate metadata");
   const build = findStep(candidate, "Build immutable candidate");
@@ -187,6 +188,7 @@ export function validateReleaseFlow(jobs, errors) {
       stageVerify,
       '--signer-workflow "$SIGNER_WORKFLOW"',
     ) !== 2 ||
+    occurrenceCount(stageVerify, '--signer-digest "$SIGNER_DIGEST"') !== 2 ||
     occurrenceCount(stageVerify, '--source-digest "$GITHUB_SHA"') !== 2 ||
     occurrenceCount(stageVerify, '--source-ref "$GITHUB_REF"') !== 2 ||
     occurrenceCount(stageVerify, "--deny-self-hosted-runners") !== 2 ||
@@ -196,6 +198,33 @@ export function validateReleaseFlow(jobs, errors) {
   ) {
     errors.push("release.registry-attestation-policy");
   }
+  const anonymousConfigExport = 'export DOCKER_CONFIG="$anonymous_config"';
+  const attestationConfigExport = 'export DOCKER_CONFIG="$attestation_config"';
+  const anonymousManifestInspection = stageVerify.indexOf(
+    'docker buildx imagetools inspect "${ghcr}:${RELEASE_TAG}"',
+  );
+  const lastManifestInspection = stageVerify.lastIndexOf(
+    "docker buildx imagetools inspect",
+  );
+  const packageInspection = stageVerify.indexOf(
+    'gh api "/users/${GITHUB_REPOSITORY_OWNER}/packages/container/${image}"',
+  );
+  const attestationConfigActivation = stageVerify.indexOf(
+    attestationConfigExport,
+  );
+  const firstAttestation = stageVerify.indexOf("gh attestation verify");
+  const ghcrAttestationLogin = stageVerify.indexOf(
+    'docker --config "$attestation_config" login ghcr.io',
+  );
+  const dockerHubAttestationLogin = stageVerify.indexOf(
+    'docker --config "$attestation_config" login docker.io',
+  );
+  const ghcrAttestationCredential = stageVerify.indexOf(
+    `printf '%s' "$GHCR_TOKEN"`,
+  );
+  const dockerHubAttestationCredential = stageVerify.indexOf(
+    `printf '%s' "$DOCKERHUB_TOKEN"`,
+  );
   if (
     !stageVerify.includes(
       'anonymous_config="${RUNNER_TEMP}/opsmind-anonymous-registry-',
@@ -205,16 +234,52 @@ export function validateReleaseFlow(jobs, errors) {
       `printf '%s\\n' '{}' > "$anonymous_config/config.json"`,
     ) ||
     !stageVerify.includes('chmod 600 "$anonymous_config/config.json"') ||
+    !stageVerify.includes(
+      'attestation_config="${RUNNER_TEMP}/opsmind-attestation-registry-',
+    ) ||
+    !stageVerify.includes('[[ ! -e "$attestation_config" ]]') ||
+    !stageVerify.includes('mkdir -m 700 "$attestation_config"') ||
+    !stageVerify.includes(
+      `printf '%s\\n' '{}' > "$attestation_config/config.json"`,
+    ) ||
+    !stageVerify.includes('chmod 600 "$attestation_config/config.json"') ||
     !stageVerify.includes("unset REGISTRY_AUTH_FILE") ||
-    !stageVerify.includes('export DOCKER_CONFIG="$anonymous_config"') ||
-    !stageVerify.includes("trap 'rm -rf -- \"$anonymous_config\"' EXIT") ||
-    stageVerify.includes("docker login")
+    !stageVerify.includes(
+      "cleanup_registry_configs() {",
+    ) ||
+    !stageVerify.includes(
+      'docker --config "$attestation_config" logout ghcr.io',
+    ) ||
+    !stageVerify.includes(
+      'docker --config "$attestation_config" logout docker.io',
+    ) ||
+    !stageVerify.includes('rm -rf -- "$anonymous_config" "$attestation_config"') ||
+    !stageVerify.includes("trap cleanup_registry_configs EXIT") ||
+    ghcrAttestationLogin < 0 ||
+    dockerHubAttestationLogin < 0 ||
+    ghcrAttestationCredential < 0 ||
+    dockerHubAttestationCredential < 0 ||
+    ghcrAttestationCredential > ghcrAttestationLogin ||
+    dockerHubAttestationCredential > dockerHubAttestationLogin ||
+    !stageVerify
+      .slice(ghcrAttestationCredential, anonymousManifestInspection)
+      .includes("--password-stdin") ||
+    !stageVerify
+      .slice(dockerHubAttestationCredential, anonymousManifestInspection)
+      .includes("--password-stdin") ||
+    occurrenceCount(stageVerify, "export DOCKER_CONFIG=") !== 2 ||
+    stageVerify.indexOf(anonymousConfigExport) < 0 ||
+    anonymousManifestInspection <= stageVerify.indexOf(anonymousConfigExport) ||
+    packageInspection <= anonymousManifestInspection ||
+    attestationConfigActivation <= lastManifestInspection ||
+    attestationConfigActivation <= packageInspection ||
+    firstAttestation <= attestationConfigActivation
   ) {
     errors.push("release.anonymous-registry-verification");
   }
-  const receipt =
-    findStep(jobs.promote, "Write observed immutable release receipt")?.run ??
-    "";
+  const receiptStep =
+    findStep(jobs.promote, "Write observed immutable release receipt") ?? {};
+  const receipt = receiptStep.run ?? "";
   if (
     !receipt.includes("opsmind-oci-publication-v4") ||
     !receipt.includes("atomicMarkerTag") ||
@@ -227,9 +292,12 @@ export function validateReleaseFlow(jobs, errors) {
     occurrenceCount(receipt, ".dockerHub.published == true") < 2 ||
     occurrenceCount(receipt, ".dockerHub.digest == .digest") < 2 ||
     occurrenceCount(receipt, ".dockerHub.tag == .tag") < 2 ||
-    !receipt.includes('registryAccess: "ANONYMOUS"') ||
+    !receipt.includes(
+      'registryAccess: "ANONYMOUS_MANIFESTS_ISOLATED_AUTHENTICATED_ATTESTATIONS"',
+    ) ||
     !receipt.includes('attestationBundles: "OCI_REGISTRY"') ||
     !receipt.includes("signerWorkflow: $signerWorkflow") ||
+    !receipt.includes("signerDigest: $signerDigest") ||
     !receipt.includes("sourceDigest: $sourceSha") ||
     !receipt.includes("sourceRef: $sourceRef")
   ) {
@@ -241,18 +309,30 @@ export function validateReleaseFlow(jobs, errors) {
   const aggregateVerify = aggregateVerifyStep.run ?? "";
   if (
     !aggregateVerify.includes('--signer-workflow "$SIGNER_WORKFLOW"') ||
+    !aggregateVerify.includes('--signer-digest "$SIGNER_DIGEST"') ||
     !aggregateVerify.includes('--source-digest "$GITHUB_SHA"') ||
     !aggregateVerify.includes('--source-ref "$GITHUB_REF"') ||
-    !aggregateVerify.includes("--deny-self-hosted-runners")
+    !aggregateVerify.includes("--deny-self-hosted-runners") ||
+    !aggregateVerify.includes('cp -- "$ATTESTATION_BUNDLE"') ||
+    !aggregateVerify.includes(
+      '"$output_dir/release-evidence-attestation.sigstore.json"',
+    ) ||
+    !aggregateVerify.includes(
+      '--bundle "$output_dir/release-evidence-attestation.sigstore.json"',
+    )
   ) {
     errors.push("release.aggregate-attestation-policy");
   }
   if (
     stageVerifyStep.env?.SIGNER_WORKFLOW !== expectedSignerWorkflow ||
+    stageVerifyStep.env?.SIGNER_DIGEST !== expectedSignerDigest ||
     aggregateVerifyStep.env?.SIGNER_WORKFLOW !== expectedSignerWorkflow ||
+    aggregateVerifyStep.env?.SIGNER_DIGEST !== expectedSignerDigest ||
     !receipt.includes(
       '--arg signerWorkflow "$GITHUB_REPOSITORY/.github/workflows/container-publish.yml"',
-    )
+    ) ||
+    !receipt.includes('--arg signerDigest "$SIGNER_DIGEST"') ||
+    receiptStep.env?.SIGNER_DIGEST !== expectedSignerDigest
   ) {
     errors.push("release.signer-workflow-binding");
   }
