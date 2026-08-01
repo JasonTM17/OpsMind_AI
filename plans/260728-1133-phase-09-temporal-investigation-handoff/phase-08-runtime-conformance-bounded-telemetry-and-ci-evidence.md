@@ -28,8 +28,10 @@ Alertmanager routing. Phase 10 remains blocked.
   workflow metadata, schedules no activities, and parks durably. It must remain
   disabled outside conformance because it cannot complete an investigation.
 - Readiness requires exact identity/build ID and a fresh `PollerInfo.lastAccessTime`
-  checked with an injected clock. Missing, malformed, stale, or future timestamps
-  fail closed.
+  checked with an injected clock. A configured bounded future-skew tolerance
+  accounts for server/client clock difference; missing, malformed, stale, or
+  implausibly future timestamps fail closed. Describe always targets the
+  workflow-task queue, never an activity or unspecified queue type.
 - Keep `deploy/prometheus/**` canonical. Add internal Alertmanager wiring and a
   deterministic local receipt fixture; never describe that fixture as external
   page delivery.
@@ -46,6 +48,8 @@ Owns only:
 
 - new worker interface, implementation, configuration, and properties under
   `services/platform-api/src/main/java/ai/opsmind/platform/investigation/workflow/`;
+- a worker-only application entrypoint in that package which explicitly boots
+  only the Temporal worker configuration with `WebApplicationType.NONE`;
 - `InvestigationTemporalClientProperties.java`;
 - `InvestigationTemporalClientConfiguration.java`;
 - `TemporalInvestigationWorkerReadinessProbe.java`;
@@ -55,12 +59,18 @@ Acceptance:
 
 1. Worker absent by default and validates exact type/queue/identity/build plus
    bounded concurrency and shutdown settings when enabled.
-2. Fresh exact poller opens admission; wrong, missing, stale, malformed, future,
+2. Worker-only context contains no web server, DataSource, Flyway, application
+   service, dispatcher, reconciler, AI Runtime, Tool Gateway, or connector bean;
+   its process needs Temporal connectivity only.
+3. Fresh exact poller opens admission; wrong, missing, stale, malformed,
+   implausibly future,
    or RPC-failed poller closes it.
-3. Official Temporal test environment proves start, first task, worker stop,
+4. Official Temporal test environment proves start, first task, worker stop,
    replacement worker replay, and terminal test cancellation without duplicate
    start or activity events.
-4. History/artifacts contain none of the prohibited prompt, evidence, token,
+5. Every history event is scanned across payloads, memo, headers, search
+   attributes, workflow failure details, and cancellation reasons. History and
+   artifacts contain none of the prohibited prompt, evidence, token,
    capability, provider, incident-title, or summary canaries.
 
 ### Lane B — Prometheus and Alertmanager source proof
@@ -97,12 +107,17 @@ Controller alone owns:
 - `services/platform-api/src/main/resources/application.yaml`;
 - `.env.example`;
 - `scripts/dev/opsmind.ps1` and `scripts/dev/opsmind.sh`;
+- `services/platform-api/pom.xml` and `services/platform-api/Dockerfile` only if
+  the existing executable-jar launch contract cannot select the isolated worker
+  entrypoint without changing them;
 - plan/docs/status reconciliation after the merged behavior is proven.
 
 The controller merges Lane A then Lane B, resolves only integration joins, runs
 focused validators/tests, pushes the integration branch, waits for exact-head
 required checks, requests an independent production-readiness review, fixes all
 blocking findings, and merges only after green evidence.
+Merge conflict resolution must not modify lane-owned implementation files; any
+such change requires an explicitly reassigned follow-up on the owning branch.
 
 ## CI evidence contract
 
@@ -128,7 +143,8 @@ Evidence classification is mandatory:
 - Worker process receives Temporal connectivity only: no application DB, AI,
   Tool Gateway, connector, provider, or object-store credentials.
 - Preserve the ordered existing start request; add no free text or secret-bearing
-  fields to workflow input, memo, logs, metrics, or artifacts.
+  fields to workflow input, memo, headers, search attributes, failure details,
+  cancellation reasons, logs, metrics, or artifacts.
 - Register no activities, signals, updates, queries, or product cancellation API.
 - Test cancellation is cleanup/replay evidence only.
 - Temporal client, starter, dispatcher, observer, reconciler, and worker remain

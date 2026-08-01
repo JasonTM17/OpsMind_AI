@@ -68,7 +68,10 @@ recovery and tenant/data boundaries, not merely execute happy paths.
 
 - [x] Critical matrix rows fail before implementation and pass after it.
 - [x] Tenant pool reuse and stale lease attempts cannot cross or mutate scope.
-- [x] Temporal history contains no prompt/evidence/secret sentinel.
+- [x] Existing client/start-contract history contains no prompt/evidence/secret
+  sentinel, proven by `TemporalInvestigationWorkflowHistoryLeakTest` using the
+  official `TestWorkflowEnvironment` in exact-main Maven verify. Phase 8 owns
+  the separate worker restart/replay history proof.
 - [x] Validator and existing reducer replay suites pass.
 - [x] Async contract, worker-readiness admission, cutover inventory, bounded
   retry behavior, and exact AlreadyStarted verification pass. Ambiguous

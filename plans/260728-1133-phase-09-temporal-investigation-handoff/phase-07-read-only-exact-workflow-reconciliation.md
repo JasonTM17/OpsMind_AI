@@ -334,7 +334,8 @@ configuration join after the three branches are reviewed.
 - [x] revision-bound CI execution of the wired fresh V001-V013,
   V006-to-V013 upgrade/recovery, real-role, and four-failpoint atomicity gates;
 - [ ] query-plan/latency, DR, and production database proof;
-- [x] exact-head runtime tests for matching, continued-as-new, closed, not-found
+- [x] exact-main CI-local mocked/SDK contract tests for matching,
+  continued-as-new, closed, not-found
   double sample, reactivation, mismatch, transient, permission, corrupt payload,
   missing history, retention, exhaustion, and lease loss;
 - [ ] Temporal authorization conformance proving read RPC success and every
