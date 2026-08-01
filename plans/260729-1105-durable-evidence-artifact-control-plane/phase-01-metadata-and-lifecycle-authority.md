@@ -1,7 +1,7 @@
 ---
 phase: 1
 title: Metadata and Lifecycle Authority
-status: in-progress
+status: completed
 priority: P1
 dependsOn: []
 ---
@@ -93,15 +93,23 @@ must be read-only historical inputs.
 
 ## Acceptance Criteria
 
-- [ ] V014 is additive and passes fresh plus V013-to-V014 contract paths.
-- [ ] Metadata includes all ADR-mandated authority fields and excludes secret,
+- [x] V014 is additive and passes fresh plus V013-to-V014 contract paths.
+- [x] Metadata includes all ADR-mandated authority fields and excludes secret,
   URL, and raw-body fields.
-- [ ] Tenant/RLS, authorization epoch, lifecycle, version fence, and digest /
+- [x] Tenant/RLS, authorization epoch, lifecycle, version fence, and digest /
   byte-count checks are enforced by code and database constraints.
-- [ ] No direct runtime mutation bypasses lifecycle policy; audit relations are
+- [x] No direct runtime mutation bypasses lifecycle policy; audit relations are
   atomic with metadata transitions.
-- [ ] Focused tests and a remote PostgreSQL contract runner demonstrate the
+- [x] Focused tests and a remote PostgreSQL contract runner demonstrate the
   threat matrix without local heavy execution.
+
+## Completion Evidence
+
+- Tested head: `c626daf8c958e09e3ab41569429f9f7f135699f5`.
+- PR Quality run: `30458193909`; PostgreSQL trust job: `90598811368`.
+- Cross-service run: `30458194098`.
+- Squash merge: `1da97877111ef938746b246722cea1c826b04cd0`;
+  merged tree is byte-identical to the tested head.
 
 ## Risks and Rollback
 

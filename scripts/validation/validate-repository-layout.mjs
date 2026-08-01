@@ -312,6 +312,44 @@ if (fs.existsSync(workflowPath)) {
   ]) {
     if (!workflow.includes(contract)) errors.push(`CI reproducibility contract is missing: ${contract}`);
   }
+  const ociInstallStart = workflow.indexOf(
+    "      - name: Install OCI validator dependencies",
+  );
+  const ociValidationStart = workflow.indexOf(
+    "      - name: Validate OCI publication controls",
+  );
+  const ociUploadStart = workflow.indexOf(
+    "      - uses: actions/upload-artifact@",
+    ociValidationStart,
+  );
+  if (
+    ociInstallStart < 0 ||
+    ociValidationStart <= ociInstallStart ||
+    ociUploadStart <= ociValidationStart
+  ) {
+    errors.push("OCI publication validation steps are missing or out of order");
+  } else {
+    const installStep = workflow.slice(ociInstallStart, ociValidationStart);
+    const validationStep = workflow.slice(ociValidationStart, ociUploadStart);
+    for (const contract of [
+      "corepack prepare pnpm@11.15.0 --activate",
+      "--filter opsmind-ai",
+      "install --frozen-lockfile --ignore-scripts",
+    ]) {
+      if (!installStep.includes(contract)) {
+        errors.push(`OCI validator dependency contract is missing: ${contract}`);
+      }
+    }
+    for (const contract of [
+      "set -euo pipefail",
+      '| tee "$evidence"',
+      "grep -Fx 'Result=PASS' \"$evidence\"",
+    ]) {
+      if (!validationStep.includes(contract)) {
+        errors.push(`OCI validator fail-closed contract is missing: ${contract}`);
+      }
+    }
+  }
 }
 
 for (const commandScript of ["scripts/dev/opsmind.ps1", "scripts/dev/opsmind.sh"]) {

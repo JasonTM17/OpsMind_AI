@@ -791,10 +791,41 @@ upgrade/cleanup proof. Bounded-record checkpoint 4B is **complete**. Phase 4 and
 G2 remain open because the large/raw artifact lifecycle is still blocked by
 B-006/B-008/B-012.
 
+## 2026-07-29 — Phase 4C fenced object-upload implementation
+
+The integration branch now combines three independently reviewed workstreams:
+
+- V015 durable upload attempts, five-second-to-five-minute leases, current
+  attempt foreign-key integrity, row-lock single-winner claims, stale and
+  authorization-epoch fencing, and atomic STORED event/audit settlement;
+- a default-off AWS SDK v2 S3-compatible adapter with one conditional bounded
+  PUT, precomputed SHA-256, SSE-KMS, disabled SDK retry, exact EOF/digest, and
+  probe-before-retry behavior for durably recorded ambiguity;
+- application orchestration that performs object I/O between two independent
+  ANALYZE authorization transactions and exposes no storage reference.
+
+Review corrections preserve ambiguity on every denied/unavailable probe,
+separate the request KMS key from its canonical response reference, reject
+unversioned `null`, and accept opaque version IDs up to 1,024 UTF-8 bytes.
+An expired `CLAIMED` attempt with no durable outcome is now conservatively
+`ORPHANED`; it cannot be converted into a later matching-HEAD adoption.
+Further adversarial review separated post-PUT source/response mismatches from
+retryable transport failures: the former settle `ORPHANED` and cannot later be
+HEAD-adopted, while a definitive `FAILED` attempt preserves its lease tuple and
+can be reclaimed immediately. The disposable database runner now proves both
+paths. The Phase 4C static validator passes with V014's normalized hash
+unchanged. PR
+Quality is wired for the V014-to-V015 real-role PostgreSQL contract, but the
+integrated revision has not yet produced revision-bound remote CI evidence.
+`STORED` remains unreadable; Phase 03 ingress, scanning, availability,
+retention/deletion receipts, restore, and B-006/B-008/B-012 are still open.
+
 ## Next Allowed Work
 
-1. Continue Phase 4 evidence-object lifecycle and production IdP
-   federation/session/break-glass/revocation conformance.
+1. Prove the integrated Phase 4C upload slice in revision-bound CI, then add
+   controlled ingress, scanning, `AVAILABLE`, reconciliation, retention,
+   deletion receipts, and production IdP federation/session/break-glass/
+   revocation conformance.
 2. Authorize and prove the named live non-production connector plus provider/
    legal egress; fixture-backed Phase 7 evidence is not a substitute.
 3. Register governed held-out cases and qualified human adjudication for B-013.

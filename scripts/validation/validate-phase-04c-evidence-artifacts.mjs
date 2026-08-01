@@ -1,3 +1,4 @@
+import crypto from "node:crypto";
 import fs from "node:fs";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
@@ -25,6 +26,40 @@ function requireMarkers(relativePath, markers) {
   return source;
 }
 
+function requireExactCount(source, marker, expected, description) {
+  const actual = source.split(marker).length - 1;
+  if (actual !== expected) {
+    errors.push(`${description} expected=${expected} actual=${actual}`);
+  }
+}
+
+function artifactJavaSources(relativeDirectory) {
+  const directory = path.join(repositoryRoot, relativeDirectory);
+  if (!fs.existsSync(directory)) {
+    errors.push(`missing artifact source directory: ${relativeDirectory}`);
+    return [];
+  }
+  const files = [];
+  function visit(currentDirectory) {
+    if (access.hasSymlinkFromRoot(currentDirectory)) {
+      errors.push(`unsafe artifact source directory: ${access.relativeName(currentDirectory)}`);
+      return;
+    }
+    for (const entry of fs.readdirSync(currentDirectory, { withFileTypes: true })) {
+      const entryPath = path.join(currentDirectory, entry.name);
+      if (entry.isSymbolicLink()) {
+        errors.push(`symlinked artifact source entry: ${access.relativeName(entryPath)}`);
+      } else if (entry.isDirectory()) {
+        visit(entryPath);
+      } else if (entry.isFile() && entry.name.endsWith(".java")) {
+        files.push(entryPath);
+      }
+    }
+  }
+  visit(directory);
+  return files.sort((left, right) => left.localeCompare(right));
+}
+
 const migrationPath = "services/platform-api/src/main/resources/db/migration/"
   + "V014__evidence_artifact_metadata.sql";
 const migration = requireMarkers(migrationPath, [
@@ -44,6 +79,11 @@ const migration = requireMarkers(migrationPath, [
   "opsmind_evidence_artifact_id",
   "opsmind_evidence_artifact_initial_event_id",
 ]);
+const normalizedV014 = migration.replace(/\r\n?/gu, "\n");
+const normalizedV014Sha256 = crypto.createHash("sha256").update(normalizedV014, "utf8").digest("hex");
+if (normalizedV014Sha256 !== "b95ee29742df7b5eed76b73edcf870bcbba773ec1c08078ba55b6575e23f5602") {
+  errors.push(`V014 normalized SHA-256 changed: ${normalizedV014Sha256}`);
+}
 
 for (const relativePath of [
   "services/platform-api/src/main/java/ai/opsmind/platform/incident/AuthorizedIncidentAnalysisScope.java",
@@ -55,6 +95,15 @@ for (const relativePath of [
   "services/platform-api/src/test/java/ai/opsmind/platform/evidence/artifact/EvidenceArtifactMetadataPersistenceIntegrationTest.java",
   "scripts/validation/run-phase-04c-artifact-metadata-postgres-contract.sh",
 ]) read(relativePath);
+
+requireMarkers(
+  "services/platform-api/src/test/java/ai/opsmind/platform/evidence/artifact/"
+    + "EvidenceArtifactMetadataPersistenceIntegrationTest.java",
+  [
+    "TRUNCATE TABLE evidence_artifact_upload_attempts",
+    "evidence_artifacts, evidence_artifact_events",
+  ],
+);
 
 const authorizer = requireMarkers(
   "services/platform-api/src/main/java/ai/opsmind/platform/incident/IncidentAnalysisAuthorizer.java",
@@ -113,13 +162,11 @@ else if (/\bFOR\s+KEY\s+SHARE\b/iu.test(eventAppendFunction[0])) {
   errors.push("artifact event append validation must not require UPDATE privilege on immutable metadata");
 }
 
-const sourceRoot = path.join(
-  repositoryRoot, "services/platform-api/src/main/java/ai/opsmind/platform/evidence/artifact",
-);
-for (const entry of fs.readdirSync(sourceRoot, { withFileTypes: true })) {
-  if (!entry.isFile() || !entry.name.endsWith(".java")) continue;
-  const file = path.join(sourceRoot, entry.name);
-  if (access.readSafeFile(file).split(/\r?\n/u).length > 200) {
+const artifactSourceDirectory = "services/platform-api/src/main/java/ai/opsmind/platform/evidence/artifact";
+const artifactJavaFiles = artifactJavaSources(artifactSourceDirectory);
+for (const file of artifactJavaFiles) {
+  const sourceLines = access.readSafeFile(file).replace(/\r?\n$/u, "").split(/\r?\n/u);
+  if (sourceLines.length > 200) {
     errors.push(`artifact source exceeds 200 lines: ${access.relativeName(file)}`);
   }
 }
@@ -139,11 +186,328 @@ if (!upgradeRunner.includes("OPSMIND_EPHEMERAL_DB")) {
   errors.push("artifact upgrade proof must stay disposable");
 }
 
+const v015Path = "services/platform-api/src/main/resources/db/migration/"
+  + "V015__evidence_artifact_upload_fencing.sql";
+const v015 = requireMarkers(v015Path, [
+  "ADD COLUMN storage_version_reference varchar(1024)",
+  "lower(storage_version_reference) <> 'null'",
+  "octet_length(storage_version_reference) <= 1024",
+  "evidence_artifacts_phase_2_lifecycle_fence",
+  "upload_attempt_count = 0",
+  "upload_attempt_count BETWEEN 1 AND 8",
+  "CREATE TABLE evidence_artifact_upload_attempts",
+  "evidence_artifacts_current_upload_attempt_fk",
+  "CREATE OR REPLACE FUNCTION opsmind_claim_evidence_artifact_upload",
+  "p_lease_duration_ms NOT BETWEEN 5000 AND 300000",
+  "probe_required boolean",
+  "reconciliation_required boolean",
+  "artifact.lease-expired-unsettled",
+  "CREATE OR REPLACE FUNCTION opsmind_settle_evidence_artifact_upload",
+  "SECURITY DEFINER",
+  "FOR UPDATE OF artifact, incident",
+  "FOR UPDATE",
+  "attempt_row.status IS DISTINCT FROM 'CLAIMED'",
+  "artifact upload settlement lost its active fence",
+  "CREATE CONSTRAINT TRIGGER evidence_artifacts_require_stored_event",
+  "DEFERRABLE INITIALLY DEFERRED",
+  "ARTIFACT_STORED",
+  "ALTER TABLE evidence_artifact_upload_attempts FORCE ROW LEVEL SECURITY",
+  "REVOKE ALL ON evidence_artifact_upload_attempts",
+  "REVOKE UPDATE, DELETE, TRUNCATE ON evidence_artifacts, evidence_artifact_events",
+  "GRANT EXECUTE ON FUNCTION public.opsmind_claim_evidence_artifact_upload",
+  "GRANT EXECUTE ON FUNCTION public.opsmind_settle_evidence_artifact_upload",
+  "transition_at := GREATEST(db_now, artifact_row.lifecycle_updated_at)",
+  "settled_at = transition_at",
+  "lifecycle_updated_at = transition_at",
+]);
+if (!v015.includes("p_storage_version_reference IS NULL")
+    || !v015.includes("lower(p_storage_version_reference) = 'null'")
+    || !v015.includes("octet_length(p_storage_version_reference) > 1024")) {
+  errors.push("V015 stored settlement must reject a literal-null version reference");
+}
+
+const storageProperties = requireMarkers(
+  "services/platform-api/src/main/java/ai/opsmind/platform/evidence/artifact/"
+    + "storage/EvidenceArtifactStorageProperties.java",
+  [
+    "MAXIMUM_SUPPORTED_OBJECT_BYTES = 5_000_000_000L",
+    "void validateForEnablement()",
+    "if (!enabled) return;",
+    "allowLoopbackCleartext && \"http\".equalsIgnoreCase(value.getScheme())",
+    "literalLoopback(value.getHost())",
+    "apiCallAttemptTimeout.compareTo(apiCallTimeout) >= 0",
+    "requiredUploadBudget().compareTo(uploadLeaseDuration) < 0",
+    ".plus(sourceVerificationBudget)",
+    ".plus(settlementSafetyMargin)",
+    "between(uploadLeaseDuration, Duration.ofSeconds(5), Duration.ofMinutes(5))",
+    "expectedKmsKeyReference",
+  ],
+);
+const storageConfiguration = requireMarkers(
+  "services/platform-api/src/main/java/ai/opsmind/platform/evidence/artifact/"
+    + "storage/S3EvidenceArtifactObjectStorageConfiguration.java",
+  [
+    "DefaultCredentialsProvider.create()",
+    "properties.validateForEnablement()",
+    "AwsRetryStrategy.doNotRetry()",
+    "@ConditionalOnProperty(",
+    "havingValue = \"true\"",
+  ],
+);
+const requestFactory = requireMarkers(
+  "services/platform-api/src/main/java/ai/opsmind/platform/evidence/artifact/"
+    + "storage/S3ArtifactObjectRequestFactory.java",
+  [
+    ".ifNoneMatch(\"*\")",
+    ".checksumSHA256(encodedDigest(expectation))",
+    ".serverSideEncryption(ServerSideEncryption.AWS_KMS)",
+    ".ssekmsKeyId(properties.kmsKeyId())",
+    ".checksumMode(ChecksumMode.ENABLED)",
+    "properties.expectedKmsKeyReference().equals(response.ssekmsKeyId())",
+    "!value.equalsIgnoreCase(\"null\")",
+    "getBytes(StandardCharsets.UTF_8).length <= 1_024",
+  ],
+);
+if (requestFactory.includes(".checksumAlgorithm(")) {
+  errors.push("precomputed artifact checksum must not enable SDK checksum recomputation");
+}
+const objectStorage = requireMarkers(
+  "services/platform-api/src/main/java/ai/opsmind/platform/evidence/artifact/"
+    + "storage/S3EvidenceArtifactObjectStorage.java",
+  [
+    "ManagedArtifactSource source",
+    "hasFullUploadBudget(startedAt, uploadLeaseExpiresAt)",
+    "new ManagedArtifactRequestContent(",
+    "RequestBody.fromContentProvider(",
+    "content.verifyAfterPut()",
+    "sourceDeadline(startedAt, uploadLeaseExpiresAt)",
+    "finally {\n            release(source);",
+    "sourceContractMismatch(failure)",
+  ],
+);
+requireExactCount(objectStorage, "client.putObject(", 1,
+  "artifact storage must issue one conditional PUT per invocation");
+requireMarkers(
+  "services/platform-api/src/main/java/ai/opsmind/platform/evidence/artifact/"
+    + "storage/ManagedArtifactSource.java",
+  [
+    "StandardOpenOption.READ",
+    "LinkOption.NOFOLLOW_LINKS",
+    "PositionalFileChannelInputStream",
+    "cleanupRequested.compareAndSet(false, true)",
+  ],
+);
+requireMarkers(
+  "services/platform-api/src/main/java/ai/opsmind/platform/evidence/artifact/"
+    + "storage/ManagedArtifactRequestContent.java",
+  [
+    "MAXIMUM_STREAM_VIEWS = 2",
+    "verifyOpenedStreams()",
+    "verifyAfterPut()",
+    "executor.detachCleanup(source)",
+  ],
+);
+requireMarkers(
+  "services/platform-api/src/main/java/ai/opsmind/platform/evidence/artifact/"
+    + "storage/ArtifactSourceReadBudget.java",
+  ["System.nanoTime()", "remainingNanos()", "absoluteDeadline"],
+);
+const storedObject = requireMarkers(
+  "services/platform-api/src/main/java/ai/opsmind/platform/evidence/artifact/"
+    + "storage/ArtifactObjectStored.java",
+  [
+    "!value.equalsIgnoreCase(\"null\")",
+    "getBytes(StandardCharsets.UTF_8).length <= 1_024",
+  ],
+);
+const failureMapper = requireMarkers(
+  "services/platform-api/src/main/java/ai/opsmind/platform/evidence/artifact/"
+    + "storage/S3EvidenceArtifactStorageFailureMapper.java",
+  [
+    "FailureKind.ACCESS_DENIED, true, failure",
+    "FailureKind.UNAVAILABLE, true, failure",
+    "ArtifactSourceContractViolationException",
+    "sourceContractMismatch(failure)",
+  ],
+);
+if (storageProperties.includes("http\".equalsIgnoreCase(value.getScheme())\n            && !literalLoopback")) {
+  errors.push("artifact storage cleartext guard permits a non-loopback endpoint");
+}
+const storageSources = [
+  storageProperties, storageConfiguration, requestFactory, objectStorage, storedObject, failureMapper,
+].join("\n");
+for (const forbiddenStorageCapability of [
+  "StaticCredentialsProvider",
+  "AwsBasicCredentials",
+  "AwsSessionCredentials",
+  "access-key",
+  "secret-key",
+  "session-token",
+  "S3Presigner",
+]) {
+  if (storageSources.includes(forbiddenStorageCapability)) {
+    errors.push(`artifact storage contains forbidden credential or URL capability: ${forbiddenStorageCapability}`);
+  }
+}
+
+const uploadService = requireMarkers(
+  "services/platform-api/src/main/java/ai/opsmind/platform/evidence/artifact/"
+    + "EvidenceArtifactUploadService.java",
+  [
+    "requireObjectIoOutsideTransaction()",
+    "claim.reconciliationRequired()",
+    "if (!claim.probeRequired())",
+    "storage.probe(claim.expectation())",
+    "EvidenceArtifactUploadOutcome.UNCERTAIN",
+    "EvidenceArtifactUploadOutcome.ORPHANED",
+    "authorizer.withAnalyzeAccess",
+    "ManagedArtifactSource content",
+    "claim.uploadLeaseExpiresAt()",
+    "storage.release(content)",
+  ],
+);
+const uploadSettlementCoordinator = requireMarkers(
+  "services/platform-api/src/main/java/ai/opsmind/platform/evidence/artifact/"
+    + "EvidenceArtifactUploadSettlementCoordinator.java",
+  [
+    "FailureKind.SOURCE_CONTRACT_MISMATCH",
+    "FailureKind.REMOTE_METADATA_MISMATCH",
+    "authorizer.withAnalyzeAccess",
+    "settlementFailure.addSuppressed(objectFailure)",
+  ],
+);
+requireExactCount(uploadService + uploadSettlementCoordinator, "authorizer.withAnalyzeAccess(", 2,
+  "artifact upload must use exactly two independent authorization transactions");
+const uploadRepository = requireMarkers(
+  "services/platform-api/src/main/java/ai/opsmind/platform/evidence/artifact/"
+    + "EvidenceArtifactUploadRepository.java",
+  [
+    "opsmind_claim_evidence_artifact_upload",
+    "opsmind_settle_evidence_artifact_upload",
+    "requireTransaction();",
+    "storedLifecycleAppender.append(claim, settlement)",
+  ],
+);
+if (/S3Client|putObject|headObject|InputStream/iu.test(uploadRepository)) {
+  errors.push("upload repository must not own object I/O");
+}
+const platformExceptionHandler = requireMarkers(
+  "services/platform-api/src/main/java/ai/opsmind/platform/common/api/PlatformExceptionHandler.java",
+  ["failureType={} causeType={}", "cause.getClass().getName()"],
+);
+const classifiedHandlerScope = platformExceptionHandler.split(
+  "@ExceptionHandler(Exception.class)",
+)[0];
+if (/LOGGER\.error\([\s\S]{0,400},\s*exception\s*\)/u.test(classifiedHandlerScope)) {
+  errors.push("classified platform failures must not render raw throwable chains");
+}
+requireMarkers(
+  "services/platform-api/src/test/java/ai/opsmind/platform/common/api/"
+    + "PlatformExceptionHandlerTest.java",
+  [
+    "doesNotContain(SENSITIVE_CAUSE_DETAIL, \"sensitive-suppressed-detail\")",
+    "causeType=java.lang.IllegalStateException",
+  ],
+);
+const uploadFailureTest = requireMarkers(
+  "services/platform-api/src/test/java/ai/opsmind/platform/evidence/artifact/"
+    + "EvidenceArtifactUploadFailureTest.java",
+  [
+    "getCause()).isSameAs(storageFailure)",
+    "getSuppressed()).containsExactly(storageFailure)",
+    "\"evidence-artifact.settlement-failed\"",
+  ],
+);
+if (uploadFailureTest.includes("getCause()).isNull()")) {
+  errors.push("artifact upload failure tests must preserve classified causal exceptions");
+}
+
+const application = requireMarkers("services/platform-api/src/main/resources/application.yaml", [
+  "enabled: ${OPSMIND_EVIDENCE_ARTIFACT_STORAGE_ENABLED:false}",
+  "endpoint: ${OPSMIND_EVIDENCE_ARTIFACT_STORAGE_ENDPOINT:https://s3.invalid.example}",
+  "region: ${OPSMIND_EVIDENCE_ARTIFACT_STORAGE_REGION:disabled}",
+  "bucket: ${OPSMIND_EVIDENCE_ARTIFACT_STORAGE_BUCKET:disabled}",
+  "kms-key-id: ${OPSMIND_EVIDENCE_ARTIFACT_STORAGE_KMS_KEY_ID:}",
+  "expected-kms-key-reference: ${OPSMIND_EVIDENCE_ARTIFACT_STORAGE_EXPECTED_KMS_KEY_REFERENCE:}",
+  "maximum-object-bytes: ${OPSMIND_EVIDENCE_ARTIFACT_STORAGE_MAXIMUM_OBJECT_BYTES:0}",
+  "upload-lease-duration: ${OPSMIND_EVIDENCE_ARTIFACT_STORAGE_UPLOAD_LEASE_DURATION:PT1M}",
+  "source-verification-budget: ${OPSMIND_EVIDENCE_ARTIFACT_STORAGE_SOURCE_VERIFICATION_BUDGET:PT5S}",
+  "settlement-safety-margin: ${OPSMIND_EVIDENCE_ARTIFACT_STORAGE_SETTLEMENT_SAFETY_MARGIN:PT5S}",
+]);
+const environmentExample = requireMarkers(".env.example", [
+  "OPSMIND_EVIDENCE_ARTIFACT_STORAGE_ENABLED=false",
+  "OPSMIND_EVIDENCE_ARTIFACT_STORAGE_ENDPOINT=https://s3.invalid.example",
+  "OPSMIND_EVIDENCE_ARTIFACT_STORAGE_REGION=disabled",
+  "OPSMIND_EVIDENCE_ARTIFACT_STORAGE_BUCKET=disabled",
+  "OPSMIND_EVIDENCE_ARTIFACT_STORAGE_KMS_KEY_ID=",
+  "OPSMIND_EVIDENCE_ARTIFACT_STORAGE_EXPECTED_KMS_KEY_REFERENCE=",
+  "OPSMIND_EVIDENCE_ARTIFACT_STORAGE_SOURCE_VERIFICATION_BUDGET=PT5S",
+  "OPSMIND_EVIDENCE_ARTIFACT_STORAGE_SETTLEMENT_SAFETY_MARGIN=PT5S",
+]);
+requireMarkers(
+  "services/platform-api/src/test/java/ai/opsmind/platform/evidence/artifact/"
+    + "storage/S3EvidenceArtifactObjectStorageWireTest.java",
+  [
+    "Apache5HttpClient.builder()",
+    "AwsRetryStrategy.doNotRetry()",
+    "assertThat(request.checksum()).isEqualTo(encodedDigest())",
+    "assertThat(requestCount).hasValue(1)",
+  ],
+);
+for (const forbiddenEnvironmentField of [
+  "AWS_ACCESS_KEY_ID=",
+  "AWS_SECRET_ACCESS_KEY=",
+  "AWS_SESSION_TOKEN=",
+  "OPSMIND_EVIDENCE_ARTIFACT_STORAGE_ACCESS_KEY",
+  "OPSMIND_EVIDENCE_ARTIFACT_STORAGE_SECRET",
+]) {
+  if (application.includes(forbiddenEnvironmentField) || environmentExample.includes(forbiddenEnvironmentField)) {
+    errors.push(`artifact storage configuration exposes a credential field: ${forbiddenEnvironmentField}`);
+  }
+}
+
+const objectRunner = requireMarkers(
+  "scripts/validation/run-phase-04c-artifact-object-postgres-contract.sh",
+  [
+    "OPSMIND_EPHEMERAL_DB=true",
+    "FreshPrimaryMigration=PASS",
+    "migrate_to 14",
+    "migrate_to 15",
+    "ArtifactObjectUpgrade=PASS",
+    "ArtifactCapabilityGrants=PASS",
+    "PendingAttemptShapeConstraint=PASS",
+    "ConcurrentClaimSingleWinner=PASS",
+    "ExpiredClaimProbeFence=PASS",
+    "FailedAttemptImmediateRetry=PASS",
+    "OrphanedAttemptReclaimDenial=PASS",
+    "--set VERBOSITY=verbose",
+    "StaleAttemptSettlement",
+    "MissingStoredAuditRollback",
+    "\"P7104\"",
+    "stored artifact metadata requires its lifecycle event and audit row",
+    "StoredAuditRollbackState=PASS",
+    "attempt.settled_at IS NOT DISTINCT FROM artifact.lifecycle_updated_at",
+    "ExactStoredReplay=PASS",
+    "StoredEventAuditAtomicity=PASS",
+    "StoredAuditRedaction=PASS",
+    "DirectArtifactMutationDenial",
+    "DirectAttemptReadDenial",
+    "AuthorizationEpochDriftDenial",
+    "ContractCleanup=PASS",
+  ],
+);
+if (!objectRunner.includes("upgrade database must differ from the primary database")) {
+  errors.push("artifact object runner must isolate the V014-to-V015 upgrade database");
+}
+
 const lines = [
-  "OpsMind Phase 4C evidence artifact metadata validation",
-  "ValidationScope=METADATA_AUDIT_RLS_ONLY",
-  "ObjectStreaming=DEFERRED_TO_PHASE_02",
+  "OpsMind Phase 4C evidence artifact object-lifecycle validation",
+  "ValidationScope=METADATA_OBJECT_UPLOAD_FENCING",
+  `V014NormalizedSha256=${normalizedV014Sha256}`,
+  "ObjectStreaming=PHASE_02_IMPLEMENTED_DEFAULT_OFF",
+  "ProductionBackendKmsConformance=EXTERNAL_EVIDENCE_REQUIRED",
   "ArtifactIngress=DEFERRED_TO_PHASE_03",
+  "ArtifactReadability=DEFERRED_TO_PHASE_03",
   `Errors=${errors.length}`,
   `CheckpointResult=${errors.length === 0 ? "PASS" : "BLOCK"}`,
   "ArtifactLifecycleExit=BLOCK",

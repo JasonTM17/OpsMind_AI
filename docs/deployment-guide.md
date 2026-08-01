@@ -24,11 +24,13 @@ absent. There is no production/live Temporal cluster, compatible worker, or
 restart/resume execution. This is not yet a deployable durable investigation
 workflow.
 
-V014 adds Phase 4C metadata authority inside Platform PostgreSQL only: a
-tenant-scoped, owner-bound pending artifact intent, immutable initial event,
-and exact audit relation. It does not configure an object store or accept an
-artifact body. The CI contract is wired but has no revision-bound remote result;
-the object lifecycle blockers remain release blockers.
+V014 adds tenant-scoped, owner-bound artifact metadata authority. V015 adds a
+default-off, lease-fenced upload control plane and a bounded S3-compatible
+adapter, but does not expose public ingress or reads. The CI contracts are wired
+for both upgrade steps and have no revision-bound remote result for the current
+integrated revision; scanning, retention, deletion, restore, backend/KMS
+conformance, and the remaining object-lifecycle blockers are still release
+gates.
 
 G0.5 approves managed Kubernetes in `ap-southeast-1` with Singapore residency,
 an enterprise OIDC profile, MinIO locally, S3-compatible production storage
@@ -220,6 +222,22 @@ A failed gate cannot be converted to a warning solely to meet a schedule.
 - Apply Platform V014 before deploying any later artifact streaming or ingress
   writer. It is additive and initially accepts only `PENDING_UPLOAD`; do not
   treat its metadata row or opaque storage key as object-read authority.
+- Apply Platform V015 before enabling
+  `OPSMIND_EVIDENCE_ARTIFACT_STORAGE_ENABLED`. V015 creates the forced-RLS
+  upload-attempt authority, limits leases to five seconds through five minutes,
+  and requires exact STORED lifecycle-event/audit append in the settlement
+  transaction. Deploy the V015-capable runtime only after both the fresh and
+  V014-to-V015 disposable contracts pass.
+- The enabled backend must support versioning, conditional immutable create,
+  SHA-256 checksums on PUT and HEAD, and SSE-KMS. Configure the request key
+  separately from the canonical KMS identifier returned by PUT/HEAD. Provide a
+  least-privilege workload identity through the external default credential
+  chain; never place access keys in environment templates or images. The
+  identity needs the backend-equivalent PUT/HEAD permissions and the KMS
+  encrypt/decrypt/data-key permissions required for checksum verification.
+- Keep the adapter disabled when the bucket lacks a non-`null` opaque version
+  reference, checksum-mode HEAD, or exact KMS identity. A failed or denied probe
+  is ambiguous and must not authorize another PUT.
 - Apply Tool Gateway V002 before deploying provenance-aware gateway writers.
   V002 permits the exact legacy null tuple during the rolling window and
   requires all six observed-provenance fields together from new writers.
@@ -363,7 +381,7 @@ that selects `started` rows older than the retry interval without a matching
 - For Phase 9 rollback, freeze starts, restore
   `OPSMIND_INVESTIGATION_EXECUTION_MODE=inline`, disable the Temporal client,
   observer, workflow-start dispatcher, reconciler, and both dedicated
-   datasources. V010-V014 remain applied; rollback is configuration-only. Retain
+   datasources. V010-V015 remain applied; rollback is configuration-only. Retain
   bindings, inbox rows, and outbox rows as immutable recovery evidence; do not
   reset a genuinely terminal `REJECTED` binding or delete a pending handoff.
 

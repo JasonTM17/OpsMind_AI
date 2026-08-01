@@ -103,7 +103,7 @@ flowchart LR
     OP["Operator"] --> WEB["Operator Web - Next.js"]
     WEB --> API["Platform API - Spring modular monolith"]
     API --> DB["PostgreSQL + pgvector + forced RLS"]
-    API --> OBJ["Evidence artifact port - lifecycle pending"]
+    API --> OBJ["Evidence artifact port - metadata + default-off upload"]
     API --> AI["AI Runtime - FastAPI"]
     AI --> DSP["DeepSeek provider adapter"]
     API --> POL["Policy, approval and audit"]
@@ -273,6 +273,7 @@ node .\scripts\validation\validate-phase-09-workflow-handoff.mjs
 | AI Runtime | 159 offline tests plus five PostgreSQL-gated skips in current CI; the PostgreSQL state gate passes separately; DeepSeek defaults to `deepseek-v4-flash` | No live provider call or legal/residency approval |
 | Tool Gateway | Static contract, durable PostgreSQL receipt/audit state, synthetic Prometheus connector, workload OAuth boundary, dual-credential Platform execution client, and local V003 tenant-scope unit/static gates pass | V003 PostgreSQL/upgrade evidence, named live non-production connector, and production conformance pending |
 | Investigation | Bounded-record checkpoint 4B, ANALYZE-only activity view, V009 evidence, capability-backed AI rounds, CK/Stitch/browser proof, and Phase 7 regression PASS in artifact `8649696519` | G3 still requires a named live connector, provider/legal approval, and BFF/session proof |
+| Artifact plane | V014 metadata authority plus V015 lease-fenced, bounded, default-off S3-compatible upload path pass the current static contract; fresh/upgrade database gates are wired | Integrated revision still needs remote CI; public ingress/read, scanning, retention/deletion receipts, restore, and production backend/KMS conformance remain blocked |
 | Evaluation | Fresh disposable A/B/C score `PASS` on all eight metrics with samples `100/1/1`; exact CI command passes 61/61 | Held-out payloads, human adjudication, calibration, and comparison unavailable; Phase 8 exit is BLOCK |
 | Workflow handoff | V010-V013 implement default-off atomic admission, capability-only dispatch, direct-row containment, ordering preservation, durable ambiguous-outcome hold, and a no-`Start` exact-workflow reconciliation/alert lane; local fresh/upgrade real-role and rollback contracts pass | B-017 still blocks Temporal admission/G4 pending exact-head heavy CI, live namespace read-only/retention conformance, `promtool` and live scrape, external page delivery, a compatible worker, and restart/resume execution |
 | Compose | All application images build, start, and pass health smoke in CI | Not staging/production deployment evidence |

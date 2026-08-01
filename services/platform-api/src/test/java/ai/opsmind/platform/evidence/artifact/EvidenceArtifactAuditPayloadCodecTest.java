@@ -55,4 +55,45 @@ class EvidenceArtifactAuditPayloadCodecTest {
             "storageKey", "encryption", "credential", "objectUrl", "raw"
         );
     }
+
+    @Test
+    void emitsTheStoredEnvelopeWithoutAttemptOrObjectStoreMetadata() throws Exception {
+        UUID organizationId = UUID.fromString("11111111-1111-4111-8111-111111111111");
+        UUID artifactId = UUID.fromString("22222222-2222-4222-8222-222222222222");
+        UUID attemptId = UUID.fromString("33333333-3333-4333-8333-333333333333");
+        Instant occurredAt = Instant.parse("2030-01-01T00:00:01Z");
+        EvidenceArtifactMetadata metadata = new EvidenceArtifactMetadata(
+            artifactId, organizationId, UUID.fromString("44444444-4444-4444-8444-444444444444"),
+            UUID.fromString("55555555-5555-4555-8555-555555555555"),
+            UUID.fromString("66666666-6666-4666-8666-666666666666"),
+            UUID.fromString("77777777-7777-4777-8777-777777777777"), UUID.randomUUID(),
+            "metric", "prometheus:synthetic/opsmind-api", "v1", "redacted-metrics",
+            EvidenceArtifactDigest.parse("sha256:" + "d".repeat(64)), 4_096L, 4L,
+            "evidence-90d", "singapore", "delete-within-24h", EvidenceArtifactLifecycleState.PENDING_UPLOAD,
+            1L, occurredAt.minusSeconds(1)
+        );
+        EvidenceArtifactUploadClaim claim = new EvidenceArtifactUploadClaim(
+            metadata, "artifacts/v1/internal", attemptId, 1, occurredAt.plusSeconds(30), false, false
+        );
+        EvidenceArtifactUploadSettlement settlement = new EvidenceArtifactUploadSettlement(
+            true, EvidenceArtifactLifecycleState.STORED, 2L, 1L, occurredAt
+        );
+        UUID eventId = EvidenceArtifactIdentity.lifecycleEventId(organizationId, artifactId, 2L, attemptId);
+        JsonMapper mapper = JsonMapper.builder().findAndAddModules().build();
+
+        AuditEvent audit = new EvidenceArtifactAuditPayloadCodec(mapper).stored(claim, settlement, eventId);
+        JsonNode payload = mapper.readTree(audit.payloadJson());
+
+        assertThat(audit.action()).isEqualTo("ARTIFACT_STORED");
+        assertThat(audit.eventId()).isEqualTo(eventId);
+        assertThat(payload.propertyNames()).containsExactlyInAnyOrderElementsOf(Set.of(
+            "eventId", "organizationId", "projectId", "incidentId", "runId", "artifactId",
+            "actorId", "lifecycleVersion", "lifecycleState", "contentDigest", "byteCount",
+            "dataClassification", "retentionClass", "storageGeneration", "occurredAt"
+        ));
+        assertThat(audit.payloadJson()).doesNotContain(
+            "uploadAttemptId", "storageKey", "versionReference", "encryption", "credential", "kms",
+            "objectUrl", "body"
+        );
+    }
 }
