@@ -66,8 +66,7 @@ Release images are dual-published by digest to Docker Hub and GitHub Container
 Registry (GHCR). GHCR packages are linked to this repository so the repository
 exposes a Package for each shipped runtime. Both registries must resolve to the
 same multi-architecture OCI manifest digest. Mutable tags are not published by
-the release workflow. Docker Hub/GitHub credentials are protected release
-secrets or short-lived workload identities and never checked in.
+the release workflow.
 
 The SHA-pinned
 [OCI publication workflow](../.github/workflows/container-publish.yml) builds
@@ -80,42 +79,114 @@ runtime health probe on both
 the protected `oci-production` job stage immutable version tags, create and
 verify GitHub/Sigstore attestations for each release digest, sign one aggregate
 release receipt, then create one GitHub Release as the atomic activation marker.
+
+Release authorization has a hard dual-registry gate. The
+`publish_dockerhub` input defaults to `false` only to require an explicit
+operator choice; `false` is not a GHCR-only or package-bootstrap mode. The
+`authorize` job rejects it immediately after SemVer validation. Because every
+candidate build depends on `authorize`, this rejection happens before candidate
+publication, version-tag staging, evidence signing, or release-marker creation.
+A releasable dispatch must set `publish_dockerhub=true`.
+
 Repository-level release immutability must already be enabled; the workflow
-fails closed before staging if it is disabled. The workflow atomically creates
-the exact source tag, creates the marker as a draft, attaches the signed receipt,
-Sigstore bundle, and complete evidence archive, checks their server-reported
-digests, then publishes and requires an immutable response. An interrupted
-staging or draft upload has no active marker and is not a release.
+fails closed before version-tag staging if it is disabled. The workflow
+atomically creates the exact source tag, creates the marker as a draft, attaches
+the signed receipt, Sigstore bundle, and complete evidence archive, checks their
+server-reported digests, then publishes and requires an immutable response. An
+interrupted staging or draft upload has no active marker and is not a release.
 
-Publication is manual-only, rejects any ref except `main`, requires a strict
-SemVer `release_version`, and verifies that PR quality and cross-service
-evaluation succeeded for the exact source SHA. The `oci-production` environment
-must require a reviewer and allow only the `main` deployment branch. Its
-environment variable `DOCKERHUB_USERNAME` and environment secret
-`DOCKERHUB_TOKEN` are exposed only to credential validation and the promotion
-step. Promotion uses an isolated temporary credential store and logs out before
-the step exits. The workflow never accepts a registry token as an input,
-job-wide environment value, or build argument.
+Registry writes are staged sequentially and are not a cross-registry
+transaction. A failed attempt can leave some matching immutable version tags in
+GHCR or Docker Hub. Those writes have no release authority without both an
+`opsmind-oci-publication-v4` receipt whose result is `PASS` and the immutable
+GitHub Release marker. A later attempt can reuse a staged tag only when it still
+resolves to the exact candidate digest; any different digest fails closed.
 
-Run the GHCR bootstrap after the workflow is merged:
+### Single atomic-release dispatch
 
-```powershell
-gh workflow run container-publish.yml --ref main `
-  -f release_version=0.1.0 `
-  -f publish_dockerhub=false
-```
+Complete every prerequisite before the releasable dispatch:
 
-Candidate packages must be linked to `JasonTM17/OpsMind_AI` and made public
-before approving the protected promotion job; the job queries GitHub's package
-API and fails closed otherwise. Enable immutable releases in repository
-settings before dispatching. Run dual-registry publication only after the
-protected environment credentials exist:
+1. Merge the workflow to `main`, enable immutable GitHub Releases, and confirm
+   PR Quality and Cross-Service Evaluation succeeded for the exact `main` SHA
+   that will be dispatched.
+2. Confirm all four GHCR packages are public and linked to
+   `JasonTM17/OpsMind_AI`: `opsmind-platform-api`, `opsmind-ai-runtime`,
+   `opsmind-tool-gateway`, and `opsmind-operator-web`. The promotion job verifies
+   both properties through the GitHub package API.
+3. Ensure the same four public repositories exist in the target Docker Hub
+   namespace. Configure only the protected `oci-production` environment with
+   environment variable `DOCKERHUB_USERNAME` and environment secret
+   `DOCKERHUB_TOKEN`.
+4. Give the Docker Hub credential pull/read and push/write access only. For a
+   personal access token, select **Read & Write**, never **Delete**. When
+   [organization access tokens](https://docs.docker.com/enterprise/security/access-tokens/)
+   are available, prefer one scoped with Image Pull/Image Push to exactly the
+   four repositories above and no organization-management permissions. Do not
+   store the token as a repository secret, workflow input, job-wide environment
+   value, build argument, file, or image content.
+5. Require an `oci-production` reviewer and restrict that environment to the
+   `main` deployment branch.
+
+There is no GHCR-only bootstrap mode. For a first publication whose package
+records do not exist, configure the protected environment first, then an initial
+`publish_dockerhub=true` attempt may create the candidate SHA references and
+fail package preflight before any immutable version tag or release marker.
+Link and make all four packages public, then rerun that failed workflow run so
+the source SHA and release version remain exact. The failed attempt is not a
+release; never use `publish_dockerhub=false`.
+
+Run exactly one release dispatch:
 
 ```powershell
 gh workflow run container-publish.yml --ref main `
   -f release_version=0.1.0 `
   -f publish_dockerhub=true
 ```
+
+The workflow is manual-only, rejects any ref except `main`, requires strict
+SemVer, and serializes production publication. The protected job exposes the
+Docker Hub variable and secret only to credential validation, promotion login,
+and a separate short-lived OCI attestation-read login. It logs out and restores
+or removes the promotion Docker configuration before verification. The
+attestation-read configuration is newly created, used only for OCI bundle reads,
+logged out, and deleted before the job exits.
+
+### Release receipt v4
+
+`release-receipt.json` uses schema `opsmind-oci-publication-v4`. The workflow
+accepts and signs it only when `result` is `PASS` and the following checks hold
+for one four-component release set:
+
+- The verification pass uses a newly created empty Docker configuration after
+  registry logout. Anonymous registry pulls/reads resolve every GHCR and Docker
+  Hub version tag to the observed candidate digest. OCI attestation bundles
+  require registry authentication, so they are read through a second newly
+  created, isolated configuration with only the protected credentials. The
+  receipt records
+  `registryAccess: "ANONYMOUS_MANIFESTS_ISOLATED_AUTHENTICATED_ATTESTATIONS"`.
+- Each component attestation bundle is attached to its OCI registry subject and
+  is read back with `--bundle-from-oci`; the receipt records
+  `attestationBundles: "OCI_REGISTRY"`.
+- Attestation verification is constrained to signer workflow
+  `JasonTM17/OpsMind_AI/.github/workflows/container-publish.yml`, the immutable
+  workflow-file digest (`github.workflow_sha`), the exact dispatched source SHA,
+  and source ref `refs/heads/main`, with self-hosted runners denied. Receipt
+  fields `signerWorkflow`, `signerDigest`, `sourceDigest`, and `sourceRef`
+  record those exact constraints.
+- Each GHCR package is public and repository-linked, and its manifest, SBOM,
+  provenance, platforms, scan result, and signed attestation are verified.
+- GHCR-Docker Hub digest/tag parity holds for every component:
+  `dockerHub.published` is `true`, the Docker Hub digest equals the
+  GHCR/candidate digest, and the Docker Hub immutable tag equals the GHCR
+  immutable tag. Any missing publication, digest mismatch, or tag mismatch makes
+  the receipt `BLOCK`.
+
+The aggregate receipt and evidence archive are separately attested and verified
+against the exact copied Sigstore bundle that will become the GitHub Release
+asset, the same signer workflow and workflow-file digest, source SHA, and
+source ref before attachment to the GitHub Release. Only the `PASS` receipt
+plus the published immutable `v<SemVer>` marker makes the staged set
+release-approved.
 
 The workflow normalizes valid SemVer build metadata for OCI tags, for example
 `1.2.3+build.7` becomes `1.2.3_build.7`, while the receipt retains the original

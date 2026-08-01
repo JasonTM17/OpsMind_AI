@@ -11,8 +11,9 @@ date: 2026-07-28
 
 Publish the four production runtime images as immutable multi-architecture OCI
 packages with repository linkage, SBOM, provenance, and revision-bound receipts.
-GHCR uses the scoped GitHub token. Docker Hub publication is enabled only when
-the protected username/token pair is configured.
+GHCR uses the scoped GitHub token. Every releasable version must publish the
+same verified digests to both GHCR and Docker Hub through the protected
+environment; a single-registry run is not release-authoritative.
 
 ## Scope
 
@@ -21,8 +22,8 @@ the protected username/token pair is configured.
 3. Build immutable candidate SHA references, scan/test/sign all four, then
    promote their exact digests through the protected `oci-production`
    environment.
-4. Require environment-scoped Docker Hub credentials for optional registry
-   parity while allowing a GHCR-only manual bootstrap.
+4. Require environment-scoped Docker Hub credentials and reject manual
+   publication unless coordinated dual-registry parity is explicitly enabled.
 5. Emit one secret-free candidate receipt per component and one aggregate
    release-set receipt.
 6. Add a structural YAML validator and negative mutation tests to PR quality.
@@ -51,9 +52,16 @@ the protected username/token pair is configured.
   Receipt, Sigstore bundle, and evidence archive are draft assets verified
   before publication. No mutable component channel is published.
 - Docker Hub promotion fails closed when either environment credential is
-  absent; the token is never job-scoped.
+  absent or dual-registry publication is not enabled; the token is never
+  job-scoped.
 - Published registry digests, observed platforms, scan counts, health, package
   visibility/linkage, and signatures are verified before the atomic marker.
+  Public manifests use a credential-free configuration; OCI attestation bundles
+  use a separately created, short-lived authenticated configuration because the
+  GitHub CLI requires registry authentication for OCI bundle reads.
+- Component and aggregate attestations bind the signer workflow, immutable
+  workflow-file digest, source SHA, and source ref. Aggregate verification uses
+  the exact copied Sigstore bundle that becomes the release asset.
 - PR quality, Compose build/health, actionlint, secret scanning, and static
   publication validation pass on the exact source revision.
 
@@ -71,5 +79,7 @@ resolving and recording its digest.
 Docker Hub publication cannot execute until environment variable
 `DOCKERHUB_USERNAME` and environment secret `DOCKERHUB_TOKEN` exist in
 `oci-production`. Neither value is inferred, generated, or committed. Initial
-GHCR promotion also waits until the candidate packages are public and linked to
-this repository and immutable releases are enabled for the repository.
+candidate builds may create SHA-scoped GHCR package records before protected
+promotion stops at its preflight. Those packages must be public and linked to
+this repository, immutable releases must remain enabled, and the same exact
+version/SHA run must then be retried with dual-registry publication enabled.
