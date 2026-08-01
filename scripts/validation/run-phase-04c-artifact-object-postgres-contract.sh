@@ -783,7 +783,8 @@ SELECT CASE WHEN
   JOIN evidence_artifact_upload_attempts attempt
     ON attempt.organization_id = artifact.organization_id
    AND attempt.upload_attempt_id = artifact.upload_attempt_id
- WHERE artifact.organization_id = 'a1500000-0000-4000-8000-000000000001';")"
+ WHERE artifact.organization_id = 'a1500000-0000-4000-8000-000000000001'
+   AND attempt.upload_attempt_id = 'a1540000-0000-4000-8000-000000000001';")"
 [[ "$rollback_state" == "PASS" ]]
 echo "StoredAuditRollbackState=PASS"
 
@@ -921,7 +922,8 @@ THEN 'PASS' ELSE 'BLOCK' END
   JOIN evidence_artifact_upload_attempts attempt
     ON attempt.organization_id = artifact.organization_id
    AND attempt.upload_attempt_id = artifact.upload_attempt_id
- WHERE artifact.organization_id = 'a1500000-0000-4000-8000-000000000001';")"
+ WHERE artifact.organization_id = 'a1500000-0000-4000-8000-000000000001'
+   AND attempt.upload_attempt_id = 'a1540000-0000-4000-8000-000000000001';")"
 [[ "$stored_contract" == "PASS" ]]
 echo "StoredEventAuditAtomicity=PASS"
 echo "StoredAuditRedaction=PASS"
