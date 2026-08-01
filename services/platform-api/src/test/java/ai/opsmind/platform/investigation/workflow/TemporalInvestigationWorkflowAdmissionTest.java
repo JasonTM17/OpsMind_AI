@@ -4,6 +4,7 @@ import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatCode;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.Mockito.mock;
+import static org.mockito.Mockito.verifyNoInteractions;
 import static org.mockito.Mockito.when;
 
 import java.time.Duration;
@@ -46,5 +47,20 @@ class TemporalInvestigationWorkflowAdmissionTest {
                 assertThat(exception.code()).isEqualTo("investigation.workflow-not-ready");
                 assertThat(exception.getMessage()).doesNotContain("raw server detail");
             });
+    }
+
+    @Test
+    void nonCanonicalWorkflowTypeClosesAdmissionBeforeThePollerRpc() {
+        InvestigationWorkerReadinessProbe probe = mock(InvestigationWorkerReadinessProbe.class);
+        InvestigationWorkflowProperties wrongWorkflow = new InvestigationWorkflowProperties(
+            "temporal-primary", "opsmind-prod", "opsmind-investigation-v2",
+            "opsmind-investigation-prod"
+        );
+
+        assertThatThrownBy(() -> new TemporalInvestigationWorkflowAdmission(client, probe)
+            .requireReady(wrongWorkflow))
+                .isInstanceOf(PlatformProblemException.class)
+                .hasMessage("Durable investigation execution has no compatible ready worker.");
+        verifyNoInteractions(probe);
     }
 }
