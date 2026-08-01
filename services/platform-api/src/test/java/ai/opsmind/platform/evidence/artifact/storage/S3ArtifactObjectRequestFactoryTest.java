@@ -85,7 +85,8 @@ class S3ArtifactObjectRequestFactoryTest {
             true, URI.create("https://storage.example.com"), false, "ap-southeast-1",
             "evidence-artifacts", true, "123456789012", requestKey, expectedKey, "production-kms",
             1_024, Duration.ofSeconds(1), Duration.ofSeconds(2), Duration.ofSeconds(5),
-            Duration.ofSeconds(10), 4, Duration.ofMinutes(1)
+            Duration.ofSeconds(10), Duration.ofSeconds(5), Duration.ofSeconds(5),
+            4, Duration.ofMinutes(1)
         );
     }
 }

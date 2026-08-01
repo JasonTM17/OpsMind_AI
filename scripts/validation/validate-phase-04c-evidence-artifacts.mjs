@@ -234,7 +234,9 @@ const storageProperties = requireMarkers(
     "allowLoopbackCleartext && \"http\".equalsIgnoreCase(value.getScheme())",
     "literalLoopback(value.getHost())",
     "apiCallAttemptTimeout.compareTo(apiCallTimeout) >= 0",
-    "apiCallTimeout.compareTo(uploadLeaseDuration) >= 0",
+    "requiredUploadBudget().compareTo(uploadLeaseDuration) < 0",
+    ".plus(sourceVerificationBudget)",
+    ".plus(settlementSafetyMargin)",
     "between(uploadLeaseDuration, Duration.ofSeconds(5), Duration.ofMinutes(5))",
     "expectedKmsKeyReference",
   ],
@@ -271,14 +273,42 @@ const objectStorage = requireMarkers(
   "services/platform-api/src/main/java/ai/opsmind/platform/evidence/artifact/"
     + "storage/S3EvidenceArtifactObjectStorage.java",
   [
-    "new BoundedDigestInputStream(content, expectation.expectedByteCount())",
-    "RequestBody.fromInputStream(new NonClosingInputStream(bounded), expectation.expectedByteCount())",
-    "bounded.verifyExactEofAndDigest(expectation.expectedDigest().bytes())",
+    "ManagedArtifactSource source",
+    "hasFullUploadBudget(startedAt, uploadLeaseExpiresAt)",
+    "new ManagedArtifactRequestContent(",
+    "RequestBody.fromContentProvider(",
+    "content.verifyAfterPut()",
+    "sourceDeadline(startedAt, uploadLeaseExpiresAt)",
     "sourceContractMismatch(failure)",
   ],
 );
 requireExactCount(objectStorage, "client.putObject(", 1,
   "artifact storage must issue one conditional PUT per invocation");
+requireMarkers(
+  "services/platform-api/src/main/java/ai/opsmind/platform/evidence/artifact/"
+    + "storage/ManagedArtifactSource.java",
+  [
+    "StandardOpenOption.READ",
+    "LinkOption.NOFOLLOW_LINKS",
+    "PositionalFileChannelInputStream",
+    "cleanupRequested.compareAndSet(false, true)",
+  ],
+);
+requireMarkers(
+  "services/platform-api/src/main/java/ai/opsmind/platform/evidence/artifact/"
+    + "storage/ManagedArtifactRequestContent.java",
+  [
+    "MAXIMUM_STREAM_VIEWS = 2",
+    "verifyOpenedStreams()",
+    "verifyAfterPut()",
+    "executor.detachCleanup(source)",
+  ],
+);
+requireMarkers(
+  "services/platform-api/src/main/java/ai/opsmind/platform/evidence/artifact/"
+    + "storage/ArtifactSourceReadBudget.java",
+  ["System.nanoTime()", "remainingNanos()", "absoluteDeadline"],
+);
 const storedObject = requireMarkers(
   "services/platform-api/src/main/java/ai/opsmind/platform/evidence/artifact/"
     + "storage/ArtifactObjectStored.java",
@@ -293,6 +323,8 @@ const failureMapper = requireMarkers(
   [
     "FailureKind.ACCESS_DENIED, true, failure",
     "FailureKind.UNAVAILABLE, true, failure",
+    "ArtifactSourceContractViolationException",
+    "sourceContractMismatch(failure)",
   ],
 );
 if (storageProperties.includes("http\".equalsIgnoreCase(value.getScheme())\n            && !literalLoopback")) {
@@ -324,12 +356,23 @@ const uploadService = requireMarkers(
     "storage.probe(claim.expectation())",
     "EvidenceArtifactUploadOutcome.UNCERTAIN",
     "EvidenceArtifactUploadOutcome.ORPHANED",
+    "authorizer.withAnalyzeAccess",
+    "ManagedArtifactSource content",
+    "claim.uploadLeaseExpiresAt()",
+    "storage.release(content)",
+  ],
+);
+const uploadSettlementCoordinator = requireMarkers(
+  "services/platform-api/src/main/java/ai/opsmind/platform/evidence/artifact/"
+    + "EvidenceArtifactUploadSettlementCoordinator.java",
+  [
     "FailureKind.SOURCE_CONTRACT_MISMATCH",
     "FailureKind.REMOTE_METADATA_MISMATCH",
     "authorizer.withAnalyzeAccess",
+    "settlementFailure.addSuppressed(objectFailure)",
   ],
 );
-requireExactCount(uploadService, "authorizer.withAnalyzeAccess(", 2,
+requireExactCount(uploadService + uploadSettlementCoordinator, "authorizer.withAnalyzeAccess(", 2,
   "artifact upload must use exactly two independent authorization transactions");
 const uploadRepository = requireMarkers(
   "services/platform-api/src/main/java/ai/opsmind/platform/evidence/artifact/"
@@ -354,6 +397,8 @@ const application = requireMarkers("services/platform-api/src/main/resources/app
   "expected-kms-key-reference: ${OPSMIND_EVIDENCE_ARTIFACT_STORAGE_EXPECTED_KMS_KEY_REFERENCE:}",
   "maximum-object-bytes: ${OPSMIND_EVIDENCE_ARTIFACT_STORAGE_MAXIMUM_OBJECT_BYTES:0}",
   "upload-lease-duration: ${OPSMIND_EVIDENCE_ARTIFACT_STORAGE_UPLOAD_LEASE_DURATION:PT1M}",
+  "source-verification-budget: ${OPSMIND_EVIDENCE_ARTIFACT_STORAGE_SOURCE_VERIFICATION_BUDGET:PT5S}",
+  "settlement-safety-margin: ${OPSMIND_EVIDENCE_ARTIFACT_STORAGE_SETTLEMENT_SAFETY_MARGIN:PT5S}",
 ]);
 const environmentExample = requireMarkers(".env.example", [
   "OPSMIND_EVIDENCE_ARTIFACT_STORAGE_ENABLED=false",
@@ -362,7 +407,19 @@ const environmentExample = requireMarkers(".env.example", [
   "OPSMIND_EVIDENCE_ARTIFACT_STORAGE_BUCKET=disabled",
   "OPSMIND_EVIDENCE_ARTIFACT_STORAGE_KMS_KEY_ID=",
   "OPSMIND_EVIDENCE_ARTIFACT_STORAGE_EXPECTED_KMS_KEY_REFERENCE=",
+  "OPSMIND_EVIDENCE_ARTIFACT_STORAGE_SOURCE_VERIFICATION_BUDGET=PT5S",
+  "OPSMIND_EVIDENCE_ARTIFACT_STORAGE_SETTLEMENT_SAFETY_MARGIN=PT5S",
 ]);
+requireMarkers(
+  "services/platform-api/src/test/java/ai/opsmind/platform/evidence/artifact/"
+    + "storage/S3EvidenceArtifactObjectStorageWireTest.java",
+  [
+    "Apache5HttpClient.builder()",
+    "AwsRetryStrategy.doNotRetry()",
+    "assertThat(request.checksum()).isEqualTo(encodedDigest())",
+    "assertThat(requestCount).hasValue(1)",
+  ],
+);
 for (const forbiddenEnvironmentField of [
   "AWS_ACCESS_KEY_ID=",
   "AWS_SECRET_ACCESS_KEY=",

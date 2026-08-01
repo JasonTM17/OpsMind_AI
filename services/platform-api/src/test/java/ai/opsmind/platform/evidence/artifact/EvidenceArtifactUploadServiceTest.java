@@ -12,22 +12,28 @@ import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
-import java.io.ByteArrayInputStream;
+import java.io.IOException;
+import java.io.UncheckedIOException;
+import java.nio.file.Files;
+import java.nio.file.Path;
 import java.time.Duration;
 import java.time.Instant;
 import java.util.UUID;
+import java.util.concurrent.atomic.AtomicInteger;
 import java.util.function.Function;
 
 import ai.opsmind.platform.evidence.artifact.storage.ArtifactObjectProbe;
 import ai.opsmind.platform.evidence.artifact.storage.ArtifactObjectStored;
 import ai.opsmind.platform.evidence.artifact.storage.EvidenceArtifactObjectStorage;
 import ai.opsmind.platform.evidence.artifact.storage.EvidenceArtifactStorageProperties;
+import ai.opsmind.platform.evidence.artifact.storage.ManagedArtifactSource;
 import ai.opsmind.platform.identity.OpsMindPrincipal;
 import ai.opsmind.platform.incident.AuthorizedIncidentAnalysisScope;
 import ai.opsmind.platform.incident.IncidentAnalysisAuthorizer;
 
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.io.TempDir;
 import org.mockito.InOrder;
 import org.springframework.transaction.support.TransactionSynchronizationManager;
 
@@ -46,9 +52,12 @@ class EvidenceArtifactUploadServiceTest {
     private final EvidenceArtifactObjectStorage storage = mock(EvidenceArtifactObjectStorage.class);
     private final EvidenceArtifactStorageProperties storageProperties = mock(EvidenceArtifactStorageProperties.class);
     private final OpsMindPrincipal principal = mock(OpsMindPrincipal.class);
+    private final AtomicInteger sourceSequence = new AtomicInteger();
     private final EvidenceArtifactUploadService service = new EvidenceArtifactUploadService(
         authorizer, repository, storage, storageProperties
     );
+    @TempDir
+    Path temporaryDirectory;
 
     @BeforeEach
     void authorizeSynchronously() {
@@ -57,6 +66,10 @@ class EvidenceArtifactUploadServiceTest {
         doAnswer(invocation -> work(invocation.getArgument(4))).when(authorizer).withAnalyzeAccess(
             any(), any(), any(), any(), any()
         );
+        doAnswer(invocation -> {
+            invocation.getArgument(0, ManagedArtifactSource.class).close();
+            return null;
+        }).when(storage).release(any());
     }
 
     @Test
@@ -65,19 +78,28 @@ class EvidenceArtifactUploadServiceTest {
         ArtifactObjectStored stored = stored();
         EvidenceArtifactUploadSettlement settlement = storedSettlement(true);
         when(repository.claim(any(), eq(ARTIFACT_ID), any(), eq(Duration.ofSeconds(30)))).thenReturn(claim);
-        when(storage.putIfAbsent(eq(claim.expectation()), any())).thenReturn(stored);
+        when(storage.putIfAbsent(
+            eq(claim.expectation()),
+            any(),
+            eq(claim.uploadLeaseExpiresAt())
+        )).thenReturn(stored);
         when(repository.settle(any(), eq(claim), eq(EvidenceArtifactUploadOutcome.STORED), eq(stored), isNull()))
             .thenReturn(settlement);
 
         EvidenceArtifactUploadResult result = service.upload(
-            principal, ORGANIZATION_ID, PROJECT_ID, INCIDENT_ID, ARTIFACT_ID, new ByteArrayInputStream(new byte[4])
+            principal, ORGANIZATION_ID, PROJECT_ID, INCIDENT_ID, ARTIFACT_ID, source()
         );
 
         assertThat(result.lifecycleState()).isEqualTo(EvidenceArtifactLifecycleState.STORED);
         InOrder order = inOrder(authorizer, repository, storage);
         order.verify(authorizer).withAnalyzeAccess(any(), any(), any(), any(), any());
         order.verify(repository).claim(any(), eq(ARTIFACT_ID), any(), eq(Duration.ofSeconds(30)));
-        order.verify(storage).putIfAbsent(eq(claim.expectation()), any());
+        order.verify(storage).putIfAbsent(
+            eq(claim.expectation()),
+            any(),
+            eq(claim.uploadLeaseExpiresAt())
+        );
+        order.verify(storage).release(any());
         order.verify(authorizer).withAnalyzeAccess(any(), any(), any(), any(), any());
         order.verify(repository).settle(any(), eq(claim), eq(EvidenceArtifactUploadOutcome.STORED), eq(stored), isNull());
     }
@@ -92,10 +114,11 @@ class EvidenceArtifactUploadServiceTest {
             .thenReturn(storedSettlement(true));
 
         service.upload(principal, ORGANIZATION_ID, PROJECT_ID, INCIDENT_ID, ARTIFACT_ID,
-            new ByteArrayInputStream(new byte[4]));
+            source());
 
         verify(storage).probe(claim.expectation());
-        verify(storage, never()).putIfAbsent(any(), any());
+        verify(storage, never()).putIfAbsent(any(), any(), any());
+        verify(storage).release(any());
     }
 
     @Test
@@ -107,13 +130,14 @@ class EvidenceArtifactUploadServiceTest {
         try {
             assertThatThrownBy(() -> service.upload(
                 principal, ORGANIZATION_ID, PROJECT_ID, INCIDENT_ID, ARTIFACT_ID,
-                new ByteArrayInputStream(new byte[4])
+                source()
             )).isInstanceOf(IllegalStateException.class);
         }
         finally {
             TransactionSynchronizationManager.clear();
         }
-        verify(storage, never()).putIfAbsent(any(), any());
+        verify(storage, never()).putIfAbsent(any(), any(), any());
+        verify(storage).release(any());
     }
 
     @SuppressWarnings("unchecked")
@@ -141,6 +165,18 @@ class EvidenceArtifactUploadServiceTest {
 
     private EvidenceArtifactUploadSettlement storedSettlement(boolean applied) {
         return new EvidenceArtifactUploadSettlement(applied, EvidenceArtifactLifecycleState.STORED, 2L, 1L, NOW);
+    }
+
+    private ManagedArtifactSource source() {
+        try {
+            Path sourcePath = temporaryDirectory.resolve(
+                "artifact-source-" + sourceSequence.incrementAndGet()
+            );
+            Files.write(sourcePath, new byte[4]);
+            return ManagedArtifactSource.open(sourcePath);
+        } catch (IOException failure) {
+            throw new UncheckedIOException(failure);
+        }
     }
 
     private AuthorizedIncidentAnalysisScope scope() {
