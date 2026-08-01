@@ -22,6 +22,30 @@ const alertRulesPath = path.join(
   "prometheus",
   "opsmind-reconciliation-alerts.yml",
 );
+const alertRuleTestsPath = path.join(
+  repositoryRoot,
+  "deploy",
+  "prometheus",
+  "opsmind-reconciliation-alerts.test.yml",
+);
+const alertmanagerPath = path.join(
+  repositoryRoot,
+  "deploy",
+  "alertmanager",
+  "alertmanager.yml",
+);
+const alertmanagerImageReferencePath = path.join(
+  repositoryRoot,
+  "deploy",
+  "alertmanager",
+  "image-reference.txt",
+);
+const localReceiverFixturePath = path.join(
+  repositoryRoot,
+  "deploy",
+  "alertmanager",
+  "receiver-url.ci.example",
+);
 
 const failures = [];
 const check = (condition, message) => {
@@ -33,10 +57,17 @@ const read = (filePath) => fs.readFileSync(filePath, "utf8");
 const prometheus = read(prometheusPath);
 const recordingRules = read(recordingRulesPath);
 const alertRules = read(alertRulesPath);
+const alertRuleTests = read(alertRuleTestsPath);
+const alertmanager = read(alertmanagerPath);
+const alertmanagerImageReference = read(alertmanagerImageReferencePath).trim();
+const localReceiverFixture = read(localReceiverFixturePath).trim();
 
 for (const marker of [
   "- /etc/prometheus/opsmind-recording-rules.yml",
   "- /etc/prometheus/opsmind-reconciliation-alerts.yml",
+  "alerting:",
+  "alertmanagers:",
+  "- alertmanager:9093",
   "- job_name: opsmind-workflow-reconciliation",
   "honor_labels: false",
   "body_size_limit: 1MB",
@@ -52,6 +83,17 @@ for (const marker of [
 ]) {
   check(prometheus.includes(marker), `Prometheus config is missing: ${marker}`);
 }
+check(
+  (prometheus.match(/^alerting:/gm) ?? []).length === 1
+    && (prometheus.match(/^\s+alertmanagers:/gm) ?? []).length === 1,
+  "Prometheus must define one Alertmanager delivery lane",
+);
+check(
+  /alertmanagers:[\s\S]*?scheme: http[\s\S]*?timeout: 5s[\s\S]*?follow_redirects: false[\s\S]*?enable_http2: false[\s\S]*?- alertmanager:9093/.test(
+    prometheus,
+  ),
+  "Prometheus Alertmanager delivery must be bounded and internal",
+);
 check(
   (prometheus.match(/^\s+- job_name:/gm) ?? []).length === 1,
   "Prometheus must define only the network-scoped reconciliation scrape",
@@ -223,6 +265,59 @@ check(
   "reconciliation alert group must cap active alert series at eight",
 );
 
+for (const marker of [
+  "rule_files:",
+  "- opsmind-reconciliation-alerts.yml",
+  "alertname: OpsMindWorkflowReconciliationBlocked",
+  "alertname: OpsMindWorkflowReconciliationLagWarning",
+  "eval_time: 15s",
+  "eval_time: 2m15s",
+]) {
+  check(alertRuleTests.includes(marker), `promtool rule tests are missing: ${marker}`);
+}
+check(
+  (alertRuleTests.match(/^\s+alertname:/gm) ?? []).length === 2,
+  "promtool rule tests must cover exactly one immediate critical and one delayed warning",
+);
+
+for (const marker of [
+  "resolve_timeout: 5m",
+  "receiver: opsmind-phase-09-receiver",
+  "group_by:",
+  "- alertname",
+  "- severity",
+  "- component",
+  "group_wait: 5s",
+  "group_interval: 5m",
+  "repeat_interval: 4h",
+  "send_resolved: false",
+  "url_file: /run/secrets/opsmind_alertmanager_receiver_url",
+  "max_alerts: 8",
+]) {
+  check(alertmanager.includes(marker), `Alertmanager config is missing: ${marker}`);
+}
+check(
+  (alertmanager.match(/^\s+receiver: opsmind-phase-09-receiver$/gm) ?? []).length === 1
+    && (alertmanager.match(/^\s+- name: opsmind-phase-09-receiver$/gm) ?? []).length === 1,
+  "Alertmanager must define one fixed route and one fixed receiver",
+);
+check(
+  !/^\s+url:\s*/m.test(alertmanager)
+    && !/https?:\/\//i.test(alertmanager)
+    && !/(token|password|api[_-]?key|routing[_-]?key)\s*:/i.test(alertmanager),
+  "Alertmanager must load its receiver URL from a secret file without inline credentials",
+);
+check(
+  alertmanagerImageReference
+    === "prom/alertmanager:v0.28.1@sha256:27c475db5fb156cab31d5c18a4251ac7ed567746a2483ff264516437a39b15ba",
+  "Alertmanager image reference must retain the reviewed tag and immutable manifest digest",
+);
+check(
+  localReceiverFixture
+    === "http://host.docker.internal:19093/phase-09-alert-receipt",
+  "CI-local receiver fixture must target only the bounded host receipt endpoint",
+);
+
 const serializedRules = `${recordingRules}\n${alertRules}`;
 check(
   !/\$labels\b/.test(serializedRules),
@@ -245,5 +340,6 @@ if (failures.length > 0) {
 
 console.log(
   "Phase 9 reconciliation observability validation passed: " +
-    "internal scrape, bounded labels, aggregate recordings, and seven alerts.",
+    "internal scrape, bounded labels, aggregate recordings, seven alerts, " +
+    "pinned Alertmanager routing, and deterministic rule tests.",
 );
