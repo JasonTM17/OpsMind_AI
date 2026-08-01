@@ -832,6 +832,7 @@ jobs:
               temporal_ready=true
               break
             fi
+            echo "Temporal development server is not ready (attempt ${attempt}/60)." >&2
             sleep 1
           done
           if [ "$temporal_ready" != true ]; then

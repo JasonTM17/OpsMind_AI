@@ -24,26 +24,26 @@ final class TemporalWorkerTestApplication {
         String buildId
     ) {
         SpringApplication application = InvestigationTemporalWorkerApplication.createApplication();
-        application.setDefaultProperties(Map.of(
-            "opsmind.investigation.temporal-client.cluster-id", clusterId,
-            "opsmind.investigation.temporal-client.target", target,
-            "opsmind.investigation.temporal-client.tls-enabled", "false",
-            "opsmind.investigation.temporal-client.allow-local-cleartext", "true",
-            "opsmind.investigation.temporal-client.rpc-timeout", "PT5S",
-            "opsmind.investigation.temporal-client.required-worker-identity", identity,
-            "opsmind.investigation.temporal-client.required-worker-build-id", buildId,
-            "opsmind.investigation.temporal-client.required-worker-poller-max-age", "PT30S",
-            "opsmind.investigation.temporal-client.required-worker-poller-future-skew", "PT5S",
-            "opsmind.investigation.workflow.cluster-id", clusterId,
-            "opsmind.investigation.workflow.namespace", namespace,
-            "opsmind.investigation.workflow.workflow-type", InvestigationWorkflow.TYPE,
-            "opsmind.investigation.workflow.task-queue", taskQueue,
-            "opsmind.investigation.temporal-worker.enabled", "true",
-            "opsmind.investigation.temporal-worker.identity", identity,
-            "opsmind.investigation.temporal-worker.build-id", buildId,
-            "opsmind.investigation.temporal-worker.max-concurrent-workflow-task-executors", "8",
-            "opsmind.investigation.temporal-worker.max-concurrent-workflow-task-pollers", "2",
-            "opsmind.investigation.temporal-worker.shutdown-timeout", "PT5S"
+        application.setDefaultProperties(Map.ofEntries(
+            Map.entry("opsmind.investigation.temporal-client.cluster-id", clusterId),
+            Map.entry("opsmind.investigation.temporal-client.target", target),
+            Map.entry("opsmind.investigation.temporal-client.tls-enabled", "false"),
+            Map.entry("opsmind.investigation.temporal-client.allow-local-cleartext", "true"),
+            Map.entry("opsmind.investigation.temporal-client.rpc-timeout", "PT5S"),
+            Map.entry("opsmind.investigation.temporal-client.required-worker-identity", identity),
+            Map.entry("opsmind.investigation.temporal-client.required-worker-build-id", buildId),
+            Map.entry("opsmind.investigation.temporal-client.required-worker-poller-max-age", "PT30S"),
+            Map.entry("opsmind.investigation.temporal-client.required-worker-poller-future-skew", "PT5S"),
+            Map.entry("opsmind.investigation.workflow.cluster-id", clusterId),
+            Map.entry("opsmind.investigation.workflow.namespace", namespace),
+            Map.entry("opsmind.investigation.workflow.workflow-type", InvestigationWorkflow.TYPE),
+            Map.entry("opsmind.investigation.workflow.task-queue", taskQueue),
+            Map.entry("opsmind.investigation.temporal-worker.enabled", "true"),
+            Map.entry("opsmind.investigation.temporal-worker.identity", identity),
+            Map.entry("opsmind.investigation.temporal-worker.build-id", buildId),
+            Map.entry("opsmind.investigation.temporal-worker.max-concurrent-workflow-task-executors", "8"),
+            Map.entry("opsmind.investigation.temporal-worker.max-concurrent-workflow-task-pollers", "2"),
+            Map.entry("opsmind.investigation.temporal-worker.shutdown-timeout", "PT5S")
         ));
         ConfigurableApplicationContext context = application.run();
         assertThat(context.getBean(InvestigationTemporalWorkerRuntime.class).isRunning()).isTrue();
