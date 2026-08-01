@@ -198,8 +198,12 @@ The former temporary disposition is superseded by the upstream fixed legacy
 release `brace-expansion@1.1.17`. The lockfile no longer selects `1.1.16`, and
 the workspace has neither a local patch nor an audit ignore for
 `GHSA-mh99-v99m-4gvg`. The renamed resolution verifier proves the resolved
-runtime version and bounded expansion behavior in CI. This update is only
-release evidence after the exact-commit PR Quality dependency gate is green.
+runtime version and bounded expansion behavior in CI. Exact head
+`1ccdb33c9eec9fe37375902ef487a335f16c1cf0` passed all 13 PR Quality and
+cross-service checks (`30693663371`, `30693663369`), then PR #42 merged as
+`ba79d27bf41a3ed5d23bdf1d3fc08ecb0238c6e2`. Dependabot now reports alert #17
+as `fixed`; this closes only the dependency advisory and does not close any
+provider, connector, lifecycle, evaluation, staging, DR, or release gate.
 
 ## 2026-07-28 — DeepSeek V4 Flash endpoint alignment
 
