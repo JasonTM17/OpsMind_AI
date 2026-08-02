@@ -1162,7 +1162,7 @@ jobs:
               exec -T platform-api \
               curl --fail --show-error --silent -X POST \
               -H 'Content-Type: application/json' \
-              --data '{"alerts":[{"labels":{"alertname":"OpsMindWorkflowReconciliationBlocked","severity":"critical","component":"workflow-reconciliation"},"annotations":{"summary":"Workflow reconciliation is blocked","description":"Synthetic bounded conformance receipt."}}]}' \
+              --data '[{"labels":{"alertname":"OpsMindWorkflowReconciliationBlocked","severity":"critical","component":"workflow-reconciliation"},"annotations":{"summary":"Workflow reconciliation is blocked","description":"Synthetic bounded conformance receipt."}}]' \
               http://alertmanager:9093/api/v2/alerts
             alert_receipt_verified=false
             for attempt in $(seq 1 30); do
