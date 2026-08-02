@@ -1179,11 +1179,11 @@ jobs:
             for attempt in $(seq 1 20); do
               end="$(date +%s)"
               start=$((end - 120))
-              if curl --fail-with-body --show-error --silent --request POST \
+              if curl --fail-with-body --show-error --silent --get \
                 --data-urlencode 'query=opsmind_workflow_reconciliation_ready{job="opsmind-workflow-reconciliation"}' \
                 --data-urlencode "start=$start" \
                 --data-urlencode "end=$end" \
-                --data-urlencode "step=60" \
+                --data-urlencode "step=60s" \
                 http://127.0.0.1:9090/api/v1/query_range \
                 --output "$prometheus_evidence" \
                 && node scripts/validation/validate-live-prometheus-response.mjs \
