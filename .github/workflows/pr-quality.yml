@@ -1061,24 +1061,17 @@ jobs:
           evidence="artifacts/verification/phase-02/compose-smoke.txt"
           receipt_evidence="artifacts/verification/phase-09-workflow-handoff/alert-receipt.txt"
           phase9_compose_started_at_utc="$(date -u +%Y-%m-%dT%H:%M:%SZ)"
-          node scripts/validation/phase-09-alert-receipt-server.mjs \
-            --host 0.0.0.0 --port 19093 --timeout-ms 60000 \
-            > "$receipt_evidence" 2>&1 &
-          receipt_pid=$!
-          trap 'kill "$receipt_pid" 2>/dev/null || true; wait "$receipt_pid" 2>/dev/null || true' EXIT
-          receipt_ready=false
-          for attempt in $(seq 1 30); do
-            if grep -Fq 'Phase9AlertReceiptServer=READY' "$receipt_evidence"; then
-              receipt_ready=true
-              break
-            fi
-            if ! kill -0 "$receipt_pid" 2>/dev/null; then
-              cat "$receipt_evidence"
-              break
-            fi
-            sleep 1
-          done
-          test "$receipt_ready" = true
+          receipt_token="$(node -e 'process.stdout.write(require("node:crypto").randomBytes(32).toString("hex"))')"
+          receipt_id="$(node -e 'process.stdout.write(require("node:crypto").randomUUID())')"
+          receipt_receiver_url_file="${RUNNER_TEMP}/opsmind-phase-09-alertmanager-receiver-url"
+          (
+            umask 077
+            printf 'http://host.docker.internal:19093/phase-09-alert-receipt?callback_token=%s\n' "$receipt_token" \
+              > "$receipt_receiver_url_file"
+          )
+          sudo chown 65534:65534 "$receipt_receiver_url_file"
+          export OPS_ALERTMANAGER_RECEIVER_URL_FILE="$receipt_receiver_url_file"
+          trap 'rm -f "$receipt_receiver_url_file"' EXIT
           compose_smoke() (
             set -e
             echo "Docker=$(docker version --format '{{.Server.Version}}')"
@@ -1157,12 +1150,31 @@ jobs:
               sleep 2
             done
             test "$live_prometheus_verified" = true
-            docker compose --profile application --profile phase-09-conformance \
+            node scripts/validation/phase-09-alert-receipt-server.mjs \
+              --host 0.0.0.0 --port 19093 --timeout-ms 60000 --callback-token "$receipt_token" --receipt-id "$receipt_id" \
+              > "$receipt_evidence" 2>&1 &
+            receipt_pid=$!
+            trap 'kill "$receipt_pid" 2>/dev/null || true; wait "$receipt_pid" 2>/dev/null || true' EXIT
+            receipt_ready=false
+            for attempt in $(seq 1 30); do
+              if grep -Fq 'Phase9AlertReceiptServer=READY' "$receipt_evidence"; then
+                receipt_ready=true
+                break
+              fi
+              if ! kill -0 "$receipt_pid" 2>/dev/null; then
+                cat "$receipt_evidence"
+                break
+              fi
+              sleep 1
+            done
+            test "$receipt_ready" = true
+            timeout --preserve-status --kill-after=5s 20s \
+              docker compose --profile application --profile phase-09-conformance \
               --profile phase-09-temporal-worker --profile phase-09-temporal-worker-conformance \
               exec -T platform-api \
-              curl --fail --show-error --silent -X POST \
+              curl --fail --show-error --silent --connect-timeout 5 --max-time 15 -X POST \
               -H 'Content-Type: application/json' \
-              --data '[{"labels":{"alertname":"OpsMindWorkflowReconciliationBlocked","severity":"critical","component":"workflow-reconciliation"},"annotations":{"summary":"Workflow reconciliation is blocked","description":"Synthetic bounded conformance receipt."}}]' \
+              --data '[{"labels":{"alertname":"OpsMindWorkflowReconciliationBlocked","severity":"critical","component":"workflow-reconciliation"},"annotations":{"summary":"Workflow reconciliation is blocked","description":"Synthetic bounded conformance receipt.","opsmind_ci_receipt_id":"'"$receipt_id"'"}}]' \
               http://alertmanager:9093/api/v2/alerts
             alert_receipt_verified=false
             for attempt in $(seq 1 30); do
