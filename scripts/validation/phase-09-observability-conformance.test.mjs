@@ -16,6 +16,10 @@ const receiptServer = path.join(
   scriptDirectory,
   "phase-09-alert-receipt-server.mjs",
 );
+const prQualityWorkflow = fs.readFileSync(
+  path.resolve(scriptDirectory, "..", "..", ".github", "workflows", "pr-quality.yml"),
+  "utf8",
+);
 
 const validTargets = {
   status: "success",
@@ -81,6 +85,18 @@ test("live validator rejects a tenant-sensitive label", () => {
   const result = runLiveValidator(validTargets, unsafe);
   assert.notEqual(result.status, 0);
   assert.match(result.stderr, /violates identity, label, or value bounds/u);
+});
+
+test("CI submits a bare alert array to Alertmanager API v2", () => {
+  const alert = `--data '[{"labels":{"alertname":"OpsMindWorkflowReconciliationBlocked"`;
+  assert.ok(
+    prQualityWorkflow.includes(alert),
+    "the Alertmanager API v2 request must be a JSON array, not a webhook envelope",
+  );
+  assert.ok(
+    !prQualityWorkflow.includes(`--data '{"alerts":`),
+    "the Alertmanager API v2 request must not use a webhook envelope",
+  );
 });
 
 const reservePort = async () => await new Promise((resolve, reject) => {
