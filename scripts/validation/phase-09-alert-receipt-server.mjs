@@ -5,6 +5,8 @@ const options = {
   host: "0.0.0.0",
   port: 19_093,
   timeoutMs: 60_000,
+  callbackToken: "",
+  receiptId: "",
 };
 for (let index = 2; index < process.argv.length; index += 2) {
   const name = process.argv[index];
@@ -18,13 +20,19 @@ for (let index = 2; index < process.argv.length; index += 2) {
     options.port = Number(value);
   } else if (name === "--timeout-ms") {
     options.timeoutMs = Number(value);
+  } else if (name === "--callback-token") {
+    options.callbackToken = value;
+  } else if (name === "--receipt-id") {
+    options.receiptId = value;
   } else {
     throw new Error(`Unsupported argument: ${name}.`);
   }
 }
 if (!Number.isInteger(options.port) || options.port < 1024 || options.port > 65_535
     || !Number.isInteger(options.timeoutMs)
-    || options.timeoutMs < 1_000 || options.timeoutMs > 300_000) {
+    || options.timeoutMs < 1_000 || options.timeoutMs > 300_000
+    || !/^[a-f0-9]{64}$/u.test(options.callbackToken)
+    || !/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/u.test(options.receiptId)) {
   throw new Error("Receipt server bounds are invalid.");
 }
 
@@ -38,7 +46,7 @@ const server = http.createServer((request, response) => {
     fail(response, 409, "receipt-already-accepted");
     return;
   }
-  if (request.method !== "POST" || request.url !== "/phase-09-alert-receipt"
+  if (request.method !== "POST" || request.url !== `/phase-09-alert-receipt?callback_token=${options.callbackToken}`
       || !String(request.headers["content-type"] ?? "").toLowerCase().startsWith("application/json")) {
     fail(response, 404, "unsupported-receipt-request");
     return;
@@ -63,8 +71,11 @@ const server = http.createServer((request, response) => {
     try {
       const body = Buffer.concat(chunks);
       const payload = JSON.parse(body.toString("utf8"));
-      const alerts = payload?.alerts;
-      const alert = Array.isArray(alerts) && alerts.length === 1 ? alerts[0] : undefined;
+      const alerts = Array.isArray(payload?.alerts) ? payload.alerts : [];
+      const matchingAlerts = alerts.filter(
+        (candidate) => candidate?.annotations?.opsmind_ci_receipt_id === options.receiptId,
+      );
+      const alert = matchingAlerts[0];
       const labels = alert?.labels;
       const labelNames = labels && typeof labels === "object"
         ? Object.keys(labels).sort()
@@ -76,17 +87,21 @@ const server = http.createServer((request, response) => {
           || payload?.receiver !== "opsmind-phase-09-receiver"
           || payload?.status !== "firing"
           || payload?.truncatedAlerts !== 0
+          || alerts.length === 0 || alerts.length > 8
+          || matchingAlerts.length !== 1
           || !alert
           || alert?.status !== "firing"
           || labelNames.join(",") !== "alertname,component,severity"
           || labels.alertname !== "OpsMindWorkflowReconciliationBlocked"
           || labels.component !== "workflow-reconciliation"
           || labels.severity !== "critical"
-          || annotationNames.some((name) => !["description", "runbook_url", "summary"].includes(name))
+          || annotationNames.some((name) => !["description", "opsmind_ci_receipt_id", "runbook_url", "summary"].includes(name))
+          || alert?.annotations?.opsmind_ci_receipt_id !== options.receiptId
           || /(token|secret|password|api[_-]?key|routing[_-]?key|bearer|tenant|organization_id|run_id|workflow_id)/i.test(
             body.toString("utf8"),
           )) {
-        throw new Error("Alertmanager receipt violates the bounded conformance contract.");
+        fail(response, 202, "receipt-not-for-this-run");
+        return;
       }
 
       accepted = true;
@@ -97,16 +112,14 @@ const server = http.createServer((request, response) => {
         "Phase9AlertReceipt=PASS\n"
           + "EvidenceClass=CI_LOCAL_ROUTING_CONFORMANCE\n"
           + "Receiver=opsmind-phase-09-receiver\n"
-          + "Alerts=1\n"
+          + `CallbackAlerts=${alerts.length}\n`
+          + `MatchedAlerts=${matchingAlerts.length}\n`
           + `BodyBytes=${body.length}\n`
           + `ReceiptSha256=${digest}\n`,
       );
       server.close();
-    } catch (error) {
-      fail(response, 400, "invalid-alertmanager-receipt");
-      process.stderr.write(`Phase9AlertReceipt=BLOCK Reason=${error.message}\n`);
-      process.exitCode = 1;
-      server.close();
+    } catch {
+      fail(response, 202, "receipt-not-for-this-run");
     }
   });
 });
