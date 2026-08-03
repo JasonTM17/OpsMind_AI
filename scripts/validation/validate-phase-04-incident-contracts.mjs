@@ -37,6 +37,12 @@ const migrationPath = path.join(
   "services", "platform-api", "src", "main", "resources", "db", "migration",
   "V003__incident_control_plane.sql",
 );
+const incidentListMigrationPath = path.join(
+  repositoryRoot,
+  "services", "platform-api", "src", "main", "resources", "db", "migration",
+  "V016__incident_list_pagination_indexes.sql",
+);
+const incidentListMigrationConfigPath = `${incidentListMigrationPath}.conf`;
 const portableRunnerPath = path.join(
   repositoryRoot, "scripts", "validation", "run-phase-04-postgres-contract.sh",
 );
@@ -54,6 +60,8 @@ const requiredSchemaPaths = [
   "packages/contracts/json-schema/incidents/create-incident-request.schema.json",
   "packages/contracts/json-schema/incidents/transition-incident-request.schema.json",
   "packages/contracts/json-schema/incidents/incident.schema.json",
+  "packages/contracts/json-schema/incidents/incident-summary.schema.json",
+  "packages/contracts/json-schema/incidents/incident-list-page.schema.json",
   "packages/contracts/json-schema/incidents/incident-timeline-event.schema.json",
   "packages/contracts/json-schema/incidents/incident-timeline-page.schema.json",
   "packages/contracts/json-schema/incidents/incident-activity-timeline-entry.schema.json",
@@ -168,6 +176,28 @@ inspectIncidentSchemas({
 });
 validateActivityTimelineSchemas(documents, schemaRoot, errors);
 try {
+  const incidentListMigration = fileAccess.readSafeFile(incidentListMigrationPath);
+  const incidentListMigrationConfig = fileAccess.readSafeFile(incidentListMigrationConfigPath);
+  for (const marker of [
+    "CREATE INDEX CONCURRENTLY incident_list_order_idx",
+    "ON incidents (organization_id, project_id, updated_at DESC, id DESC)",
+    "CREATE INDEX CONCURRENTLY incident_list_status_order_idx",
+    "ON incidents (organization_id, project_id, status, updated_at DESC, id DESC)",
+  ]) {
+    if (!incidentListMigration.includes(marker)) {
+      errors.push("V016 incident list migration is missing an exact online index contract");
+    }
+  }
+  if (/\b(?:DROP|CREATE\s+TABLE|IF\s+NOT\s+EXISTS)\b/iu.test(incidentListMigration)) {
+    errors.push("V016 incident list migration contains forbidden non-additive DDL");
+  }
+  if (incidentListMigrationConfig.trim() !== "executeInTransaction=false") {
+    errors.push("V016 incident list migration must run outside a transaction");
+  }
+} catch {
+  errors.push("V016 incident list migration or sidecar is missing or unsafe");
+}
+try {
   inspectAuditPersistenceContracts({
     migration: fileAccess.readSafeFile(migrationPath),
     portableRunner: fileAccess.readSafeFile(portableRunnerPath),
@@ -223,6 +253,8 @@ try {
       portableRunnerPath,
       windowsRunnerPath,
       auditRepositoryPath,
+      incidentListMigrationPath,
+      incidentListMigrationConfigPath,
     ],
     migrationPath,
     startedAt,

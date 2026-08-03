@@ -295,6 +295,25 @@ class MigrationContractTest {
     }
 
     @Test
+    void incidentListMigrationBuildsOnlyConcurrentDescendingTupleIndexes() throws IOException {
+        String migration = readMigration("V016__incident_list_pagination_indexes.sql");
+        String config = new String(
+            MigrationContractTest.class.getResourceAsStream(
+                "/db/migration/V016__incident_list_pagination_indexes.sql.conf"
+            ).readAllBytes(),
+            StandardCharsets.UTF_8
+        );
+
+        assertThat(migration)
+            .contains("CREATE INDEX CONCURRENTLY incident_list_order_idx")
+            .contains("ON incidents (organization_id, project_id, updated_at DESC, id DESC)")
+            .contains("CREATE INDEX CONCURRENTLY incident_list_status_order_idx")
+            .contains("ON incidents (organization_id, project_id, status, updated_at DESC, id DESC)")
+            .doesNotContain("CREATE TABLE", "CREATE VIEW", "IF NOT EXISTS", "DROP ");
+        assertThat(config.trim()).isEqualTo("executeInTransaction=false");
+    }
+
+    @Test
     void workflowStartMigrationDefinesTheInitialTenantBoundHandoffContract()
         throws IOException {
         String migrationName = "V010__investigation_workflow_start_handoff.sql";

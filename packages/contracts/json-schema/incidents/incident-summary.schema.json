@@ -1,0 +1,25 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://contracts.opsmind.invalid/incidents/incident-summary.schema.json",
+  "title": "Incident Summary",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["id", "title", "severity", "status", "updatedAt", "version"],
+  "properties": {
+    "id": { "$ref": "./incident-types.schema.json#/$defs/uuid" },
+    "title": {
+      "type": "string",
+      "minLength": 1,
+      "maxLength": 160,
+      "pattern": "\\S"
+    },
+    "severity": { "$ref": "./incident-types.schema.json#/$defs/severity" },
+    "status": { "$ref": "./incident-types.schema.json#/$defs/status" },
+    "updatedAt": { "$ref": "./incident-types.schema.json#/$defs/timestamp" },
+    "version": {
+      "type": "integer",
+      "minimum": 0,
+      "maximum": 2147483647
+    }
+  }
+}

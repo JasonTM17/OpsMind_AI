@@ -47,6 +47,19 @@ function hasComponent(openApi, section, name) {
 const routeContracts = [
   {
     route: "/organizations/{organizationId}/projects/{projectId}/incidents",
+    method: "get",
+    markers: [
+      "operationId: listIncidents", "oidcBearer: [incident:read]",
+      "#/components/parameters/OrganizationId", "#/components/parameters/ProjectId",
+      "#/components/parameters/PageSize", "#/components/parameters/IncidentListPageToken",
+      "name: status", "updatedAt descending", "not a snapshot or lossless change feed",
+      "unsigned navigation hint", "Cache-Control:", "const: no-store",
+      "'200':", "'400':", "'401':", "'403':", "'404':", "'503':",
+      "#/components/schemas/IncidentListPage",
+    ],
+  },
+  {
+    route: "/organizations/{organizationId}/projects/{projectId}/incidents",
     method: "post",
     markers: [
       "operationId: createIncident", "oidcBearer: [incident:write]",
@@ -106,6 +119,8 @@ export function validateOpenApi({ openApi, openApiPath, errors, resolveLocalRefe
     "../json-schema/incidents/create-incident-request.schema.json",
     "../json-schema/incidents/transition-incident-request.schema.json",
     "../json-schema/incidents/incident.schema.json",
+    "../json-schema/incidents/incident-summary.schema.json",
+    "../json-schema/incidents/incident-list-page.schema.json",
     "../json-schema/incidents/incident-timeline-page.schema.json",
     "../json-schema/incidents/incident-activity-timeline-page.schema.json",
   ], errors);
