@@ -71,7 +71,7 @@ fresh_version="$(primary_query "
     WHEN EXISTS (
       SELECT 1
       FROM flyway_schema_history
-      WHERE success AND version = '15'
+      WHERE success AND version::integer = 15
     ) THEN '15'
     ELSE 'MISSING'
   END;")"
