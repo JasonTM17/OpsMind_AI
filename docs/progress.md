@@ -968,6 +968,33 @@ evidence on three authored scenarios. It is not a
 held-out quality, calibration, or human-benefit claim, and Phase 8 exit remains
 BLOCK.
 
+## 2026-08-03 — Tenant-scoped incident list pagination
+
+Implemented the collection
+`GET /api/v1/organizations/{organizationId}/projects/{projectId}/incidents`
+with optional exact status, page sizes 1..100, `Cache-Control: no-store`, and a
+closed summary containing only `id`, `title`, `severity`, `status`, `updatedAt`,
+and `version`. Traversal uses the fixed `(updatedAt DESC, id DESC)` tuple. Its
+unsigned versioned token is a bounded navigation hint bound after authorization
+to organization, project, and filter; it is not authorization, a snapshot, or
+a lossless feed.
+
+V016 adds matching filtered and unfiltered indexes with concurrent DDL outside
+a Flyway transaction. Tests cover HTTP boundaries, tied timestamps, exact and
+final pages, arbitrary seek points, live-view updates, tenant/RLS isolation,
+revoked membership, zero persistent side effects, sanitized failures, valid/
+ready indexes, V015-to-V016 upgrade, non-superuser failed-build recovery, and
+bounded plans. Static validation reports 24 schemas, 29 fixtures, 237 resolved
+references, 11 operations, and zero errors. Implementation revision `139ab67`
+passed CodeQL run `30815898281`, cross-service run `30815902504`, governance,
+both clean bootstraps, Compose health, and the relevant build gates; final merge
+admission remains revision-bound in PR #58.
+
+This closes only the incident-list child checkpoint. Phase 4 and G2 remain in
+progress; free-text search, patch/assignment, closure/postmortem breadth, and
+B-006/B-008/B-012 remain open. CI fixtures are not production SLO evidence,
+and no frontend incident-list experience is claimed.
+
 ## Unresolved Questions
 
 Production IdP, provider/legal, named live connector, evidence-object lifecycle,

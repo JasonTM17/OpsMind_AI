@@ -10,7 +10,7 @@ dependencies: []
 
 ## Overview
 
-Lock the additive public contract and write failing tests before runtime wiring.
+Lock the additive public contract and executable tests before runtime wiring.
 
 ## Requirements
 
@@ -67,10 +67,11 @@ path/filter binding, authorization-before-query behavior, and unchanged-dataset 
 
 ## Success Criteria
 
-- [ ] OpenAPI and JSON schemas are additive, closed, and all local refs resolve.
-- [ ] Exact response shape excludes every forbidden field in schema, fixtures, and HTTP tests.
-- [ ] Tests fail for the missing runtime and V016 behavior before Phase 2 implementation.
-- [ ] Contract validator recognizes collection GET without weakening existing gates.
+- [x] OpenAPI and JSON schemas are additive, closed, and all local refs resolve.
+- [x] Exact response shape excludes every forbidden field in schema, fixtures, and HTTP tests.
+- [x] Runtime and V016 behavior have focused executable regression coverage. A
+  durable red-before-green transcript was not retained, so none is claimed.
+- [x] Contract validator recognizes collection GET without weakening existing gates.
 
 ## Risk Assessment
 

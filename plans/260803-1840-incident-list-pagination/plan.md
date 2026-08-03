@@ -3,7 +3,7 @@ title: Incident List Pagination
 description: >-
   Add a tenant-scoped incident collection read with exact status filtering and
   deterministic live-view keyset pagination.
-status: in-progress
+status: completed
 priority: P1
 branch: feature/incident-list-pagination
 tags:
@@ -42,7 +42,7 @@ last tuple. The cursor is unsigned, forgeable, non-secret, and never authorizati
 |-------|------|--------|
 | 1 | [Contract and Tests](./phase-01-contract-and-tests.md) | Completed |
 | 2 | [Runtime Query Path](./phase-02-runtime-query-path.md) | Completed |
-| 3 | [Verification and Delivery](./phase-03-verification-and-delivery.md) | In Progress |
+| 3 | [Verification and Delivery](./phase-03-verification-and-delivery.md) | Completed |
 
 ## Dependencies
 

@@ -30,7 +30,7 @@ than inferred from the compaction.
 | Phase 1 | Complete; operating-envelope and governance gates passed. |
 | Phase 2 | Complete; immutable clean-runner evidence closes G1. |
 | Phase 3 | In progress; identity, tenant/RLS, persistence, and messaging substrate exists. Production-authorized IdP conformance remains open. |
-| Phase 4 | In progress; 4A and bounded 4B checkpoints exist, while 4C integrates V014 metadata authority with the default-off V015 fenced upload slice and passing revision-bound CI. Full Phase 4 and G2/G3 are not complete. |
+| Phase 4 | In progress; 4A, bounded 4B, and tenant-scoped incident-list checkpoints exist, while 4C integrates V014 metadata authority with the default-off V015 fenced upload slice and passing revision-bound CI. Full Phase 4 and G2/G3 are not complete. |
 | Phase 5 | In progress; provider-neutral analysis, DeepSeek adapter, egress guards, durable PostgreSQL state, V005 append-only probe audit, Platform API integration, and stream assembly exist. Static checkpoint passes; exit remains blocked by B-004 and missing rotated-key synthetic smoke. |
 | Phase 6 | In progress; durable PostgreSQL, synthetic Prometheus, and tenant-scoped bulkhead checkpoints pass. Artifact/broader-connector/live/provider-cancellation exit remains blocked. |
 | Phase 7 | In progress; cross-service trace, 100-warm-run fixture, CK/Stitch UI/browser E2E, and the metadata-only incident activity route plus V009 CI fixture gates pass. G3 remains blocked by live non-production connector/provider/legal conformance and BFF/session proof. |
@@ -116,17 +116,22 @@ The current controllers expose:
 | `GET /api/v1/me` | `CurrentPrincipalController` |
 | `GET /api/v1/organizations/{organizationId}/projects` | `ProjectQueryController` |
 | `POST /api/v1/organizations/{organizationId}/projects/{projectId}/incidents` | `IncidentController.create` |
+| `GET /api/v1/organizations/{organizationId}/projects/{projectId}/incidents` | `IncidentListController.list`; exact-status filter and live-view keyset pagination |
 | `GET /api/v1/organizations/{organizationId}/projects/{projectId}/incidents/{incidentId}` | `IncidentController.detail` |
 | `POST /api/v1/organizations/{organizationId}/projects/{projectId}/incidents/{incidentId}/transitions` | `IncidentController.transition` |
 | `GET /api/v1/organizations/{organizationId}/projects/{projectId}/incidents/{incidentId}/timeline` | `IncidentController.timeline`; legacy JSON plus opt-in metadata-only activity representation |
 | `POST /api/v1/organizations/{organizationId}/projects/{projectId}/incidents/{incidentId}/investigations` | `InvestigationRunController.start` (feature flagged); default inline `200`, Temporal `202 + Location` |
 | `GET /api/v1/organizations/{organizationId}/projects/{projectId}/incidents/{incidentId}/investigations/{runId}` | `InvestigationRunController.get` (feature flagged) |
 
-The incident controller is enabled only when persistence is enabled. Create
+The incident controllers are enabled only when persistence is enabled. Create
 requires `Idempotency-Key`; transition also requires a strong numeric
 `If-Match`. Mutation responses carry an ETag and `X-Operation-Id`; create also
 returns `Location`. Timeline pages accept 1-100 items and an opaque,
-incident-bound cursor.
+incident-bound cursor. Collection reads require `incident:read`, authorize the
+tenant/project before binding cursor context, and return only `id`, `title`,
+`severity`, `status`, `updatedAt`, and `version`. The unsigned token is a
+bounded navigation hint for `(updated_at DESC, id DESC)`, not authorization or
+snapshot state; V016 supplies filtered and unfiltered concurrent indexes.
 
 Incident and investigation detail reads additionally support the typed
 `application/vnd.opsmind.operator-projection.v1+json` representation. It carries
