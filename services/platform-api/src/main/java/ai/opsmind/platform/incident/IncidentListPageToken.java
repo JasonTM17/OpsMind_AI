@@ -23,11 +23,9 @@ final class IncidentListPageToken {
     private static final long MAX_EPOCH_MICROS = 253_402_300_799_999_999L;
 
     Claims parse(String token) {
+        requireBoundary(token);
         if (token == null) {
             return null;
-        }
-        if (token.isBlank() || token.length() > MAX_TOKEN_LENGTH) {
-            throw invalidToken();
         }
         try {
             byte[] tokenBytes = Base64.getUrlDecoder().decode(token);
@@ -57,6 +55,12 @@ final class IncidentListPageToken {
             return new Claims(organizationId, projectId, status, updatedAt, incidentId);
         }
         catch (CharacterCodingException | IllegalArgumentException exception) {
+            throw invalidToken();
+        }
+    }
+
+    static void requireBoundary(String token) {
+        if (token != null && (token.isBlank() || token.length() > MAX_TOKEN_LENGTH)) {
             throw invalidToken();
         }
     }
@@ -142,7 +146,7 @@ final class IncidentListPageToken {
         return epochSecond >= 0 && epochSecond <= MAX_EPOCH_MICROS / MICROS_PER_SECOND;
     }
 
-    private PlatformProblemException invalidToken() {
+    private static PlatformProblemException invalidToken() {
         return new PlatformProblemException(
             HttpStatus.BAD_REQUEST,
             "pagination.invalid-token",
