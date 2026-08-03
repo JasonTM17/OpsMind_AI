@@ -29,7 +29,7 @@ const expectedActions = new Map([
   ["actions/upload-artifact", "043fb46d1a93c77aae656e7c1c64a875d1fc6a0a"],
   ["aquasecurity/trivy-action", "ed142fd0673e97e23eac54620cfb913e5ce36c25"],
   ["docker/build-push-action", "53b7df96c91f9c12dcc8a07bcb9ccacbed38856a"],
-  ["docker/login-action", "abd2ef45e78c5afb21d64d4ca52ee8550d9572c7"],
+  ["docker/login-action", "dbcb813823bdd20940b903addbd779551569679f"],
   ["docker/metadata-action", "dc802804100637a589fabce1cb79ff13a1411302"],
   ["docker/setup-buildx-action", "bb05f3f5519dd87d3ba754cc423b652a5edd6d2c"],
   ["docker/setup-qemu-action", "96fe6ef7f33517b61c61be40b68a1882f3264fb8"],

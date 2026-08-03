@@ -163,10 +163,10 @@ export function validateReleaseFlow(jobs, errors) {
   }
   if (
     ghcrLogin.uses !==
-      "docker/login-action@abd2ef45e78c5afb21d64d4ca52ee8550d9572c7" ||
+      "docker/login-action@dbcb813823bdd20940b903addbd779551569679f" ||
     ghcrLogin.with?.registry !== "ghcr.io" ||
     dockerHubLogin.uses !==
-      "docker/login-action@abd2ef45e78c5afb21d64d4ca52ee8550d9572c7" ||
+      "docker/login-action@dbcb813823bdd20940b903addbd779551569679f" ||
     dockerHubLogin.with?.registry !== "docker.io" ||
     !String(dockerHubLogin.if).includes("dockerhub_enabled")
   ) {
