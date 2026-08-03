@@ -106,6 +106,12 @@ test environment and KMS configuration contract. It remains default-off and
 does not close the supported-backend, production KMS, scan, retention,
 residency, or restore gates by source inspection alone.
 
+The integrated V014/V015 metadata and upload checkpoint is revision-bound by
+PR Quality run `30777514150` on merged PR #46. The Phase 4C validator is
+line-ending independent and reports `Errors=0` and `CheckpointResult=PASS`;
+the overall artifact lifecycle remains externally blocked by B-006, B-008,
+and B-012.
+
 Phase 03 proves that a workload/capability-authenticated producer can use the
 artifact service without receiving arbitrary bucket access, and that scanning,
 hold/deletion, purge receipt, orphan reconciliation, and restore boundaries

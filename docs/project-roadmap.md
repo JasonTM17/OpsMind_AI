@@ -27,12 +27,12 @@ The detailed executable plan is [plans/260719-1747-opsmind-ai-production-platfor
 | 1 | Operating envelope and architecture governance | G0.5/G1 | Completed; strict contract gate passed |
 | 2 | Monorepo and developer platform foundation | G1 | Completed; clean Ubuntu/Windows bootstrap and Compose evidence passed |
 | 3 | Contracts, data, identity, and tenant foundation | G2 | In progress |
-| 4 | Incident control plane, evidence lifecycle, and audit | G2/G3 | In progress; 4A/4B checkpoints complete and 4C metadata authority source gate PASS; full lifecycle remains open |
+| 4 | Incident control plane, evidence lifecycle, and audit | G2/G3 | In progress; 4A/4B checkpoints complete and 4C metadata/upload checkpoint PASS with revision-bound CI; full lifecycle remains open |
 | 5 | DeepSeek AI runtime and provider gateway | G3 | In progress; static checkpoint passed, exit gate blocked |
 | 6 | Safe Tool Gateway and read-only connectors | G3 | In progress; B-016 tenant isolation and tenant-scoped connector bulkhead checkpoints pass, broader Phase 6 exit remains BLOCK |
 | 7 | Evidence-backed incident vertical slice | G3 | In progress; metadata activity route and V009 CI fixture gates pass; external G3 blockers remain |
 | 8 | Simulator and evaluation baseline | A-Z G4 / roadmap G7 | In progress; Phase 8B complete, held-out/human/calibration evidence unavailable, exit BLOCK |
-| 9 | Durable Temporal investigation workflow | G4 | In progress; V010-V013 default-off handoff, containment, exact-workflow read-only reconciliation, local real-role/rollback proof, and alert rules exist; B-017 still blocks admission on exact-head heavy CI and live environment/paging evidence; B-013 remains active |
+| 9 | Durable Temporal investigation workflow | G4 | In progress; V010-V013 default-off handoff, containment, exact-workflow read-only reconciliation, local real-role/rollback proof, alert rules, and merged-head PR #45 CI evidence exist; B-017 still blocks admission on live environment/paging evidence; B-013 remains active |
 | 10 | Permission-aware RAG and knowledge lifecycle | G5 | Pending |
 | 11 | Exact-action approval and reversible remediation | G6 | Pending |
 | 12 | Operator web experience completion | G7 | Pending |
@@ -79,11 +79,11 @@ Phase 4C now includes V014 metadata authority and the integrated V015
 default-off upload slice. V015 adds durable lease-fenced attempts, a bounded
 single-PUT S3-compatible adapter, probe-before-retry semantics, separate
 canonical KMS response verification, and atomic `PENDING_UPLOAD -> STORED`
-event/audit finalization. It still does not expose public body ingress,
-read/citation, scanning, `AVAILABLE`, hold/purge/restore, or production backend
-conformance. Static validation passes and CI is wired for both V013-to-V014 and
-V014-to-V015 proofs, but no revision-bound remote result exists for this
-integrated revision; B-006, B-008, and B-012 remain active.
+event/audit finalization. The merged-head PR Quality run `30777514150` passes
+the Phase 4C checkpoint after the validator was made CRLF-safe; it still does
+not expose public body ingress, read/citation, scanning, `AVAILABLE`,
+hold/purge/restore, or production backend conformance. B-006, B-008, and
+B-012 remain active.
 
 Phase 5 is in progress. The provider-neutral runtime, delegated capability and
 egress controls, durable PostgreSQL state, V005 append-only synthetic-probe
@@ -236,12 +236,13 @@ backlog failure modes.
 The local disposable V001-V013 real-role contract emits 55 PASS markers,
 including cleanup, and the V012-to-V013 upgrade probe passes exact-three and
 PUBLIC-denial checks. Static workflow/observability validators and lightweight
-Java tests also pass. This is not the Phase 9 or roadmap G4 exit: no
-live/production Temporal namespace, compatible worker, restart/resume
-execution, revision-bound merged-head heavy CI, live retention/read-only
-credential conformance, `promtool`/scrape evidence, or external page-delivery
-receipt exists. V010 performs no automatic legacy backfill. B-013 and B-017
-remain active.
+Java tests also pass. PR Quality run `30775354989` is green on the reviewed
+PR #45 head and its Compose artifact proves `Phase9AlertReceipt=PASS` with one
+matched callback; PR #45 is merged. This is not the Phase 9 or roadmap G4
+exit: no live/production Temporal namespace, compatible worker, restart/resume
+execution, live retention/read-only credential conformance, `promtool`/scrape
+evidence, or external page-delivery receipt exists. V010 performs no automatic
+legacy backfill. B-013 and B-017 remain active.
 
 ## Staffing Scenarios
 
