@@ -15,7 +15,7 @@ function read(relativePath) {
     errors.push(`missing required file: ${relativePath}`);
     return "";
   }
-  return access.readSafeFile(absolutePath);
+  return access.readSafeFile(absolutePath).replace(/\r\n?/gu, "\n");
 }
 
 function requireMarkers(relativePath, markers) {
