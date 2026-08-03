@@ -113,7 +113,7 @@ test("CI starts the receipt server after the live scrape and before alert delive
   const receiptId = 'randomUUID())';
   const callbackUrl = "callback_token=%s";
   const callbackOwnership = 'sudo chown 65534:65534 "$receipt_receiver_url_file"';
-  const callbackTokenArgument = '--callback-token "$receipt_token"';
+  const callbackTokenArgument = '--callback-token "$receipt_nonce"';
   const receiptIdArgument = '--receipt-id "$receipt_id"';
   const receiptIdAnnotation = "opsmind_ci_receipt_id";
   const deliveryTimeout = "timeout --preserve-status --kill-after=5s 20s";

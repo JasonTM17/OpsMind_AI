@@ -1061,12 +1061,12 @@ jobs:
           evidence="artifacts/verification/phase-02/compose-smoke.txt"
           receipt_evidence="artifacts/verification/phase-09-workflow-handoff/alert-receipt.txt"
           phase9_compose_started_at_utc="$(date -u +%Y-%m-%dT%H:%M:%SZ)"
-          receipt_token="$(node -e 'process.stdout.write(require("node:crypto").randomBytes(32).toString("hex"))')"
+          receipt_nonce="$(node -e 'process.stdout.write(require("node:crypto").randomBytes(32).toString("hex"))')"
           receipt_id="$(node -e 'process.stdout.write(require("node:crypto").randomUUID())')"
           receipt_receiver_url_file="${RUNNER_TEMP}/opsmind-phase-09-alertmanager-receiver-url"
           (
             umask 077
-            printf 'http://host.docker.internal:19093/phase-09-alert-receipt?callback_token=%s\n' "$receipt_token" \
+            printf 'http://host.docker.internal:19093/phase-09-alert-receipt?callback_token=%s\n' "$receipt_nonce" \
               > "$receipt_receiver_url_file"
           )
           sudo chown 65534:65534 "$receipt_receiver_url_file"
@@ -1151,7 +1151,7 @@ jobs:
             done
             test "$live_prometheus_verified" = true
             node scripts/validation/phase-09-alert-receipt-server.mjs \
-              --host 0.0.0.0 --port 19093 --timeout-ms 60000 --callback-token "$receipt_token" --receipt-id "$receipt_id" \
+              --host 0.0.0.0 --port 19093 --timeout-ms 60000 --callback-token "$receipt_nonce" --receipt-id "$receipt_id" \
               > "$receipt_evidence" 2>&1 &
             receipt_pid=$!
             trap 'kill "$receipt_pid" 2>/dev/null || true; wait "$receipt_pid" 2>/dev/null || true' EXIT
