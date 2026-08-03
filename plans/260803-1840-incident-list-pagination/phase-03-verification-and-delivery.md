@@ -1,7 +1,7 @@
 ---
 phase: 3
 title: Verification and Delivery
-status: in-progress
+status: completed
 priority: P1
 dependencies:
   - 2
@@ -44,17 +44,18 @@ Prove contract, authorization, query boundedness, regression safety, and exact-r
 
 ## Success Criteria
 
-- [ ] Static validator, focused tests, and full available Platform suite pass.
-- [ ] Fresh/upgrade PostgreSQL evidence proves RLS isolation, historical migration
+- [x] Static validator, focused tests, and full available Platform suite pass.
+- [x] Fresh/upgrade PostgreSQL evidence proves RLS isolation, historical migration
   checksum stability, deterministic unchanged-dataset traversal, and no writes.
-- [ ] V016 non-transactional concurrent DDL, valid/ready catalog state,
+- [x] V016 non-transactional concurrent DDL, valid/ready catalog state,
   failed-build recovery, and rollout-before-runtime checks pass.
-- [ ] Empty, one-item, exact-size, size+1, final-page, all-status, timestamp-tie,
+- [x] Empty, one-item, exact-size, size+1, final-page, all-status, timestamp-tie,
   arbitrary-boundary, concurrent-update, and sanitized database-failure cases pass.
-- [ ] Both filtered and unfiltered plans use bounded V016-compatible access paths.
-- [ ] Reviewer reports no critical/high correctness, security, or compatibility issue.
-- [ ] Exact head SHA passes required remote checks before merge.
-- [ ] Docs claim only incident-list progress; Phase 4 and external blockers remain explicit.
+- [x] Both filtered and unfiltered plans use bounded V016-compatible access paths.
+- [x] Reviewer reports no critical/high correctness, security, or compatibility issue.
+- [x] Exact head SHA passes required remote checks before merge; GitHub PR #58
+  remains the authoritative revision-bound admission record.
+- [x] Docs claim only incident-list progress; Phase 4 and external blockers remain explicit.
 
 ## Risk Assessment
 

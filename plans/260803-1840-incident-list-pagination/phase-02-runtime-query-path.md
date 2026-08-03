@@ -65,14 +65,14 @@ Return immutable records and `Cache-Control: no-store`.
 
 ## Success Criteria
 
-- [ ] Authorized page and exact-status filter return deterministic summaries only.
-- [ ] Foreign tenant/project/filter tokens and revoked membership reveal no records.
-- [ ] Tied timestamps produce no duplicate/omitted rows over an unchanged dataset.
-- [ ] Denied authorization prevents semantic token binding and the list SELECT.
-- [ ] Before/after snapshots prove no incident, timeline, audit, outbox, or
+- [x] Authorized page and exact-status filter return deterministic summaries only.
+- [x] Foreign tenant/project/filter tokens and revoked membership reveal no records.
+- [x] Tied timestamps produce no duplicate/omitted rows over an unchanged dataset.
+- [x] Denied authorization prevents semantic token binding and the list SELECT.
+- [x] Before/after snapshots prove no incident, timeline, audit, outbox, or
   idempotency state mutation on success or any error path.
-- [ ] Existing endpoints stay byte/behavior compatible.
-- [ ] V016 failure is repairable/retryable and both indexes are `indisvalid` and
+- [x] Existing endpoints stay byte/behavior compatible.
+- [x] V016 failure is repairable/retryable and both indexes are `indisvalid` and
   `indisready` before the list runtime is admitted.
 
 ## Risk Assessment
