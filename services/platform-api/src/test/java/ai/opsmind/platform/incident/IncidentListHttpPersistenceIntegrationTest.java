@@ -1,6 +1,5 @@
 package ai.opsmind.platform.incident;
 
-import static ai.opsmind.platform.testing.PostgresTenantFixtures.PROJECT_A;
 import static ai.opsmind.platform.testing.PostgresTenantFixtures.PROJECT_B;
 import static ai.opsmind.platform.testing.PostgresTenantFixtures.TENANT_A;
 import static ai.opsmind.platform.testing.PostgresTenantFixtures.TENANT_B;
@@ -47,7 +46,8 @@ import tools.jackson.databind.json.JsonMapper;
 class IncidentListHttpPersistenceIntegrationTest {
 
     private static final String TOKEN_A = "phase4-list-token-a";
-    private static final String TOKEN_B = "phase4-list-token-b";
+    private static final UUID LIST_PROJECT =
+        UUID.fromString("90000000-0000-4000-8000-000000000100");
     private static final Instant TIED_TIME = Instant.parse("2030-01-01T00:00:00Z");
 
     @LocalServerPort
@@ -81,8 +81,8 @@ class IncidentListHttpPersistenceIntegrationTest {
         admin = new JdbcTemplate(new DriverManagerDataSource(
             environment.jdbcUrl(), environment.adminUser(), environment.adminPassword()
         ));
+        seedListProject();
         when(jwtDecoder.decode(TOKEN_A)).thenReturn(token(TOKEN_A, "phase3-operator-a"));
-        when(jwtDecoder.decode(TOKEN_B)).thenReturn(token(TOKEN_B, "phase3-operator-b"));
     }
 
     @Test
@@ -95,22 +95,22 @@ class IncidentListHttpPersistenceIntegrationTest {
             uuid("90000000-0000-4000-8000-000000000002"),
             uuid("90000000-0000-4000-8000-000000000001")
         );
-        for (UUID id : openIds) seedIncident(id, TENANT_A, PROJECT_A, "OPEN", TIED_TIME);
+        for (UUID id : openIds) seedIncident(id, TENANT_A, LIST_PROJECT, "OPEN", TIED_TIME);
         for (UUID id : investigatingIds) {
-            seedIncident(id, TENANT_A, PROJECT_A, "INVESTIGATING", TIED_TIME);
+            seedIncident(id, TENANT_A, LIST_PROJECT, "INVESTIGATING", TIED_TIME);
         }
         UUID foreignId = uuid("90000000-0000-4000-8000-000000000099");
         seedIncident(foreignId, TENANT_B, PROJECT_B, "OPEN", TIED_TIME.plusSeconds(1));
         Map<String, Long> before = sideEffectCounts();
 
-        JsonNode first = successfulPage(collectionPath(TENANT_A, PROJECT_A) + "?pageSize=2", TOKEN_A);
+        JsonNode first = successfulPage(collectionPath(TENANT_A, LIST_PROJECT) + "?pageSize=2", TOKEN_A);
         assertExactSummaryShape(first.path("items"));
         assertThat(ids(first)).containsExactly(openIds.get(0), openIds.get(1));
         assertThat(first.path("hasMore").booleanValue()).isTrue();
         String cursor = first.path("nextPageToken").stringValue();
 
         JsonNode second = successfulPage(
-            collectionPath(TENANT_A, PROJECT_A) + "?pageSize=2&pageToken=" + cursor,
+            collectionPath(TENANT_A, LIST_PROJECT) + "?pageSize=2&pageToken=" + cursor,
             TOKEN_A
         );
         assertThat(ids(second)).containsExactly(investigatingIds.get(0), investigatingIds.get(1));
@@ -124,7 +124,7 @@ class IncidentListHttpPersistenceIntegrationTest {
         assertThat(traversal).doesNotContain(foreignId);
 
         JsonNode filtered = successfulPage(
-            collectionPath(TENANT_A, PROJECT_A) + "?status=INVESTIGATING&pageSize=25",
+            collectionPath(TENANT_A, LIST_PROJECT) + "?status=INVESTIGATING&pageSize=25",
             TOKEN_A
         );
         assertThat(ids(filtered)).containsExactlyElementsOf(investigatingIds);
@@ -136,7 +136,7 @@ class IncidentListHttpPersistenceIntegrationTest {
         assertThat(crossTenant.body()).doesNotContain(foreignId.toString());
 
         HttpResponse<String> filterMismatch = get(
-            collectionPath(TENANT_A, PROJECT_A)
+            collectionPath(TENANT_A, LIST_PROJECT)
                 + "?status=OPEN&pageToken=" + cursor,
             TOKEN_A
         );
@@ -145,10 +145,10 @@ class IncidentListHttpPersistenceIntegrationTest {
         assertThat(sideEffectCounts()).isEqualTo(before);
 
         UUID newlyUpdated = uuid("90000000-0000-4000-8000-000000000098");
-        seedIncident(newlyUpdated, TENANT_A, PROJECT_A, "OPEN", TIED_TIME.plusSeconds(2));
+        seedIncident(newlyUpdated, TENANT_A, LIST_PROJECT, "OPEN", TIED_TIME.plusSeconds(2));
         Map<String, Long> afterConcurrentWrite = sideEffectCounts();
         JsonNode refreshed = successfulPage(
-            collectionPath(TENANT_A, PROJECT_A) + "?pageSize=2", TOKEN_A
+            collectionPath(TENANT_A, LIST_PROJECT) + "?pageSize=2", TOKEN_A
         );
         assertThat(ids(refreshed).get(0)).isEqualTo(newlyUpdated);
         assertThat(ids(second)).doesNotContain(newlyUpdated);
@@ -158,11 +158,11 @@ class IncidentListHttpPersistenceIntegrationTest {
             "UPDATE project_memberships SET status = 'suspended' "
                 + "WHERE organization_id = ? AND project_id = ? AND user_id = ?",
             TENANT_A,
-            PROJECT_A,
+            LIST_PROJECT,
             USER_A
         );
         try {
-            HttpResponse<String> revoked = get(collectionPath(TENANT_A, PROJECT_A), TOKEN_A);
+            HttpResponse<String> revoked = get(collectionPath(TENANT_A, LIST_PROJECT), TOKEN_A);
             assertThat(revoked.statusCode()).isEqualTo(404);
             assertThat(revoked.body()).doesNotContain(openIds.get(0).toString());
             assertThat(sideEffectCounts()).isEqualTo(afterConcurrentWrite);
@@ -172,10 +172,30 @@ class IncidentListHttpPersistenceIntegrationTest {
                 "UPDATE project_memberships SET status = 'active' "
                     + "WHERE organization_id = ? AND project_id = ? AND user_id = ?",
                 TENANT_A,
-                PROJECT_A,
+                    LIST_PROJECT,
                 USER_A
             );
         }
+    }
+
+    private void seedListProject() {
+        admin.update(
+            "INSERT INTO projects (id, organization_id, slug, name) VALUES (?, ?, ?, ?) "
+                + "ON CONFLICT (id) DO NOTHING",
+            LIST_PROJECT,
+            TENANT_A,
+            "incident-list-pagination",
+            "Incident list pagination"
+        );
+        admin.update(
+            "INSERT INTO project_memberships (organization_id, project_id, user_id, role) "
+                + "VALUES (?, ?, ?, 'SRE') "
+                + "ON CONFLICT (project_id, user_id) DO UPDATE "
+                + "SET role = EXCLUDED.role, status = 'active'",
+            TENANT_A,
+            LIST_PROJECT,
+            USER_A
+        );
     }
 
     private JsonNode successfulPage(String path, String token) throws Exception {
