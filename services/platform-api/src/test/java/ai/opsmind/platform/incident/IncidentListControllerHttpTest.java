@@ -120,7 +120,8 @@ class IncidentListControllerHttpTest {
             "status=NOT_A_STATUS",
             "pageSize=0",
             "pageSize=101",
-            "pageToken="
+            "pageToken=",
+            "pageToken=" + "x".repeat(513)
         )) {
             mvc.perform(get(PATH + "?" + query).principal(authentication()))
                 .andExpect(status().isBadRequest())
