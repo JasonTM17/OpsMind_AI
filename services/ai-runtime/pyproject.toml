@@ -8,13 +8,13 @@ version = "0.1.0"
 description = "Provider-neutral OpsMind AI runtime foundation"
 requires-python = ">=3.13,<3.14"
 dependencies = [
-  "fastapi==0.139.2",
+  "fastapi==0.141.1",
   "httpx2==2.7.0",
   "PyJWT[crypto]==2.13.0",
   "psycopg[binary]==3.3.4",
   "psycopg-pool==3.3.1",
   "pydantic==2.13.4",
-  "uvicorn==0.51.0",
+  "uvicorn==0.52.0",
 ]
 
 [dependency-groups]
@@ -22,7 +22,7 @@ dev = [
   "mypy==2.3.0",
   "pip-audit==2.10.1",
   "pytest==9.1.1",
-  "ruff==0.15.22",
+  "ruff==0.16.0",
 ]
 
 [tool.uv]
