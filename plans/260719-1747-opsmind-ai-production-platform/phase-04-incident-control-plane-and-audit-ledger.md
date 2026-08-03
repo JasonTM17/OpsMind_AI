@@ -14,6 +14,7 @@ dependencies: [2, 3]
 - [Phase 3](./phase-03-contracts-data-identity-and-tenant-foundation.md)
 - [Phase 4 scout report](./reports/scout-260721-phase-04-incident-control-plane.md)
 - [Checkpoint 4B evidence-record plan](./phase-04b-bounded-evidence-record-ingress.md)
+- [Incident list pagination child plan](../260803-1840-incident-list-pagination/plan.md)
 - [Requirements traceability](./research/master-prompt-requirements-traceability.md)
 - [Architecture and security research](./research/researcher-01-architecture-security.md)
 - [Active blockers](../../docs/blockers.md)
@@ -119,8 +120,10 @@ defense behind Java domain validation.
 
 ### Deferred until later Phase 4 checkpoints
 
-- List/search/pagination, generic patch, owner/alert assignment, resolve/close
-  UX, postmortem authoring, and evidence attachment APIs.
+- Free-text incident search, generic patch, owner/alert assignment, resolve/close
+  UX, postmortem authoring, and evidence attachment APIs. Tenant-scoped exact-
+  status listing with deterministic live-view keyset pagination is implemented
+  by the linked child plan; it does not close the remaining breadth.
 - Evidence metadata/lifecycle implementation, malware/DLP scanning, provider
   adapter, authenticated bounded streaming, tombstone/restore/purge receipts,
   and bidirectional orphan reconciliation.
@@ -203,6 +206,14 @@ current workspace is unborn and dirty, and the latest body-limit source/test
 patch requires a fresh capacity-guarded Maven/PostgreSQL rerun before any
 immutable release claim. No DeepSeek key, registry credential, or package
 publication is part of this checkpoint.
+
+The tenant-scoped incident-list child checkpoint is complete. It adds the
+collection `GET`, optional exact status, page sizes 1..100, a closed six-field
+summary, and deterministic live-view keyset traversal over V016 filtered and
+unfiltered indexes. Authorization and RLS precede semantic cursor binding; the
+path performs no incident, timeline, audit, outbox, or idempotency write.
+Free-text search, patch, assignment, closure UX, postmortems, and the governed
+evidence lifecycle remain open, so Phase 4 and G2 remain in progress.
 
 Checkpoint 4B is implemented locally as the minimum prerequisite for real Phase
 7 clients. It persists only bounded, normalized, redacted Tool Gateway evidence

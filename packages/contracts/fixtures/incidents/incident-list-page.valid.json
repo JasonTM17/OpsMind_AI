@@ -1,0 +1,15 @@
+{
+  "items": [
+    {
+      "id": "33333333-3333-4333-8333-333333333333",
+      "title": "API unavailable",
+      "severity": "SEV1",
+      "status": "INVESTIGATING",
+      "updatedAt": "2030-01-01T00:00:00Z",
+      "version": 3
+    }
+  ],
+  "pageSize": 25,
+  "nextPageToken": "djE6bm9uLXNlY3JldC1uYXZpZ2F0aW9uLWhpbnQ",
+  "hasMore": true
+}

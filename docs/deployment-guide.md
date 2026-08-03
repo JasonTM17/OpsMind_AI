@@ -332,6 +332,10 @@ A failed gate cannot be converted to a warning solely to meet a schedule.
   `USAGE` loss, extra/replaced policies, or any drift from the exact
   tenant-and-project `USING` and `WITH CHECK` definition.
 - Apply Platform V009 before enabling the incident activity vendor media type.
+- Apply Platform V016 successfully before exposing the incident collection
+  read. V016 runs outside a Flyway transaction because both filtered and
+  unfiltered pagination indexes use `CREATE INDEX CONCURRENTLY`; verify each
+  index is `indisvalid` and `indisready` before admitting list traffic.
   V009 creates the two activity ordering indexes concurrently and is configured
   outside a Flyway transaction. The persistence profile also disables Flyway's
   PostgreSQL transactional advisory lock so the concurrent build cannot wait on

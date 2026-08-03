@@ -327,6 +327,17 @@ worktree and cannot satisfy immutable remote release proof. Checkpoint 4A does
 not cover evidence-object lifecycle, postmortems, provider/tool behavior, UI,
 load objectives, production IdP, or the full Phase 4/G2 exit gate.
 
+### Incident list pagination checkpoint
+
+The collection-read gate extends the Phase 4 validator and Platform tests with
+closed six-field fixtures, HTTP input boundaries, authorization-before-query,
+cross-tenant and revoked-membership invisibility, exact-status filtering,
+timestamp ties, arbitrary seek boundaries, live-view mutation behavior, and
+zero-write snapshots. Disposable PostgreSQL coverage applies V001-V016 and
+V015-to-V016, proves the two concurrent indexes valid/ready, repairs a failed
+build using a non-superuser migration role, and checks bounded filtered and
+unfiltered plans. Static or unit output alone is not database proof.
+
 ## Release Gate
 
 Release requires all required suites green, zero unresolved critical security finding, accepted migration and rollback evidence, provider/IdP/connector conformance, held-out evaluation within preregistered bounds, successful restore/reconciliation drill, and operator runbook exercise.
