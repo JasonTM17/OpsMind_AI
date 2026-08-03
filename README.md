@@ -50,11 +50,15 @@ isolation, lease takeover, the outcome matrix, and four rollback failpoints.
 Ambiguous post-RPC exhaustion parks the handoff `PENDING` with
 `workflow.reconciliation-required`, not remote rejection. The reconciler can
 observe and settle that state but cannot Start, signal, update, or cancel a
-workflow. B-017 remains active because the merged head still lacks
-revision-bound heavy CI, live namespace retention/read-only authorization,
-`promtool` plus live scrape, external page delivery, a compatible worker, and
-restart/resume proof. Phase 9/G4 remain in progress; B-013 and B-017 remain
-active.
+workflow. PR #45 and PR Quality run `30775354989` prove the repository-owned
+runtime boundary with pinned local Temporal restart/replay, a fresh compatible
+worker poller, a bounded live reconciliation scrape, and a sanitized CI-local
+Alertmanager receipt. PR #56 and run `30802636501` add revision-bound pinned
+Prometheus config, rule-syntax, and rule-behavior checks. B-017 remains active
+for production database query-plan/latency and DR, live namespace retention/read-only
+authorization, and external page delivery. Phase 9/G4 remain in progress;
+B-013 and B-017 remain active. This is not production admission or a functional
+investigation executor.
 
 Phase 8B now implements three deterministic, training-ineligible evaluation
 contracts: A detects a deployment-correlated latency regression, B terminates
@@ -112,7 +116,7 @@ flowchart LR
     API --> WF["Temporal - Phase 9"]
 ```
 
-The first implementation uses four deployables: Operator Web, Platform API, AI Runtime, and Tool Gateway. PostgreSQL is the source of transactional truth. Redis is optional. Transactional outbox/inbox precedes Kafka. The default-off Temporal client and dispatcher role live in the Platform API artifact; no Temporal service or worker is included.
+The first implementation uses four deployables: Operator Web, Platform API, AI Runtime, and Tool Gateway. PostgreSQL is the source of transactional truth. Redis is optional. Transactional outbox/inbox precedes Kafka. The default-off Temporal client and dispatcher role live in the Platform API artifact. Profile-gated local/CI conformance adds a pinned Temporal development server and workflow-only conformance worker; production Temporal remains external and disabled by default.
 
 See [System Architecture](./docs/system-architecture.md) and [ADR-0001](./docs/adr/ADR-0001-platform-topology.md).
 
@@ -275,7 +279,7 @@ node .\scripts\validation\validate-phase-09-workflow-handoff.mjs
 | Investigation | Bounded-record checkpoint 4B, ANALYZE-only activity view, V009 evidence, capability-backed AI rounds, CK/Stitch/browser proof, and Phase 7 regression PASS in artifact `8649696519` | G3 still requires a named live connector, provider/legal approval, and BFF/session proof |
 | Artifact plane | V014 metadata authority plus V015 lease-fenced, bounded, default-off S3-compatible upload path pass the current static contract; fresh/upgrade database gates are wired | Integrated revision still needs remote CI; public ingress/read, scanning, retention/deletion receipts, restore, and production backend/KMS conformance remain blocked |
 | Evaluation | Fresh disposable A/B/C score `PASS` on all eight metrics with samples `100/1/1`; exact CI command passes 61/61 | Held-out payloads, human adjudication, calibration, and comparison unavailable; Phase 8 exit is BLOCK |
-| Workflow handoff | V010-V013 implement default-off atomic admission, capability-only dispatch, direct-row containment, ordering preservation, durable ambiguous-outcome hold, and a no-`Start` exact-workflow reconciliation/alert lane; local fresh/upgrade real-role and rollback contracts pass | B-017 still blocks Temporal admission/G4 pending exact-head heavy CI, live namespace read-only/retention conformance, `promtool` and live scrape, external page delivery, a compatible worker, and restart/resume execution |
+| Workflow handoff | V010-V013 implement default-off atomic admission, capability-only dispatch, direct-row containment, ordering preservation, durable ambiguous-outcome hold, and a no-`Start` exact-workflow reconciliation/alert lane; PR #45/#56 prove merged-head database/runtime, local restart/replay, compatible polling, bounded live scrape, CI-local routing, and pinned rule checks | B-017 still blocks production Temporal admission/G4 pending production database query-plan/latency and DR, live namespace read-only/retention conformance, and external page delivery |
 | Compose | All application images build, start, and pass health smoke in CI | Not staging/production deployment evidence |
 
 Historical local evidence marked `REFERENCE_CONFORMANCE_NOT_PRODUCTION` stays

@@ -35,7 +35,7 @@ than inferred from the compaction.
 | Phase 6 | In progress; durable PostgreSQL, synthetic Prometheus, and tenant-scoped bulkhead checkpoints pass. Artifact/broader-connector/live/provider-cancellation exit remains blocked. |
 | Phase 7 | In progress; cross-service trace, 100-warm-run fixture, CK/Stitch UI/browser E2E, and the metadata-only incident activity route plus V009 CI fixture gates pass. G3 remains blocked by live non-production connector/provider/legal conformance and BFF/session proof. |
 | Phase 8 | In progress; Phase 8B contracts, V008 binding, bounded projection, production-path A/B/C, artifact attestation, and blocking review pass. Parent exit remains blocked by unavailable held-out/human/calibration evidence. |
-| Phase 9 | In progress; default-off atomic workflow-start handoff, V012 dispatcher containment, and V013 read-only exact-workflow reconciliation source exist. Corrected disposable PostgreSQL fresh/upgrade/atomicity contracts, merged-head PR Quality/Compose evidence, and lightweight Java/static checks pass. B-017 still blocks admission pending live namespace read-only credential conformance, `promtool`/scrape proof, performance/DR evidence, and external alert delivery. A compatible worker and restart/resume remain open. B-013 is active. |
+| Phase 9 | In progress; default-off atomic workflow-start handoff, capability-contained dispatcher/reconciler, and profile-gated Temporal worker conformance exist. PR #45 proves revision-bound PostgreSQL/Maven/Docker, pinned local restart/replay, compatible polling, bounded live scrape, and CI-local routing; PR #56 proves explicit pinned rule syntax checks. B-017 remains active for production database query-plan/latency and DR, live namespace read-only/retention conformance, and external alert delivery. B-013 is active. |
 | Later phases | RAG, remediation, complete operator UX, and production-hardening outcomes remain pending. |
 
 Phase 7's local Operator Web and fixture-backed cross-service checkpoints are
@@ -340,10 +340,14 @@ explicitly enables `health,prometheus` on the internal network. Prometheus
 retains bounded metric/label allowlists and evaluates seven reconciliation
 alerts.
 
-This checkpoint implements the start handoff only. There is no production/live
-Temporal cluster or namespace, Compose service, workflow worker, or
-restart/resume execution. V010 performs no legacy backfill; nonterminal
-binding-less runs block Temporal admission pending operator reconciliation.
+This checkpoint remains default-off and does not authorize a production
+Temporal namespace. Profile-gated local/CI conformance includes a pinned
+Temporal development server and investigation worker. PR #45 exercised
+restart/replay and a fresh compatible workflow poller, ran the disposable
+V001-V013/upgrade contracts in revision-bound CI, scraped the bounded
+reconciliation metrics live, and recorded one CI-local Alertmanager callback.
+V010 performs no legacy backfill; nonterminal binding-less runs block Temporal
+admission pending operator reconciliation.
 The Phase 9 static gate, observability validator, lightweight `javac` main/test
 compile, and disposable PostgreSQL V001-V013 contract pass. The database
 contract produced 55 PASS markers, including cleanup, and proves
@@ -353,11 +357,13 @@ reactivation, mismatch, retry, blocked/retention/exhaustion `PENDING`
 preservation, lease fencing/takeover, cross-tenant denial, four settlement
 rollback failpoints, and cleanup. A local V012-to-V013 upgrade probe also passes
 exact-three/PUBLIC denial, and both database paths are wired into PR Quality.
-Exact-head Maven/Docker/CI, database-gate rerun, performance, and DR proof remain
-deferred by the `D:` capacity guard. Production namespace retention/read-only
-credential conformance, pinned `promtool` plus live scrape, and an Alertmanager
-receiver with page-delivery proof are also missing. Master Phase 9 and roadmap
-G4 remain in progress; B-013 and B-017 remain active.
+PR #45 provides the merged-head Maven/Docker/database/runtime evidence. PR #56
+run `30802636501` additionally records pinned `promtool check config`, explicit
+`check rules` for 10 recording and seven alert rules, and deterministic rule
+tests. Production query-plan/latency and DR evidence, live namespace
+retention/read-only credential conformance, and an external receiver with an
+end-to-end page receipt remain missing. Master Phase 9 and roadmap G4 remain in
+progress; B-013 and B-017 remain active.
 
 ## Phase 8B Evaluation Boundary
 
@@ -428,9 +434,10 @@ Two independent process-supervision reviews pass.
 - For Phase 9 settlement, V012 removes direct dispatcher access to workflow
   binding/inbox rows and canonical workflow-start outbox rows. V013 gives the
   reconciler function execution only; corrected disposable fresh, upgrade, and
-  four-failpoint atomicity contracts pass. B-017 remains active for a
-  revision-bound database-gate run, merged-head Maven/Docker/CI/performance/DR,
-  live Temporal authorization/retention, live scrape, and page-delivery proof.
+  four-failpoint atomicity contracts pass. PR #45 proves the repository-owned
+  database/Maven/Docker/runtime boundary. B-017 remains active for production
+  query-plan/latency and DR, live Temporal authorization/retention, and external
+  page-delivery proof.
 - Evidence, model output, connector content, and request bodies are untrusted
   inputs. Runtime secrets belong in process/secret-manager channels, not source,
   fixtures, evidence, or documentation.
@@ -452,9 +459,9 @@ See [Security Model](./security-model.md) for the complete threat model and
 | `scripts/validation/validate-phase-04c-evidence-artifacts.mjs` | V014 immutability plus V015 metadata/upload/RLS/S3 source checkpoint PASS; merged-head run `30777514150` is green and object storage remains default-off | No production backend/KMS conformance; ingress/readability remain deferred |
 | `scripts/validation/validate-phase-07-investigation-slice.mjs` | Artifact `8649696519` records OperatorWorkspace/CrossService/Checkpoint/PhaseExit PASS; Scenario A has 100 warm runs | G3 still requires live provider/connector/legal and BFF/session proof |
 | `scripts/validation/validate-phase-08-evaluation-foundation.mjs` | Six schemas, ten families/three implemented, three results/eight metrics/four negative cases, zero errors, checkpoint PASS | Phase exit BLOCK; held-out and human inputs unavailable |
-| `scripts/validation/validate-phase-09-workflow-handoff.mjs` | Integration static gate PASS with V010-V013, one Temporal pin, 18 payload fields, seven required test files, and zero errors | Source-only; does not prove merged-head Maven/Docker/CI, live Temporal authorization, worker, or restart/resume |
+| `scripts/validation/validate-phase-09-workflow-handoff.mjs` | Integration static gate PASS with V010-V013, one Temporal pin, 18 payload fields, seven required test files, and zero errors | Static output alone; pair with PR #45 revision-bound restart/replay and compatible-poller evidence. It does not prove production namespace authorization |
 | `scripts/validation/run-phase-09-reconciliation-postgres-contract.sh` | Corrected disposable PostgreSQL V001-V013 real-role run PASS with 55 markers including cleanup: global exact-three privileges; direct/PUBLIC/membership denial; match/absence/reactivation/mismatch/retry/block/retention/exhaustion; lease/takeover/cross-tenant; four atomic rollback failpoints. Local V012-to-V013 exact-three/PUBLIC-deny upgrade also passes; merged-head PR Quality run `30775354989` is green | Query-plan/latency, DR, and production database proof remain |
-| `scripts/validation/validate-phase-09-reconciliation-observability.mjs` | Internal port-8082 scrape contract, bounded labels, aggregate recordings, and seven alert rules pass static validation; merged-head Compose evidence records `Phase9AlertReceipt=PASS` and one matched callback | Pinned `promtool`, live scrape, and external end-to-end delivery proof remain |
+| `scripts/validation/validate-phase-09-reconciliation-observability.mjs` | Internal port-8082 scrape contract, bounded labels, aggregate recordings, and seven alert rules pass; PR #45 Compose evidence proves a healthy live scrape plus `Phase9AlertReceipt=PASS`, and PR #56 records explicit pinned rule checks | CI-local routing only; configured external receiver/page delivery remains unproved |
 | GitHub Actions `30257587569` | PASS on revision `a975f922`: bootstrap, secrets, actionlint, service/UI suites, dependency security, PostgreSQL job `89950772823`, Keycloak, Compose; artifact `8650178111` proves V009/activity gates | CI fixture/non-production evidence; not production latency, SLO, or conformance |
 | GitHub Actions `30257587543` | PASS on revision `a975f922`: A/B/C samples `100/1/1`, all metrics PASS, `GitTree=0`, Phase 7 regression PASS, artifact `8649696519` | Deterministic authored smoke; not held-out quality, calibration, or human benefit |
 
@@ -498,15 +505,14 @@ semantics.
 
 - Full Phase 4: incident list/patch/assignment, postmortems, and governed
   evidence body upload/read/stream/finalize/hold/restore/purge/reconciliation.
-- Live provider egress, a named live non-production connector, a live Temporal
-  cluster/namespace, workflow worker, restart/resume execution, RAG,
-  remediation, and production object storage/lifecycle. The default-off
-  Temporal start handoff, bounded Operator workspace, and real
-  Platform-to-Tool-Gateway read-only path are implemented checkpoints.
+- Live provider egress, a named live non-production connector, a production
+  Temporal cluster/namespace, RAG, remediation, and production object
+  storage/lifecycle. The default-off Temporal handoff and profile-gated local/CI
+  worker restart/replay are implemented checkpoints.
 - Phase 9 production Temporal retention/read-only credential conformance,
-  query-plan/latency, DR, pinned `promtool`/live scrape, and external
-  Alertmanager delivery proof. Merged-head Maven/Docker/CI and the default-off
-  V013 reconciler/static alert rules are implemented checkpoints; they are not
+  query-plan/latency, DR, and external Alertmanager delivery proof.
+  Repository-owned merged-head Maven/Docker/CI, local worker/restart, live
+  scrape, and CI-local routing are implemented checkpoints; they are not
   rollout authorization.
 - Production IdP/federation/session/break-glass conformance.
 - Measured load/SLO proof, DR proof, or a production release.

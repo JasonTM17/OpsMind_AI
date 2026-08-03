@@ -8,6 +8,24 @@
 - Record blockers explicitly and leave downstream phases pending.
 - Do not include secrets, raw credentials, or sensitive evidence.
 
+## 2026-08-03 — Phase 9 repository-owned runtime conformance complete
+
+PR #45 head `96edefc16a5a92442888725ca31c6db2e4b2a0c6`, merge
+`e03c5b39eb3511ac276113087f958c6117658140`, and PR Quality run
+`30775354989` supersede the repository-owned gaps recorded below. Revision-bound
+CI proved pinned local Temporal restart/replay with zero skips, a fresh
+compatible workflow poller, five bounded reconciliation series from a healthy
+live scrape, and one sanitized CI-local Alertmanager callback.
+
+PR #56 head `23d2e1de7820ffca8bb69292145eb78950d9f288`, merge
+`c1137c3c686b1e8582e6ef0140f2e12bbe803f2b`, and run `30802636501`
+added explicit pinned `promtool check rules`; its artifact reports 10 recording
+and seven alert rules successful alongside config and deterministic rule tests.
+The repository-owned Phase 8 runtime-conformance slice is complete. B-017 stays
+active for production database query-plan/latency and DR, live Temporal
+retention/read-only authorization, and external paging delivery. B-013 remains
+active; no production admission, G4/Phase 9 exit, or release is claimed.
+
 ## 2026-07-29 — Exact-workflow reconciliation source and local contract integrated
 
 The integration branch now adds V013 and a default-off read-only reconciliation
@@ -841,12 +859,10 @@ retention/deletion receipts, restore, and B-006/B-008/B-012 are still open.
 2. Authorize and prove the named live non-production connector plus provider/
    legal egress; fixture-backed Phase 7 evidence is not a substitute.
 3. Register governed held-out cases and qualified human adjudication for B-013.
-4. Complete B-017 revision-bound database-gate execution, merged-head
-   Maven/Docker/CI/performance/DR, namespace read-only
-   authorization/retention, scrape, and page-delivery proof.
-5. Keep the Temporal dispatcher, observer, and reconciler disabled until B-017
-   namespace authorization/retention, merged-head heavy, live scrape, and
-   external page-delivery evidence passes.
+4. Complete B-017 production query-plan/latency and DR evidence, live namespace
+   read-only authorization/retention, and external page-delivery proof.
+5. Keep production Temporal and external paging disabled until those B-017
+   gates pass; profile-gated local/CI conformance remains allowed.
 6. Keep dependency downloads, container builds, and service startup behind a
    fresh capacity/root preflight. The 2026-07-29 preflight blocks local heavy
    work because `D:` is below its 20 GiB minimum.
@@ -955,11 +971,11 @@ BLOCK.
 ## Unresolved Questions
 
 Production IdP, provider/legal, named live connector, evidence-object lifecycle,
-RAG, remediation, a live Temporal environment and restart/resume worker,
-staging/production, DR, and release conformance remain explicit gates. Phase 9
-handoff infrastructure is in progress with provisional test-only thresholds.
-V013 source and its local database contract exist, but merged-head heavy/
-CI/performance/DR plus a revision-bound run of the wired database gate, live
-Temporal authorization/retention, live scrape, external alert delivery,
-threshold freeze, and Phase 9 exit remain open. B-013 requires reviewed human
-pilot data and B-017 blocks admission/G4. See [Blockers](./blockers.md).
+RAG, remediation, production Temporal namespace conformance,
+staging/production, DR, and release conformance remain explicit gates. PR #45
+and PR #56 close the repository-owned Phase 9 worker/restart, merged-head
+database/runtime, live-scrape, local-routing, and pinned-rule-check gaps. B-017
+remains active for production database query-plan/latency and DR, live Temporal
+authorization/retention, and external alert delivery. B-013 requires reviewed
+human pilot data; threshold freeze and Phase 9/G4 exit remain open. See
+[Blockers](./blockers.md).
