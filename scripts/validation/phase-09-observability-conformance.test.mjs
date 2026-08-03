@@ -99,6 +99,45 @@ test("CI submits a bare alert array to Alertmanager API v2", () => {
   );
 });
 
+test("CI checks both canonical Prometheus rule files with the pinned image", () => {
+  const stepStart = prQualityWorkflow.indexOf("      - name: Validate pinned Prometheus configuration");
+  const stepEnd = prQualityWorkflow.indexOf("\n      - name:", stepStart + 1);
+  assert.ok(stepStart >= 0 && stepEnd > stepStart, "the pinned Prometheus validation step must exist");
+
+  const step = prQualityWorkflow.slice(stepStart, stepEnd);
+  const pinnedImage = "prom/prometheus:v3.12.0-distroless@sha256:f39df5334dee301b885f77e0ff1159f5d8a43bf9db518f885544594799a1e3c2";
+  const checkConfig = "check config /etc/prometheus/prometheus.yml";
+  const checkRulesMatches = [...step.matchAll(/^\s+check rules \\\s*$/gmu)];
+  const recordingRules = "/etc/prometheus/opsmind-recording-rules.yml";
+  const reconciliationAlerts = "/etc/prometheus/opsmind-reconciliation-alerts.yml";
+  const testRules = "test rules /etc/prometheus/opsmind-reconciliation-alerts.test.yml";
+
+  assert.equal(checkRulesMatches.length, 1, "CI must run exactly one explicit promtool check rules command");
+  assert.equal(step.split(pinnedImage).length - 1, 3, "all promtool checks must reuse the immutable Prometheus image");
+  const checkRulesIndex = checkRulesMatches[0].index;
+  const checkRulesContainerStart = step.lastIndexOf("          docker run --rm \\", checkRulesIndex);
+  const checkRulesContainerEnd = step.indexOf("          docker run --rm \\", checkRulesIndex + 1);
+  const checkRulesContainer = step.slice(checkRulesContainerStart, checkRulesContainerEnd);
+  assert.ok(step.indexOf(checkConfig) < checkRulesIndex, "config validation must run before rule syntax checks");
+  assert.ok(checkRulesIndex < step.indexOf(testRules), "rule syntax checks must run before rule behavior tests");
+  assert.ok(checkRulesContainerStart >= 0 && checkRulesContainerEnd > checkRulesIndex, "check rules must use a dedicated container");
+  for (const sandboxFlag of [
+    "--network none",
+    "--read-only",
+    "--cap-drop ALL",
+    "--security-opt no-new-privileges",
+    "--user 65532:65532",
+  ]) {
+    assert.ok(checkRulesContainer.includes(sandboxFlag), `check rules must retain ${sandboxFlag}`);
+  }
+  assert.ok(step.indexOf(recordingRules, checkRulesIndex) >= 0, "check rules must include recording rules");
+  assert.ok(step.indexOf(reconciliationAlerts, checkRulesIndex) >= 0, "check rules must include reconciliation alerts");
+  assert.ok(step.includes("Command=/bin/promtool check config"), "CI evidence must identify the config check command");
+  assert.ok(step.includes("Command=/bin/promtool check rules"), "CI evidence must identify the bounded rule check command");
+  assert.ok(step.includes("Command=/bin/promtool test rules"), "CI evidence must identify the rule behavior test command");
+  assert.ok(step.includes("Command=/bin/amtool check-config"), "CI evidence must identify the Alertmanager config command");
+});
+
 test("CI starts the receipt server after the live scrape and before alert delivery", () => {
   const composeStepStart = prQualityWorkflow.indexOf("      - name: Build, start, and probe all application services");
   const composeStepEnd = prQualityWorkflow.indexOf("\n      - name:", composeStepStart + 1);
