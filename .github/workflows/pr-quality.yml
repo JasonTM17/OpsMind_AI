@@ -1015,6 +1015,9 @@ jobs:
           set -euo pipefail
           evidence="artifacts/verification/phase-09-workflow-handoff/prometheus-config.txt"
           mkdir -p "$(dirname "$evidence")"
+          printf '%s\n' \
+            'Command=/bin/promtool check config /etc/prometheus/prometheus.yml' \
+            > "$evidence"
           docker run --rm \
             --network none \
             --read-only \
@@ -1027,7 +1030,27 @@ jobs:
             --mount type=bind,source="$PWD/deploy/prometheus/opsmind-reconciliation-alerts.yml",target=/etc/prometheus/opsmind-reconciliation-alerts.yml,readonly \
             prom/prometheus:v3.12.0-distroless@sha256:f39df5334dee301b885f77e0ff1159f5d8a43bf9db518f885544594799a1e3c2 \
             check config /etc/prometheus/prometheus.yml \
-            2>&1 | tee "$evidence"
+            2>&1 | tee -a "$evidence"
+          printf '%s\n' \
+            'Command=/bin/promtool check rules /etc/prometheus/opsmind-recording-rules.yml /etc/prometheus/opsmind-reconciliation-alerts.yml' \
+            | tee -a "$evidence"
+          docker run --rm \
+            --network none \
+            --read-only \
+            --cap-drop ALL \
+            --security-opt no-new-privileges \
+            --user 65532:65532 \
+            --entrypoint /bin/promtool \
+            --mount type=bind,source="$PWD/deploy/prometheus/opsmind-recording-rules.yml",target=/etc/prometheus/opsmind-recording-rules.yml,readonly \
+            --mount type=bind,source="$PWD/deploy/prometheus/opsmind-reconciliation-alerts.yml",target=/etc/prometheus/opsmind-reconciliation-alerts.yml,readonly \
+            prom/prometheus:v3.12.0-distroless@sha256:f39df5334dee301b885f77e0ff1159f5d8a43bf9db518f885544594799a1e3c2 \
+            check rules \
+            /etc/prometheus/opsmind-recording-rules.yml \
+            /etc/prometheus/opsmind-reconciliation-alerts.yml \
+            2>&1 | tee -a "$evidence"
+          printf '%s\n' \
+            'Command=/bin/promtool test rules /etc/prometheus/opsmind-reconciliation-alerts.test.yml' \
+            | tee -a "$evidence"
           docker run --rm \
             --network none \
             --read-only \
@@ -1041,6 +1064,9 @@ jobs:
             prom/prometheus:v3.12.0-distroless@sha256:f39df5334dee301b885f77e0ff1159f5d8a43bf9db518f885544594799a1e3c2 \
             test rules /etc/prometheus/opsmind-reconciliation-alerts.test.yml \
             2>&1 | tee -a "$evidence"
+          printf '%s\n' \
+            'Command=/bin/amtool check-config /etc/alertmanager/alertmanager.yml' \
+            | tee -a "$evidence"
           docker run --rm \
             --network none \
             --read-only \
