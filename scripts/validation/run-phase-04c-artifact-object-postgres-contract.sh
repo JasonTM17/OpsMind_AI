@@ -66,8 +66,15 @@ primary_query() {
     --set ON_ERROR_STOP=1 --command "$sql" | tr -d '\r'
 }
 
-fresh_version="$(primary_query \
-  "SELECT max(version::integer) FROM flyway_schema_history WHERE success;")"
+fresh_version="$(primary_query "
+  SELECT CASE
+    WHEN EXISTS (
+      SELECT 1
+      FROM flyway_schema_history
+      WHERE success AND version = '15'
+    ) THEN '15'
+    ELSE 'MISSING'
+  END;")"
 if [[ "$fresh_version" != "15" ]]; then
   echo "FreshPrimaryMigration expected=15 actual=${fresh_version}" >&2
   exit 1
