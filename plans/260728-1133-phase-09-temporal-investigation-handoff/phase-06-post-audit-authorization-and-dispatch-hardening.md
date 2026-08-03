@@ -155,5 +155,5 @@ reconciliation remains exact.
 - Production Temporal namespace/mTLS/worker topology remains external and is
   intentionally not solved by this hardening phase.
 - B-017 remains unresolved for live Temporal authorization/retention,
-  production performance/DR, bounded-label scrape, external paging receipt,
-  compatible worker proof, and final production-readiness review.
+  production performance/DR, external paging receipt, and final production-
+  readiness review.

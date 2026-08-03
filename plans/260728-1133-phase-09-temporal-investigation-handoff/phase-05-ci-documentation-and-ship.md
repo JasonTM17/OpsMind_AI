@@ -68,7 +68,8 @@ Update architecture/runbooks without claiming a live worker or Phase 9 exit.
 
 ## Success Criteria
 
-- [ ] Documentation and flags match implemented behavior; no live-worker claim.
+- [ ] Documentation and flags match implemented behavior; no production
+  worker/admission claim.
 - [ ] Exact-head CI and independent review pass.
 - [ ] PR is squash-merged; feature branch/worktree are removed safely.
 - [ ] Main is clean except explicitly preserved user/session files.

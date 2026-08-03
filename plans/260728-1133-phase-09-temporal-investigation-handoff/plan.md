@@ -38,10 +38,11 @@ This is Phase 9 infrastructure, not the Phase 9 exit. The existing Java
 `InvestigationStateMachine` remains authoritative, inline fixture/evaluation
 execution remains compatible, and Temporal admission remains compile/runtime
 guarded until a compatible worker is observable on the bound task queue. B-013
-still blocks threshold freeze and the full Phase 9 exit. B-017 separately blocks
-Temporal admission and roadmap G4 enablement until V012 has full fresh/upgrade
-real-role and atomicity proof and an independently authorized no-Start
-reconciliation/alert lane exists.
+still blocks threshold freeze and the full Phase 9 exit. Repository-owned B-017
+runtime conformance now passes; B-017 separately blocks production Temporal
+admission and roadmap G4 enablement until database query-plan/latency and DR,
+live namespace retention/read-only authorization, and configured external
+paging delivery are proven.
 
 ## Decision
 
@@ -67,7 +68,7 @@ Python.
 | 5 | [CI documentation and ship](./phase-05-ci-documentation-and-ship.md) | In Progress |
 | 6 | [Post-audit authorization and dispatch hardening](./phase-06-post-audit-authorization-and-dispatch-hardening.md) | Completed |
 | 7 | [Read-only exact workflow reconciliation](./phase-07-read-only-exact-workflow-reconciliation.md) | In Progress |
-| 8 | [Runtime conformance, bounded telemetry, and CI evidence](./phase-08-runtime-conformance-bounded-telemetry-and-ci-evidence.md) | In Progress |
+| 8 | [Runtime conformance, bounded telemetry, and CI evidence](./phase-08-runtime-conformance-bounded-telemetry-and-ci-evidence.md) | Completed |
 
 ## Dependencies
 
@@ -143,14 +144,15 @@ real-role containment, Compose build/health, and pinned Prometheus config
 validation all succeeded. Exact-main CodeQL run `30699950547` also passed all
 four language lanes with zero open actionable alerts.
 
-Phase 7 and B-017 remain in progress, but the internal remainder is now narrow:
-a compatible default-off workflow-only worker with restart/replay proof, fresh
-poller admission, a non-vacuous live scrape of the real reconciliation series
-with bounded labels, and secretless local Alertmanager routing evidence.
-Production query-plan/latency and DR proof, production database proof, live
-Temporal read-only authorization/retention conformance, and external paging
-delivery remain deployment-owned evidence. No Temporal admission, G4, Phase 9
-exit, Docker Hub publication, or release is claimed.
+Phase 7 and B-017 remain in progress. PR #45 head `96edefc16a5a92442888725ca31c6db2e4b2a0c6`
+and PR Quality run `30775354989` prove the repository-owned Phase 8 worker,
+restart/replay, fresh-poller, bounded live-scrape, and secretless local-routing
+contracts. PR #56 head `23d2e1de7820ffca8bb69292145eb78950d9f288`
+and run `30802636501` add revision-bound pinned config, explicit rule-syntax,
+and deterministic rule-behavior checks. Production query-plan/latency and DR,
+live Temporal read-only authorization/retention, and external paging delivery
+remain deployment-owned evidence. No production Temporal admission, G4,
+Phase 9 exit, Docker Hub publication, or release is claimed.
 
 ## Unresolved Questions
 
@@ -158,9 +160,9 @@ exit, Docker Hub publication, or release is claimed.
   topology remain deployment-owner decisions. Defaults must stay local-invalid
   or disabled until those decisions are recorded.
 - B-013 still blocks production threshold freeze and the Phase 9 exit.
-- B-017 blocks Temporal admission/G4 until the internal Phase 8 conformance
-  slice and the remaining production performance/DR, live Temporal
-  authorization/retention, and external alert-delivery evidence are proven.
+- B-017 blocks production Temporal admission/G4 until production database
+  query-plan/latency and DR, live Temporal authorization/retention, and external
+  alert-delivery evidence are proven.
 
 ## Red Team Review
 
