@@ -698,8 +698,6 @@ jobs:
             --dbname "$POSTGRES_DB" --set ON_ERROR_STOP=1 <<'SQL'
           CREATE ROLE opsmind_v016_migrator LOGIN NOSUPERUSER NOCREATEDB NOCREATEROLE
               INHERIT NOREPLICATION NOBYPASSRLS PASSWORD 'placeholder-ci-v016-migration';
-          GRANT opsmind_context_resolver, opsmind_dispatch_resolver
-              TO opsmind_v016_migrator WITH INHERIT TRUE, SET TRUE;
           SQL
           PGPASSWORD="$POSTGRES_PASSWORD" createdb --no-password \
             --host "$PGHOST" --port "$PGPORT" --username "$POSTGRES_USER" \

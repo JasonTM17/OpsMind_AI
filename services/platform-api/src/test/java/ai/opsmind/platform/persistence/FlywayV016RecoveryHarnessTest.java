@@ -4,6 +4,7 @@ import static org.assertj.core.api.Assertions.assertThat;
 
 import java.sql.Connection;
 import java.sql.DriverManager;
+import java.sql.PreparedStatement;
 import java.sql.ResultSet;
 import java.sql.SQLException;
 import java.sql.Statement;
@@ -29,16 +30,22 @@ class FlywayV016RecoveryHarnessTest {
             "The V016 recovery harness is invoked only against a disposable database."
         );
         DatabaseSettings settings = DatabaseSettings.fromEnvironment();
-        Flyway flyway = flyway(settings, "15");
+        Flyway flyway = flyway(
+            settings.url(), settings.adminUsername(), settings.adminPassword(), "15"
+        );
         flyway.migrate();
 
         try (Connection connection = settings.openAdmin()) {
             connection.setAutoCommit(true);
             assertThat(successfulVersion(connection)).isEqualTo("15");
+            assertRestrictedMigrationRole(connection, settings.migrationUsername());
+            transferV016Ownership(connection, settings.migrationUsername());
             seedDuplicateOrganizationRows(connection);
             createInvalidStatusIndex(connection);
 
-            flyway = flyway(settings, "16");
+            flyway = flyway(
+                settings.url(), settings.migrationUsername(), settings.migrationPassword(), "16"
+            );
             assertThatThrownByMigration(flyway);
             assertThat(failedHistory(connection)).isNotEmpty();
             assertThat(indexCatalog(connection)).containsExactlyInAnyOrder(
@@ -73,11 +80,9 @@ class FlywayV016RecoveryHarnessTest {
         assertThat(failed).isTrue();
     }
 
-    private static Flyway flyway(DatabaseSettings settings, String target) {
+    private static Flyway flyway(String url, String username, String password, String target) {
         FluentConfiguration configuration = Flyway.configure()
-            .dataSource(
-                settings.url(), settings.migrationUsername(), settings.migrationPassword()
-            )
+            .dataSource(url, username, password)
             .locations("classpath:db/migration")
             .target(target);
         PostgreSQLConfigurationExtension postgresql = configuration.getConfigurationExtension(
@@ -85,6 +90,40 @@ class FlywayV016RecoveryHarnessTest {
         );
         postgresql.setTransactionalLock(false);
         return configuration.load();
+    }
+
+    private static void assertRestrictedMigrationRole(
+        Connection connection,
+        String migrationUsername
+    ) throws SQLException {
+        try (PreparedStatement statement = connection.prepareStatement("""
+            SELECT rolcanlogin AND NOT rolsuper AND NOT rolcreatedb AND NOT rolcreaterole
+                AND NOT rolreplication AND NOT rolbypassrls
+            FROM pg_roles
+            WHERE rolname = ?
+            """)) {
+            statement.setString(1, migrationUsername);
+            try (ResultSet result = statement.executeQuery()) {
+                assertThat(result.next()).isTrue();
+                assertThat(result.getBoolean(1)).isTrue();
+            }
+        }
+    }
+
+    private static void transferV016Ownership(
+        Connection connection,
+        String migrationUsername
+    ) throws SQLException {
+        String quotedOwner;
+        try (PreparedStatement statement = connection.prepareStatement("SELECT quote_ident(?)")) {
+            statement.setString(1, migrationUsername);
+            try (ResultSet result = statement.executeQuery()) {
+                assertThat(result.next()).isTrue();
+                quotedOwner = result.getString(1);
+            }
+        }
+        execute(connection, "ALTER TABLE public.incidents OWNER TO " + quotedOwner);
+        execute(connection, "ALTER TABLE public.flyway_schema_history OWNER TO " + quotedOwner);
     }
 
     private static void seedDuplicateOrganizationRows(Connection connection) throws SQLException {
