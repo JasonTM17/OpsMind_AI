@@ -81,7 +81,7 @@
     },
     {
       "if": {
-        "properties": { "toStatus": { "const": "RESOLVED" } },
+        "properties": { "toStatus": { "enum": ["RESOLVED", "CLOSED"] } },
         "required": ["toStatus"]
       },
       "then": {

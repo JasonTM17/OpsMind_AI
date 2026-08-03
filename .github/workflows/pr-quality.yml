@@ -660,6 +660,28 @@ jobs:
           java -jar services/platform-api/target/platform-api.jar \
             --spring.main.web-application-type=none \
             --opsmind.persistence.enabled=false
+      - name: Prove incident resolution and closure lifecycle
+        shell: bash
+        env:
+          OPSMIND_EPHEMERAL_DB: "true"
+          OPSMIND_PHASE4_DB_INTEGRATION: "true"
+          SPRING_DATASOURCE_URL: jdbc:postgresql://127.0.0.1:5432/opsmind
+        run: |
+          set -euo pipefail
+          mkdir -p artifacts/verification/phase-04
+          mvn --batch-mode --no-transfer-progress \
+            -Dmaven.repo.local="$OPS_CACHE_ROOT/maven" \
+            -Dtest=IncidentHttpPersistenceIntegrationTest \
+            -Dsurefire.failIfNoSpecifiedTests=true \
+            -f services/platform-api/pom.xml test \
+            2>&1 | tee artifacts/verification/phase-04/incident-resolution-closure.txt
+          grep -F 'Running ai.opsmind.platform.incident.IncidentHttpPersistenceIntegrationTest' \
+            artifacts/verification/phase-04/incident-resolution-closure.txt
+          if grep -Eq 'Tests run: [0-9]+, Failures: [0-9]+, Errors: [0-9]+, Skipped: [1-9][0-9]*' \
+            artifacts/verification/phase-04/incident-resolution-closure.txt; then
+            echo 'Incident closure evidence cannot contain skipped tests.' >&2
+            exit 1
+          fi
       - name: Prove tenant-scoped incident list pagination and V016 plans
         shell: bash
         env:
@@ -932,6 +954,7 @@ jobs:
           path: |
             artifacts/verification/phase-03/
             artifacts/verification/phase-04/evidence-migration-upgrade.txt
+            artifacts/verification/phase-04/incident-resolution-closure.txt
             artifacts/verification/phase-04/incident-activity-timeline.txt
             artifacts/verification/phase-04c/evidence-artifact-metadata-upgrade.txt
             artifacts/verification/phase-04c/evidence-artifact-object-upgrade.txt

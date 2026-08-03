@@ -159,6 +159,160 @@ class IncidentHttpPersistenceIntegrationTest {
         assertThat(timeline.get("items").get(1).get("incidentVersion").longValue()).isEqualTo(1L);
     }
 
+    @Test
+    void resolutionClosureReplayAndTerminalFailuresPreserveOneDurableLifecycle() throws Exception {
+        int idempotencyBefore = tenantIdempotencyCount();
+        HttpResponse<String> created = send(
+            "POST", collectionPath(), TOKEN_A, "closure-create-" + UUID.randomUUID(), null, createBody()
+        );
+        String incidentId = jsonMapper.readTree(created.body()).get("id").stringValue();
+        String transitionPath = collectionPath() + "/" + incidentId + "/transitions";
+
+        assertTransition(transitionPath, "\"0\"", "closure-investigate-", transitionBody(),
+            "INVESTIGATING", 1);
+        assertTransition(transitionPath, "\"1\"", "closure-resolve-", resolvedBody(),
+            "RESOLVED", 2);
+
+        String closureKey = "closure-close-" + UUID.randomUUID();
+        HttpResponse<String> closed = send(
+            "POST", transitionPath, TOKEN_A, closureKey, "\"2\"", closedBody()
+        );
+        assertThat(closed.statusCode()).isEqualTo(200);
+        assertThat(closed.headers().firstValue("etag")).contains("\"3\"");
+        JsonNode closedJson = jsonMapper.readTree(closed.body());
+        assertThat(closedJson.get("status").stringValue()).isEqualTo("CLOSED");
+        assertThat(closedJson.get("rootCause").stringValue()).isEqualTo("dependency saturation");
+        assertThat(closedJson.get("resolutionSummary").stringValue()).isEqualTo("capacity restored");
+
+        DurableCounts committed = durableCounts(UUID.fromString(incidentId));
+        assertThat(committed).isEqualTo(new DurableCounts(4, 4, 4, idempotencyBefore + 4));
+        assertEventLinkageAndSequence(UUID.fromString(incidentId));
+        HttpResponse<String> replay = send(
+            "POST", transitionPath, TOKEN_A, closureKey, "\"2\"", closedBody()
+        );
+        assertThat(replay.statusCode()).isEqualTo(200);
+        assertThat(replay.body()).isEqualTo(closed.body());
+        assertThat(replay.headers().firstValue("etag")).isEqualTo(closed.headers().firstValue("etag"));
+        assertThat(replay.headers().firstValue("x-operation-id"))
+            .isEqualTo(closed.headers().firstValue("x-operation-id"));
+        assertThat(durableCounts(UUID.fromString(incidentId))).isEqualTo(committed);
+
+        HttpResponse<String> stale = send(
+            "POST", transitionPath, TOKEN_A, "closure-stale-" + UUID.randomUUID(),
+            "\"2\"", transitionBody()
+        );
+        assertThat(stale.statusCode()).isEqualTo(412);
+        assertThat(durableCounts(UUID.fromString(incidentId))).isEqualTo(committed);
+
+        for (IncidentStatus target : IncidentStatus.values()) {
+            HttpResponse<String> terminal = send(
+                "POST", transitionPath, TOKEN_A, "closure-terminal-" + UUID.randomUUID(),
+                "\"3\"", terminalTransitionBody(target)
+            );
+            assertThat(terminal.statusCode()).as("CLOSED -> %s", target).isEqualTo(409);
+            assertThat(terminal.body()).contains("incident.transition-not-allowed");
+            assertThat(durableCounts(UUID.fromString(incidentId))).isEqualTo(committed);
+        }
+
+        HttpResponse<String> detailResponse = send(
+            "GET", collectionPath() + "/" + incidentId, TOKEN_A, null, null, null
+        );
+        assertThat(detailResponse.statusCode()).isEqualTo(200);
+        JsonNode detail = jsonMapper.readTree(detailResponse.body());
+        assertThat(detail.get("status").stringValue()).isEqualTo("CLOSED");
+        assertThat(detail.get("rootCause").stringValue()).isEqualTo("dependency saturation");
+        assertThat(detail.get("resolutionSummary").stringValue()).isEqualTo("capacity restored");
+
+        JsonNode timeline = jsonMapper.readTree(send(
+            "GET", collectionPath() + "/" + incidentId + "/timeline", TOKEN_A, null, null, null
+        ).body());
+        assertThat(timeline.get("items").size()).isEqualTo(4);
+        JsonNode closureEvent = timeline.get("items").get(3);
+        assertThat(closureEvent.get("toStatus").stringValue()).isEqualTo("CLOSED");
+        assertThat(closureEvent.get("rootCause").stringValue()).isEqualTo("dependency saturation");
+        assertThat(closureEvent.get("resolutionSummary").stringValue()).isEqualTo("capacity restored");
+    }
+
+    private void assertTransition(
+        String path,
+        String ifMatch,
+        String keyPrefix,
+        String body,
+        String expectedStatus,
+        int expectedVersion
+    ) throws Exception {
+        HttpResponse<String> response = send(
+            "POST", path, TOKEN_A, keyPrefix + UUID.randomUUID(), ifMatch, body
+        );
+        assertThat(response.statusCode()).isEqualTo(200);
+        assertThat(response.headers().firstValue("etag")).contains("\"" + expectedVersion + "\"");
+        assertThat(jsonMapper.readTree(response.body()).get("status").stringValue())
+            .isEqualTo(expectedStatus);
+    }
+
+    private DurableCounts durableCounts(UUID incidentId) {
+        JdbcTemplate admin = adminJdbc();
+        return new DurableCounts(
+            count(admin, "incident_timeline_events", "incident_id", incidentId),
+            count(admin, "audit_events", "resource_id", incidentId.toString()),
+            count(admin, "outbox_events", "aggregate_id", incidentId),
+            admin.queryForObject(
+                "SELECT count(*) FROM idempotency_records WHERE organization_id = ?",
+                Integer.class,
+                TENANT_A
+            )
+        );
+    }
+
+    private int tenantIdempotencyCount() {
+        return adminJdbc().queryForObject(
+            "SELECT count(*) FROM idempotency_records WHERE organization_id = ?",
+            Integer.class,
+            TENANT_A
+        );
+    }
+
+    private void assertEventLinkageAndSequence(UUID incidentId) {
+        JdbcTemplate admin = adminJdbc();
+        List<UUID> timelineEvents = admin.queryForList(
+            "SELECT event_id FROM incident_timeline_events WHERE incident_id = ? ORDER BY incident_version",
+            UUID.class,
+            incidentId
+        );
+        List<UUID> auditEvents = admin.queryForList(
+            "SELECT event_id FROM audit_events WHERE resource_id = ? ORDER BY tenant_sequence_no",
+            UUID.class,
+            incidentId.toString()
+        );
+        List<UUID> outboxEvents = admin.queryForList(
+            "SELECT event_id FROM outbox_events WHERE aggregate_id = ? ORDER BY aggregate_sequence",
+            UUID.class,
+            incidentId
+        );
+        assertThat(auditEvents).containsExactlyElementsOf(timelineEvents);
+        assertThat(outboxEvents).containsExactlyElementsOf(timelineEvents);
+        assertThat(admin.queryForList(
+            "SELECT aggregate_sequence FROM outbox_events WHERE aggregate_id = ? ORDER BY aggregate_sequence",
+            Long.class,
+            incidentId
+        )).containsExactly(1L, 2L, 3L, 4L);
+    }
+
+    private JdbcTemplate adminJdbc() {
+        PostgresIntegrationEnvironment environment = PostgresIntegrationEnvironment.fromProcess();
+        return new JdbcTemplate(new DriverManagerDataSource(
+            environment.jdbcUrl(), environment.adminUser(), environment.adminPassword()
+        ));
+    }
+
+    private int count(JdbcTemplate jdbc, String table, String column, Object value) {
+        return jdbc.queryForObject(
+            "SELECT count(*) FROM " + table + " WHERE " + column + " = ?",
+            Integer.class,
+            value
+        );
+    }
+
     private HttpResponse<String> send(
         String method,
         String path,
@@ -192,6 +346,24 @@ class IncidentHttpPersistenceIntegrationTest {
         return "{\"targetStatus\":\"INVESTIGATING\",\"reason\":\"triage\"}";
     }
 
+    private String resolvedBody() {
+        return "{\"targetStatus\":\"RESOLVED\",\"reason\":\"mitigation verified\","
+            + "\"rootCause\":\"dependency saturation\","
+            + "\"resolutionSummary\":\"capacity restored\"}";
+    }
+
+    private String closedBody() {
+        return "{\"targetStatus\":\"CLOSED\",\"reason\":\"post-recovery checks passed\"}";
+    }
+
+    private String terminalTransitionBody(IncidentStatus target) {
+        if (target == IncidentStatus.RESOLVED) {
+            return "{\"targetStatus\":\"RESOLVED\",\"reason\":\"invalid terminal retry\","
+                + "\"rootCause\":\"unchanged\",\"resolutionSummary\":\"unchanged\"}";
+        }
+        return "{\"targetStatus\":\"" + target + "\",\"reason\":\"invalid terminal retry\"}";
+    }
+
     private Jwt token(String value, String subject, String scope) {
         Instant issuedAt = Instant.parse("2030-01-01T00:00:00Z");
         return Jwt.withTokenValue(value).header("alg", "RS256")
@@ -220,5 +392,8 @@ class IncidentHttpPersistenceIntegrationTest {
         String value = System.getenv(name);
         if (value == null || value.isBlank()) throw new IllegalStateException(name + " is required.");
         return value;
+    }
+
+    private record DurableCounts(int timeline, int audit, int outbox, int idempotency) {
     }
 }
