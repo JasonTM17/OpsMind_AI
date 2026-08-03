@@ -342,7 +342,7 @@ configuration join after the three branches are reviewed.
   start/signal/update-with-start mutation denied;
 - [ ] namespace retention conformance against configured timing bounds;
 - [x] pinned `promtool` rule/config validation;
-- [ ] non-vacuous live scrape of real reconciliation series showing only bounded
+- [x] non-vacuous live scrape of real reconciliation series showing only bounded
   labels;
 - [ ] configured external Alertmanager receiver and end-to-end page-delivery
   receipt;

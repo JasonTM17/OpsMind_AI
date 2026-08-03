@@ -1,7 +1,7 @@
 ---
 phase: 8
 title: Runtime conformance, bounded telemetry, and CI evidence
-status: in-progress
+status: completed
 priority: P1
 dependsOn:
   - phase-06-post-audit-authorization-and-dispatch-hardening
@@ -181,6 +181,24 @@ Evidence classification is mandatory:
 4. Run only storage-safe local checks; use exact-head CI for the full Maven,
    PostgreSQL, Docker/Compose, Prometheus, and cross-platform matrix.
 5. Require every protected branch check and independent final review before merge.
+
+## Completion evidence
+
+- PR #45 head `96edefc16a5a92442888725ca31c6db2e4b2a0c6`, merge
+  `e03c5b39eb3511ac276113087f958c6117658140`, and PR Quality run
+  `30775354989` prove pinned local Temporal restart/replay with zero skips, a
+  fresh compatible workflow poller, a healthy bounded live scrape of five
+  reconciliation series, and one sanitized `CI_LOCAL_ROUTING_CONFORMANCE`
+  callback. Artifact manifests are revision-bound to GitHub's PR merge ref; the
+  reviewed feature head is recorded separately above.
+- PR #56 head `23d2e1de7820ffca8bb69292145eb78950d9f288`, merge
+  `c1137c3c686b1e8582e6ef0140f2e12bbe803f2b`, and PR Quality run
+  `30802636501` plus Compose artifact `prometheus-config.txt` prove pinned
+  `promtool check config`, explicit `check rules` for 10 recording and seven
+  alert rules, deterministic `test rules`, and pinned `amtool check-config`.
+- Repository-owned Phase 8 runtime conformance is complete. These CI-local
+  proofs do not authorize production Temporal, a functional investigation
+  executor, production database query-plan/latency and DR, or external paging.
 
 ## Rollback
 
