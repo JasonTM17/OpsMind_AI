@@ -131,7 +131,7 @@ jobs:
           persist-credentials: false
 
       - name: Log in to candidate registry
-        uses: docker/login-action@abd2ef45e78c5afb21d64d4ca52ee8550d9572c7 # v4.5.1
+        uses: docker/login-action@dbcb813823bdd20940b903addbd779551569679f # v4.6.0
         with:
           registry: ghcr.io
           username: ${{ github.actor }}
@@ -599,7 +599,7 @@ jobs:
           echo "had_config=${had_config}" >> "$GITHUB_OUTPUT"
 
       - name: Log in to GHCR for promotion and attestation
-        uses: docker/login-action@abd2ef45e78c5afb21d64d4ca52ee8550d9572c7 # v4.5.1
+        uses: docker/login-action@dbcb813823bdd20940b903addbd779551569679f # v4.6.0
         with:
           registry: ghcr.io
           username: ${{ github.actor }}
@@ -607,7 +607,7 @@ jobs:
 
       - name: Log in to Docker Hub for promotion and attestation
         if: steps.targets.outputs.dockerhub_enabled == 'true'
-        uses: docker/login-action@abd2ef45e78c5afb21d64d4ca52ee8550d9572c7 # v4.5.1
+        uses: docker/login-action@dbcb813823bdd20940b903addbd779551569679f # v4.6.0
         with:
           registry: docker.io
           username: ${{ vars.DOCKERHUB_USERNAME }}
