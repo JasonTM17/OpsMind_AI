@@ -32,7 +32,7 @@ The detailed executable plan is [plans/260719-1747-opsmind-ai-production-platfor
 | 6 | Safe Tool Gateway and read-only connectors | G3 | In progress; B-016 tenant isolation and tenant-scoped connector bulkhead checkpoints pass, broader Phase 6 exit remains BLOCK |
 | 7 | Evidence-backed incident vertical slice | G3 | In progress; metadata activity route and V009 CI fixture gates pass; external G3 blockers remain |
 | 8 | Simulator and evaluation baseline | A-Z G4 / roadmap G7 | In progress; Phase 8B complete, held-out/human/calibration evidence unavailable, exit BLOCK |
-| 9 | Durable Temporal investigation workflow | G4 | In progress; V010-V013 default-off handoff, containment, exact-workflow read-only reconciliation, local real-role/rollback proof, alert rules, and merged-head PR #45 CI evidence exist; B-017 still blocks admission on live environment/paging evidence; B-013 remains active |
+| 9 | Durable Temporal investigation workflow | G4 | In progress; repository-owned runtime conformance is complete through PR #45/#56; B-017 still blocks production admission on database query-plan/latency and DR, live namespace authorization/retention, and external paging evidence; B-013 remains active |
 | 10 | Permission-aware RAG and knowledge lifecycle | G5 | Pending |
 | 11 | Exact-action approval and reversible remediation | G6 | Pending |
 | 12 | Operator web experience completion | G7 | Pending |
@@ -239,10 +239,13 @@ PUBLIC-denial checks. Static workflow/observability validators and lightweight
 Java tests also pass. PR Quality run `30775354989` is green on the reviewed
 PR #45 head and its Compose artifact proves `Phase9AlertReceipt=PASS` with one
 matched callback; PR #45 is merged. This is not the Phase 9 or roadmap G4
-exit: no live/production Temporal namespace, compatible worker, restart/resume
-execution, live retention/read-only credential conformance, `promtool`/scrape
-evidence, or external page-delivery receipt exists. V010 performs no automatic
-legacy backfill. B-013 and B-017 remain active.
+exit. PR #45 proves pinned local restart/replay, a fresh compatible workflow
+poller, a bounded live reconciliation scrape, and one sanitized CI-local
+Alertmanager receipt. PR #56 run `30802636501` proves explicit pinned
+`promtool check rules` for 10 recording and seven alert rules. No
+live/production Temporal namespace authorization/retention, production database
+query-plan/latency and DR evidence, or external page-delivery receipt exists. V010
+performs no automatic legacy backfill. B-013 and B-017 remain active.
 
 ## Staffing Scenarios
 
@@ -282,12 +285,11 @@ processing terms.
 
 Phase 9 handoff infrastructure is now in progress with provisional test-only
 values. The reviewed human pilot remains mandatory before no-progress/budget
-thresholds are frozen and before Phase 9 can exit. B-017 also keeps Temporal
-admission and roadmap G4 disabled until V013 receives revision-bound merged-head
-heavy evidence plus live namespace retention/read-only authorization, a
-compatible worker/restart drill, bounded live scrape, and external page-delivery
-proof. This reconciles preparatory engineering with the stricter parent Phase 8
-evidence gate.
+thresholds are frozen and before Phase 9 can exit. B-017 keeps production
+Temporal admission and roadmap G4 disabled until production database
+query-plan/latency and DR evidence, live namespace retention/read-only
+authorization, and external page-delivery proof exist. Repository-owned worker,
+restart/replay, scrape, local-routing, and pinned-rule-check evidence is complete.
 
 Gate labels also drift between documents: the parent A-Z plan names Phase 8
 exit `G4`, while this roadmap's gate summary names durable workflow `G4` and
