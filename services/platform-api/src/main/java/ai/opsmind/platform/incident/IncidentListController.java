@@ -56,6 +56,8 @@ public class IncidentListController {
         String rawPageToken = pageToken == null
             ? request.getParameter("pageToken")
             : pageToken;
+        IncidentCommandValidator.requirePageSize(pageSize);
+        IncidentListPageToken.requireBoundary(rawPageToken);
         IncidentListPage page = queryService.list(
             principal(authentication),
             organizationId,
