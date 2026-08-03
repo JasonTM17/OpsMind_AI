@@ -119,11 +119,14 @@ class IncidentListControllerHttpTest {
         for (String query : List.of(
             "status=NOT_A_STATUS",
             "pageSize=0",
-            "pageSize=101",
-            "pageToken=",
-            "pageToken=" + "x".repeat(513)
+            "pageSize=101"
         )) {
             mvc.perform(get(PATH + "?" + query).principal(authentication()))
+                .andExpect(status().isBadRequest())
+                .andExpect(content().contentType(MediaType.APPLICATION_PROBLEM_JSON));
+        }
+        for (String token : List.of("", "x".repeat(513))) {
+            mvc.perform(get(PATH).queryParam("pageToken", token).principal(authentication()))
                 .andExpect(status().isBadRequest())
                 .andExpect(content().contentType(MediaType.APPLICATION_PROBLEM_JSON));
         }
