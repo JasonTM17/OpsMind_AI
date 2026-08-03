@@ -784,19 +784,31 @@ jobs:
         shell: bash
         env:
           OPSMIND_PHASE4_LIST_RECOVERY_ENABLED: "true"
-          SPRING_DATASOURCE_USERNAME: opsmind_migrator
-          SPRING_DATASOURCE_PASSWORD: placeholder-ci-migration
+          SPRING_DATASOURCE_USERNAME: opsmind_v016_migrator
+          SPRING_DATASOURCE_PASSWORD: placeholder-ci-v016-migration
         run: |
           set -euo pipefail
           recovery_db="opsmind_v016_recovery_${GITHUB_RUN_ID}"
           cleanup() {
             PGPASSWORD="$POSTGRES_PASSWORD" dropdb --if-exists --force --no-password \
               --host "$PGHOST" --port "$PGPORT" --username "$POSTGRES_USER" "$recovery_db"
+            PGPASSWORD="$POSTGRES_PASSWORD" psql --no-password \
+              --host "$PGHOST" --port "$PGPORT" --username "$POSTGRES_USER" \
+              --dbname "$POSTGRES_DB" --set ON_ERROR_STOP=1 \
+              --command 'DROP ROLE IF EXISTS opsmind_v016_migrator'
           }
           trap cleanup EXIT
+          PGPASSWORD="$POSTGRES_PASSWORD" psql --no-password \
+            --host "$PGHOST" --port "$PGPORT" --username "$POSTGRES_USER" \
+            --dbname "$POSTGRES_DB" --set ON_ERROR_STOP=1 <<'SQL'
+          CREATE ROLE opsmind_v016_migrator LOGIN NOSUPERUSER NOCREATEDB NOCREATEROLE
+              INHERIT NOREPLICATION NOBYPASSRLS PASSWORD 'placeholder-ci-v016-migration';
+          GRANT opsmind_context_resolver, opsmind_dispatch_resolver
+              TO opsmind_v016_migrator WITH INHERIT TRUE, SET TRUE;
+          SQL
           PGPASSWORD="$POSTGRES_PASSWORD" createdb --no-password \
             --host "$PGHOST" --port "$PGPORT" --username "$POSTGRES_USER" \
-            --owner "$POSTGRES_USER" "$recovery_db"
+            --owner opsmind_v016_migrator "$recovery_db"
           export SPRING_DATASOURCE_URL="jdbc:postgresql://${PGHOST}:${PGPORT}/${recovery_db}"
           mkdir -p artifacts/verification/phase-04
           mvn --batch-mode --no-transfer-progress \

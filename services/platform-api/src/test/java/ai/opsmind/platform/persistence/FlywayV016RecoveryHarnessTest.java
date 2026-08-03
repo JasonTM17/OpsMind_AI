@@ -32,7 +32,7 @@ class FlywayV016RecoveryHarnessTest {
         Flyway flyway = flyway(settings, "15");
         flyway.migrate();
 
-        try (Connection connection = settings.open()) {
+        try (Connection connection = settings.openAdmin()) {
             connection.setAutoCommit(true);
             assertThat(successfulVersion(connection)).isEqualTo("15");
             seedDuplicateOrganizationRows(connection);
@@ -75,7 +75,9 @@ class FlywayV016RecoveryHarnessTest {
 
     private static Flyway flyway(DatabaseSettings settings, String target) {
         FluentConfiguration configuration = Flyway.configure()
-            .dataSource(settings.url(), settings.username(), settings.password())
+            .dataSource(
+                settings.url(), settings.migrationUsername(), settings.migrationPassword()
+            )
             .locations("classpath:db/migration")
             .target(target);
         PostgreSQLConfigurationExtension postgresql = configuration.getConfigurationExtension(
@@ -178,17 +180,25 @@ class FlywayV016RecoveryHarnessTest {
         return rows;
     }
 
-    private record DatabaseSettings(String url, String username, String password) {
+    private record DatabaseSettings(
+        String url,
+        String migrationUsername,
+        String migrationPassword,
+        String adminUsername,
+        String adminPassword
+    ) {
         static DatabaseSettings fromEnvironment() {
             return new DatabaseSettings(
                 required("SPRING_DATASOURCE_URL"),
                 required("SPRING_DATASOURCE_USERNAME"),
-                required("SPRING_DATASOURCE_PASSWORD")
+                required("SPRING_DATASOURCE_PASSWORD"),
+                required("POSTGRES_USER"),
+                required("POSTGRES_PASSWORD")
             );
         }
 
-        Connection open() throws SQLException {
-            return DriverManager.getConnection(url, username, password);
+        Connection openAdmin() throws SQLException {
+            return DriverManager.getConnection(url, adminUsername, adminPassword);
         }
 
         private static String required(String name) {
