@@ -1,5 +1,7 @@
 package ai.opsmind.platform.investigation.workflow;
 
+import java.time.Clock;
+
 import io.temporal.client.WorkflowClient;
 import io.temporal.client.WorkflowClientOptions;
 import io.temporal.serviceclient.WorkflowServiceStubs;
@@ -21,6 +23,13 @@ public class InvestigationTemporalClientConfiguration {
 
     @Bean(destroyMethod = "shutdown")
     WorkflowServiceStubs investigationWorkflowServiceStubs(
+        InvestigationTemporalClientProperties clientProperties,
+        InvestigationWorkflowProperties workflowProperties
+    ) {
+        return createServiceStubs(clientProperties, workflowProperties);
+    }
+
+    static WorkflowServiceStubs createServiceStubs(
         InvestigationTemporalClientProperties clientProperties,
         InvestigationWorkflowProperties workflowProperties
     ) {
@@ -62,7 +71,9 @@ public class InvestigationTemporalClientConfiguration {
     InvestigationWorkerReadinessProbe investigationWorkerReadinessProbe(
         WorkflowServiceStubs serviceStubs
     ) {
-        return new TemporalInvestigationWorkerReadinessProbe(serviceStubs);
+        return new TemporalInvestigationWorkerReadinessProbe(
+            serviceStubs, Clock.systemUTC()
+        );
     }
 
     @Bean

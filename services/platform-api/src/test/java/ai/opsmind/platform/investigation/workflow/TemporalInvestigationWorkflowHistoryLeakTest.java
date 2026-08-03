@@ -22,7 +22,7 @@ import tools.jackson.databind.json.JsonMapper;
 
 class TemporalInvestigationWorkflowHistoryLeakTest {
 
-    private static final String WORKFLOW_TYPE = "opsmind-investigation-history-v1";
+    private static final String WORKFLOW_TYPE = InvestigationWorkflow.TYPE;
     private static final String TASK_QUEUE = "opsmind-investigation-history-test";
     private static final String PAYLOAD_DIGEST = "a".repeat(64);
 

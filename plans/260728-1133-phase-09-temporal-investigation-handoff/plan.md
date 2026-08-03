@@ -1,11 +1,11 @@
 ---
 title: Phase 9 Temporal Investigation Handoff
 description: >-
-  Close G1 evidence drift and add an atomic, tenant-safe outbox-to-Temporal
-  workflow-start handoff without duplicating the Java investigation reducer.
+  Close G1 evidence drift, deliver the atomic tenant-safe outbox-to-Temporal
+  handoff, and prove the remaining internal Phase 9 runtime-conformance slice.
 status: in-progress
 priority: P1
-branch: feature/temporal-investigation-handoff
+branch: feature/phase-09-runtime-conformance
 tags:
   - temporal
   - durability
@@ -14,7 +14,7 @@ tags:
   - phase-09
 blockedBy: []
 blocks:
-  - phase-09-durable-investigation-worker
+  - phase-10-permission-aware-rag-and-knowledge-lifecycle
 created: '2026-07-28T04:33:57.532Z'
 createdBy: 'ck:plan'
 source: skill
@@ -61,12 +61,13 @@ Python.
 | Phase | Name | Status |
 |-------|------|--------|
 | 1 | [G1 evidence reconciliation and current-state design](./phase-01-g1-evidence-reconciliation-and-current-state-design.md) | Completed |
-| 2 | [Atomic workflow-start persistence](./phase-02-atomic-workflow-start-persistence.md) | In Progress |
-| 3 | [Temporal client and one-owner starter](./phase-03-temporal-client-and-one-owner-starter.md) | In Progress |
-| 4 | [Crash-window replay and security evidence](./phase-04-crash-window-replay-and-security-evidence.md) | In Progress |
+| 2 | [Atomic workflow-start persistence](./phase-02-atomic-workflow-start-persistence.md) | Completed |
+| 3 | [Temporal client and one-owner starter](./phase-03-temporal-client-and-one-owner-starter.md) | Completed |
+| 4 | [Crash-window replay and security evidence](./phase-04-crash-window-replay-and-security-evidence.md) | Completed |
 | 5 | [CI documentation and ship](./phase-05-ci-documentation-and-ship.md) | In Progress |
-| 6 | [Post-audit authorization and dispatch hardening](./phase-06-post-audit-authorization-and-dispatch-hardening.md) | In Progress |
+| 6 | [Post-audit authorization and dispatch hardening](./phase-06-post-audit-authorization-and-dispatch-hardening.md) | Completed |
 | 7 | [Read-only exact workflow reconciliation](./phase-07-read-only-exact-workflow-reconciliation.md) | In Progress |
+| 8 | [Runtime conformance, bounded telemetry, and CI evidence](./phase-08-runtime-conformance-bounded-telemetry-and-ci-evidence.md) | In Progress |
 
 ## Dependencies
 
@@ -127,7 +128,7 @@ Python.
 
 ## Out of Scope
 
-- Full Temporal worker execution of AI/tool activities, pause/resume/cancel,
+- Functional Temporal worker execution of AI/tool activities, pause/resume/cancel,
   HITL approval, remediation writes, RAG, DeepSeek activation, deployment to a
   live Temporal cluster, and master Phase 9 exit.
 - GHCR permission/visibility/linkage, immutable releases, and Docker Hub
@@ -135,32 +136,21 @@ Python.
 
 ## Current Verification Status
 
-V010-V012 source is integrated. The current integration source passes the
-Phase 9 static validator; focused rollback-only PostgreSQL probes pass for V012
-migration application, canonical row visibility, hidden-predecessor ordering,
-unsafe role-membership rejection, and V012 transaction application. Regression
-source now covers V011 legacy ambiguity normalization and preflight-before-decode
-parking. Corrected local fresh/upgrade/atomicity reconciliation database proofs
-are described below; the capacity guard still blocks exact-head
-Maven/Docker/CI, latency, DR, and production PostgreSQL proof.
+V010-V013 source is integrated. Exact-main PR Quality run `30699950577` passed
+on commit `8092b38a652959f561d00b4922e2136139b5ae3a`: Platform API Maven verify,
+the V006-to-V013 upgrade/recovery path, 32 focused Phase 9 PostgreSQL tests,
+real-role containment, Compose build/health, and pinned Prometheus config
+validation all succeeded. Exact-main CodeQL run `30699950547` also passed all
+four language lanes with zero open actionable alerts.
 
-Phase 7 source is integrated: V013 creates a separate function-only reconciler
-login/owner and exact three-function database surface; the default-off observer
-uses only Describe plus one first-history read; aggregate metrics and seven
-alert rules use the internal management port. A disposable PostgreSQL
-V001-V013 real-role contract passes 55 corrected checks including cleanup, including
-the global exact-three surface, full database outcome matrix, lease/retention
-boundaries, and four rollback failpoints. A local V012-to-V013
-exact-three/PUBLIC-deny upgrade and lightweight `javac`/static validators pass.
-The database contract and V006-to-V013 upgrade/recovery path are wired into PR
-Quality, but the updated job has no revision-bound result.
-
-Phase 7 and B-017 remain in progress. The `D:` capacity guard blocks exact-head
-Maven, Docker, performance/DR, and CI gates.
-Production namespace retention and read-only credential conformance are absent.
-Pinned `promtool` plus live scrape and an external Alertmanager receiver/page
-delivery proof are also absent. No Temporal admission, G4, Phase 9 exit,
-Docker Hub publication, or release is claimed.
+Phase 7 and B-017 remain in progress, but the internal remainder is now narrow:
+a compatible default-off workflow-only worker with restart/replay proof, fresh
+poller admission, a non-vacuous live scrape of the real reconciliation series
+with bounded labels, and secretless local Alertmanager routing evidence.
+Production query-plan/latency and DR proof, production database proof, live
+Temporal read-only authorization/retention conformance, and external paging
+delivery remain deployment-owned evidence. No Temporal admission, G4, Phase 9
+exit, Docker Hub publication, or release is claimed.
 
 ## Unresolved Questions
 
@@ -168,10 +158,9 @@ Docker Hub publication, or release is claimed.
   topology remain deployment-owner decisions. Defaults must stay local-invalid
   or disabled until those decisions are recorded.
 - B-013 still blocks production threshold freeze and the Phase 9 exit.
-- B-017 blocks Temporal admission/G4 until the wired database gate has a
-  revision-bound run and remaining merged-head Maven/Docker/CI/performance/DR,
-  live Temporal authorization/retention, scrape, and external alert-delivery
-  evidence is proven.
+- B-017 blocks Temporal admission/G4 until the internal Phase 8 conformance
+  slice and the remaining production performance/DR, live Temporal
+  authorization/retention, and external alert-delivery evidence are proven.
 
 ## Red Team Review
 
@@ -221,3 +210,17 @@ Docker Hub publication, or release is claimed.
   external alert delivery proof remain absent. Production cluster identity,
   mTLS ownership, compatible worker implementation, B-013, and B-017 remain
   explicit gates.
+
+### Session — 2026-08-01
+
+**Findings:** 3 (2 accepted, 1 rejected with exact-main evidence)
+
+| # | Finding | Disposition | Applied To |
+|---|---|---|---|
+| 1 | Phase 4 history proof allegedly depends on the new worker | Rejected: `TemporalInvestigationWorkflowHistoryLeakTest` already uses the official test environment for the existing client/start contract, and exact-main Maven verify passed it; worker restart history remains a distinct Phase 8 proof | Phase 4 clarified |
+| 2 | Worker-only process had no explicit isolated bootstrap owner | Accepted | Phase 8 Lane A/controller ownership and context acceptance |
+| 3 | Durable-history leak scan omitted headers, search attributes, failure details, and cancellation reasons | Accepted | Phase 8 security and test acceptance |
+
+The review also confirmed non-overlapping Lane A/Lane B/controller ownership,
+SDK 1.35.0 poller identity/build/timestamp feasibility, CI-local versus external
+evidence separation, continued B-017/Phase 9 blocking, and the Phase 10 hold.

@@ -1,7 +1,7 @@
 ---
 phase: 4
 title: "Crash-window replay and security evidence"
-status: in-progress
+status: completed
 effort: "1 day"
 ---
 
@@ -66,9 +66,14 @@ recovery and tenant/data boundaries, not merely execute happy paths.
 
 ## Success Criteria
 
-- [ ] Critical matrix rows fail before implementation and pass after it.
-- [ ] Tenant pool reuse and stale lease attempts cannot cross or mutate scope.
-- [ ] Temporal history contains no prompt/evidence/secret sentinel.
-- [ ] Validator and existing reducer replay suites pass.
-- [ ] Async contract, worker-readiness admission, cutover inventory, retry
-  exhaustion, and exact AlreadyStarted verification pass.
+- [x] Critical matrix rows fail before implementation and pass after it.
+- [x] Tenant pool reuse and stale lease attempts cannot cross or mutate scope.
+- [x] Existing client/start-contract history contains no prompt/evidence/secret
+  sentinel, proven by `TemporalInvestigationWorkflowHistoryLeakTest` using the
+  official `TestWorkflowEnvironment` in exact-main Maven verify. Phase 8 owns
+  the separate worker restart/replay history proof.
+- [x] Validator and existing reducer replay suites pass.
+- [x] Async contract, worker-readiness admission, cutover inventory, bounded
+  retry behavior, and exact AlreadyStarted verification pass. Ambiguous
+  post-RPC exhaustion remains `PENDING`; only proven pre-RPC invalidity becomes
+  `REJECTED`.
