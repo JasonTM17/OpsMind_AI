@@ -1,0 +1,12 @@
+{
+  "version": "egress-policy-v1",
+  "rules": [
+    {
+      "tenant_id": "00000000-0000-4000-8000-000000000000",
+      "purpose": "incident_investigation",
+      "provider": "ci-disabled",
+      "region": "zz",
+      "data_classes": ["redacted_metrics"]
+    }
+  ]
+}

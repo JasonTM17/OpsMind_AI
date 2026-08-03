@@ -141,6 +141,32 @@ services:
         aliases:
           - prometheus.opsmind.internal
 
+  alertmanager:
+    <<: *runtime-security
+    profiles: [application, phase-09-conformance]
+    image: prom/alertmanager:v0.28.1@sha256:27c475db5fb156cab31d5c18a4251ac7ed567746a2483ff264516437a39b15ba
+    user: "65534:65534"
+    command:
+      - "--config.file=/etc/alertmanager/alertmanager.yml"
+      - "--storage.path=/alertmanager"
+      - --web.listen-address=0.0.0.0:9093
+      - "--log.level=warn"
+    volumes:
+      - type: bind
+        source: ./deploy/alertmanager/alertmanager.yml
+        target: /etc/alertmanager/alertmanager.yml
+        read_only: true
+      - type: bind
+        source: ${OPS_ALERTMANAGER_RECEIVER_URL_FILE:-./deploy/alertmanager/receiver-url.ci.example}
+        target: /run/secrets/opsmind_alertmanager_receiver_url
+        read_only: true
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
+    tmpfs:
+      - /alertmanager:size=64m,uid=65534,gid=65534,mode=0700
+      - /tmp:size=16m,uid=65534,gid=65534,mode=0700
+    networks: [opsmind-internal]
+
   # Disabled by default. The approved local MinIO choice requires a fresh
   # platform/security decision because its upstream repository is archived.
   minio-review:
@@ -223,6 +249,8 @@ services:
       OPSMIND_INVESTIGATION_TEMPORAL_NAMESPACE: ${OPSMIND_INVESTIGATION_TEMPORAL_NAMESPACE:-disabled}
       OPSMIND_INVESTIGATION_TEMPORAL_WORKFLOW_TYPE: ${OPSMIND_INVESTIGATION_TEMPORAL_WORKFLOW_TYPE:-opsmind-investigation-v1}
       OPSMIND_INVESTIGATION_TEMPORAL_TASK_QUEUE: ${OPSMIND_INVESTIGATION_TEMPORAL_TASK_QUEUE:-disabled}
+      OPSMIND_INVESTIGATION_TEMPORAL_CLIENT_REQUIRED_WORKER_POLLER_MAX_AGE: ${OPSMIND_INVESTIGATION_TEMPORAL_CLIENT_REQUIRED_WORKER_POLLER_MAX_AGE:-PT30S}
+      OPSMIND_INVESTIGATION_TEMPORAL_CLIENT_REQUIRED_WORKER_POLLER_FUTURE_SKEW: ${OPSMIND_INVESTIGATION_TEMPORAL_CLIENT_REQUIRED_WORKER_POLLER_FUTURE_SKEW:-PT5S}
       OPSMIND_INVESTIGATION_TEMPORAL_OBSERVER_ENABLED: ${OPSMIND_INVESTIGATION_TEMPORAL_OBSERVER_ENABLED:-false}
       OPSMIND_INVESTIGATION_TEMPORAL_OBSERVER_TARGET: ${OPSMIND_INVESTIGATION_TEMPORAL_OBSERVER_TARGET:-disabled}
       OPSMIND_INVESTIGATION_TEMPORAL_OBSERVER_TLS_ENABLED: ${OPSMIND_INVESTIGATION_TEMPORAL_OBSERVER_TLS_ENABLED:-true}
@@ -266,6 +294,57 @@ services:
     tmpfs:
       - /tmp:size=64m,mode=1777
     networks: [opsmind-internal]
+
+  investigation-temporal-worker:
+    <<: *runtime-security
+    profiles: [phase-09-temporal-worker]
+    build:
+      context: .
+      dockerfile: services/platform-api/Dockerfile
+    entrypoint:
+      - java
+      - -XX:MaxRAMPercentage=75
+      - -Dloader.main=ai.opsmind.platform.investigation.workflow.InvestigationTemporalWorkerApplication
+      - -cp
+      - /app/app.jar
+      - org.springframework.boot.loader.launch.PropertiesLauncher
+    environment:
+      OPSMIND_SECURITY_MODE: fail-closed
+      OPSMIND_INVESTIGATION_TEMPORAL_WORKER_ENABLED: ${OPSMIND_INVESTIGATION_TEMPORAL_WORKER_ENABLED:-false}
+      OPSMIND_INVESTIGATION_TEMPORAL_CLUSTER_ID: ${OPSMIND_INVESTIGATION_TEMPORAL_CLUSTER_ID:-disabled}
+      OPSMIND_INVESTIGATION_TEMPORAL_NAMESPACE: ${OPSMIND_INVESTIGATION_TEMPORAL_NAMESPACE:-disabled}
+      OPSMIND_INVESTIGATION_TEMPORAL_WORKFLOW_TYPE: ${OPSMIND_INVESTIGATION_TEMPORAL_WORKFLOW_TYPE:-opsmind-investigation-v1}
+      OPSMIND_INVESTIGATION_TEMPORAL_TASK_QUEUE: ${OPSMIND_INVESTIGATION_TEMPORAL_TASK_QUEUE:-disabled}
+      OPSMIND_INVESTIGATION_TEMPORAL_TARGET: ${OPSMIND_INVESTIGATION_TEMPORAL_TARGET:-disabled}
+      OPSMIND_INVESTIGATION_TEMPORAL_TLS_ENABLED: ${OPSMIND_INVESTIGATION_TEMPORAL_TLS_ENABLED:-true}
+      OPSMIND_INVESTIGATION_TEMPORAL_ALLOW_LOCAL_CLEARTEXT: ${OPSMIND_INVESTIGATION_TEMPORAL_ALLOW_LOCAL_CLEARTEXT:-false}
+      OPSMIND_INVESTIGATION_TEMPORAL_RPC_TIMEOUT: ${OPSMIND_INVESTIGATION_TEMPORAL_RPC_TIMEOUT:-PT5S}
+      OPSMIND_INVESTIGATION_TEMPORAL_WORKER_IDENTITY: ${OPSMIND_INVESTIGATION_TEMPORAL_WORKER_IDENTITY:-disabled}
+      OPSMIND_INVESTIGATION_TEMPORAL_WORKER_BUILD_ID: ${OPSMIND_INVESTIGATION_TEMPORAL_WORKER_BUILD_ID:-disabled}
+      OPSMIND_INVESTIGATION_TEMPORAL_WORKER_MAX_CONCURRENT_WORKFLOW_TASK_EXECUTORS: ${OPSMIND_INVESTIGATION_TEMPORAL_WORKER_MAX_CONCURRENT_WORKFLOW_TASK_EXECUTORS:-32}
+      OPSMIND_INVESTIGATION_TEMPORAL_WORKER_MAX_CONCURRENT_WORKFLOW_TASK_POLLERS: ${OPSMIND_INVESTIGATION_TEMPORAL_WORKER_MAX_CONCURRENT_WORKFLOW_TASK_POLLERS:-5}
+      OPSMIND_INVESTIGATION_TEMPORAL_WORKER_SHUTDOWN_TIMEOUT: ${OPSMIND_INVESTIGATION_TEMPORAL_WORKER_SHUTDOWN_TIMEOUT:-PT10S}
+    tmpfs:
+      - /tmp:size=64m,mode=1777
+    networks: [opsmind-internal]
+
+  investigation-temporal-worker-conformance:
+    <<: *runtime-security
+    profiles: [phase-09-temporal-worker-conformance]
+    image: temporalio/temporal@sha256:2aeb97183876db2d80abc2e8b30c2157b5b7da00d53576e3eb40b972311db801
+    command:
+      - server
+      - start-dev
+      - --ip
+      - 127.0.0.1
+      - --db-filename
+      - /tmp/temporal-persistence.db
+    working_dir: /tmp
+    pids_limit: 256
+    mem_limit: 768m
+    tmpfs:
+      - /tmp:size=256m,mode=1777
+    network_mode: service:investigation-temporal-worker
 
   ai-runtime:
     <<: *runtime-security

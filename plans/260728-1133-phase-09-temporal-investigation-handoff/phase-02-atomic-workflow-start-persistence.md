@@ -1,7 +1,7 @@
 ---
 phase: 2
 title: Atomic workflow-start persistence
-status: in-progress
+status: completed
 effort: 1.5 days
 ---
 
@@ -117,9 +117,9 @@ Create a transactionally atomic handoff while preserving the existing
 
 ## Success Criteria
 
-- [ ] Atomic rollback and forced-RLS tests pass under real PostgreSQL roles.
-- [ ] Inline behavior remains compatible and Temporal mode never calls inline.
-- [ ] Canonical payload/digest/ID vectors are deterministic across retries.
-- [ ] No prohibited data class exists in the serialized start payload.
-- [ ] Forged same-tenant payloads fail in PostgreSQL before dispatcher visibility.
-- [ ] Async OpenAPI compatibility and zero-orphan cutover gates pass.
+- [x] Atomic rollback and forced-RLS tests pass under real PostgreSQL roles.
+- [x] Inline behavior remains compatible and Temporal mode never calls inline.
+- [x] Canonical payload/digest/ID vectors are deterministic across retries.
+- [x] No prohibited data class exists in the serialized start payload.
+- [x] Forged same-tenant payloads fail in PostgreSQL before dispatcher visibility.
+- [x] Async OpenAPI compatibility and zero-orphan cutover gates pass.

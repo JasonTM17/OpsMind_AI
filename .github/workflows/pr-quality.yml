@@ -106,6 +106,14 @@ jobs:
           mkdir -p "$evidence_root"
           node scripts/validation/validate-phase-09-workflow-handoff.mjs \
             | tee "$evidence_root/static-contracts.txt"
+          node scripts/validation/validate-phase-09-temporal-worker-conformance.mjs \
+            | tee "$evidence_root/temporal-worker-static.txt"
+          node --test scripts/validation/phase-09-temporal-worker-environment-contract.test.mjs \
+            | tee "$evidence_root/temporal-worker-environment-tests.txt"
+          node scripts/validation/validate-phase-09-reconciliation-observability.mjs \
+            | tee "$evidence_root/observability-static.txt"
+          node --test scripts/validation/phase-09-observability-conformance.test.mjs \
+            | tee "$evidence_root/observability-tests.txt"
       - name: Test Java security tooling
         run: |
           node --test \
@@ -764,19 +772,73 @@ jobs:
         run: |
           set -euo pipefail
           evidence_root=artifacts/verification/phase-09-workflow-handoff
+          phase9_evidence_started_at_utc="$(date -u +%Y-%m-%dT%H:%M:%SZ)"
+          phase9_result=BLOCK
           phase9_database="opsmind_phase9_${GITHUB_RUN_ID}"
           cleanup_phase9_database() {
             PGPASSWORD="$POSTGRES_PASSWORD" dropdb --if-exists --force --no-password \
               --host "$PGHOST" --port "$PGPORT" --username "$POSTGRES_USER" \
               "$phase9_database"
           }
-          trap cleanup_phase9_database EXIT
+          temporal_container="opsmind-phase9-temporal-${GITHUB_RUN_ID}-${GITHUB_RUN_ATTEMPT}"
+          cleanup_phase9_runtime() {
+            original_status=$?
+            manifest_status=0
+            docker logs "$temporal_container" 2>&1 \
+              | tail -n 200 > "$evidence_root/temporal-development-server.log" || true
+            docker rm --force "$temporal_container" >/dev/null 2>&1 || true
+            if ! PHASE9_EVIDENCE_STARTED_AT_UTC="$phase9_evidence_started_at_utc" \
+              bash scripts/validation/write-phase-09-evidence-manifest.sh \
+              "$evidence_root/temporal-worker-evidence-manifest.txt" \
+              temporal-worker-restart "$phase9_result" \
+              'docker-run-temporal-server-start-dev' \
+              'maven-phase9-worker-restart-tests' \
+              'postgres-reconciliation-contract'; then
+              manifest_status=1
+            fi
+            if [ "$original_status" -eq 0 ]; then
+              grep -F "CommitSha=$GITHUB_SHA" \
+                "$evidence_root/temporal-worker-evidence-manifest.txt" \
+                || manifest_status=1
+              grep -F 'Result=PASS' \
+                "$evidence_root/temporal-worker-evidence-manifest.txt" \
+                || manifest_status=1
+            fi
+            cleanup_phase9_database
+            if [ "$manifest_status" -ne 0 ]; then
+              return "$manifest_status"
+            fi
+            return "$original_status"
+          }
+          trap cleanup_phase9_runtime EXIT
           mkdir -p "$evidence_root"
           PGPASSWORD="$POSTGRES_PASSWORD" createdb --no-password \
             --host "$PGHOST" --port "$PGPORT" --username "$POSTGRES_USER" \
             "$phase9_database"
           export PGDATABASE="$phase9_database"
           export SPRING_DATASOURCE_URL="jdbc:postgresql://${PGHOST}:${PGPORT}/${phase9_database}"
+          docker run --detach --rm \
+            --name "$temporal_container" \
+            --publish 127.0.0.1:7233:7233 \
+            --cap-drop ALL \
+            --security-opt no-new-privileges \
+            --pids-limit 256 \
+            --memory 768m \
+            temporalio/temporal@sha256:2aeb97183876db2d80abc2e8b30c2157b5b7da00d53576e3eb40b972311db801 \
+            server start-dev --ip 0.0.0.0
+          temporal_ready=false
+          for attempt in $(seq 1 60); do
+            if (echo > /dev/tcp/127.0.0.1/7233) >/dev/null 2>&1; then
+              temporal_ready=true
+              break
+            fi
+            echo "Temporal development server is not ready (attempt ${attempt}/60)." >&2
+            sleep 1
+          done
+          if [ "$temporal_ready" != true ]; then
+            docker logs "$temporal_container" >&2 || true
+            exit 1
+          fi
           SPRING_PROFILES_ACTIVE=persistence \
           SPRING_DATASOURCE_USERNAME="$POSTGRES_USER" \
           SPRING_DATASOURCE_PASSWORD="$POSTGRES_PASSWORD" \
@@ -786,9 +848,11 @@ jobs:
               --opsmind.persistence.enabled=false
           bash scripts/validation/run-phase-09-reconciliation-postgres-contract.sh \
             2>&1 | tee "$evidence_root/reconciliation-postgres-contract.txt"
+          OPSMIND_PHASE9_TEMPORAL_INTEGRATION=true \
+          OPSMIND_INVESTIGATION_TEMPORAL_TARGET=127.0.0.1:7233 \
           mvn --batch-mode --no-transfer-progress \
             -Dmaven.repo.local="$OPS_CACHE_ROOT/maven" \
-            -Dtest=InvestigationWorkflowHandoffPersistenceIntegrationTest,InvestigationWorkflowDispatcherPersistenceIntegrationTest \
+            -Dtest=InvestigationWorkflowHandoffPersistenceIntegrationTest,InvestigationWorkflowDispatcherPersistenceIntegrationTest,InvestigationTemporalWorkerConfigurationTest,InvestigationTemporalWorkerPropertiesTest,TemporalInvestigationWorkerReadinessProbeTest,InvestigationTemporalWorkerRestartTest \
             -Dsurefire.failIfNoSpecifiedTests=true \
             -f services/platform-api/pom.xml test \
             2>&1 | tee "$evidence_root/postgres-contracts.txt"
@@ -796,11 +860,20 @@ jobs:
             "$evidence_root/postgres-contracts.txt"
           grep -F 'Running ai.opsmind.platform.investigation.workflow.InvestigationWorkflowDispatcherPersistenceIntegrationTest' \
             "$evidence_root/postgres-contracts.txt"
+          grep -F 'Running ai.opsmind.platform.investigation.workflow.InvestigationTemporalWorkerConfigurationTest' \
+            "$evidence_root/postgres-contracts.txt"
+          grep -F 'Running ai.opsmind.platform.investigation.workflow.InvestigationTemporalWorkerPropertiesTest' \
+            "$evidence_root/postgres-contracts.txt"
+          grep -F 'Running ai.opsmind.platform.investigation.workflow.TemporalInvestigationWorkerReadinessProbeTest' \
+            "$evidence_root/postgres-contracts.txt"
+          grep -F 'Running ai.opsmind.platform.investigation.workflow.InvestigationTemporalWorkerRestartTest' \
+            "$evidence_root/postgres-contracts.txt"
           if grep -Eq 'Tests run: [0-9]+, Failures: [0-9]+, Errors: [0-9]+, Skipped: [1-9][0-9]*' \
             "$evidence_root/postgres-contracts.txt"; then
             echo 'Phase 9 PostgreSQL evidence cannot contain skipped tests.' >&2
             exit 1
           fi
+          phase9_result=PASS
       - uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
         if: always()
         with:
@@ -815,6 +888,8 @@ jobs:
             artifacts/verification/phase-07/tool-gateway-persistence.txt
             artifacts/verification/phase-09-workflow-handoff/postgres-contracts.txt
             artifacts/verification/phase-09-workflow-handoff/reconciliation-postgres-contract.txt
+            artifacts/verification/phase-09-workflow-handoff/temporal-development-server.log
+            artifacts/verification/phase-09-workflow-handoff/temporal-worker-evidence-manifest.txt
           if-no-files-found: error
 
   identity-conformance:
@@ -877,7 +952,20 @@ jobs:
       POSTGRES_AI_RUNTIME_PASSWORD: placeholder-ci-ai-runtime
       POSTGRES_TOOL_GATEWAY_MIGRATOR_PASSWORD: placeholder-ci-tool-migration
       POSTGRES_TOOL_GATEWAY_PASSWORD: placeholder-ci-tool-runtime
+      AI_EGRESS_POLICY_HOST_PATH: ./deploy/ai-runtime/ci-disabled-egress-policy.json
       OPS_MIN_DOCKER_FREE_GB: "5"
+      OPSMIND_INVESTIGATION_TEMPORAL_CLUSTER_ID: temporal-ci
+      OPSMIND_INVESTIGATION_TEMPORAL_NAMESPACE: default
+      OPSMIND_INVESTIGATION_TEMPORAL_WORKFLOW_TYPE: opsmind-investigation-v1
+      OPSMIND_INVESTIGATION_TEMPORAL_TASK_QUEUE: opsmind-investigation-ci
+      OPSMIND_INVESTIGATION_TEMPORAL_TARGET: 127.0.0.1:7233
+      OPSMIND_INVESTIGATION_TEMPORAL_TLS_ENABLED: "false"
+      OPSMIND_INVESTIGATION_TEMPORAL_ALLOW_LOCAL_CLEARTEXT: "true"
+      OPSMIND_INVESTIGATION_TEMPORAL_WORKER_ENABLED: "true"
+      OPSMIND_INVESTIGATION_TEMPORAL_WORKER_IDENTITY: opsmind-phase9-compose-worker
+      OPSMIND_INVESTIGATION_TEMPORAL_WORKER_BUILD_ID: opsmind-phase9-compose-v1
+      OPSMIND_INVESTIGATION_TEMPORAL_CLIENT_REQUIRED_WORKER_POLLER_MAX_AGE: PT30S
+      OPSMIND_INVESTIGATION_TEMPORAL_CLIENT_REQUIRED_WORKER_POLLER_FUTURE_SKEW: PT5S
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
       - name: Provision guarded workspace roots
@@ -913,7 +1001,7 @@ jobs:
           validate_compose() (
             set -e
             docker compose version
-            docker compose --profile application config --quiet
+            docker compose --profile application --profile phase-09-conformance --profile phase-09-temporal-worker --profile phase-09-temporal-worker-conformance config --quiet
           )
           validate_compose > "$evidence" 2>&1
           status=$?
@@ -925,7 +1013,8 @@ jobs:
         shell: bash
         run: |
           set -euo pipefail
-          evidence="artifacts/verification/phase-02/prometheus-config.txt"
+          evidence="artifacts/verification/phase-09-workflow-handoff/prometheus-config.txt"
+          mkdir -p "$(dirname "$evidence")"
           docker run --rm \
             --network none \
             --read-only \
@@ -939,17 +1028,60 @@ jobs:
             prom/prometheus:v3.12.0-distroless@sha256:f39df5334dee301b885f77e0ff1159f5d8a43bf9db518f885544594799a1e3c2 \
             check config /etc/prometheus/prometheus.yml \
             2>&1 | tee "$evidence"
+          docker run --rm \
+            --network none \
+            --read-only \
+            --cap-drop ALL \
+            --security-opt no-new-privileges \
+            --user 65532:65532 \
+            --tmpfs /tmp:rw,noexec,nosuid,size=16m \
+            --entrypoint /bin/promtool \
+            --mount type=bind,source="$PWD/deploy/prometheus/opsmind-reconciliation-alerts.yml",target=/etc/prometheus/opsmind-reconciliation-alerts.yml,readonly \
+            --mount type=bind,source="$PWD/deploy/prometheus/opsmind-reconciliation-alerts.test.yml",target=/etc/prometheus/opsmind-reconciliation-alerts.test.yml,readonly \
+            prom/prometheus:v3.12.0-distroless@sha256:f39df5334dee301b885f77e0ff1159f5d8a43bf9db518f885544594799a1e3c2 \
+            test rules /etc/prometheus/opsmind-reconciliation-alerts.test.yml \
+            2>&1 | tee -a "$evidence"
+          docker run --rm \
+            --network none \
+            --read-only \
+            --cap-drop ALL \
+            --security-opt no-new-privileges \
+            --user 65534:65534 \
+            --entrypoint /bin/amtool \
+            --mount type=bind,source="$PWD/deploy/alertmanager/alertmanager.yml",target=/etc/alertmanager/alertmanager.yml,readonly \
+            --mount type=bind,source="$PWD/deploy/alertmanager/receiver-url.ci.example",target=/run/secrets/opsmind_alertmanager_receiver_url,readonly \
+            prom/alertmanager:v0.28.1@sha256:27c475db5fb156cab31d5c18a4251ac7ed567746a2483ff264516437a39b15ba \
+            check-config /etc/alertmanager/alertmanager.yml \
+            2>&1 | tee -a "$evidence"
       - name: Build, start, and probe all application services
         shell: bash
         run: |
           set +e
+          mkdir -p artifacts/verification/phase-02 artifacts/verification/phase-09-workflow-handoff
           evidence="artifacts/verification/phase-02/compose-smoke.txt"
+          receipt_evidence="artifacts/verification/phase-09-workflow-handoff/alert-receipt.txt"
+          phase9_compose_started_at_utc="$(date -u +%Y-%m-%dT%H:%M:%SZ)"
+          receipt_nonce="$(node -e 'process.stdout.write(require("node:crypto").randomBytes(32).toString("hex"))')"
+          receipt_id="$(node -e 'process.stdout.write(require("node:crypto").randomUUID())')"
+          receipt_receiver_url_file="${RUNNER_TEMP}/opsmind-phase-09-alertmanager-receiver-url"
+          (
+            umask 077
+            printf 'http://host.docker.internal:19093/phase-09-alert-receipt?callback_token=%s\n' "$receipt_nonce" \
+              > "$receipt_receiver_url_file"
+          )
+          sudo chown 65534:65534 "$receipt_receiver_url_file"
+          export OPS_ALERTMANAGER_RECEIVER_URL_FILE="$receipt_receiver_url_file"
+          trap 'rm -f "$receipt_receiver_url_file"' EXIT
           compose_smoke() (
             set -e
             echo "Docker=$(docker version --format '{{.Server.Version}}')"
             echo "Compose=$(docker compose version --short)"
-            sh scripts/dev/opsmind.sh up
-            docker compose --profile application exec -T platform-api \
+            docker compose --profile application --profile phase-09-conformance \
+              --profile phase-09-temporal-worker \
+              --profile phase-09-temporal-worker-conformance up --build --detach --wait
+            docker compose --profile application --profile phase-09-conformance \
+              --profile phase-09-temporal-worker \
+              --profile phase-09-temporal-worker-conformance exec -T platform-api \
               curl --fail --show-error --silent http://127.0.0.1:8082/actuator/health
             echo
             curl --fail --show-error --silent http://127.0.0.1:8081/actuator/health
@@ -958,16 +1090,112 @@ jobs:
             echo
             curl --fail --show-error --silent http://127.0.0.1:3000/api/health
             echo
+            worker_container="$(docker compose --profile application --profile phase-09-conformance \
+              --profile phase-09-temporal-worker --profile phase-09-temporal-worker-conformance \
+              ps -q investigation-temporal-worker)"
+            test -n "$worker_container"
+            docker inspect --format '{{range .Config.Env}}{{println .}}{{end}}' "$worker_container" \
+              | sed 's/=.*$//' | LC_ALL=C sort -u \
+              > artifacts/verification/phase-09-workflow-handoff/worker-effective-environment.txt
+            node scripts/validation/validate-phase-09-worker-runtime-environment.mjs \
+              artifacts/verification/phase-09-workflow-handoff/worker-effective-environment.txt
+            worker_poller_evidence="artifacts/verification/phase-09-workflow-handoff/worker-compatible-poller.txt"
+            worker_poller_verified=false
+            for attempt in $(seq 1 60); do
+              if timeout 5s docker compose --profile application --profile phase-09-conformance \
+                --profile phase-09-temporal-worker --profile phase-09-temporal-worker-conformance \
+                exec -T investigation-temporal-worker-conformance \
+                temporal operator cluster health \
+                > "$worker_poller_evidence" 2>&1 \
+                && timeout 5s docker compose --profile application --profile phase-09-conformance \
+                --profile phase-09-temporal-worker --profile phase-09-temporal-worker-conformance \
+                exec -T investigation-temporal-worker-conformance \
+                temporal task-queue describe \
+                  --task-queue "$OPSMIND_INVESTIGATION_TEMPORAL_TASK_QUEUE" \
+                >> "$worker_poller_evidence" 2>&1 \
+                && grep -Fq "$OPSMIND_INVESTIGATION_TEMPORAL_WORKER_IDENTITY" \
+                  "$worker_poller_evidence"; then
+                worker_poller_verified=true
+                break
+              fi
+              echo "Phase 9 Compose worker poller is not ready (attempt ${attempt}/60)." >&2
+              sleep 1
+            done
+            test "$worker_poller_verified" = true
+            docker compose --profile application --profile phase-09-conformance \
+              --profile phase-09-temporal-worker --profile phase-09-temporal-worker-conformance \
+              logs --no-color investigation-temporal-worker \
+              > artifacts/verification/phase-09-workflow-handoff/worker-container.log
+            docker compose --profile application --profile phase-09-conformance \
+              --profile phase-09-temporal-worker --profile phase-09-temporal-worker-conformance \
+              logs --no-color investigation-temporal-worker-conformance \
+              > artifacts/verification/phase-09-workflow-handoff/worker-temporal-server.log
+            target_evidence="artifacts/verification/phase-09-workflow-handoff/prometheus-reconciliation-targets.json"
+            series_evidence="artifacts/verification/phase-09-workflow-handoff/prometheus-reconciliation-series.json"
+            live_prometheus_verified=false
+            for attempt in $(seq 1 30); do
+              if curl --fail --show-error --silent \
+                http://127.0.0.1:9090/api/v1/targets?state=active \
+                --output "$target_evidence" \
+                && curl --fail --show-error --silent --get \
+                --data-urlencode 'query={__name__=~"opsmind_workflow_reconciliation_(ready|pending|oldest_pending_age_seconds|blocked|retention_ineligible)"}' \
+                http://127.0.0.1:9090/api/v1/query \
+                --output "$series_evidence" \
+                && node scripts/validation/validate-phase-09-live-prometheus-scrape.mjs \
+                  "$target_evidence" "$series_evidence"; then
+                live_prometheus_verified=true
+                break
+              fi
+              echo "Phase 9 Prometheus scrape is not ready (attempt ${attempt}/30)." >&2
+              sleep 2
+            done
+            test "$live_prometheus_verified" = true
+            node scripts/validation/phase-09-alert-receipt-server.mjs \
+              --host 0.0.0.0 --port 19093 --timeout-ms 60000 --callback-token "$receipt_nonce" --receipt-id "$receipt_id" \
+              > "$receipt_evidence" 2>&1 &
+            receipt_pid=$!
+            trap 'kill "$receipt_pid" 2>/dev/null || true; wait "$receipt_pid" 2>/dev/null || true' EXIT
+            receipt_ready=false
+            for attempt in $(seq 1 30); do
+              if grep -Fq 'Phase9AlertReceiptServer=READY' "$receipt_evidence"; then
+                receipt_ready=true
+                break
+              fi
+              if ! kill -0 "$receipt_pid" 2>/dev/null; then
+                cat "$receipt_evidence"
+                break
+              fi
+              sleep 1
+            done
+            test "$receipt_ready" = true
+            timeout --preserve-status --kill-after=5s 20s \
+              docker compose --profile application --profile phase-09-conformance \
+              --profile phase-09-temporal-worker --profile phase-09-temporal-worker-conformance \
+              exec -T platform-api \
+              curl --fail --show-error --silent --connect-timeout 5 --max-time 15 -X POST \
+              -H 'Content-Type: application/json' \
+              --data '[{"labels":{"alertname":"OpsMindWorkflowReconciliationBlocked","severity":"critical","component":"workflow-reconciliation"},"annotations":{"summary":"Workflow reconciliation is blocked","description":"Synthetic bounded conformance receipt.","opsmind_ci_receipt_id":"'"$receipt_id"'"}}]' \
+              http://alertmanager:9093/api/v2/alerts
+            alert_receipt_verified=false
+            for attempt in $(seq 1 30); do
+              if grep -Fq 'EvidenceClass=CI_LOCAL_ROUTING_CONFORMANCE' "$receipt_evidence" \
+                && grep -Fq 'Phase9AlertReceipt=PASS' "$receipt_evidence"; then
+                alert_receipt_verified=true
+                break
+              fi
+              sleep 1
+            done
+            test "$alert_receipt_verified" = true
             prometheus_evidence="artifacts/verification/phase-02/prometheus-live-query.json"
             prometheus_verified=false
             for attempt in $(seq 1 20); do
               end="$(date +%s)"
               start=$((end - 120))
-              if curl --fail --show-error --silent --get \
-                --data-urlencode 'query=opsmind:http_request_duration_seconds:synthetic{service="opsmind-api"}' \
+              if curl --fail-with-body --show-error --silent --get \
+                --data-urlencode 'query=opsmind_workflow_reconciliation_ready{job="opsmind-workflow-reconciliation"}' \
                 --data-urlencode "start=$start" \
                 --data-urlencode "end=$end" \
-                --data-urlencode "step=60" \
+                --data-urlencode "step=60s" \
                 http://127.0.0.1:9090/api/v1/query_range \
                 --output "$prometheus_evidence" \
                 && node scripts/validation/validate-live-prometheus-response.mjs \
@@ -979,13 +1207,37 @@ jobs:
               sleep 2
             done
             test "$prometheus_verified" = true
-            docker compose --profile application ps
+            docker compose --profile application --profile phase-09-conformance \
+              --profile phase-09-temporal-worker --profile phase-09-temporal-worker-conformance ps
             sh scripts/storage/check-capacity.sh
           )
           compose_smoke > "$evidence" 2>&1
           status=$?
-          cat "$evidence"
           if [ "$status" -eq 0 ]; then result=PASS; else result=BLOCK; fi
+          PHASE9_EVIDENCE_STARTED_AT_UTC="$phase9_compose_started_at_utc" \
+            bash scripts/validation/write-phase-09-evidence-manifest.sh \
+            artifacts/verification/phase-09-workflow-handoff/compose-evidence-manifest.txt \
+            compose-runtime "$result" \
+            'docker-compose-worker-conformance' \
+            'temporal-task-queue-compatible-poller' \
+            'docker-compose-prometheus-scrape' \
+            'alertmanager-local-routing-receipt' \
+            >> "$evidence" 2>&1
+          manifest_status=$?
+          if [ "$manifest_status" -ne 0 ]; then
+            status=$manifest_status
+            result=BLOCK
+          fi
+          if [ "$status" -eq 0 ]; then
+            grep -F "CommitSha=$GITHUB_SHA" \
+              artifacts/verification/phase-09-workflow-handoff/compose-evidence-manifest.txt \
+              >> "$evidence" || status=$?
+            if [ "$status" -eq 0 ]; then grep -F 'Result=PASS' \
+              artifacts/verification/phase-09-workflow-handoff/compose-evidence-manifest.txt \
+              >> "$evidence" || status=$?; fi
+            if [ "$status" -ne 0 ]; then result=BLOCK; fi
+          fi
+          cat "$evidence"
           echo "Result=$result" | tee -a "$evidence"
           exit "$status"
       - name: Stop application services
@@ -993,9 +1245,14 @@ jobs:
         shell: bash
         run: |
           set +e
+          mkdir -p artifacts/verification/phase-02 artifacts/verification/phase-09-workflow-handoff
           evidence="artifacts/verification/phase-02/compose-smoke.txt"
-          docker compose --profile application ps --all 2>&1 | tee -a "$evidence"
-          sh scripts/dev/opsmind.sh down 2>&1 | tee -a "$evidence"
+          docker compose --profile application --profile phase-09-conformance \
+            --profile phase-09-temporal-worker --profile phase-09-temporal-worker-conformance \
+            ps --all 2>&1 | tee -a "$evidence"
+          docker compose --profile application --profile phase-09-conformance \
+            --profile phase-09-temporal-worker --profile phase-09-temporal-worker-conformance \
+            down --remove-orphans 2>&1 | tee -a "$evidence"
           status=${PIPESTATUS[0]}
           if [ "$status" -eq 0 ]; then result=PASS; else result=BLOCK; fi
           echo "CleanupResult=$result" | tee -a "$evidence"
@@ -1004,7 +1261,9 @@ jobs:
         if: always()
         with:
           name: compose-verification
-          path: artifacts/verification/phase-02/
+          path: |
+            artifacts/verification/phase-02/
+            artifacts/verification/phase-09-workflow-handoff/
           if-no-files-found: error
 
   dependency-review:

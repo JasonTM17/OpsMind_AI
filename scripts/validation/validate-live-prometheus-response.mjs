@@ -25,9 +25,10 @@ const labels = series?.metric;
 const labelNames = labels && typeof labels === "object"
   ? Object.keys(labels).sort()
   : [];
-if (labelNames.join(",") !== "__name__,service"
-    || labels.__name__ !== "opsmind:http_request_duration_seconds:synthetic"
-    || labels.service !== "opsmind-api"
+if (labelNames.join(",") !== "__name__,instance,job"
+    || labels.__name__ !== "opsmind_workflow_reconciliation_ready"
+    || labels.instance !== "platform-api:8082"
+    || labels.job !== "opsmind-workflow-reconciliation"
     || !Array.isArray(series.values)
     || series.values.length < 1
     || series.values.length > 10) {
