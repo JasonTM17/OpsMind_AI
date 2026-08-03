@@ -3,6 +3,7 @@ package ai.opsmind.platform.incident;
 import java.util.List;
 import java.util.UUID;
 
+import jakarta.servlet.http.HttpServletRequest;
 import jakarta.validation.constraints.Max;
 import jakarta.validation.constraints.Min;
 import jakarta.validation.constraints.Size;
@@ -29,12 +30,12 @@ import org.springframework.web.bind.annotation.RestController;
 @RestController
 @RequestMapping("/api/v1/organizations/{organizationId}/projects/{projectId}/incidents")
 @ConditionalOnProperty(prefix = "opsmind.persistence", name = "enabled", havingValue = "true")
-final class IncidentListController {
+public class IncidentListController {
 
     private final JwtPrincipalMapper principalMapper;
     private final IncidentListQueryService queryService;
 
-    IncidentListController(
+    public IncidentListController(
         JwtPrincipalMapper principalMapper,
         IncidentListQueryService queryService
     ) {
@@ -43,16 +44,25 @@ final class IncidentListController {
     }
 
     @GetMapping(produces = MediaType.APPLICATION_JSON_VALUE)
-    ResponseEntity<IncidentListPage> list(
+    public ResponseEntity<IncidentListPage> list(
         Authentication authentication,
         @PathVariable UUID organizationId,
         @PathVariable UUID projectId,
         @RequestParam(required = false) IncidentStatus status,
         @RequestParam(defaultValue = "25") @Min(1) @Max(100) int pageSize,
-        @RequestParam(required = false) @Size(min = 1, max = 512) String pageToken
+        @RequestParam(required = false) @Size(max = 512) String pageToken,
+        HttpServletRequest request
     ) {
+        String rawPageToken = pageToken == null
+            ? request.getParameter("pageToken")
+            : pageToken;
         IncidentListPage page = queryService.list(
-            principal(authentication), organizationId, projectId, status, pageSize, pageToken
+            principal(authentication),
+            organizationId,
+            projectId,
+            status,
+            pageSize,
+            rawPageToken
         );
         return ResponseEntity.ok()
             .contentType(MediaType.APPLICATION_JSON)
