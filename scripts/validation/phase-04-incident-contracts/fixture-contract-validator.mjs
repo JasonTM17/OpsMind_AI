@@ -9,6 +9,8 @@ export const fixtureCases = [
   ["transition-incident-request.non-resolve-fields.invalid.json", "incidents/transition-incident-request.schema.json", false],
   ["incident.valid.json", "incidents/incident.schema.json", true],
   ["incident.resolved-fields.invalid.json", "incidents/incident.schema.json", false],
+  ["incident-list-page.valid.json", "incidents/incident-list-page.schema.json", true],
+  ["incident-list-page.forbidden-field.invalid.json", "incidents/incident-list-page.schema.json", false],
   ["incident-timeline-page.valid.json", "incidents/incident-timeline-page.schema.json", true],
   ["incident-timeline-page.event-kind.invalid.json", "incidents/incident-timeline-page.schema.json", false],
   ["incident-activity-timeline-page.valid.json", "incidents/incident-activity-timeline-page.schema.json", true],

@@ -33,6 +33,7 @@ $diagnosticFiles = [Collections.Generic.List[string]]::new()
 $capturedDiagnostics = [Collections.Generic.List[string]]::new()
 $failure = $null
 $testsExitCode = 1
+$recoveryExitCode = 1
 $sqlExitCode = 1
 $packageExitCode = 1
 $flywayExitCode = 1
@@ -202,7 +203,9 @@ $environmentNames = @(
     'SPRING_PROFILES_ACTIVE', 'SPRING_DATASOURCE_URL',
     'SPRING_DATASOURCE_USERNAME', 'SPRING_DATASOURCE_PASSWORD',
     'OPSMIND_FLYWAY_ENABLED', 'OPSMIND_EPHEMERAL_DB',
-    'OPSMIND_PHASE4_DB_INTEGRATION', 'PGHOST', 'PGPORT', 'PGDATABASE', 'JAVA_HOME'
+    'OPSMIND_PHASE4_DB_INTEGRATION', 'OPSMIND_PHASE4_LIST_PLAN_ENABLED',
+    'OPSMIND_PHASE4_LIST_RECOVERY_ENABLED',
+    'PGHOST', 'PGPORT', 'PGDATABASE', 'JAVA_HOME'
 )
 $previousEnvironment = @{}
 foreach ($name in $environmentNames) {
@@ -433,6 +436,7 @@ REVOKE CREATE ON SCHEMA public
 
     $env:OPSMIND_EPHEMERAL_DB = 'true'
     $env:OPSMIND_PHASE4_DB_INTEGRATION = 'true'
+    $env:OPSMIND_PHASE4_LIST_PLAN_ENABLED = 'true'
     $env:PGHOST = '127.0.0.1'
     $env:PGPORT = $mappedPort
     $env:PGDATABASE = 'opsmind_phase4'
@@ -440,10 +444,29 @@ REVOKE CREATE ON SCHEMA public
         '--batch-mode', '--no-transfer-progress', "-Dmaven.repo.local=$mavenRepository",
         ('-Dtest=MigrationContractTest,IncidentControlPlaneIntegrationTest,' +
             'IncidentHttpPersistenceIntegrationTest,IncidentAuthorizationRevocationIntegrationTest,' +
-            'IncidentTransactionalRollbackIntegrationTest,AuditLedgerIntegrationTest'),
+            'IncidentTransactionalRollbackIntegrationTest,AuditLedgerIntegrationTest,' +
+            'IncidentListHttpPersistenceIntegrationTest,IncidentListPlanHarnessTest'),
         '-f', 'services/platform-api/pom.xml', 'test'
     ) 'maven-tests'
     if ($testsExitCode -ne 0) { throw "Phase 4 guarded tests failed with exit $testsExitCode." }
+
+    Invoke-ContainerSql -Database 'postgres' -Sql `
+        'CREATE DATABASE opsmind_phase4_recovery OWNER opsmind_migrator;'
+    Invoke-ContainerSql -Database 'opsmind_phase4_recovery' -Sql @'
+GRANT USAGE, CREATE ON SCHEMA public
+    TO opsmind_context_resolver, opsmind_dispatch_resolver;
+'@
+
+    $env:SPRING_DATASOURCE_URL = "jdbc:postgresql://127.0.0.1:$mappedPort/opsmind_phase4_recovery"
+    $env:OPSMIND_PHASE4_LIST_RECOVERY_ENABLED = 'true'
+    $recoveryExitCode = Invoke-CapturedProcess $MavenPath @(
+        '--batch-mode', '--no-transfer-progress', "-Dmaven.repo.local=$mavenRepository",
+        '-Dtest=FlywayV016RecoveryHarnessTest',
+        '-f', 'services/platform-api/pom.xml', 'test'
+    ) 'maven-recovery'
+    if ($recoveryExitCode -ne 0) {
+        throw "Phase 4 V016 recovery harness failed with exit $recoveryExitCode."
+    }
 
     $sqlExitCode = Invoke-CapturedProcess $GitBashPath @(
         'scripts/validation/run-phase-04-postgres-contract.sh'
@@ -572,6 +595,7 @@ if ($null -ne $failure -or $cleanupErrors.Count -gt 0 -or $residualContainers -n
     $failureLines.Add("FlywayExit=$flywayExitCode")
     $failureLines.Add("UpgradeExit=$upgradeExitCode")
     $failureLines.Add("TestsExit=$testsExitCode")
+    $failureLines.Add("RecoveryExit=$recoveryExitCode")
     $failureLines.Add("SqlContractExit=$sqlExitCode")
     $failureLines.Add("ResidualContainers=$residualContainers")
     if ($null -ne $failure) {
@@ -603,6 +627,7 @@ $common = @(
     "FlywayExit=$flywayExitCode",
     "UpgradeExit=$upgradeExitCode",
     "TestsExit=$testsExitCode",
+    "RecoveryExit=$recoveryExitCode",
     "SqlContractExit=$sqlExitCode",
     "ResidualContainers=$residualContainers",
     'Cleanup=PASS'

@@ -146,6 +146,51 @@ paths:
         '404':
           $ref: '#/components/responses/NotFound'
   /organizations/{organizationId}/projects/{projectId}/incidents:
+    get:
+      operationId: listIncidents
+      tags: [incidents]
+      security:
+        - oidcBearer: [incident:read]
+      description: >-
+        Returns a bounded live view ordered by updatedAt descending and id
+        descending. This is not a snapshot or lossless change feed. Incidents
+        updated during traversal can move between pages; clients must
+        deduplicate by id and restart traversal to obtain a fresh view. The
+        opaque page token is an unsigned navigation hint, never authorization.
+      parameters:
+        - $ref: '#/components/parameters/OrganizationId'
+        - $ref: '#/components/parameters/ProjectId'
+        - name: status
+          in: query
+          required: false
+          schema:
+            $ref: '../json-schema/incidents/incident-types.schema.json#/$defs/status'
+        - $ref: '#/components/parameters/PageSize'
+        - $ref: '#/components/parameters/IncidentListPageToken'
+      responses:
+        '200':
+          description: Bounded incident summary page visible to the verified principal
+          headers:
+            Cache-Control:
+              description: Incident collection pages are never stored by intermediaries.
+              required: true
+              schema:
+                type: string
+                const: no-store
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/IncidentListPage'
+        '400':
+          $ref: '#/components/responses/InvalidRequest'
+        '401':
+          $ref: '#/components/responses/Unauthenticated'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '503':
+          $ref: '#/components/responses/ServiceUnavailable'
     post:
       operationId: createIncident
       tags: [incidents]
@@ -544,6 +589,19 @@ components:
       schema:
         type: string
         maxLength: 512
+    IncidentListPageToken:
+      name: pageToken
+      in: query
+      required: false
+      description: >-
+        Canonical Base64URL live-view seek cursor bound to the organization,
+        project, exact status filter, and fixed sort contract. It is unsigned,
+        non-secret, forgeable, and never authorization.
+      schema:
+        type: string
+        minLength: 1
+        maxLength: 512
+        pattern: '^[A-Za-z0-9_-]+$'
     IdempotencyKey:
       name: Idempotency-Key
       in: header
@@ -632,6 +690,10 @@ components:
       $ref: '../json-schema/incidents/transition-incident-request.schema.json'
     Incident:
       $ref: '../json-schema/incidents/incident.schema.json'
+    IncidentSummary:
+      $ref: '../json-schema/incidents/incident-summary.schema.json'
+    IncidentListPage:
+      $ref: '../json-schema/incidents/incident-list-page.schema.json'
     IncidentTimelinePage:
       $ref: '../json-schema/incidents/incident-timeline-page.schema.json'
     IncidentActivityTimelinePage:
