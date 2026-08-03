@@ -32,25 +32,30 @@ class IncidentListPlanHarnessTest {
             "The V016 plan harness is invoked only by the disposable database gate."
         );
         PostgresIntegrationEnvironment environment = PostgresIntegrationEnvironment.fromProcess();
-        PostgresTenantFixtures.seed(environment);
-        seedHighCardinalityRows(environment);
-        assertIndexesReady(environment);
+        try {
+            PostgresTenantFixtures.seed(environment);
+            seedHighCardinalityRows(environment);
+            assertIndexesReady(environment);
 
-        try (Connection connection = DriverManager.getConnection(
-            environment.jdbcUrl(), environment.appUser(), environment.appPassword()
-        )) {
-            connection.setAutoCommit(false);
-            applyTenantContext(connection);
-            validatePlan(connection, null, "incident_list_order_idx", false);
-            validatePlan(
-                connection,
-                IncidentStatus.OPEN,
-                "incident_list_status_order_idx",
-                true
-            );
-            connection.rollback();
+            try (Connection connection = DriverManager.getConnection(
+                environment.jdbcUrl(), environment.appUser(), environment.appPassword()
+            )) {
+                connection.setAutoCommit(false);
+                applyTenantContext(connection);
+                validatePlan(connection, null, "incident_list_order_idx", false);
+                validatePlan(
+                    connection,
+                    IncidentStatus.OPEN,
+                    "incident_list_status_order_idx",
+                    true
+                );
+                connection.rollback();
+            }
+            System.out.println("V016IncidentListPlanResult=PASS");
         }
-        System.out.println("V016IncidentListPlanResult=PASS");
+        finally {
+            removeHighCardinalityRows(environment);
+        }
     }
 
     private void validatePlan(
@@ -142,6 +147,22 @@ class IncidentListPlanHarnessTest {
             """)) {
             assertThat(result.next()).isTrue();
             assertThat(result.getInt(1)).isEqualTo(2);
+        }
+    }
+
+    private void removeHighCardinalityRows(PostgresIntegrationEnvironment environment)
+        throws Exception {
+        try (Connection connection = DriverManager.getConnection(
+            environment.jdbcUrl(), environment.adminUser(), environment.adminPassword()
+        ); PreparedStatement statement = connection.prepareStatement("""
+            DELETE FROM incidents
+            WHERE organization_id = ?
+              AND project_id = ?
+              AND description = 'High-cardinality incident list plan fixture'
+            """)) {
+            statement.setObject(1, TENANT_A);
+            statement.setObject(2, PROJECT_A);
+            statement.executeUpdate();
         }
     }
 }

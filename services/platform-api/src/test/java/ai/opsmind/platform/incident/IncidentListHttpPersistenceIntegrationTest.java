@@ -23,6 +23,7 @@ import java.util.UUID;
 import ai.opsmind.platform.testing.PostgresIntegrationEnvironment;
 import ai.opsmind.platform.testing.PostgresTenantFixtures;
 
+import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.condition.EnabledIfEnvironmentVariable;
@@ -83,6 +84,19 @@ class IncidentListHttpPersistenceIntegrationTest {
         ));
         seedListProject();
         when(jwtDecoder.decode(TOKEN_A)).thenReturn(token(TOKEN_A, "phase3-operator-a"));
+    }
+
+    @AfterEach
+    void removeListFixtures() {
+        if (admin == null) {
+            return;
+        }
+        admin.update(
+            "DELETE FROM incidents WHERE description = 'List pagination fixture' "
+                + "AND id::text LIKE '90000000-%'"
+        );
+        admin.update("DELETE FROM project_memberships WHERE project_id = ?", LIST_PROJECT);
+        admin.update("DELETE FROM projects WHERE id = ?", LIST_PROJECT);
     }
 
     @Test
