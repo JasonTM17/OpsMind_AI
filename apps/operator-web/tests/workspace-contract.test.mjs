@@ -22,7 +22,7 @@ test("operator web manifest stays private and exposes required gates", async () 
   ]) {
     assert.equal(typeof manifest.scripts[command], "string");
   }
-  assert.equal(manifest.devDependencies["@playwright/test"], "1.61.1");
+  assert.equal(manifest.devDependencies["@playwright/test"], "1.62.1");
   assert.equal(manifest.devDependencies["@axe-core/playwright"], "4.12.1");
 });
 
