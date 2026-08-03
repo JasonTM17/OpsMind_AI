@@ -153,6 +153,29 @@ class IncidentListHttpPersistenceIntegrationTest {
         assertThat(ids(refreshed).get(0)).isEqualTo(newlyUpdated);
         assertThat(ids(second)).doesNotContain(newlyUpdated);
         assertThat(sideEffectCounts()).isEqualTo(afterConcurrentWrite);
+
+        admin.update(
+            "UPDATE project_memberships SET status = 'suspended' "
+                + "WHERE organization_id = ? AND project_id = ? AND user_id = ?",
+            TENANT_A,
+            PROJECT_A,
+            USER_A
+        );
+        try {
+            HttpResponse<String> revoked = get(collectionPath(TENANT_A, PROJECT_A), TOKEN_A);
+            assertThat(revoked.statusCode()).isEqualTo(404);
+            assertThat(revoked.body()).doesNotContain(openIds.get(0).toString());
+            assertThat(sideEffectCounts()).isEqualTo(afterConcurrentWrite);
+        }
+        finally {
+            admin.update(
+                "UPDATE project_memberships SET status = 'active' "
+                    + "WHERE organization_id = ? AND project_id = ? AND user_id = ?",
+                TENANT_A,
+                PROJECT_A,
+                USER_A
+            );
+        }
     }
 
     private JsonNode successfulPage(String path, String token) throws Exception {
@@ -234,9 +257,7 @@ class IncidentListHttpPersistenceIntegrationTest {
         Set<String> expected = Set.of("id", "title", "severity", "status", "updatedAt", "version");
         for (JsonNode item : items) {
             Set<String> fields = new LinkedHashSet<>();
-            for (String fieldName : item.properties().keySet()) {
-                fields.add(fieldName);
-            }
+            fields.addAll(item.propertyNames());
             assertThat(fields).isEqualTo(expected);
         }
     }
