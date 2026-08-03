@@ -1331,6 +1331,9 @@ jobs:
             ps --all 2>&1 | tee -a "$evidence"
           docker compose --profile application --profile phase-09-conformance \
             --profile phase-09-temporal-worker --profile phase-09-temporal-worker-conformance \
+            logs --no-color --tail 200 platform-api 2>&1 | tee -a "$evidence"
+          docker compose --profile application --profile phase-09-conformance \
+            --profile phase-09-temporal-worker --profile phase-09-temporal-worker-conformance \
             down --remove-orphans 2>&1 | tee -a "$evidence"
           status=${PIPESTATUS[0]}
           if [ "$status" -eq 0 ]; then result=PASS; else result=BLOCK; fi
