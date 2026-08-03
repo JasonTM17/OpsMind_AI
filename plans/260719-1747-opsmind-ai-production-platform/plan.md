@@ -53,7 +53,7 @@ Accepted scope remains full A-to-Z, but delivery is gate-driven: the approved G0
 | 1 | [Operating Envelope and Architecture Governance](./phase-01-operating-envelope-and-architecture-governance.md) | Completed |
 | 2 | [Monorepo and Developer Platform Foundation](./phase-02-monorepo-and-developer-platform-foundation.md) | Completed |
 | 3 | [Contracts Data Identity and Tenant Foundation](./phase-03-contracts-data-identity-and-tenant-foundation.md) | In Progress |
-| 4 | [Incident Control Plane and Audit Ledger](./phase-04-incident-control-plane-and-audit-ledger.md) ([4B evidence ingress](./phase-04b-bounded-evidence-record-ingress.md)) | In Progress — 4A and bounded-record checkpoint 4B complete; large/raw artifact lifecycle still open |
+| 4 | [Incident Control Plane and Audit Ledger](./phase-04-incident-control-plane-and-audit-ledger.md) ([4B evidence ingress](./phase-04b-bounded-evidence-record-ingress.md), [incident list](../260803-1840-incident-list-pagination/plan.md)) | In Progress — 4A, bounded-record 4B, and tenant-scoped incident list implemented; remaining breadth and artifact lifecycle still open |
 | 5 | [DeepSeek AI Runtime and Model Gateway](./phase-05-deepseek-ai-runtime-and-model-gateway.md) | In Progress — static checkpoint PASS; PhaseExitGate BLOCK |
 | 6 | [Safe Tool Gateway and Read-only Connectors](./phase-06-safe-tool-gateway-and-read-only-connectors.md) | In progress — checkpoint PASS; PhaseExitGate BLOCK |
 | 7 | [Thin Evidence-backed Incident Vertical Slice](./phase-07-thin-evidence-backed-incident-vertical-slice.md) | In progress — durable persistence checkpoint PASS; PhaseExitGate BLOCK |
@@ -75,11 +75,14 @@ also passes, but the ignored transcript is marked
 The configured Linux CI identity job has not run remotely, and no production
 IdP decision or broader G2 completion is inferred.
 
-Phase 4 is now in progress at checkpoint 4A: an organization/project-scoped
+Phase 4 remains in progress. Checkpoint 4A provides an organization/project-scoped
 incident write ledger proving create/read/transition, tenant authorization,
 idempotency, concurrency, timeline, database-computed audit chaining, and
-outbox atomicity against real PostgreSQL. Evidence-object lifecycle remains
-blocked by B-006/B-008/B-012, so neither Phase 4 nor G2 is claimed complete.
+outbox atomicity against real PostgreSQL. The incident-list child slice adds an
+exact-status, six-field, read-only live view with V016 keyset indexes and no
+persistent side effects. Patch/assignment/closure/postmortem breadth and the
+evidence-object lifecycle remain open; B-006/B-008/B-012 still block Phase 4
+and G2 completion.
 
 Phase 5 is in progress. Its static checkpoint passes; Python reports 159
 passed with five PostgreSQL-gated skips, Ruff/mypy are clean, and the full Maven

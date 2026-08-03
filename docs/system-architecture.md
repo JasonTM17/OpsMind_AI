@@ -185,8 +185,19 @@ payload, append-only history, and database-computed per-tenant audit chain. The
 runtime cannot choose audit sequence or digest fields. A live failure-injection
 test creates a real outbox primary-key conflict after timeline and audit append,
 then proves incident, timeline, audit, and idempotency rows all rolled back.
-This checkpoint does not implement incident list/patch/assignment,
-postmortems, or the evidence-object lifecycle and does not close Phase 4 or G2.
+The later incident-list checkpoint implements the collection read but not
+free-text search, patch/assignment, postmortems, or the evidence-object
+lifecycle, and therefore does not close Phase 4 or G2.
+
+`GET /api/v1/organizations/{organizationId}/projects/{projectId}/incidents`
+returns a closed six-field summary with optional exact status and page sizes
+from 1 through 100. Authorization and RLS binding complete before the token is
+semantically bound to its organization, project, and filter. The unsigned
+versioned token carries only the last `(updatedAt, id)` seek tuple; the live
+view can change between requests and is not a snapshot or lossless feed. V016
+adds matching filtered and unfiltered descending indexes concurrently. The
+query reads `pageSize + 1`, emits `Cache-Control: no-store`, and creates no
+timeline, audit, outbox, or idempotency effect.
 
 ### Incident activity timeline representation
 

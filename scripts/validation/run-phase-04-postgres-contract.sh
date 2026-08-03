@@ -42,6 +42,20 @@ BEGIN
     ) THEN
         RAISE EXCEPTION 'Flyway history does not prove V003 success';
     END IF;
+    IF NOT EXISTS (
+        SELECT 1 FROM public.flyway_schema_history
+         WHERE script = 'V016__incident_list_pagination_indexes.sql' AND success
+    ) OR 2 <> (
+        SELECT count(*)
+          FROM pg_class class
+          JOIN pg_index index_row ON index_row.indexrelid = class.oid
+         WHERE class.relnamespace = 'public'::regnamespace
+           AND class.relname IN ('incident_list_order_idx', 'incident_list_status_order_idx')
+           AND index_row.indisvalid
+           AND index_row.indisready
+    ) THEN
+        RAISE EXCEPTION 'V016 incident list indexes are not successful, valid, and ready';
+    END IF;
 
     SELECT count(*) INTO unsafe_tables
       FROM pg_class
@@ -116,6 +130,8 @@ SQL
 
 printf '%s\n' \
     'MigrationV003=PASS' \
+    'MigrationV016=PASS' \
+    'IncidentListIndexesReady=PASS' \
     'IncidentForcedRls=PASS' \
     'IncidentCrudSql=PASS' \
     'WrongProjectDenied=PASS' \

@@ -162,7 +162,7 @@ Use either launcher consistently:
 | `dev` | Build and run the Compose `application` profile in the foreground. |
 | `up` | Build and run the profile detached, waiting for health checks. |
 | `down` | Stop the profile; remains available when capacity is below threshold. |
-| `migrate` | Applies the current Platform Flyway sequence through V015 using the supplied migration-role datasource; it does not start the web server. |
+| `migrate` | Applies the current Platform Flyway sequence through V016 using the supplied migration-role datasource; it does not start the web server. V016 creates incident-list indexes concurrently outside a Flyway transaction. |
 | `seed` | Exit 3 until deterministic seed data has an owning phase. |
 | `evaluate` | Run evaluation tests/contracts, then score an existing managed Phase 7 trace for Scenario A, B, or C; it does not generate a trace and exits non-zero when projection, revision binding, or storage policy is incomplete. |
 
