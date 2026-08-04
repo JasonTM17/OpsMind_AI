@@ -1,7 +1,7 @@
 ---
 phase: 3
 title: PostgreSQL proof and gate reconciliation
-status: in-progress
+status: completed
 priority: P1
 dependencies: [2]
 ---
@@ -31,9 +31,9 @@ dependencies: [2]
 ## Success Criteria
 
 - [x] Focused unit/controller/HTTP tests pass.
-- [ ] Fresh and upgrade PostgreSQL paths pass with no skipped PATCH tests.
+- [x] Fresh and upgrade PostgreSQL paths pass with no skipped PATCH tests.
 - [x] Full Platform Maven suite and static validators pass.
-- [ ] Exact-head PR checks pass before merge.
+- [x] Exact-head PR checks pass before merge.
 - [x] Docs retain all external Phase 4 blockers and do not claim G2 completion.
 
 ## Evidence recorded
