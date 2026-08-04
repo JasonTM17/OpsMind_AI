@@ -49,9 +49,9 @@ Nonce validation runs only inside authorization-code `exchange()`—never shared
 
 ## Success Criteria
 
-- [ ] Requirements cover state tamper, absent/empty/non-string/malformed ID
+- [x] Requirements cover state tamper, absent/empty/non-string/malformed ID
   token, absent/non-string/mismatched nonce, and exact-match success.
-- [ ] Scope explicitly excludes production identity/session claims.
+- [x] Scope explicitly excludes production identity/session claims.
 
 ## Risk Assessment
 

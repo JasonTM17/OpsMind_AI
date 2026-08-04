@@ -67,7 +67,7 @@ retention/deletion, restore, and reconciliation evidence exist.
 | Phase | Status | Objective | Depends on |
 |---|---|---|---|
 | [01 Metadata and lifecycle authority](./phase-01-metadata-and-lifecycle-authority.md) | Completed | Add V014 artifact metadata, deterministic lifecycle policy, scoped repository, and authorization/read guards. | V007 / Phase 4B |
-| [02 Bounded S3-compatible streaming port](./phase-02-bounded-s3-streaming-port.md) | In progress | Add default-off storage configuration, durable upload claim/attempt protocol, real bounded streaming adapter, and fenced finalization. | Phase 01; production backend/KMS conformance remains external |
+| [02 Bounded S3-compatible streaming port](./phase-02-bounded-s3-streaming-port.md) | Completed | Add default-off storage configuration, durable upload claim/attempt protocol, real bounded streaming adapter, and fenced finalization. | Phase 01; production backend/KMS conformance remains external |
 | [03 Controlled ingress and lifecycle operations](./phase-03-controlled-ingress-and-lifecycle-operations.md) | Pending | Add capability-bound producer integration, scan/hold/delete/reconcile operations, and release-grade conformance evidence. | Phase 02; supported backend and operational owners |
 
 ## Dependency and Ownership Map
@@ -107,7 +107,10 @@ does not close the supported-backend, production KMS, scan, retention,
 residency, or restore gates by source inspection alone.
 
 The integrated V014/V015 metadata and upload checkpoint is revision-bound by
-PR Quality run `30777514150` on merged PR #46. The Phase 4C validator is
+PR #46 exact head `95c0b6ba203aba5c280aa9223ee6b4a369de6d7d`, merge
+`1f87187aff1ce56d577ad8df944ccf74dbfc3fdf`, and successful PR Quality run
+`30777514150`. Current exact-head run `30881416141` and PostgreSQL job
+`91904344606` also pass after integration. The Phase 4C validator is
 line-ending independent and reports `Errors=0` and `CheckpointResult=PASS`;
 the overall artifact lifecycle remains externally blocked by B-006, B-008,
 and B-012.
