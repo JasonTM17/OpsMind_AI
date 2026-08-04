@@ -47,6 +47,7 @@ const requiredFiles = [
   "services/platform-api/src/main/java/ai/opsmind/platform/messaging/OutboxDispatcherTenantContextSql.java",
   "services/platform-api/src/main/java/ai/opsmind/platform/messaging/TransactionalOutboxRepository.java",
   "services/platform-api/src/main/java/ai/opsmind/platform/messaging/TransactionalOutboxAppender.java",
+  "services/platform-api/src/main/java/ai/opsmind/platform/messaging/TransactionalOutboxClaimer.java",
   "services/platform-api/src/main/java/ai/opsmind/platform/messaging/TransactionalOutboxLeaseStore.java",
   "services/platform-api/src/main/java/ai/opsmind/platform/messaging/TransactionalInboxRepository.java",
   "services/platform-api/src/test/java/ai/opsmind/platform/messaging/TransactionalOutboxIntegrationTest.java",
@@ -62,6 +63,7 @@ const requiredFiles = [
   "scripts/validation/keycloak/opsmind-conformance-realm.json",
   "scripts/validation/keycloak/oidc_browser_flow.py",
   "scripts/validation/keycloak/run_oidc_conformance.py",
+  "scripts/validation/keycloak/test_oidc_browser_flow.py",
 ];
 
 for (const file of requiredFiles) {
@@ -275,6 +277,7 @@ requireContracts(poolContract, "Hikari tenant-isolation contract", [
 ]);
 const outboxRepository = [
   read("services/platform-api/src/main/java/ai/opsmind/platform/messaging/TransactionalOutboxAppender.java"),
+  read("services/platform-api/src/main/java/ai/opsmind/platform/messaging/TransactionalOutboxClaimer.java"),
   read("services/platform-api/src/main/java/ai/opsmind/platform/messaging/TransactionalOutboxLeaseStore.java"),
 ].join("\n");
 requireContracts(outboxRepository, "transactional outbox repository", [
@@ -404,14 +407,18 @@ requireContracts(keycloakRunner, "Keycloak conformance runner", [
   "OIDC_JWKS_REFRESH_MINIMUM_INTERVAL = 'PT1S'",
   "--connect-timeout 2 --max-time 3",
   "'clean' 'package'",
-  "EvidenceSchemaVersion=2",
+  "EvidenceSchemaVersion=3",
   "ProfileDigestAlgorithm=SHA256_FILE_MANIFEST_V1",
   "ConformanceProfileSha256=",
   "PlatformArtifactDigestAlgorithm=SHA256",
   "PlatformArtifactSha256=",
-  "ScenarioVersion=phase-03-keycloak-oidc-v2",
+  "ScenarioVersion=phase-03-keycloak-oidc-v3",
   "DatasetVersion=synthetic-identity-v1",
   "EvidenceScope=REFERENCE_CONFORMANCE_NOT_PRODUCTION",
+  "AuthorizationCallbackStateTamperDenied=PASS",
+  "IdTokenNonceBound=PASS",
+  "$initial.summary.stateTamperTokenRequestCountUnchanged -isnot [bool]",
+  "$initial.summary.idTokenNonceBound -isnot [bool]",
   "TotpSameCodeReplayDenied=PASS",
   "PlatformTamperedSignatureDenied=PASS",
   "JwksRotationRefresh=PASS",
@@ -453,8 +460,12 @@ requireContracts(keycloakProfileManifest, "Keycloak profile input manifest", [
 const keycloakEvidenceVerifier = read("scripts/validation/verify-phase-03-keycloak-evidence.ps1");
 requireContracts(keycloakEvidenceVerifier, "Keycloak evidence verifier", [
   "Identity conformance evidence does not match the complete schema.",
+  "EvidenceSchemaVersion = '3'",
+  "ScenarioVersion = 'phase-03-keycloak-oidc-v3'",
   "HttpsDiscovery = 'PASS'",
   "AuthorizationCodePkceS256 = 'PASS'",
+  "AuthorizationCallbackStateTamperDenied = 'PASS'",
+  "IdTokenNonceBound = 'PASS'",
   "PlatformTamperedSignatureDenied = 'PASS'",
   "JwksRotationRefresh = 'PASS'",
   "RefreshTokenPreRevocationControl = 'PASS'",
@@ -468,6 +479,9 @@ requireContracts(oidcBrowserFlow, "OIDC browser-flow client", [
   "0o600",
   '"code_challenge_method": "S256"',
   '"code_verifier": verifier',
+  "assert_state_tamper_denied",
+  "token_request_count",
+  "secrets.compare_digest",
   "redirect_matches",
   "issuer_contains",
   "read_bounded",
@@ -482,11 +496,22 @@ requireContracts(oidcConformanceClient, "OIDC conformance assertions", [
   "seconds_until_next_totp",
   "assert_totp_replay_denied",
   '"otpReplayDenied": replay_denial',
+  '"stateTamperDenied": state_tamper_denial',
+  '"stateTamperTokenRequestCountUnchanged": state_tamper_request_count_unchanged',
+  '"idTokenNonceBound": True',
   '"tokenLifetimeSeconds": payload["exp"] - payload["iat"]',
   'result["summary"]["previousRefreshReuseDenied"] = reused_refresh_error',
   '"independentRefreshSessions": True',
   '"refresh-once": refresh_once_profile',
   'print(f"Command={args.command} Result=PASS")',
+]);
+const oidcBrowserFlowTests = read("scripts/validation/keycloak/test_oidc_browser_flow.py");
+requireContracts(oidcBrowserFlowTests, "OIDC browser-flow security tests", [
+  "test_state_tamper_is_rejected_before_token_request",
+  "assert_not_called",
+  "test_exact_nonce_returns_the_original_token_dictionary",
+  "test_invalid_id_token_or_nonce_is_rejected",
+  "test_transient_authorization_material_is_not_in_repr",
 ]);
 if (/print\s*\(\s*(?:result|tokens|valid_tokens|enrollment_tokens)\b/.test(oidcConformanceClient)) {
   errors.push("OIDC conformance client must not print token-bearing result objects");

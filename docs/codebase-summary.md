@@ -432,6 +432,12 @@ Two independent process-supervision reviews pass.
 
 - OIDC mode validates signature/issuer, audience, subject, time claims, maximum
   lifetime, clock skew, and required MFA `amr`; tenant claims are not authority.
+- The schema-v3 Keycloak reference flow rejects a locally tampered callback
+  `state` before token-endpoint I/O and binds the authorization-request nonce to
+  the returned ID-token payload nonce over CA-pinned TLS. Its Python helper does
+  not verify ID-token signatures. The closed verifier requires both PASS fields
+  and rejects missing, duplicate, or unknown evidence fields. Production
+  browser/BFF session-level state/nonce ownership remains unproven.
 - Persistence-enabled API requests recheck platform-user status. Unknown or
   deprovisioned users deny; authority-store failure fails closed.
 - Application authorization and forced PostgreSQL RLS are separate controls.
@@ -479,7 +485,7 @@ See [Security Model](./security-model.md) for the complete threat model and
 | `artifacts/verification/phase-04/incident-crud.txt` | PASS; package, fresh/upgrade migration, guarded tests, SQL contract, cleanup, RLS/CRUD/privacy/transition checks | Disposable local PostgreSQL reference |
 | `artifacts/verification/phase-04/audit-and-concurrency.txt` | PASS; digest recomputation, caller-forgery override, linear/concurrent chain, mutation denial | Disposable local PostgreSQL reference |
 | `artifacts/verification/phase-04/incident-resolution-closure.txt` | PR Quality `30868733961` on head `13a0224`: three PostgreSQL HTTP lifecycle tests, zero failures/errors/skips | Exact-head non-production CI proof; no frontend or production SLO claim |
-| `artifacts/verification/phase-03/identity-delegation.txt` | PASS; refreshed Keycloak 26.7 schema-v2 local reference | Not production identity or release proof |
+| `artifacts/verification/phase-03/identity-delegation.txt` | Historical PASS: Keycloak 26.7 schema-v2 local reference; current schema-v3 contract adds callback-state tamper denial before token I/O, ID-token payload nonce binding over CA-pinned TLS, and a closed evidence field set | Not production IdP, BFF/session, federation, break-glass, or release proof; Python payload decoding is not ID-token signature verification |
 
 Current hash recomputation matches all recorded Phase 4 source manifests, the
 V003 digest, and packaged Platform API JAR digest. The Phase 3 identity and

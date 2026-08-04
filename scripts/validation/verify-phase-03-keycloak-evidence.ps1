@@ -79,8 +79,8 @@ for ($index = 1; $index -lt $evidenceLines.Count; $index++) {
 }
 
 $expectedFields = [ordered]@{
-    EvidenceSchemaVersion = '2'
-    ScenarioVersion = 'phase-03-keycloak-oidc-v2'
+    EvidenceSchemaVersion = '3'
+    ScenarioVersion = 'phase-03-keycloak-oidc-v3'
     DatasetVersion = 'synthetic-identity-v1'
     ProfileDigestAlgorithm = 'SHA256_FILE_MANIFEST_V1'
     PlatformArtifactDigestAlgorithm = 'SHA256'
@@ -91,6 +91,8 @@ $expectedFields = [ordered]@{
     RelevantLogs = 'identity-delegation.txt;process-console'
     HttpsDiscovery = 'PASS'
     AuthorizationCodePkceS256 = 'PASS'
+    AuthorizationCallbackStateTamperDenied = 'PASS'
+    IdTokenNonceBound = 'PASS'
     DirectGrantDisabled = 'PASS'
     WrongCodeVerifierDenied = 'PASS'
     TotpEnrollmentNotMfa = 'PASS'

@@ -430,6 +430,15 @@ try {
     if (-not $initial.summary.independentRefreshSessions) {
         throw 'Keycloak did not create independent sessions for refresh-token conformance.'
     }
+    if ($initial.summary.stateTamperDenied -cne 'callback_state_mismatch' `
+        -or $initial.summary.stateTamperTokenRequestCountUnchanged -isnot [bool] `
+        -or $initial.summary.stateTamperTokenRequestCountUnchanged -ne $true) {
+        throw 'OIDC callback state tamper denial did not fail before token exchange.'
+    }
+    if ($initial.summary.idTokenNonceBound -isnot [bool] `
+        -or $initial.summary.idTokenNonceBound -ne $true) {
+        throw 'OIDC authorization-code exchange did not bind the ID-token nonce.'
+    }
     $validResponse = Invoke-OpsMindPlatformRequest `
         -Uri "http://127.0.0.1:$platformPort/api/v1/me" -AccessToken $initial.validAccessToken
     if ($validResponse.Status -ne 200) { throw 'Platform API rejected the valid Keycloak MFA token.' }
@@ -739,7 +748,7 @@ $evidenceDirectory = Split-Path -Parent $EvidencePath
 New-Item -ItemType Directory -Force -Path $evidenceDirectory | Out-Null
 $evidenceLines = @(
     'OpsMind Phase 3 Keycloak OIDC conformance',
-    'EvidenceSchemaVersion=2',
+    'EvidenceSchemaVersion=3',
     ('StartTimestampUtc={0}' -f $evidenceStartTimestampUtc.ToString('o')),
     ('EndTimestampUtc={0}' -f $evidenceEndTimestampUtc.ToString('o')),
     ('DurationSeconds={0}' -f $evidenceStopwatch.Elapsed.TotalSeconds.ToString(
@@ -751,7 +760,7 @@ $evidenceLines = @(
     ('CodeRevision={0}' -f $gitMetadata.Revision),
     ('WorkspaceDirty={0}' -f $gitMetadata.Dirty),
     ('ContractVersion={0}' -f $contractVersion),
-    'ScenarioVersion=phase-03-keycloak-oidc-v2',
+    'ScenarioVersion=phase-03-keycloak-oidc-v3',
     'DatasetVersion=synthetic-identity-v1',
     'ProfileDigestAlgorithm=SHA256_FILE_MANIFEST_V1',
     ('ConformanceProfileSha256={0}' -f $profileDigest),
@@ -768,6 +777,8 @@ $evidenceLines = @(
     'RelevantLogs=identity-delegation.txt;process-console',
     'HttpsDiscovery=PASS',
     'AuthorizationCodePkceS256=PASS',
+    'AuthorizationCallbackStateTamperDenied=PASS',
+    'IdTokenNonceBound=PASS',
     'DirectGrantDisabled=PASS',
     'WrongCodeVerifierDenied=PASS',
     'TotpEnrollmentNotMfa=PASS',

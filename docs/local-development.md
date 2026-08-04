@@ -378,12 +378,25 @@ digests and rejects stale or token-bearing evidence. The 2026-07-21 schema-v2
 run completed in 124.694 seconds; its independent verifier passed both the
 profile and packaged-JAR digests after the full Maven verification rebuild.
 
+The current runner/verifier contract is schema v3 with scenario
+`phase-03-keycloak-oidc-v3`. It adds an explicit local callback-state tamper
+probe that must fail before token-endpoint I/O and an authorization-request to
+ID-token payload nonce comparison over the harness's CA-pinned TLS connection.
+The Python JWT helper only decodes the payload; it does not verify the ID-token
+signature. The verifier requires
+`AuthorizationCallbackStateTamperDenied=PASS` and
+`IdTokenNonceBound=PASS`, accepts only its declared metadata/result fields, and
+rejects missing, duplicate, or unknown fields. This extends rather than rewrites
+the historical 2026-07-21 schema-v2 run above.
+
 On execution or cleanup failure, the runner publishes only
 `identity-delegation-failure.txt`: at most 100 sanitized diagnostic lines with
 runtime secrets, bearer values, JWTs, authorization query parameters, control
 characters, and oversized values removed. Success and failure artifacts are
 mutually exclusive, and CI uploads whichever exists. The failure artifact is
 diagnostic evidence only and can never satisfy the schema-v2 success verifier.
+The current schema-v3 verifier retains the same fail-closed success/failure
+separation.
 
 The ignored transcript also records revision/dirty state, schema and scenario
 versions, runtime versions, configuration digest, command, and timestamps. Its
@@ -391,7 +404,7 @@ versions, runtime versions, configuration digest, command, and timestamps. Its
 evidence, not immutable release evidence. The Linux `identity-conformance` job
 passes in revision-bound PR-quality run `30257587569`.
 This reference does not authorize a production IdP or prove federation,
-break-glass, state/nonce assurance, browser/BFF session ownership, general
+break-glass, production browser/BFF session-level state/nonce ownership, general
 bearer replay prevention, delegated capabilities, or immediate access-token
 revocation.
 
