@@ -1,6 +1,8 @@
 package ai.opsmind.platform.evidence.artifact;
 
 import java.time.Instant;
+import java.util.LinkedHashMap;
+import java.util.Map;
 import java.util.UUID;
 
 import ai.opsmind.platform.audit.AuditEvent;
@@ -75,6 +77,39 @@ public final class EvidenceArtifactAuditPayloadCodec {
                 artifact.dataClassification(), artifact.retentionClass(), settlement.storageGeneration(), occurredAt
             ))
         );
+    }
+
+    public AuditEvent lifecycleChanged(
+        EvidenceArtifactMetadata artifact,
+        EvidenceArtifactLifecycleState fromState,
+        EvidenceArtifactLifecycleState toState,
+        long lifecycleVersion,
+        UUID eventId,
+        String reason,
+        Instant occurredAt
+    ) {
+        if (artifact == null || fromState == null || toState == null || lifecycleVersion < 3
+            || eventId == null || reason == null || occurredAt == null) {
+            throw new IllegalArgumentException("Artifact lifecycle audit inputs are invalid.");
+        }
+        Map<String, Object> payload = new LinkedHashMap<>();
+        payload.put("eventId", eventId);
+        payload.put("organizationId", artifact.organizationId());
+        payload.put("projectId", artifact.projectId());
+        payload.put("incidentId", artifact.incidentId());
+        payload.put("runId", artifact.runId());
+        payload.put("artifactId", artifact.artifactId());
+        payload.put("actorId", artifact.actorId());
+        payload.put("lifecycleVersion", lifecycleVersion);
+        payload.put("lifecycleState", toState.name());
+        payload.put("fromState", fromState.name());
+        payload.put("toState", toState.name());
+        payload.put("occurredAt", occurredAt);
+        payload.put("reason", reason);
+        return new AuditEvent(eventId, artifact.organizationId(), artifact.actorId(),
+            "ARTIFACT_LIFECYCLE_CHANGED", AuditEvent.EVIDENCE_ARTIFACT_SCHEMA_VERSION,
+            "evidence_artifact", artifact.artifactId().toString(), artifact.artifactId(),
+            occurredAt, write(payload));
     }
 
     private String write(Object payload) {

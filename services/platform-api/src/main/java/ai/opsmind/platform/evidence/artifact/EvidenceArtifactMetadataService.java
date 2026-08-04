@@ -5,6 +5,9 @@ import java.time.temporal.ChronoUnit;
 import java.util.UUID;
 
 import ai.opsmind.platform.incident.IncidentAnalysisAuthorizer;
+import ai.opsmind.platform.evidence.artifact.lifecycle.ArtifactLifecycleCommand;
+import ai.opsmind.platform.evidence.artifact.lifecycle.ArtifactLifecycleRepository;
+import ai.opsmind.platform.evidence.artifact.lifecycle.ArtifactLifecycleTransition;
 import ai.opsmind.platform.identity.OpsMindPrincipal;
 
 import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
@@ -17,13 +20,16 @@ public final class EvidenceArtifactMetadataService {
 
     private final IncidentAnalysisAuthorizer authorizer;
     private final EvidenceArtifactMetadataRepository repository;
+    private final ArtifactLifecycleRepository lifecycleRepository;
 
     public EvidenceArtifactMetadataService(
         IncidentAnalysisAuthorizer authorizer,
-        EvidenceArtifactMetadataRepository repository
+        EvidenceArtifactMetadataRepository repository,
+        ArtifactLifecycleRepository lifecycleRepository
     ) {
         this.authorizer = authorizer;
         this.repository = repository;
+        this.lifecycleRepository = lifecycleRepository;
     }
 
     public EvidenceArtifactMetadata create(
@@ -49,15 +55,37 @@ public final class EvidenceArtifactMetadataService {
         UUID organizationId,
         UUID projectId,
         UUID incidentId,
+        UUID runId,
         UUID artifactId
     ) {
-        if (artifactId == null) throw new IllegalArgumentException("Artifact identifier is required.");
+        if (runId == null || artifactId == null) {
+            throw new IllegalArgumentException("Artifact run and identifier are required.");
+        }
         return authorizer.withAnalyzeAccess(
             principal,
             organizationId,
             projectId,
             incidentId,
-            scope -> repository.requireReadableMetadata(scope, artifactId)
+            scope -> repository.requireReadableMetadata(scope, runId, artifactId)
+        );
+    }
+
+    /** Persists one tenant-bound lifecycle transition and its event/audit pair atomically. */
+    public ArtifactLifecycleTransition transition(
+        OpsMindPrincipal principal,
+        UUID organizationId,
+        UUID projectId,
+        UUID incidentId,
+        UUID runId,
+        UUID artifactId,
+        ArtifactLifecycleCommand command
+    ) {
+        if (runId == null || artifactId == null || command == null) {
+            throw new IllegalArgumentException("Artifact lifecycle identity and command are required.");
+        }
+        return authorizer.withAnalyzeAccess(
+            principal, organizationId, projectId, incidentId,
+            scope -> lifecycleRepository.transition(scope, runId, artifactId, command)
         );
     }
 }

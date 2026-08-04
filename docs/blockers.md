@@ -20,6 +20,16 @@ Cleanup, credential rotation, production deployment, external writes, and other 
 | B-013 | Phase 8 exit | No held-out payloads are registered and no qualified human reviewer records/adjudication exist; calibration and human comparison are unavailable | Product + evaluation owners | Governed held-out case evidence plus qualified paired-review/adjudication report | Active |
 | B-017 | Production Temporal admission and Phase 9/G4 enablement | V013 capability containment and disposable real-role fresh/upgrade/rollback contracts pass. PR #45 provides revision-bound PostgreSQL/Maven/Docker/runtime evidence, including pinned local Temporal restart/replay, a fresh compatible worker poller, bounded-label live Prometheus scrape, and a CI-local Alertmanager receipt. PR #56 adds revision-bound pinned Prometheus config, rule-syntax, and rule-behavior checks. Repository-owned runtime conformance is complete; production admission still lacks query-plan/latency and DR evidence, live namespace retention/read-only credential conformance, and external page delivery. | Platform + database + workflow + SRE owners | Production database query-plan/latency and DR evidence; live namespace retention and read-only credential conformance; configured external Alertmanager receiver plus end-to-end page receipt | Active |
 
+The artifact Phase 4C runtime shell is deliberately narrower than these
+release blockers: V018 records lifecycle metadata transitions and V019 grants
+the fixed `opsmind_app` login one tenant/actor-bound transition capability.
+`EvidenceArtifactReadService.authorizeReadableObject(...)` is run-bound and
+probes storage only after authorization; it does not expose a body stream.
+The disposable PostgreSQL contract proves this boundary and cleanup, but it
+does not provide production object-store/KMS, scanning, retention/deletion,
+restore, RTO, or supply-chain evidence. B-006, B-008, B-011, and B-012 remain
+active exactly as listed above.
+
 ## Capacity Guard
 
 Local heavyweight work is blocked whenever:

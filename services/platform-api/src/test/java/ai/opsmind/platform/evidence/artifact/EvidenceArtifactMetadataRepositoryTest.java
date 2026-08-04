@@ -104,9 +104,12 @@ class EvidenceArtifactMetadataRepositoryTest {
 
     @Test
     void pendingMetadataCannotBeReadEvenAfterCurrentScopeWasReauthorized() {
-        when(metadataReader.findVisible(scope(), metadata().artifactId())).thenReturn(Optional.of(metadata()));
+        when(metadataReader.findVisible(scope(), metadata().runId(), metadata().artifactId()))
+            .thenReturn(Optional.of(metadata()));
 
-        assertThatThrownBy(() -> repository.requireReadableMetadata(scope(), metadata().artifactId()))
+        assertThatThrownBy(() -> repository.requireReadableMetadata(
+            scope(), metadata().runId(), metadata().artifactId()
+        ))
             .isInstanceOfSatisfying(PlatformProblemException.class, exception ->
                 assertThat(exception.code()).isEqualTo("evidence-artifact.not-found"));
     }

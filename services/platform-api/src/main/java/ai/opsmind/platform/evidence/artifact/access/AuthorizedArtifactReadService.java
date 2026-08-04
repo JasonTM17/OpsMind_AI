@@ -4,7 +4,10 @@ import java.util.Objects;
 
 import ai.opsmind.platform.evidence.artifact.EvidenceArtifactMetadata;
 
+import org.springframework.stereotype.Component;
+
 /** Fail-closed metadata gate. Object I/O must happen only after this method returns. */
+@Component
 public final class AuthorizedArtifactReadService {
     public EvidenceArtifactMetadata authorize(
         EvidenceArtifactMetadata metadata,

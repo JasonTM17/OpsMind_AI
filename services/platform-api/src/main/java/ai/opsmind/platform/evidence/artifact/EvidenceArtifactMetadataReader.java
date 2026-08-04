@@ -14,7 +14,7 @@ import org.springframework.transaction.support.TransactionSynchronizationManager
 /** Scoped metadata queries. Returned projections never contain object references or artifact bytes. */
 @Component
 @ConditionalOnProperty(prefix = "opsmind.persistence", name = "enabled", havingValue = "true")
-class EvidenceArtifactMetadataReader {
+public class EvidenceArtifactMetadataReader {
 
     private final JdbcTemplate jdbcTemplate;
 
@@ -33,7 +33,7 @@ class EvidenceArtifactMetadataReader {
             scope.actorId(), command.idempotencyKey(), scope.authorizationEpoch());
     }
 
-    Optional<EvidenceArtifactMetadata> findVisible(
+    public Optional<EvidenceArtifactMetadata> findVisible(
         AuthorizedIncidentAnalysisScope scope,
         UUID artifactId
     ) {
@@ -42,6 +42,33 @@ class EvidenceArtifactMetadataReader {
               AND actor_id = ? AND authorization_epoch = ?
             """, scope.organizationId(), scope.projectId(), scope.incidentId(), artifactId,
             scope.actorId(), scope.authorizationEpoch());
+    }
+
+    public Optional<EvidenceArtifactMetadata> findVisible(
+        AuthorizedIncidentAnalysisScope scope,
+        UUID runId,
+        UUID artifactId
+    ) {
+        return query("""
+            WHERE organization_id = ? AND project_id = ? AND incident_id = ? AND run_id = ?
+              AND artifact_id = ?
+              AND actor_id = ? AND authorization_epoch = ?
+            """, scope.organizationId(), scope.projectId(), scope.incidentId(), runId,
+            artifactId, scope.actorId(), scope.authorizationEpoch());
+    }
+
+    public Optional<EvidenceArtifactMetadata> findVisibleForUpdate(
+        AuthorizedIncidentAnalysisScope scope,
+        UUID runId,
+        UUID artifactId
+    ) {
+        return query("""
+            WHERE organization_id = ? AND project_id = ? AND incident_id = ? AND run_id = ?
+              AND artifact_id = ?
+              AND actor_id = ? AND authorization_epoch = ?
+            FOR UPDATE
+            """, scope.organizationId(), scope.projectId(), scope.incidentId(), runId,
+            artifactId, scope.actorId(), scope.authorizationEpoch());
     }
 
     private Optional<EvidenceArtifactMetadata> query(String condition, Object... values) {

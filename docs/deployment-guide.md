@@ -299,6 +299,24 @@ A failed gate cannot be converted to a warning solely to meet a schedule.
   and requires exact STORED lifecycle-event/audit append in the settlement
   transaction. Deploy the V015-capable runtime only after both the fresh and
   V014-to-V015 disposable contracts pass.
+- Apply Platform V018 before enabling lifecycle-control callers. V018 owns the
+  lifecycle state machine and metadata-only tombstone, restore, deletion,
+  purge-receipt, and reconciliation transitions; it does not authorize object
+  reads or open body streams.
+- Apply Platform V019 before deploying the runtime that calls lifecycle
+  transitions or the authorized object probe. V019 grants only the fixed
+  `opsmind_app` login execution on
+  `opsmind_transition_evidence_artifact(...)`; direct `UPDATE` on
+  `evidence_artifacts` remains denied. The run-bound
+  `EvidenceArtifactReadService.authorizeReadableObject(...)` entry point must
+  authorize tenant/project/incident/run scope before probing storage and must
+  preserve the non-enumerating not-found contract. Run
+  `OPSMIND_EPHEMERAL_DB=true bash scripts/validation/run-phase-04c-artifact-lifecycle-postgres-contract.sh`
+  against a disposable PostgreSQL database and a packaged Platform API JAR;
+  the script must print `LifecycleV019Capability=PASS`,
+  `DirectRuntimeMutation=REVOKED`, atomicity PASS, and
+  `ContractCleanup=PASS` before promotion. This proves the runtime boundary
+  only; it does not close B-006, B-008, B-011, or B-012.
 - The enabled backend must support versioning, conditional immutable create,
   SHA-256 checksums on PUT and HEAD, and SSE-KMS. Configure the request key
   separately from the canonical KMS identifier returned by PUT/HEAD. Provide a
@@ -456,7 +474,7 @@ that selects `started` rows older than the retry interval without a matching
 - For Phase 9 rollback, freeze starts, restore
   `OPSMIND_INVESTIGATION_EXECUTION_MODE=inline`, disable the Temporal client,
   observer, workflow-start dispatcher, reconciler, and both dedicated
-   datasources. V010-V015 remain applied; rollback is configuration-only. Retain
+   datasources. V010-V019 remain applied; rollback is configuration-only. Retain
   bindings, inbox rows, and outbox rows as immutable recovery evidence; do not
   reset a genuinely terminal `REJECTED` binding or delete a pending handoff.
 

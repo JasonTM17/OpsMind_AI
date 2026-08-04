@@ -821,6 +821,16 @@ jobs:
           mkdir -p artifacts/verification/phase-04c
           bash scripts/validation/run-phase-04c-artifact-object-postgres-contract.sh \
             2>&1 | tee artifacts/verification/phase-04c/evidence-artifact-object-upgrade.txt
+      - name: Prove V018 to V019 evidence artifact lifecycle runtime capability
+        shell: bash
+        env:
+          OPSMIND_EPHEMERAL_DB: "true"
+          OPSMIND_PHASE4C_ARTIFACT_LIFECYCLE_DATABASE: opsmind_phase4c_artifact_lifecycle_${{ github.run_id }}
+        run: |
+          set -euo pipefail
+          mkdir -p artifacts/verification/phase-04c
+          bash scripts/validation/run-phase-04c-artifact-lifecycle-postgres-contract.sh \
+            2>&1 | tee artifacts/verification/phase-04c/evidence-artifact-lifecycle-runtime.txt
       - name: Prove pooled tenant isolation and messaging recovery
         shell: bash
         env:

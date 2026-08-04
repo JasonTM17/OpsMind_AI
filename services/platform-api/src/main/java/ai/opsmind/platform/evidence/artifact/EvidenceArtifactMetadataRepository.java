@@ -77,12 +77,15 @@ public class EvidenceArtifactMetadataRepository {
 
     public EvidenceArtifactMetadata requireReadableMetadata(
         AuthorizedIncidentAnalysisScope scope,
+        UUID runId,
         UUID artifactId
     ) {
         requireTransaction();
-        if (scope == null || artifactId == null) throw new IllegalArgumentException("Artifact scope is required.");
+        if (scope == null || runId == null || artifactId == null) {
+            throw new IllegalArgumentException("Artifact scope is required.");
+        }
         try {
-            EvidenceArtifactMetadata artifact = metadataReader.findVisible(scope, artifactId)
+            EvidenceArtifactMetadata artifact = metadataReader.findVisible(scope, runId, artifactId)
                 .orElseThrow(this::hidden);
             if (!artifact.lifecycleState().isReadable()) throw hidden();
             return artifact;

@@ -165,10 +165,10 @@ BEGIN
        AND NEW.lifecycle_updated_at >= OLD.lifecycle_updated_at
        AND (
            (OLD.lifecycle_state = 'STORED' AND NEW.lifecycle_state IN ('SCANNING', 'FAILED', 'ORPHANED'))
-           OR (OLD.lifecycle_state = 'SCANNING' AND NEW.lifecycle_state IN ('AVAILABLE', 'QUARANTINED', 'FAILED'))
-           OR (OLD.lifecycle_state = 'AVAILABLE' AND NEW.lifecycle_state IN ('HELD', 'TOMBSTONED', 'DELETION_REQUESTED', 'EXPIRED'))
-           OR (OLD.lifecycle_state = 'QUARANTINED' AND NEW.lifecycle_state IN ('TOMBSTONED', 'DELETION_REQUESTED', 'PURGED'))
-           OR (OLD.lifecycle_state = 'HELD' AND NEW.lifecycle_state IN ('AVAILABLE', 'TOMBSTONED', 'DELETION_REQUESTED'))
+           OR (OLD.lifecycle_state = 'SCANNING' AND NEW.lifecycle_state IN ('AVAILABLE', 'QUARANTINED', 'FAILED', 'ORPHANED'))
+           OR (OLD.lifecycle_state = 'AVAILABLE' AND NEW.lifecycle_state IN ('HELD', 'TOMBSTONED', 'DELETION_REQUESTED', 'EXPIRED', 'ORPHANED'))
+           OR (OLD.lifecycle_state = 'QUARANTINED' AND NEW.lifecycle_state IN ('TOMBSTONED', 'DELETION_REQUESTED', 'PURGED', 'ORPHANED'))
+           OR (OLD.lifecycle_state = 'HELD' AND NEW.lifecycle_state IN ('AVAILABLE', 'TOMBSTONED', 'DELETION_REQUESTED', 'ORPHANED'))
            OR (OLD.lifecycle_state = 'TOMBSTONED' AND NEW.lifecycle_state IN ('AVAILABLE', 'HELD', 'PURGED'))
            OR (OLD.lifecycle_state IN ('DELETION_REQUESTED', 'EXPIRED')
                AND NEW.lifecycle_state IN ('TOMBSTONED', 'PURGED', 'HELD'))
@@ -273,10 +273,10 @@ BEGIN
        AND NEW.lifecycle_to_state IS NOT DISTINCT FROM artifact_row.lifecycle_state
        AND (
            (NEW.lifecycle_from_state = 'STORED' AND NEW.lifecycle_to_state IN ('SCANNING', 'FAILED', 'ORPHANED'))
-           OR (NEW.lifecycle_from_state = 'SCANNING' AND NEW.lifecycle_to_state IN ('AVAILABLE', 'QUARANTINED', 'FAILED'))
-           OR (NEW.lifecycle_from_state = 'AVAILABLE' AND NEW.lifecycle_to_state IN ('HELD', 'TOMBSTONED', 'DELETION_REQUESTED', 'EXPIRED'))
-           OR (NEW.lifecycle_from_state = 'QUARANTINED' AND NEW.lifecycle_to_state IN ('TOMBSTONED', 'DELETION_REQUESTED', 'PURGED'))
-           OR (NEW.lifecycle_from_state = 'HELD' AND NEW.lifecycle_to_state IN ('AVAILABLE', 'TOMBSTONED', 'DELETION_REQUESTED'))
+           OR (NEW.lifecycle_from_state = 'SCANNING' AND NEW.lifecycle_to_state IN ('AVAILABLE', 'QUARANTINED', 'FAILED', 'ORPHANED'))
+           OR (NEW.lifecycle_from_state = 'AVAILABLE' AND NEW.lifecycle_to_state IN ('HELD', 'TOMBSTONED', 'DELETION_REQUESTED', 'EXPIRED', 'ORPHANED'))
+           OR (NEW.lifecycle_from_state = 'QUARANTINED' AND NEW.lifecycle_to_state IN ('TOMBSTONED', 'DELETION_REQUESTED', 'PURGED', 'ORPHANED'))
+           OR (NEW.lifecycle_from_state = 'HELD' AND NEW.lifecycle_to_state IN ('AVAILABLE', 'TOMBSTONED', 'DELETION_REQUESTED', 'ORPHANED'))
            OR (NEW.lifecycle_from_state = 'TOMBSTONED' AND NEW.lifecycle_to_state IN ('AVAILABLE', 'HELD', 'PURGED'))
            OR (NEW.lifecycle_from_state IN ('DELETION_REQUESTED', 'EXPIRED')
                AND NEW.lifecycle_to_state IN ('TOMBSTONED', 'PURGED', 'HELD'))
