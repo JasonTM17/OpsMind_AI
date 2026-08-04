@@ -6,6 +6,7 @@
   "summary": "Synthetic 5xx rate exceeded the deterministic test threshold.",
   "severity": "SEV2",
   "status": "CLOSED",
+  "ownerId": "44444444-4444-4444-8444-444444444444",
   "rootCause": "A synthetic configuration change exhausted the checkout connection pool.",
   "resolutionSummary": "The synthetic configuration was reverted and saturation returned to baseline.",
   "createdBy": "44444444-4444-4444-8444-444444444444",

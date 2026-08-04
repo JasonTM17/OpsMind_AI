@@ -62,6 +62,7 @@ class PatchIncidentRequestDeserializerTest {
         );
 
         assertThat(request.title().codePointCount(0, request.title().length())).isEqualTo(160);
+        assertThat(IncidentCommandValidator.normalize(request).title()).isEqualTo(astralBoundary);
         assertRejected("{\"title\":\"\u00A0\",\"reason\":\"Whitespace title\"}");
         assertRejected("{\"title\":\"Updated\",\"reason\":\"\u00A0\"}");
         assertRejected("{\"title\":\"\uFEFF\",\"reason\":\"BOM title\"}");
@@ -76,6 +77,7 @@ class PatchIncidentRequestDeserializerTest {
             PatchIncidentRequest.class
         );
         assertThat(ecmaNonWhitespace.title()).isEqualTo("\u0085");
+        assertThat(IncidentCommandValidator.normalize(ecmaNonWhitespace).title()).isEqualTo("\u0085");
     }
 
     @Test

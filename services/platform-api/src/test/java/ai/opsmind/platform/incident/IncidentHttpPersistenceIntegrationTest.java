@@ -2,6 +2,7 @@ package ai.opsmind.platform.incident;
 
 import static ai.opsmind.platform.testing.PostgresTenantFixtures.PROJECT_A;
 import static ai.opsmind.platform.testing.PostgresTenantFixtures.TENANT_A;
+import static ai.opsmind.platform.testing.PostgresTenantFixtures.USER_B;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.mockito.Mockito.when;
 
@@ -9,12 +10,18 @@ import java.net.URI;
 import java.net.http.HttpClient;
 import java.net.http.HttpRequest;
 import java.net.http.HttpResponse;
+import java.sql.Connection;
+import java.sql.PreparedStatement;
+import java.sql.SQLException;
 import java.time.Duration;
 import java.time.Instant;
 import java.util.List;
+import java.util.Objects;
 import java.util.UUID;
 import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.Executors;
+import java.util.concurrent.Future;
+import java.util.concurrent.TimeUnit;
 
 import ai.opsmind.platform.testing.PostgresIntegrationEnvironment;
 import ai.opsmind.platform.testing.PostgresTenantFixtures;
@@ -233,6 +240,236 @@ class IncidentHttpPersistenceIntegrationTest {
         assertThat(closureEvent.get("resolutionSummary").stringValue()).isEqualTo("capacity restored");
     }
 
+    @Test
+    void metadataPatchAssignClearReplayAndHiddenOrderingStayAtomic() throws Exception {
+        int idempotencyBefore = tenantIdempotencyCount();
+        HttpResponse<String> created = send(
+            "POST", collectionPath(), TOKEN_A, "patch-create-" + UUID.randomUUID(), null, createBody()
+        );
+        String incidentId = jsonMapper.readTree(created.body()).get("id").stringValue();
+        String incidentPath = collectionPath() + "/" + incidentId;
+        String assignKey = "patch-assign-" + UUID.randomUUID();
+        String assignBody = "{\"ownerId\":\"" + ACTOR_C
+            + "\",\"reason\":\"Primary on-call accepted\"}";
+
+        HttpResponse<String> assigned = send(
+            "PATCH", incidentPath, TOKEN_A, assignKey, "\"0\"", assignBody
+        );
+        assertThat(assigned.statusCode()).isEqualTo(200);
+        assertThat(assigned.headers().firstValue("etag")).contains("\"1\"");
+        assertThat(jsonMapper.readTree(assigned.body()).get("ownerId").stringValue())
+            .isEqualTo(ACTOR_C.toString());
+        DurableCounts assignedCounts = durableCounts(UUID.fromString(incidentId));
+        assertThat(assignedCounts).isEqualTo(new DurableCounts(2, 2, 2, idempotencyBefore + 2));
+
+        HttpResponse<String> replay = send(
+            "PATCH", incidentPath, TOKEN_A, assignKey, "\"0\"", assignBody
+        );
+        assertThat(replay.statusCode()).isEqualTo(200);
+        assertThat(replay.body()).isEqualTo(assigned.body());
+        assertThat(replay.headers().firstValue("x-operation-id"))
+            .isEqualTo(assigned.headers().firstValue("x-operation-id"));
+        assertThat(durableCounts(UUID.fromString(incidentId))).isEqualTo(assignedCounts);
+
+        UUID ineligibleOwner = UUID.randomUUID();
+        HttpResponse<String> ineligible = send(
+            "PATCH", incidentPath, TOKEN_A, "patch-ineligible-" + UUID.randomUUID(), "\"1\"",
+            "{\"ownerId\":\"" + ineligibleOwner + "\",\"reason\":\"Invalid owner\"}"
+        );
+        assertThat(ineligible.statusCode()).isEqualTo(422);
+        assertThat(ineligible.body()).contains("incident.owner-ineligible");
+        assertThat(durableCounts(UUID.fromString(incidentId))).isEqualTo(assignedCounts);
+
+        HttpResponse<String> foreign = send(
+            "PATCH", incidentPath, TOKEN_A, "patch-foreign-" + UUID.randomUUID(), "\"1\"",
+            "{\"ownerId\":\"" + USER_B + "\",\"reason\":\"Foreign owner\"}"
+        );
+        assertThat(foreign.statusCode()).isEqualTo(422);
+        assertThat(foreign.body()).contains("incident.owner-ineligible");
+        assertThat(durableCounts(UUID.fromString(incidentId))).isEqualTo(assignedCounts);
+
+        assertInactiveOwnerRejectedWithoutEffects(
+            incidentPath,
+            incidentId,
+            assignedCounts,
+            "UPDATE organization_memberships SET status = ? "
+                + "WHERE organization_id = ? AND user_id = ?",
+            "active"
+        );
+        assertInactiveOwnerRejectedWithoutEffects(
+            incidentPath,
+            incidentId,
+            assignedCounts,
+            "UPDATE platform_users SET status = ? WHERE id = ?",
+            "active"
+        );
+
+        HttpResponse<String> hidden = send(
+            "PATCH", collectionPath() + "/" + UUID.randomUUID(), TOKEN_A,
+            "patch-hidden-" + UUID.randomUUID(), "\"0\"",
+            "{\"ownerId\":\"" + ineligibleOwner + "\",\"reason\":\"Hidden target\"}"
+        );
+        assertThat(hidden.statusCode()).isEqualTo(404);
+        assertThat(hidden.body()).doesNotContain(ineligibleOwner.toString());
+
+        HttpResponse<String> cleared = send(
+            "PATCH", incidentPath, TOKEN_A, "patch-clear-" + UUID.randomUUID(), "\"1\"",
+            "{\"ownerId\":null,\"reason\":\"Returned to queue\"}"
+        );
+        assertThat(cleared.statusCode()).isEqualTo(200);
+        assertThat(cleared.headers().firstValue("etag")).contains("\"2\"");
+        assertThat(jsonMapper.readTree(cleared.body()).has("ownerId")).isFalse();
+
+        JsonNode timeline = jsonMapper.readTree(send(
+            "GET", incidentPath + "/timeline", TOKEN_A, null, null, null
+        ).body());
+        assertThat(timeline.get("items").size()).isEqualTo(3);
+        assertThat(timeline.get("items").get(1).get("eventType").stringValue())
+            .isEqualTo("INCIDENT_METADATA_PATCHED");
+        assertThat(timeline.get("items").get(1).get("metadata").get("ownerId").stringValue())
+            .isEqualTo(ACTOR_C.toString());
+        assertThat(timeline.get("items").get(2).get("metadata").get("ownerId").isNull()).isTrue();
+    }
+
+    @Test
+    void concurrentSameVersionMetadataPatchesCommitExactlyOneWinner() throws Exception {
+        int idempotencyBefore = tenantIdempotencyCount();
+        HttpResponse<String> created = send(
+            "POST", collectionPath(), TOKEN_A, "patch-race-create-" + UUID.randomUUID(),
+            null, createBody()
+        );
+        String incidentId = jsonMapper.readTree(created.body()).get("id").stringValue();
+        String incidentPath = collectionPath() + "/" + incidentId;
+        CountDownLatch start = new CountDownLatch(1);
+
+        try (var executor = Executors.newFixedThreadPool(2)) {
+            Future<HttpResponse<String>> first = executor.submit(() -> {
+                start.await();
+                return send(
+                    "PATCH", incidentPath, TOKEN_A, "patch-race-a-" + UUID.randomUUID(), "\"0\"",
+                    "{\"title\":\"Winner A\",\"reason\":\"Concurrent correction A\"}"
+                );
+            });
+            Future<HttpResponse<String>> second = executor.submit(() -> {
+                start.await();
+                return send(
+                    "PATCH", incidentPath, TOKEN_A, "patch-race-b-" + UUID.randomUUID(), "\"0\"",
+                    "{\"title\":\"Winner B\",\"reason\":\"Concurrent correction B\"}"
+                );
+            });
+            start.countDown();
+            List<Integer> statuses = java.util.stream.Stream.of(
+                first.get(15, TimeUnit.SECONDS), second.get(15, TimeUnit.SECONDS)
+            ).map(HttpResponse::statusCode).sorted().toList();
+            assertThat(statuses).containsExactly(200, 412);
+        }
+
+        assertThat(durableCounts(UUID.fromString(incidentId)))
+            .isEqualTo(new DurableCounts(2, 2, 2, idempotencyBefore + 2));
+        JsonNode detail = jsonMapper.readTree(send(
+            "GET", incidentPath, TOKEN_A, null, null, null
+        ).body());
+        assertThat(detail.get("version").intValue()).isEqualTo(1);
+        assertThat(detail.get("title").stringValue()).isIn("Winner A", "Winner B");
+    }
+
+    @Test
+    void eligibleOwnerRowsStayLockedUntilTheAssignmentTransactionEnds() throws Exception {
+        assertOwnerEligibilityLockBlocks(
+            "UPDATE organization_memberships SET status = 'suspended' "
+                + "WHERE organization_id = ? AND user_id = ?"
+        );
+        assertOwnerEligibilityLockBlocks(
+            "UPDATE platform_users SET status = 'suspended' WHERE id = ?",
+            false
+        );
+    }
+
+    private void assertOwnerEligibilityLockBlocks(String updateSql) throws Exception {
+        assertOwnerEligibilityLockBlocks(updateSql, true);
+    }
+
+    private void assertOwnerEligibilityLockBlocks(String updateSql, boolean tenantScoped)
+        throws Exception {
+        PostgresIntegrationEnvironment environment = PostgresIntegrationEnvironment.fromProcess();
+        try (
+            Connection appConnection = java.sql.DriverManager.getConnection(
+                environment.jdbcUrl(), environment.appUser(), environment.appPassword()
+            );
+            PreparedStatement eligibility = appConnection.prepareStatement(
+                "SELECT public.opsmind_lock_eligible_incident_owner(?, ?)"
+            );
+            var executor = Executors.newSingleThreadExecutor()
+        ) {
+            appConnection.setAutoCommit(false);
+            eligibility.setObject(1, TENANT_A);
+            eligibility.setObject(2, ACTOR_C);
+            try (var result = eligibility.executeQuery()) {
+                assertThat(result.next()).isTrue();
+                assertThat(result.getBoolean(1)).isTrue();
+            }
+
+            Future<String> update = executor.submit(() -> {
+                try (
+                    Connection adminConnection = java.sql.DriverManager.getConnection(
+                        environment.jdbcUrl(), environment.adminUser(), environment.adminPassword()
+                    );
+                    PreparedStatement statement = adminConnection.prepareStatement(updateSql)
+                ) {
+                    adminConnection.setAutoCommit(false);
+                    try (var lockTimeout = adminConnection.createStatement()) {
+                        lockTimeout.execute("SET LOCAL lock_timeout = '250ms'");
+                    }
+                    int parameter = 1;
+                    if (tenantScoped) statement.setObject(parameter++, TENANT_A);
+                    statement.setObject(parameter, ACTOR_C);
+                    statement.executeUpdate();
+                    return "unexpected-update";
+                }
+                catch (SQLException exception) {
+                    return exception.getSQLState();
+                }
+            });
+            assertThat(Objects.requireNonNull(update.get(5, TimeUnit.SECONDS)))
+                .isEqualTo("55P03");
+            appConnection.rollback();
+        }
+    }
+
+    private void assertInactiveOwnerRejectedWithoutEffects(
+        String incidentPath,
+        String incidentId,
+        DurableCounts expectedCounts,
+        String statusSql,
+        String restoredStatus
+    ) throws Exception {
+        JdbcTemplate admin = adminJdbc();
+        boolean tenantScoped = statusSql.contains("organization_memberships");
+        updateOwnerStatus(admin, statusSql, "suspended", tenantScoped);
+        try {
+            HttpResponse<String> response = send(
+                "PATCH", incidentPath, TOKEN_A, "patch-inactive-" + UUID.randomUUID(), "\"1\"",
+                "{\"ownerId\":\"" + ACTOR_C + "\",\"reason\":\"Inactive owner\"}"
+            );
+            assertThat(response.statusCode()).isEqualTo(422);
+            assertThat(response.body()).contains("incident.owner-ineligible");
+            assertThat(durableCounts(UUID.fromString(incidentId))).isEqualTo(expectedCounts);
+        }
+        finally {
+            updateOwnerStatus(admin, statusSql, restoredStatus, tenantScoped);
+        }
+    }
+
+    private void updateOwnerStatus(
+        JdbcTemplate admin,
+        String sql,
+        String status,
+        boolean tenantScoped
+    ) {
+        if (tenantScoped) admin.update(sql, status, TENANT_A, ACTOR_C);
+        else admin.update(sql, status, ACTOR_C);
+    }
+
     private void assertTransition(
         String path,
         String ifMatch,
@@ -328,7 +565,10 @@ class IncidentHttpPersistenceIntegrationTest {
         if (idempotencyKey != null) request.header("Idempotency-Key", idempotencyKey);
         if (ifMatch != null) request.header("If-Match", ifMatch);
         if (body == null) request.method(method, HttpRequest.BodyPublishers.noBody());
-        else request.header("Content-Type", "application/json")
+        else request.header(
+                "Content-Type",
+                "PATCH".equals(method) ? "application/merge-patch+json" : "application/json"
+            )
             .method(method, HttpRequest.BodyPublishers.ofString(body));
         return client.send(request.build(), HttpResponse.BodyHandlers.ofString());
     }

@@ -33,7 +33,8 @@ public record IncidentActivityTimelineEntry(
     private static final long MAX_EPOCH_SECOND = 253_402_300_799L;
     private static final Set<String> INCIDENT_EVENTS = Set.of(
         IncidentTimelineEvent.CREATED,
-        IncidentTimelineEvent.STATUS_TRANSITIONED
+        IncidentTimelineEvent.STATUS_TRANSITIONED,
+        IncidentTimelineEvent.METADATA_PATCHED
     );
     private static final Set<String> INVESTIGATION_EVENTS = Set.of(
         RUN_STARTED,

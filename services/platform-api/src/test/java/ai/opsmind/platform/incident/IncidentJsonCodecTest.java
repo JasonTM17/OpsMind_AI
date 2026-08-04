@@ -68,6 +68,30 @@ class IncidentJsonCodecTest {
             "\"createdAt\":\"2030-01-01T00:00:00.123456Z\"",
             "\"version\":0"
         );
+        assertThat(body).doesNotContain("\"ownerId\"");
+    }
+
+    @Test
+    void legacyTimelineEventsKeepTheirOriginalPayloadShape() {
+        Instant now = Instant.parse("2030-01-01T00:00:00Z");
+        IncidentTimelineEvent event = new IncidentTimelineEvent(
+            UUID.fromString("55555555-5555-4555-8555-555555555555"),
+            UUID.fromString("11111111-1111-4111-8111-111111111111"),
+            UUID.fromString("22222222-2222-4222-8222-222222222222"),
+            INCIDENT_ID,
+            0,
+            IncidentTimelineEvent.CREATED,
+            OPERATION_ID,
+            UUID.fromString("66666666-6666-4666-8666-666666666666"),
+            now,
+            "alert",
+            null,
+            IncidentStatus.OPEN,
+            null,
+            null
+        );
+
+        assertThat(codec.timelinePayload(event)).doesNotContain("\"metadata\"");
     }
 
     @Test

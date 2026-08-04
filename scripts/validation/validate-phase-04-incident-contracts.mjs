@@ -43,6 +43,11 @@ const incidentListMigrationPath = path.join(
   "V016__incident_list_pagination_indexes.sql",
 );
 const incidentListMigrationConfigPath = `${incidentListMigrationPath}.conf`;
+const incidentPatchMigrationPath = path.join(
+  repositoryRoot,
+  "services", "platform-api", "src", "main", "resources", "db", "migration",
+  "V017__incident_metadata_patch_event.sql",
+);
 const portableRunnerPath = path.join(
   repositoryRoot, "scripts", "validation", "run-phase-04-postgres-contract.sh",
 );
@@ -58,6 +63,7 @@ const errors = [];
 const requiredSchemaPaths = [
   "packages/contracts/json-schema/incidents/incident-types.schema.json",
   "packages/contracts/json-schema/incidents/create-incident-request.schema.json",
+  "packages/contracts/json-schema/incidents/patch-incident-request.schema.json",
   "packages/contracts/json-schema/incidents/transition-incident-request.schema.json",
   "packages/contracts/json-schema/incidents/incident.schema.json",
   "packages/contracts/json-schema/incidents/incident-summary.schema.json",
@@ -196,6 +202,31 @@ try {
   }
 } catch {
   errors.push("V016 incident list migration or sidecar is missing or unsafe");
+}
+try {
+  const incidentPatchMigration = fileAccess.readSafeFile(incidentPatchMigrationPath);
+  for (const marker of [
+    "opsmind_lock_eligible_incident_owner",
+    "session_user <> 'opsmind_app'",
+    "FOR SHARE OF member, membership",
+    "CREATE OR REPLACE FUNCTION opsmind_validate_incident_write()",
+    "metadata patch cannot change incident resolution fields",
+    "incident owner must be an active organization member",
+    "status transition cannot change incident metadata",
+    "INCIDENT_METADATA_PATCHED",
+    "CREATE OR REPLACE FUNCTION opsmind_validate_timeline_append()",
+    "DROP CONSTRAINT audit_events_incident_contract",
+    "GRANT UPDATE (title, description, severity, owner_id) ON incidents TO opsmind_app",
+  ]) {
+    if (!incidentPatchMigration.includes(marker)) {
+      errors.push("V017 incident patch migration is missing an authority marker");
+    }
+  }
+  if (/\b(?:CREATE\s+TABLE|TRUNCATE)\b/iu.test(incidentPatchMigration)) {
+    errors.push("V017 incident patch migration contains forbidden destructive DDL");
+  }
+} catch {
+  errors.push("V017 incident patch migration is missing or unsafe");
 }
 try {
   inspectAuditPersistenceContracts({

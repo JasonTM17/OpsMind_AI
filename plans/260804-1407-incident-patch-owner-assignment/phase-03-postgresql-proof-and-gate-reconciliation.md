@@ -1,7 +1,7 @@
 ---
 phase: 3
 title: PostgreSQL proof and gate reconciliation
-status: pending
+status: in-progress
 priority: P1
 dependencies: [2]
 ---
@@ -30,11 +30,19 @@ dependencies: [2]
 
 ## Success Criteria
 
-- [ ] Focused unit/controller/HTTP tests pass.
+- [x] Focused unit/controller/HTTP tests pass.
 - [ ] Fresh and upgrade PostgreSQL paths pass with no skipped PATCH tests.
-- [ ] Full Platform Maven suite and static validators pass.
+- [x] Full Platform Maven suite and static validators pass.
 - [ ] Exact-head PR checks pass before merge.
-- [ ] Docs retain all external Phase 4 blockers and do not claim G2 completion.
+- [x] Docs retain all external Phase 4 blockers and do not claim G2 completion.
+
+## Evidence recorded
+
+- Static incident-contract validator: PASS (0 errors; 25 schemas, 40 fixtures).
+- Full platform Maven suite: 533 tests, 0 failures, 0 errors, 67 skips.
+- Local PostgreSQL gate remains unavailable because host storage is below the
+  repository safety thresholds; exact-head CI is authoritative for fresh and
+  upgrade migration proof.
 
 ## Risks
 

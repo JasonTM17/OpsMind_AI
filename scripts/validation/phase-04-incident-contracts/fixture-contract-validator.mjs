@@ -21,10 +21,12 @@ export const fixtureCases = [
   ["incident-list-page.forbidden-field.invalid.json", "incidents/incident-list-page.schema.json", false],
   ["incident-timeline-page.valid.json", "incidents/incident-timeline-page.schema.json", true],
   ["incident-timeline-page.closed.valid.json", "incidents/incident-timeline-page.schema.json", true],
+  ["incident-timeline-page.metadata-patched.valid.json", "incidents/incident-timeline-page.schema.json", true],
   ["incident-timeline-page.event-kind.invalid.json", "incidents/incident-timeline-page.schema.json", false],
   ["incident-activity-timeline-page.valid.json", "incidents/incident-activity-timeline-page.schema.json", true],
   ["incident-activity-timeline-page.payload-leak.invalid.json", "incidents/incident-activity-timeline-page.schema.json", false],
   ["audit-event.valid.json", "audit/audit-event.schema.json", true],
+  ["audit-event.metadata-patched.valid.json", "audit/audit-event.schema.json", true],
   ["audit-event.forged-field.invalid.json", "audit/audit-event.schema.json", false],
 ];
 

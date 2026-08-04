@@ -36,6 +36,23 @@ final class IncidentCommandValidator {
         );
     }
 
+    static PatchIncidentRequest normalize(PatchIncidentRequest request) {
+        if (request == null || !request.hasMutation()) {
+            throw invalidRequest();
+        }
+        return new PatchIncidentRequest(
+            request.hasTitle() ? required(request.title(), 160) : null,
+            request.hasTitle(),
+            request.hasSummary() ? required(request.summary(), 4000) : null,
+            request.hasSummary(),
+            request.hasSeverity() ? requireSeverity(request.severity()) : null,
+            request.hasSeverity(),
+            request.ownerId(),
+            request.hasOwnerId(),
+            required(request.reason(), 1000)
+        );
+    }
+
     static void requireResourceIds(UUID organizationId, UUID projectId, UUID incidentId) {
         requireCollectionIds(organizationId, projectId);
         if (incidentId == null) {
@@ -70,7 +87,7 @@ final class IncidentCommandValidator {
             throw invalidRequest();
         }
         String normalized = value.trim();
-        if (normalized.length() > maximumLength) {
+        if (normalized.codePointCount(0, normalized.length()) > maximumLength) {
             throw invalidRequest();
         }
         return normalized;
@@ -81,10 +98,17 @@ final class IncidentCommandValidator {
             return null;
         }
         String normalized = value.trim();
-        if (normalized.length() > maximumLength) {
+        if (normalized.codePointCount(0, normalized.length()) > maximumLength) {
             throw invalidRequest();
         }
         return normalized;
+    }
+
+    private static IncidentSeverity requireSeverity(IncidentSeverity severity) {
+        if (severity == null) {
+            throw invalidRequest();
+        }
+        return severity;
     }
 
     private static PlatformProblemException invalidRequest() {
