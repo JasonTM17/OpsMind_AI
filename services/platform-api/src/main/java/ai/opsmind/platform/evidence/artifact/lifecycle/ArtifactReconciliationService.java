@@ -22,6 +22,9 @@ public final class ArtifactReconciliationService {
             case PURGE_CONFIRMED -> metadata.lifecycleState() == EvidenceArtifactLifecycleState.PURGED
                 ? EvidenceArtifactLifecycleState.RECEIPT_RECORDED : metadata.lifecycleState();
         };
+        if (command.targetState() != target) {
+            throw new IllegalArgumentException("Reconciliation command target does not match observation.");
+        }
         if (target == metadata.lifecycleState()) {
             return new ArtifactReconciliationResult(
                 observation == ArtifactReconciliationObservation.PURGE_CONFIRMED

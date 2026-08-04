@@ -9,9 +9,9 @@ public final class AuthorizedArtifactReadService {
     public EvidenceArtifactMetadata authorize(
         EvidenceArtifactMetadata metadata,
         AuthorizedArtifactReadRequest request,
-        boolean objectPresent
+        ArtifactObjectProbeFacts probe
     ) {
-        if (metadata == null || request == null || !objectPresent
+        if (metadata == null || request == null || probe == null || !probe.present()
             || !metadata.lifecycleState().isReadable()
             || !Objects.equals(metadata.organizationId(), request.organizationId())
             || !Objects.equals(metadata.projectId(), request.projectId())
@@ -19,7 +19,9 @@ public final class AuthorizedArtifactReadService {
             || !Objects.equals(metadata.runId(), request.runId())
             || !Objects.equals(metadata.actorId(), request.actorId())
             || metadata.authorizationEpoch() != request.authorizationEpoch()
-            || !metadata.expectedDigest().equals(request.expectedDigest())) {
+            || !metadata.expectedDigest().equals(request.expectedDigest())
+            || !metadata.expectedDigest().equals(probe.digest())
+            || metadata.expectedByteCount() != probe.byteCount()) {
             throw new ArtifactAccessDeniedException();
         }
         return metadata;

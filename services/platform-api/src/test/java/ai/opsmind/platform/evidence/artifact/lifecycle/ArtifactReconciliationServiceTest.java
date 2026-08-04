@@ -25,7 +25,9 @@ class ArtifactReconciliationServiceTest {
             ArtifactReconciliationObservation.OBJECT_MATCH);
         assertEquals(ArtifactReconciliationOutcome.REBOUND_STORED, rebound.outcome());
 
-        var orphan = service.reconcile(metadata(EvidenceArtifactLifecycleState.PENDING_UPLOAD), command,
+        var orphanCommand = new ArtifactLifecycleCommand(ACTOR, 7, DIGEST,
+            EvidenceArtifactLifecycleState.ORPHANED, "reconcile", Instant.now());
+        var orphan = service.reconcile(metadata(EvidenceArtifactLifecycleState.PENDING_UPLOAD), orphanCommand,
             ArtifactReconciliationObservation.OBJECT_ABSENT);
         assertEquals(ArtifactReconciliationOutcome.MARKED_ORPHANED, orphan.outcome());
     }
@@ -34,10 +36,20 @@ class ArtifactReconciliationServiceTest {
     void doesNotInferPurgeReceiptFromAbsence() {
         var service = new ArtifactReconciliationService();
         var command = new ArtifactLifecycleCommand(ACTOR, 7, DIGEST,
-            EvidenceArtifactLifecycleState.RECEIPT_RECORDED, "reconcile", Instant.now());
+            EvidenceArtifactLifecycleState.PURGED, "reconcile", Instant.now());
         var result = service.reconcile(metadata(EvidenceArtifactLifecycleState.PURGED), command,
             ArtifactReconciliationObservation.OBJECT_ABSENT);
         assertEquals(ArtifactReconciliationOutcome.NO_CHANGE_UNCERTAIN, result.outcome());
+    }
+
+    @Test
+    void rejectsCommandTargetThatDoesNotMatchProbeObservation() {
+        var command = new ArtifactLifecycleCommand(ACTOR, 7, DIGEST,
+            EvidenceArtifactLifecycleState.ORPHANED, "reconcile", Instant.now());
+        org.junit.jupiter.api.Assertions.assertThrows(IllegalArgumentException.class,
+            () -> new ArtifactReconciliationService().reconcile(
+                metadata(EvidenceArtifactLifecycleState.PENDING_UPLOAD), command,
+                ArtifactReconciliationObservation.OBJECT_MATCH));
     }
 
     private static EvidenceArtifactMetadata metadata(EvidenceArtifactLifecycleState state) {
