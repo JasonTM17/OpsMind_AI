@@ -37,7 +37,11 @@
     "actorId": { "$ref": "../incidents/incident-types.schema.json#/$defs/uuid" },
     "action": {
       "type": "string",
-      "enum": ["INCIDENT_CREATED", "INCIDENT_STATUS_TRANSITIONED"],
+      "enum": [
+        "INCIDENT_CREATED",
+        "INCIDENT_STATUS_TRANSITIONED",
+        "INCIDENT_METADATA_PATCHED"
+      ],
       "minLength": 16,
       "maxLength": 28
     },

@@ -106,6 +106,37 @@ final class IncidentMutationService {
         }
     }
 
+    IncidentOperationResult patch(
+        OpsMindPrincipal principal,
+        UUID organizationId,
+        UUID projectId,
+        UUID incidentId,
+        IdempotencyKey idempotencyKey,
+        long expectedVersion,
+        PatchIncidentRequest unvalidatedRequest,
+        String externalTraceId
+    ) {
+        IncidentScopePolicy.require(principal, IncidentScopePolicy.WRITE_SCOPE);
+        IncidentCommandValidator.requireResourceIds(organizationId, projectId, incidentId);
+        PatchIncidentRequest request = IncidentCommandValidator.normalize(unvalidatedRequest);
+        String traceId = IncidentCommandValidator.normalizeTrace(externalTraceId);
+        try {
+            return requireResult(transactions.execute(status -> patchWithinTransaction(
+                principal,
+                organizationId,
+                projectId,
+                incidentId,
+                idempotencyKey,
+                expectedVersion,
+                request,
+                traceId
+            )));
+        }
+        catch (TransactionException exception) {
+            throw transactionUnavailable(exception);
+        }
+    }
+
     private IncidentOperationResult createWithinTransaction(
         OpsMindPrincipal principal,
         UUID organizationId,
@@ -196,6 +227,60 @@ final class IncidentMutationService {
             IncidentTimelineEvent.STATUS_TRANSITIONED, actor.id(), operationId, occurredAt,
             request.reason(), current.status(), updated.status(), updated.rootCause(),
             updated.resolutionSummary()
+        ), traceId);
+        IncidentOperationResult result = new IncidentOperationResult(
+            HttpStatus.OK.value(), jsonCodec.incidentBody(updated), null,
+            OptimisticConcurrency.etag(updated.version()), operationId
+        );
+        idempotencyRepository.complete(
+            organizationId, actor.id(), idempotencyKey, requestDigest,
+            result.responseStatus(), jsonCodec.cache(result)
+        );
+        return result;
+    }
+
+    private IncidentOperationResult patchWithinTransaction(
+        OpsMindPrincipal principal,
+        UUID organizationId,
+        UUID projectId,
+        UUID incidentId,
+        IdempotencyKey idempotencyKey,
+        long expectedVersion,
+        PatchIncidentRequest request,
+        String traceId
+    ) {
+        IncidentActor actor = accessRepository.requireAccess(
+            principal, organizationId, projectId, IncidentAccessMode.MUTATE
+        );
+        byte[] requestDigest = IncidentRequestIdentity.patch(
+            actor.id(), organizationId, projectId, incidentId, expectedVersion, request
+        );
+        IdempotencyClaim claim = idempotencyRepository.claim(
+            organizationId, actor.id(), idempotencyKey, requestDigest
+        );
+        IncidentOperationResult replay = replay(claim);
+        if (replay != null) {
+            return replay;
+        }
+        IncidentSnapshot current = incidentRepository.findForUpdate(
+            organizationId, projectId, incidentId
+        ).orElseThrow(IncidentRolePolicy::hiddenDenial);
+        OptimisticConcurrency.requireCurrentVersion(current.version(), expectedVersion);
+        if (request.hasOwnerId() && request.ownerId() != null) {
+            accessRepository.requireEligibleOwner(organizationId, request.ownerId());
+        }
+
+        Instant occurredAt = runtimeValues.now();
+        UUID operationId = runtimeValues.newId();
+        UUID eventId = runtimeValues.newId();
+        IncidentSnapshot updated = incidentRepository.patch(
+            organizationId, projectId, incidentId, expectedVersion, request, actor.id(), occurredAt
+        );
+        eventAppender.append(new IncidentTimelineEvent(
+            eventId, organizationId, projectId, incidentId, updated.version(),
+            IncidentTimelineEvent.METADATA_PATCHED, actor.id(), operationId, occurredAt,
+            request.reason(), current.status(), updated.status(), updated.rootCause(),
+            updated.resolutionSummary(), IncidentMetadataValues.from(updated)
         ), traceId);
         IncidentOperationResult result = new IncidentOperationResult(
             HttpStatus.OK.value(), jsonCodec.incidentBody(updated), null,

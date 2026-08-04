@@ -314,6 +314,27 @@ class MigrationContractTest {
     }
 
     @Test
+    void incidentPatchMigrationLocksOwnerAuthorityAndExtendsAppendContracts()
+        throws IOException {
+        String migration = readMigration("V017__incident_metadata_patch_event.sql");
+
+        assertThat(migration)
+            .contains("opsmind_lock_eligible_incident_owner")
+            .contains("session_user <> 'opsmind_app'")
+            .contains("FOR SHARE OF member, membership")
+            .contains("OWNER TO opsmind_context_resolver")
+            .contains("CREATE OR REPLACE FUNCTION opsmind_validate_incident_write()")
+            .contains("metadata patch cannot change incident resolution fields")
+            .contains("incident owner must be an active organization member")
+            .contains("status transition cannot change incident metadata")
+            .contains("INCIDENT_METADATA_PATCHED")
+            .contains("CREATE OR REPLACE FUNCTION opsmind_validate_timeline_append()")
+            .contains("DROP CONSTRAINT audit_events_incident_contract")
+            .contains("GRANT UPDATE (title, description, severity, owner_id) ON incidents TO opsmind_app")
+            .doesNotContain("CREATE TABLE", "TRUNCATE");
+    }
+
+    @Test
     void workflowStartMigrationDefinesTheInitialTenantBoundHandoffContract()
         throws IOException {
         String migrationName = "V010__investigation_workflow_start_handoff.sql";

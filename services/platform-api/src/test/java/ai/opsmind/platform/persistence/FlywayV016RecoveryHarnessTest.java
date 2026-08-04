@@ -66,6 +66,19 @@ class FlywayV016RecoveryHarnessTest {
                 ORDER_INDEX + ":true:true", STATUS_INDEX + ":true:true"
             );
             System.out.println("V016FlywayRecovery=PASS");
+
+            LegacyIncidentSnapshot legacy = seedLegacyIncident(connection);
+            transferV017Ownership(connection, settings.migrationUsername());
+            flyway = flyway(
+                settings.url(), settings.migrationUsername(), settings.migrationPassword(), "17"
+            );
+            flyway.migrate();
+            assertThat(successfulVersion(connection)).isEqualTo("17");
+            assertThat(legacyPayload(connection)).isEqualTo(legacy.payload());
+            assertThat(legacyDigest(connection)).isEqualTo(legacy.digest());
+            appendLegacyTransitionAfterV017(connection);
+            assertThat(legacyTimelineCount(connection)).isEqualTo(2);
+            System.out.println("V017LegacyIncidentUpgrade=PASS");
         }
     }
 
@@ -124,6 +137,143 @@ class FlywayV016RecoveryHarnessTest {
         }
         execute(connection, "ALTER TABLE public.incidents OWNER TO " + quotedOwner);
         execute(connection, "ALTER TABLE public.flyway_schema_history OWNER TO " + quotedOwner);
+    }
+
+    private static void transferV017Ownership(
+        Connection connection,
+        String migrationUsername
+    ) throws SQLException {
+        String quotedOwner;
+        try (PreparedStatement statement = connection.prepareStatement("SELECT quote_ident(?)")) {
+            statement.setString(1, migrationUsername);
+            try (ResultSet result = statement.executeQuery()) {
+                assertThat(result.next()).isTrue();
+                quotedOwner = result.getString(1);
+            }
+        }
+        execute(connection, "ALTER TABLE public.incident_timeline_events OWNER TO " + quotedOwner);
+        execute(connection, "ALTER TABLE public.audit_events OWNER TO " + quotedOwner);
+        execute(connection, "ALTER FUNCTION public.opsmind_validate_incident_write() OWNER TO "
+            + quotedOwner);
+        execute(connection, "ALTER FUNCTION public.opsmind_validate_timeline_append() OWNER TO "
+            + quotedOwner);
+    }
+
+    private static LegacyIncidentSnapshot seedLegacyIncident(Connection connection)
+        throws SQLException {
+        execute(connection, """
+            INSERT INTO organizations (id, slug, name)
+            VALUES ('17000000-0000-4000-8000-000000000001', 'v017-legacy', 'V017 Legacy')
+            """);
+        execute(connection, """
+            INSERT INTO platform_users (id, issuer, subject, display_name)
+            VALUES ('17000000-0000-4000-8000-000000000002',
+                    'https://idp.example.test/opsmind', 'v017-legacy', 'V017 Legacy')
+            """);
+        execute(connection, """
+            INSERT INTO organization_memberships (organization_id, user_id, role)
+            VALUES ('17000000-0000-4000-8000-000000000001',
+                    '17000000-0000-4000-8000-000000000002', 'SRE')
+            """);
+        execute(connection, """
+            INSERT INTO projects (id, organization_id, slug, name)
+            VALUES ('17000000-0000-4000-8000-000000000003',
+                    '17000000-0000-4000-8000-000000000001', 'legacy', 'V017 Legacy')
+            """);
+        execute(connection, """
+            INSERT INTO incidents (
+                id, organization_id, project_id, title, description, severity, status,
+                created_by, updated_by, created_at, updated_at, version
+            ) VALUES ('17000000-0000-4000-8000-000000000004',
+                '17000000-0000-4000-8000-000000000001',
+                '17000000-0000-4000-8000-000000000003', 'Legacy incident',
+                'Pre-V017 incident', 'SEV2', 'OPEN',
+                '17000000-0000-4000-8000-000000000002',
+                '17000000-0000-4000-8000-000000000002',
+                '2030-01-01T00:00:00Z', '2030-01-01T00:00:00Z', 0)
+            """);
+        String payload = legacyCreatedPayload();
+        execute(connection, "INSERT INTO incident_timeline_events ("
+            + "event_id, organization_id, project_id, incident_id, incident_version, event_kind, "
+            + "actor_id, operation_id, reason, payload, occurred_at) VALUES ("
+            + "'17000000-0000-4000-8000-000000000005',"
+            + "'17000000-0000-4000-8000-000000000001',"
+            + "'17000000-0000-4000-8000-000000000003',"
+            + "'17000000-0000-4000-8000-000000000004', 0, 'INCIDENT_CREATED',"
+            + "'17000000-0000-4000-8000-000000000002',"
+            + "'17000000-0000-4000-8000-000000000006', 'legacy create', CAST('"
+            + payload + "' AS jsonb), '2030-01-01T00:00:00Z')");
+        execute(connection, "INSERT INTO audit_events ("
+            + "event_id, organization_id, actor_id, action, resource_type, resource_id, "
+            + "correlation_id, occurred_at, payload, schema_version) VALUES ("
+            + "'17000000-0000-4000-8000-000000000005',"
+            + "'17000000-0000-4000-8000-000000000001',"
+            + "'17000000-0000-4000-8000-000000000002', 'INCIDENT_CREATED', 'incident',"
+            + "'17000000-0000-4000-8000-000000000004',"
+            + "'17000000-0000-4000-8000-000000000006', '2030-01-01T00:00:00Z', CAST('"
+            + payload + "' AS jsonb), 'incident-audit-v1')");
+        return new LegacyIncidentSnapshot(payload, legacyDigest(connection));
+    }
+
+    private static void appendLegacyTransitionAfterV017(Connection connection) throws SQLException {
+        execute(connection, "UPDATE incidents SET status = 'INVESTIGATING', version = 1, "
+            + "updated_by = '17000000-0000-4000-8000-000000000002', "
+            + "updated_at = '2030-01-01T00:01:00Z' "
+            + "WHERE id = '17000000-0000-4000-8000-000000000004'");
+        String payload = "{" +
+            "\"eventId\":\"17000000-0000-4000-8000-000000000007\","
+            + "\"organizationId\":\"17000000-0000-4000-8000-000000000001\","
+            + "\"incidentId\":\"17000000-0000-4000-8000-000000000004\","
+            + "\"projectId\":\"17000000-0000-4000-8000-000000000003\","
+            + "\"incidentVersion\":1,\"eventType\":\"INCIDENT_STATUS_TRANSITIONED\","
+            + "\"actorId\":\"17000000-0000-4000-8000-000000000002\","
+            + "\"operationId\":\"17000000-0000-4000-8000-000000000008\","
+            + "\"occurredAt\":\"2030-01-01T00:01:00Z\",\"reason\":\"legacy transition\","
+            + "\"fromStatus\":\"OPEN\",\"toStatus\":\"INVESTIGATING\","
+            + "\"rootCause\":null,\"resolutionSummary\":null}";
+        execute(connection, "INSERT INTO incident_timeline_events ("
+            + "event_id, organization_id, project_id, incident_id, incident_version, event_kind, "
+            + "actor_id, operation_id, reason, payload, occurred_at) VALUES ("
+            + "'17000000-0000-4000-8000-000000000007',"
+            + "'17000000-0000-4000-8000-000000000001',"
+            + "'17000000-0000-4000-8000-000000000003',"
+            + "'17000000-0000-4000-8000-000000000004', 1, 'INCIDENT_STATUS_TRANSITIONED',"
+            + "'17000000-0000-4000-8000-000000000002',"
+            + "'17000000-0000-4000-8000-000000000008', 'legacy transition', CAST('"
+            + payload + "' AS jsonb), '2030-01-01T00:01:00Z')");
+    }
+
+    private static String legacyCreatedPayload() {
+        return "{" +
+            "\"eventId\":\"17000000-0000-4000-8000-000000000005\","
+            + "\"organizationId\":\"17000000-0000-4000-8000-000000000001\","
+            + "\"incidentId\":\"17000000-0000-4000-8000-000000000004\","
+            + "\"projectId\":\"17000000-0000-4000-8000-000000000003\","
+            + "\"incidentVersion\":0,\"eventType\":\"INCIDENT_CREATED\","
+            + "\"actorId\":\"17000000-0000-4000-8000-000000000002\","
+            + "\"operationId\":\"17000000-0000-4000-8000-000000000006\","
+            + "\"occurredAt\":\"2030-01-01T00:00:00Z\",\"reason\":\"legacy create\","
+            + "\"fromStatus\":null,\"toStatus\":\"OPEN\","
+            + "\"rootCause\":null,\"resolutionSummary\":null}";
+    }
+
+    private static String legacyPayload(Connection connection) throws SQLException {
+        return queryLines(connection, "SELECT payload::text FROM incident_timeline_events "
+            + "WHERE event_id = '17000000-0000-4000-8000-000000000005'").getFirst();
+    }
+
+    private static String legacyDigest(Connection connection) throws SQLException {
+        return queryLines(connection, "SELECT encode(event_digest, 'hex') FROM audit_events "
+            + "WHERE event_id = '17000000-0000-4000-8000-000000000005'").getFirst();
+    }
+
+    private static int legacyTimelineCount(Connection connection) throws SQLException {
+        return Integer.parseInt(queryLines(connection, "SELECT count(*)::text "
+            + "FROM incident_timeline_events WHERE incident_id = "
+            + "'17000000-0000-4000-8000-000000000004'").getFirst());
+    }
+
+    private record LegacyIncidentSnapshot(String payload, String digest) {
     }
 
     private static void seedDuplicateOrganizationRows(Connection connection) throws SQLException {

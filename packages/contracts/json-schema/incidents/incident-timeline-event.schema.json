@@ -32,7 +32,7 @@
     },
     "eventType": {
       "type": "string",
-      "enum": ["INCIDENT_CREATED", "INCIDENT_STATUS_TRANSITIONED"],
+      "enum": ["INCIDENT_CREATED", "INCIDENT_STATUS_TRANSITIONED", "INCIDENT_METADATA_PATCHED"],
       "minLength": 16,
       "maxLength": 28
     },
@@ -58,6 +58,32 @@
       "minLength": 1,
       "maxLength": 8000,
       "pattern": "\\S"
+    },
+    "metadata": {
+      "type": ["object", "null"],
+      "additionalProperties": false,
+      "required": ["title", "summary", "severity", "ownerId"],
+      "properties": {
+        "title": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 160,
+          "pattern": "\\S"
+        },
+        "summary": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 4000,
+          "pattern": "\\S"
+        },
+        "severity": { "$ref": "./incident-types.schema.json#/$defs/severity" },
+        "ownerId": {
+          "anyOf": [
+            { "$ref": "./incident-types.schema.json#/$defs/uuid" },
+            { "type": "null" }
+          ]
+        }
+      }
     }
   },
   "allOf": [
@@ -76,6 +102,23 @@
       "else": {
         "properties": {
           "fromStatus": { "$ref": "./incident-types.schema.json#/$defs/status" }
+        }
+      }
+    },
+    {
+      "if": {
+        "properties": { "eventType": { "const": "INCIDENT_METADATA_PATCHED" } },
+        "required": ["eventType"]
+      },
+      "then": {
+        "required": ["metadata"],
+        "properties": {
+          "metadata": { "not": { "type": "null" } }
+        }
+      },
+      "else": {
+        "properties": {
+          "metadata": { "type": "null" }
         }
       }
     },

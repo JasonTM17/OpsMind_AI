@@ -1,7 +1,7 @@
 ---
 phase: 2
 title: Transactional command and persistence
-status: in-progress
+status: completed
 priority: P1
 dependencies: [1]
 ---
@@ -28,11 +28,11 @@ dependencies: [1]
 
 ## Success Criteria
 
-- [ ] Update/assign/clear happy paths return the next ETag.
-- [ ] Replay is byte/ETag/operation-ID identical with no new effects.
-- [ ] Owner authority and optimistic-concurrency failures are side-effect free.
-- [ ] Timeline, audit, and outbox share operation/event identity and version.
-- [ ] Existing incident behavior and tests remain green.
+- [x] Update/assign/clear happy paths return the next ETag.
+- [x] Replay is byte/ETag/operation-ID identical with no new effects.
+- [x] Owner authority and optimistic-concurrency failures are side-effect free.
+- [x] Timeline, audit, and outbox share operation/event identity and version.
+- [x] Existing incident behavior and tests remain green.
 
 ## Risks
 

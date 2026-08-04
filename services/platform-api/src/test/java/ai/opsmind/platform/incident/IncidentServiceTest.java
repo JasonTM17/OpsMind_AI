@@ -192,6 +192,124 @@ class IncidentServiceTest {
     }
 
     @Test
+    void patchAssignsEligibleOwnerAndAppendsOneMetadataEvent() {
+        UUID ownerId = UUID.fromString("77777777-7777-4777-8777-777777777777");
+        PatchIncidentRequest request = new PatchIncidentRequest(
+            "API errors elevated", true, null, false, IncidentSeverity.SEV2, true,
+            ownerId, true, "primary on-call accepted ownership"
+        );
+        IncidentSnapshot updated = new IncidentSnapshot(
+            INCIDENT_ID, ORGANIZATION_ID, PROJECT_ID, "API errors elevated", "5xx spike",
+            IncidentSeverity.SEV2, IncidentStatus.OPEN, ownerId, null, null,
+            ACTOR_ID, ACTOR_ID, NOW, NOW, 1
+        );
+        when(idempotency.claim(eq(ORGANIZATION_ID), eq(ACTOR_ID), any(), any(byte[].class)))
+            .thenReturn(IdempotencyRepository.IdempotencyClaim.acquired());
+        when(incidents.findForUpdate(ORGANIZATION_ID, PROJECT_ID, INCIDENT_ID))
+            .thenReturn(java.util.Optional.of(snapshot(0, IncidentStatus.OPEN)));
+        when(incidents.patch(
+            eq(ORGANIZATION_ID), eq(PROJECT_ID), eq(INCIDENT_ID), eq(0L),
+            any(PatchIncidentRequest.class), eq(ACTOR_ID), eq(NOW)
+        )).thenReturn(updated);
+        when(runtime.now()).thenReturn(NOW);
+        when(runtime.newId()).thenReturn(OPERATION_ID, EVENT_ID);
+        when(json.incidentBody(updated)).thenReturn("{\"version\":1}");
+
+        IncidentOperationResult result = service.patch(
+            principal("incident:write"), ORGANIZATION_ID, PROJECT_ID, INCIDENT_ID,
+            new IdempotencyKey("patch-owner"), 0, request, "trace_12345678"
+        );
+
+        assertThat(result.etag()).isEqualTo("\"1\"");
+        verify(access).requireEligibleOwner(ORGANIZATION_ID, ownerId);
+        ArgumentCaptor<IncidentTimelineEvent> event = ArgumentCaptor.forClass(
+            IncidentTimelineEvent.class
+        );
+        verify(events).append(event.capture(), eq("trace_12345678"));
+        assertThat(event.getValue().eventType()).isEqualTo(IncidentTimelineEvent.METADATA_PATCHED);
+        assertThat(event.getValue().operationId()).isEqualTo(OPERATION_ID);
+        assertThat(event.getValue().metadata().ownerId()).isEqualTo(ownerId);
+        assertThat(event.getValue().incidentVersion()).isEqualTo(1);
+    }
+
+    @Test
+    void patchReplayDoesNotRevalidateOwnerOrAppendEffects() {
+        UUID ownerId = UUID.fromString("77777777-7777-4777-8777-777777777777");
+        PatchIncidentRequest request = new PatchIncidentRequest(
+            null, false, null, false, null, false, ownerId, true, "owner accepted"
+        );
+        IncidentOperationResult replayed = new IncidentOperationResult(
+            200, "{\"version\":1}", null, "\"1\"", OPERATION_ID
+        );
+        when(idempotency.claim(eq(ORGANIZATION_ID), eq(ACTOR_ID), any(), any(byte[].class)))
+            .thenReturn(IdempotencyRepository.IdempotencyClaim.replay(200, "{\"cached\":true}"));
+        when(json.replay(200, "{\"cached\":true}")).thenReturn(replayed);
+
+        IncidentOperationResult result = service.patch(
+            principal("incident:write"), ORGANIZATION_ID, PROJECT_ID, INCIDENT_ID,
+            new IdempotencyKey("patch-replay"), 0, request, null
+        );
+
+        assertThat(result).isEqualTo(replayed);
+        verify(access, never()).requireEligibleOwner(any(), any());
+        verify(incidents, never()).findForUpdate(any(), any(), any());
+        verify(incidents, never()).patch(any(), any(), any(),
+            org.mockito.ArgumentMatchers.anyLong(), any(), any(), any());
+        verify(events, never()).append(any(), any());
+    }
+
+    @Test
+    void patchStaleVersionFailsBeforeOwnerEligibilityAndEffects() {
+        UUID ownerId = UUID.fromString("77777777-7777-4777-8777-777777777777");
+        PatchIncidentRequest request = new PatchIncidentRequest(
+            null, false, null, false, null, false, ownerId, true, "owner accepted"
+        );
+        when(idempotency.claim(eq(ORGANIZATION_ID), eq(ACTOR_ID), any(), any(byte[].class)))
+            .thenReturn(IdempotencyRepository.IdempotencyClaim.acquired());
+        when(incidents.findForUpdate(ORGANIZATION_ID, PROJECT_ID, INCIDENT_ID))
+            .thenReturn(java.util.Optional.of(snapshot(1, IncidentStatus.OPEN)));
+
+        assertThatThrownBy(() -> service.patch(
+            principal("incident:write"), ORGANIZATION_ID, PROJECT_ID, INCIDENT_ID,
+            new IdempotencyKey("patch-stale"), 0, request, null
+        )).isInstanceOfSatisfying(PlatformProblemException.class, exception ->
+            assertThat(exception.code()).isEqualTo("request.if-match-stale"));
+
+        verify(access, never()).requireEligibleOwner(any(), any());
+        verify(incidents, never()).patch(any(), any(), any(),
+            org.mockito.ArgumentMatchers.anyLong(), any(), any(), any());
+        verify(events, never()).append(any(), any());
+    }
+
+    @Test
+    void ineligiblePatchOwnerRollsBackWithoutMutationOrAppend() {
+        UUID ownerId = UUID.fromString("77777777-7777-4777-8777-777777777777");
+        PatchIncidentRequest request = new PatchIncidentRequest(
+            null, false, null, false, null, false, ownerId, true, "owner accepted"
+        );
+        when(idempotency.claim(eq(ORGANIZATION_ID), eq(ACTOR_ID), any(), any(byte[].class)))
+            .thenReturn(IdempotencyRepository.IdempotencyClaim.acquired());
+        when(incidents.findForUpdate(ORGANIZATION_ID, PROJECT_ID, INCIDENT_ID))
+            .thenReturn(java.util.Optional.of(snapshot(0, IncidentStatus.OPEN)));
+        org.mockito.Mockito.doThrow(new PlatformProblemException(
+            HttpStatus.UNPROCESSABLE_CONTENT,
+            "incident.owner-ineligible",
+            "The requested incident owner is not eligible for assignment."
+        )).when(access).requireEligibleOwner(ORGANIZATION_ID, ownerId);
+
+        assertThatThrownBy(() -> service.patch(
+            principal("incident:write"), ORGANIZATION_ID, PROJECT_ID, INCIDENT_ID,
+            new IdempotencyKey("patch-ineligible"), 0, request, null
+        )).isInstanceOfSatisfying(PlatformProblemException.class, exception ->
+            assertThat(exception.code()).isEqualTo("incident.owner-ineligible"));
+
+        verify(incidents, never()).patch(any(), any(), any(),
+            org.mockito.ArgumentMatchers.anyLong(), any(), any(), any());
+        verify(events, never()).append(any(), any());
+        verify(transactionManager).rollback(transactionStatus);
+    }
+
+    @Test
     void scopeAndDatabaseRolePoliciesFailClosed() {
         assertThatThrownBy(() -> service.create(
             principal("incident:read"), ORGANIZATION_ID, PROJECT_ID,

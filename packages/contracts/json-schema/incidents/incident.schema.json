@@ -38,6 +38,12 @@
     },
     "severity": { "$ref": "./incident-types.schema.json#/$defs/severity" },
     "status": { "$ref": "./incident-types.schema.json#/$defs/status" },
+    "ownerId": {
+      "anyOf": [
+        { "$ref": "./incident-types.schema.json#/$defs/uuid" },
+        { "type": "null" }
+      ]
+    },
     "rootCause": {
       "type": ["string", "null"],
       "minLength": 1,

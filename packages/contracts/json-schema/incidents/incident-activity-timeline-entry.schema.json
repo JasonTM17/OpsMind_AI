@@ -30,7 +30,11 @@
         "source": { "const": "INCIDENT" },
         "eventType": {
           "type": "string",
-          "enum": ["INCIDENT_CREATED", "INCIDENT_STATUS_TRANSITIONED"]
+          "enum": [
+            "INCIDENT_CREATED",
+            "INCIDENT_STATUS_TRANSITIONED",
+            "INCIDENT_METADATA_PATCHED"
+          ]
         },
         "occurredAt": { "$ref": "#/$defs/occurredAt" },
         "actorId": { "$ref": "./incident-types.schema.json#/$defs/uuid" },

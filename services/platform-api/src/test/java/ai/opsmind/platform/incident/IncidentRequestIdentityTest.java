@@ -52,4 +52,24 @@ class IncidentRequestIdentityTest {
             ACTOR_A, ORGANIZATION_ID, PROJECT_ID, UUID.randomUUID(), 0, request
         ));
     }
+
+    @Test
+    void patchDigestDistinguishesAbsentOwnerFromExplicitClear() {
+        UUID incidentId = UUID.fromString("55555555-5555-4555-8555-555555555555");
+        PatchIncidentRequest titleOnly = new PatchIncidentRequest(
+            "Updated", true, null, false, null, false, null, false, "correction"
+        );
+        PatchIncidentRequest clearOwner = new PatchIncidentRequest(
+            "Updated", true, null, false, null, false, null, true, "correction"
+        );
+
+        byte[] absent = IncidentRequestIdentity.patch(
+            ACTOR_A, ORGANIZATION_ID, PROJECT_ID, incidentId, 0, titleOnly
+        );
+        byte[] cleared = IncidentRequestIdentity.patch(
+            ACTOR_A, ORGANIZATION_ID, PROJECT_ID, incidentId, 0, clearOwner
+        );
+
+        assertThat(absent).isNotEqualTo(cleared);
+    }
 }

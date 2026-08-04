@@ -53,6 +53,33 @@ final class IncidentRequestIdentity {
         return fields.digest();
     }
 
+    static byte[] patch(
+        UUID actorId,
+        UUID organizationId,
+        UUID projectId,
+        UUID incidentId,
+        long expectedVersion,
+        PatchIncidentRequest request
+    ) {
+        CanonicalFields fields = base(
+            actorId,
+            "PATCH",
+            incidentCollectionPath(organizationId, projectId) + "/" + incidentId,
+            expectedVersion
+        );
+        fields.add("titlePresent", Boolean.toString(request.hasTitle()));
+        fields.add("title", request.hasTitle() ? normalize(request.title()) : null);
+        fields.add("summaryPresent", Boolean.toString(request.hasSummary()));
+        fields.add("summary", request.hasSummary() ? normalize(request.summary()) : null);
+        fields.add("severityPresent", Boolean.toString(request.hasSeverity()));
+        fields.add("severity", request.hasSeverity() ? request.severity().name() : null);
+        fields.add("ownerIdPresent", Boolean.toString(request.hasOwnerId()));
+        fields.add("ownerId", request.hasOwnerId() && request.ownerId() != null
+            ? request.ownerId().toString() : null);
+        fields.add("reason", normalize(request.reason()));
+        return fields.digest();
+    }
+
     static String incidentCollectionPath(UUID organizationId, UUID projectId) {
         return "/api/v1/organizations/" + organizationId + "/projects/" + projectId + "/incidents";
     }
