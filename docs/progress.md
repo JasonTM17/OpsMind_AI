@@ -8,6 +8,21 @@
 - Record blockers explicitly and leave downstream phases pending.
 - Do not include secrets, raw credentials, or sensitive evidence.
 
+## 2026-08-04 — Artifact runtime merge and repository documentation refresh
+
+- PR #70 merged into `main` as `0788ee3ab6b189d5b08aaf78d0b4d6418951ada4`.
+  Required checks passed, including PostgreSQL trust contracts, Compose health,
+  Java platform/tool-gateway, Operator Web, AI Runtime, CodeQL, and Phase 8B.
+- The merged slice includes V018/V019 lifecycle capability, run-bound
+  authorized-read probing, disposable PostgreSQL lifecycle proof, validation
+  wrappers, and synchronized architecture/deployment/blocker summaries.
+- The repository guide was refreshed with a canonical documentation map and
+  evidence/status rules. Local showcase/media edits remain working-tree state
+  and are not release evidence.
+- Production readiness is still blocked by the active conditions in
+  [Blockers](./blockers.md); this merge closes the artifact runtime slice, not
+  the entire A–Z product roadmap.
+
 ## 2026-08-04 — Child checkpoints reconciled to current CI
 
 - The Phase 3 OIDC state/nonce child plan is complete. PR #64 head
