@@ -27,7 +27,7 @@ The detailed executable plan is [plans/260719-1747-opsmind-ai-production-platfor
 | 1 | Operating envelope and architecture governance | G0.5/G1 | Completed; strict contract gate passed |
 | 2 | Monorepo and developer platform foundation | G1 | Completed; clean Ubuntu/Windows bootstrap and Compose evidence passed |
 | 3 | Contracts, data, identity, and tenant foundation | G2 | In progress |
-| 4 | Incident control plane, evidence lifecycle, and audit | G2/G3 | In progress; 4A/4B, incident list, backend closure proof, and 4C metadata/upload checkpoints pass with revision-bound CI; full lifecycle remains open |
+| 4 | Incident control plane, evidence lifecycle, and audit | G2/G3 | In progress; 4A/4B, incident list, closure, generic metadata PATCH/owner assignment, and 4C metadata/upload checkpoints pass with revision-bound CI; full lifecycle remains open |
 | 5 | DeepSeek AI runtime and provider gateway | G3 | In progress; static checkpoint passed, exit gate blocked |
 | 6 | Safe Tool Gateway and read-only connectors | G3 | In progress; B-016 tenant isolation and tenant-scoped connector bulkhead checkpoints pass, broader Phase 6 exit remains BLOCK |
 | 7 | Evidence-backed incident vertical slice | G3 | In progress; metadata activity route and V009 CI fixture gates pass; external G3 blockers remain |

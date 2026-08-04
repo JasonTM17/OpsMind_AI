@@ -121,10 +121,11 @@ defense behind Java domain validation.
 
 ### Deferred until later Phase 4 checkpoints
 
-- Free-text incident search, generic patch, owner/alert assignment, resolve/close
-  UX, postmortem authoring, and evidence attachment APIs. Tenant-scoped exact-
-  status listing with deterministic live-view keyset pagination is implemented
-  by the linked child plan; it does not close the remaining breadth.
+- Free-text incident search, alert assignment, resolve/close UX, postmortem
+  authoring, and evidence attachment APIs. Generic incident metadata PATCH and
+  owner assignment are now implemented by the merged child slice; tenant-scoped
+  exact-status listing with deterministic live-view keyset pagination remains
+  implemented by the linked child plan, and neither closes the remaining breadth.
 - Evidence metadata/lifecycle implementation, malware/DLP scanning, provider
   adapter, authenticated bounded streaming, tombstone/restore/purge receipts,
   and bidirectional orphan reconciliation.
@@ -249,8 +250,9 @@ production IdP, and supported evidence backend evidence remain separate gates.
 ## Full Phase Exit Gate
 
 - [ ] Checkpoint 4A acceptance criteria pass with independently verified evidence.
-- [ ] Generic incident PATCH, owner/alert assignment, resolve/close frontend UX,
-  evidence-reference, and postmortem contracts are implemented and exercised.
+- [ ] Alert assignment, resolve/close frontend UX, evidence-reference, and
+  postmortem contracts are implemented and exercised. Generic incident PATCH
+  and owner assignment are complete with exact-head CI evidence.
 - [ ] Evidence upload/finalize/read/tombstone/pre-purge restore/purge receipt and
   orphan reconciliation pass against a supported backend decision.
 - [ ] A citation resolves immutable bytes by digest only after current tenant,
