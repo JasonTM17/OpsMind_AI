@@ -171,8 +171,12 @@ JWKS rotation refresh, browser PKCE/MFA paths, RP-initiated logout,
 old refresh-token reuse denial after rotation, refresh-token revocation, and
 disabled-user new-login proof. It deliberately
 does not claim production-vendor authorization, federation, break-glass,
-state/nonce assurance, browser/BFF session ownership, general bearer replay
-prevention, delegated-capability proof, or immediate access-token revocation.
+browser/BFF session ownership, general bearer replay prevention,
+delegated-capability proof, or immediate access-token revocation. The later
+schema-v3 reference contract adds explicit callback-state tamper denial before
+token I/O and exact ID-token nonce binding over the pinned TLS boundary. It does
+not authenticate ID-token signatures independently or widen the production
+session claim.
 
 The combined API repository originally exposed both append and lease methods,
 which made least privilege depend only on call discipline. The contracts are
@@ -187,8 +191,6 @@ payloads across tenants.
 1. Select and authorize the production enterprise IdP, then prove its
    federation, session, claim, break-glass, and revocation behavior in the
    appropriate non-production environment.
-2. Add explicit state-tamper and ID-token nonce-binding evidence to the
-   reference profile without treating it as production session conformance.
 
 No production secret, DeepSeek key, token, or private evidence is stored in
 this report or the repository.
