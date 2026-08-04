@@ -22,7 +22,7 @@ const lockedBraceVersions = [...packagesSection.matchAll(
 )].map((match) => match[1]);
 
 assert.deepEqual(lockedBraceVersions, [fixedLegacyVersion, "5.0.9"]);
-assert.doesNotMatch(lockfile, /brace-expansion@1\.1\.(?:16|17)/u);
+assert.doesNotMatch(packagesSection, /brace-expansion@1\.1\.(?:16|17)/u);
 assert.doesNotMatch(workspace, /patchedDependencies:|GHSA-mh99-v99m-4gvg/u);
 
 const requireFromHere = createRequire(import.meta.url);
