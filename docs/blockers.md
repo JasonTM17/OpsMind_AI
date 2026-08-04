@@ -56,8 +56,8 @@ Storage preflight can pass or fail at different times and is evaluated per
 command rather than moved to this section.
 
 B-003 resolution is deliberately narrow. Phase 3/G2 remains in progress:
-production IdP selection/conformance, federation, break-glass, state/nonce
-assurance, browser/BFF session ownership, and the
+production IdP selection/conformance, federation, break-glass, production
+browser/BFF session-level state/nonce assurance and ownership, and the
 other Phase 3 exit criteria are not resolved by the local transcript.
 
 ## Unresolved Questions

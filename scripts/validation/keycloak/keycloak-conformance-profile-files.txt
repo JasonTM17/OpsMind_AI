@@ -9,6 +9,7 @@ scripts/validation/keycloak/keycloak-conformance-support.ps1
 scripts/validation/keycloak/opsmind-conformance-realm.json
 scripts/validation/keycloak/oidc_browser_flow.py
 scripts/validation/keycloak/run_oidc_conformance.py
+scripts/validation/keycloak/test_oidc_browser_flow.py
 services/platform-api/pom.xml
 services/platform-api/src/main/
 services/platform-api/src/test/
