@@ -1,7 +1,7 @@
 ---
 title: "Durable Evidence Artifact Slice"
 description: "Add a Phase 4 child execution plan for durable evidence metadata, lifecycle shell, and authorization without claiming production object-store readiness."
-status: in-progress
+status: completed
 priority: P1
 effort: 16h
 branch: "feature/artifact-lifecycle-runtime"
