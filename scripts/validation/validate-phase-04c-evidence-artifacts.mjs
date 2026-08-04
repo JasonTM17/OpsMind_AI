@@ -256,6 +256,72 @@ requireMarkers(
     + "EvidenceArtifactLifecycleState.java",
   ["TOMBSTONED", "case TOMBSTONED"],
 );
+const v019 = requireMarkers(
+  "services/platform-api/src/main/resources/db/migration/"
+    + "V019__evidence_artifact_lifecycle_runtime_capability.sql",
+  [
+    "SECURITY DEFINER",
+    "session_user <> 'opsmind_app'",
+    "opsmind_current_tenant_id",
+    "opsmind_current_actor_id",
+    "clock_timestamp() - interval '5 seconds'",
+    "REVOKE ALL ON FUNCTION public.opsmind_transition_evidence_artifact",
+    "GRANT EXECUTE ON FUNCTION public.opsmind_transition_evidence_artifact",
+  ],
+);
+const artifactReadService = requireMarkers(
+  "services/platform-api/src/main/java/ai/opsmind/platform/evidence/artifact/access/"
+    + "AuthorizedArtifactReadService.java",
+  ["metadata.lifecycleState().isReadable()", "metadata.expectedDigest().equals(probe.digest())",
+    "metadata.expectedByteCount() != probe.byteCount()"],
+);
+const artifactLifecycleService = requireMarkers(
+  "services/platform-api/src/main/java/ai/opsmind/platform/evidence/artifact/lifecycle/"
+    + "ArtifactLifecycleService.java",
+  ["@Component", "metadata.authorizationEpoch() != command.authorizationEpoch()",
+    "current.canTransitionTo(target)"],
+);
+const artifactLifecycleRepository = requireMarkers(
+  "services/platform-api/src/main/java/ai/opsmind/platform/evidence/artifact/lifecycle/"
+    + "ArtifactLifecycleRepository.java",
+  ["findVisibleForUpdate", "opsmind_transition_evidence_artifact", "evidence_artifact_events",
+    "auditRepository.append", "runId"],
+);
+if (/public\s+final\s+class\s+ArtifactLifecycleRepository/u.test(artifactLifecycleRepository)) {
+  errors.push("artifact lifecycle repository must remain proxyable for Spring exception translation");
+}
+requireMarkers(
+  "services/platform-api/src/test/java/ai/opsmind/platform/evidence/artifact/lifecycle/"
+    + "ArtifactLifecycleRepositoryTest.java",
+  ["persistsMetadataEventAndAuditAsOneAuthorizedTransition",
+    "idempotentReceiptDoesNotAppendAnotherEventOrAudit", "hidesMissingArtifactsBeforeMutation",
+    "mapsDatabaseFailureToTheSafePersistenceContract"],
+);
+const artifactReconciliationService = requireMarkers(
+  "services/platform-api/src/main/java/ai/opsmind/platform/evidence/artifact/lifecycle/"
+    + "ArtifactReconciliationService.java",
+  ["OBJECT_MATCH", "OBJECT_ABSENT", "OBJECT_MISMATCH", "PURGE_CONFIRMED",
+    "command.targetState() != target"],
+);
+const lifecycleRunner = requireMarkers(
+  "scripts/validation/run-phase-04c-artifact-lifecycle-postgres-contract.sh",
+  [
+    "migrate_to 18",
+    "migrate_to 19",
+    "LifecycleV018Boundary=PASS",
+    "LifecycleV019Capability=PASS",
+    "LifecycleMetadataEventAuditAtomicity=PASS",
+    "MissingEventAuditRollback=PASS",
+    "ArtifactLifecyclePostgresContractResult=PASS",
+    "ContractCleanup=PASS",
+  ],
+);
+if (!lifecycleRunner.includes("database must differ from the primary database")) {
+  errors.push("artifact lifecycle runner must isolate the V018-to-V019 upgrade database");
+}
+if (artifactReadService.includes("InputStream") || artifactLifecycleRepository.includes("S3Client")) {
+  errors.push("Phase 3 artifact access must remain metadata/probe-only; object I/O belongs to a later adapter");
+}
 
 const storageProperties = requireMarkers(
   "services/platform-api/src/main/java/ai/opsmind/platform/evidence/artifact/"
@@ -537,8 +603,8 @@ const lines = [
   `V014NormalizedSha256=${normalizedV014Sha256}`,
   "ObjectStreaming=PHASE_02_IMPLEMENTED_DEFAULT_OFF",
   "ProductionBackendKmsConformance=EXTERNAL_EVIDENCE_REQUIRED",
-  "ArtifactIngress=DEFERRED_TO_PHASE_03",
-  "ArtifactReadability=DEFERRED_TO_PHASE_03",
+  "ArtifactIngress=METADATA_LIFECYCLE_COMMANDS_IMPLEMENTED_OBJECT_IO_DEFERRED",
+  "ArtifactReadability=AUTHORIZED_METADATA_PROBE_IMPLEMENTED_OBJECT_STREAM_DEFERRED",
   `Errors=${errors.length}`,
   `CheckpointResult=${errors.length === 0 ? "PASS" : "BLOCK"}`,
   "ArtifactLifecycleExit=BLOCK",

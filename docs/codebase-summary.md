@@ -30,7 +30,7 @@ than inferred from the compaction.
 | Phase 1 | Complete; operating-envelope and governance gates passed. |
 | Phase 2 | Complete; immutable clean-runner evidence closes G1. |
 | Phase 3 | In progress; identity, tenant/RLS, persistence, and messaging substrate exists. Production-authorized IdP conformance remains open. |
-| Phase 4 | In progress; 4A, bounded 4B, and tenant-scoped incident-list checkpoints exist, while 4C integrates V014 metadata authority with the default-off V015 fenced upload slice and passing revision-bound CI. Full Phase 4 and G2/G3 are not complete. |
+| Phase 4 | In progress; 4A, bounded 4B, and tenant-scoped incident-list checkpoints exist. Phase 4C now includes V014 metadata authority, V015 fenced upload, and V018/V019 lifecycle/access runtime shells. Full Phase 4 and G2/G3 are not complete. |
 | Phase 5 | In progress; provider-neutral analysis, DeepSeek adapter, egress guards, durable PostgreSQL state, V005 append-only probe audit, Platform API integration, and stream assembly exist. Static checkpoint passes; exit remains blocked by B-004 and missing rotated-key synthetic smoke. |
 | Phase 6 | In progress; durable PostgreSQL, synthetic Prometheus, and tenant-scoped bulkhead checkpoints pass. Artifact/broader-connector/live/provider-cancellation exit remains blocked. |
 | Phase 7 | In progress; cross-service trace, 100-warm-run fixture, CK/Stitch UI/browser E2E, and the metadata-only incident activity route plus V009 CI fixture gates pass. G3 remains blocked by live non-production connector/provider/legal conformance and BFF/session proof. |
@@ -262,10 +262,21 @@ between two current-authorization transactions.
 
 No route accepts or returns artifact bodies yet. `STORED` remains unreadable
 until scanning and `AVAILABLE`; retention, deletion receipts, restore, and
-backend/KMS conformance remain follow-up work under B-006/B-008/B-012. The
-merged-head Phase 4C run `30777514150` passes the metadata/upload checkpoint;
-the validator normalizes CRLF/CR source text so Windows and Linux apply the same
-multiline marker checks.
+backend/KMS conformance remain follow-up work under B-006/B-008/B-012. V018
+adds lifecycle state, tombstone/restore/purge-receipt/reconciliation metadata
+transitions. V019 adds one `SECURITY DEFINER` capability that the fixed
+`opsmind_app` runtime may execute only with the bound tenant and actor; direct
+`UPDATE` on `evidence_artifacts` remains denied. The run-bound
+`EvidenceArtifactReadService.authorizeReadableObject(...)` authorizes the
+incident/run scope before probing the object and returns a non-enumerating
+`evidence-artifact.not-found` failure for absent or mismatched objects. The
+disposable contract is
+`scripts/validation/run-phase-04c-artifact-lifecycle-postgres-contract.sh`:
+it requires `OPSMIND_EPHEMERAL_DB=true`, migrates a fresh throwaway database
+through V018 then V019, proves the capability boundary, checks atomic metadata
+plus event/audit settlement, and drops the database on exit. The current local
+contract is not a production backend/KMS, scanning, retention, restore, or
+release proof.
 
 V009 adds concurrent ordering indexes on both activity sources and opts that
 script out of Flyway transactions. Rollout order is migration before code;
@@ -469,7 +480,8 @@ See [Security Model](./security-model.md) for the complete threat model and
 | Platform API Maven suite | Pass | Local verification, including pgJDBC `42.7.13` and V005 migration contracts |
 | `scripts/validation/validate-phase-05-ai-runtime.mjs` | Static checkpoint PASS | Exit gate remains BLOCK: active B-004 plus absent passing rotated-key synthetic smoke |
 | `scripts/validation/validate-phase-06-tool-gateway.mjs` | Durable Prometheus connector plus tenant-scoped bulkhead checkpoint PASS with schemas, canonical fixtures, digest/manifest/OpenAPI/source abuse checks, lifecycle and eviction markers | Phase exit BLOCK: artifact adapter, remaining connector families, named live connector, and provider-specific cancellation proof |
-| `scripts/validation/validate-phase-04c-evidence-artifacts.mjs` | V014 immutability plus V015 metadata/upload/RLS/S3 source checkpoint PASS; merged-head run `30777514150` is green and object storage remains default-off | No production backend/KMS conformance; ingress/readability remain deferred |
+| `scripts/validation/validate-phase-04c-evidence-artifacts.mjs` | V014/V015 metadata/upload/RLS/S3 source checkpoint plus V018/V019 lifecycle/access markers pass; object storage remains default-off | Disposable PostgreSQL lifecycle contract and focused Java tests still need exact-revision execution; no production backend/KMS, scanning, retention, restore, or release proof |
+| `scripts/validation/run-phase-04c-artifact-lifecycle-postgres-contract.sh` | Fresh disposable PostgreSQL V018-to-V019 migration, exact-three capability boundary, run-bound transition/event/audit atomicity, direct mutation denial, and cleanup markers | Requires an explicitly disposable database and packaged Platform API JAR; local storage preflight or unavailable PostgreSQL can block execution |
 | `scripts/validation/validate-phase-07-investigation-slice.mjs` | Artifact `8649696519` records OperatorWorkspace/CrossService/Checkpoint/PhaseExit PASS; Scenario A has 100 warm runs | G3 still requires live provider/connector/legal and BFF/session proof |
 | `scripts/validation/validate-phase-08-evaluation-foundation.mjs` | Six schemas, ten families/three implemented, three results/eight metrics/four negative cases, zero errors, checkpoint PASS | Phase exit BLOCK; held-out and human inputs unavailable |
 | `scripts/validation/validate-phase-09-workflow-handoff.mjs` | Integration static gate PASS with V010-V013, one Temporal pin, 18 payload fields, seven required test files, and zero errors | Static output alone; pair with PR #45 revision-bound restart/replay and compatible-poller evidence. It does not prove production namespace authorization |

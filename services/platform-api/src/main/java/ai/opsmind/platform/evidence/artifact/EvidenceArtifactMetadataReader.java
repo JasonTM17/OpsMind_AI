@@ -44,16 +44,31 @@ public class EvidenceArtifactMetadataReader {
             scope.actorId(), scope.authorizationEpoch());
     }
 
-    public Optional<EvidenceArtifactMetadata> findVisibleForUpdate(
+    public Optional<EvidenceArtifactMetadata> findVisible(
         AuthorizedIncidentAnalysisScope scope,
+        UUID runId,
         UUID artifactId
     ) {
         return query("""
-            WHERE organization_id = ? AND project_id = ? AND incident_id = ? AND artifact_id = ?
+            WHERE organization_id = ? AND project_id = ? AND incident_id = ? AND run_id = ?
+              AND artifact_id = ?
+              AND actor_id = ? AND authorization_epoch = ?
+            """, scope.organizationId(), scope.projectId(), scope.incidentId(), runId,
+            artifactId, scope.actorId(), scope.authorizationEpoch());
+    }
+
+    public Optional<EvidenceArtifactMetadata> findVisibleForUpdate(
+        AuthorizedIncidentAnalysisScope scope,
+        UUID runId,
+        UUID artifactId
+    ) {
+        return query("""
+            WHERE organization_id = ? AND project_id = ? AND incident_id = ? AND run_id = ?
+              AND artifact_id = ?
               AND actor_id = ? AND authorization_epoch = ?
             FOR UPDATE
-            """, scope.organizationId(), scope.projectId(), scope.incidentId(), artifactId,
-            scope.actorId(), scope.authorizationEpoch());
+            """, scope.organizationId(), scope.projectId(), scope.incidentId(), runId,
+            artifactId, scope.actorId(), scope.authorizationEpoch());
     }
 
     private Optional<EvidenceArtifactMetadata> query(String condition, Object... values) {
