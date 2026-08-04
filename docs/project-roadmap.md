@@ -82,8 +82,10 @@ production gates remain open, so Phase 4 and G2 are not complete.
 PR #59 (`3bad910`, tested head `13a0224`) additionally proves the existing
 backend `OPEN -> INVESTIGATING -> RESOLVED -> CLOSED` path, retained resolution
 fields, replay identity, terminal CLOSED behavior, and zero-effect rejection in
-exact-head PostgreSQL CI. Generic PATCH, owner/alert assignment, resolve/close
-frontend UX, postmortems, and the governed artifact lifecycle remain open.
+exact-head PostgreSQL CI. Generic metadata PATCH and owner assignment are now
+merged in PR #66 with exact-head PostgreSQL/upgrade evidence. Alert assignment,
+resolve/close frontend UX, postmortems, and the governed artifact lifecycle
+remain open.
 
 Phase 4C now includes V014 metadata authority and the integrated V015
 default-off upload slice. V015 adds durable lease-fenced attempts, a bounded
