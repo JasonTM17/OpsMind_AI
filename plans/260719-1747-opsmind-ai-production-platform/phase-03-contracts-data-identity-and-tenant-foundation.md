@@ -56,12 +56,13 @@ live matrix proves no-context denial, one-tenant-per-transaction binding,
 bounded scheduling, API/dispatcher privilege separation, and context reset.
 
 The 2026-07-21 local Windows Keycloak 26.7 reference run passes the real
-non-production IdP integration criterion. The phase remains **in progress**:
-the transcript is ignored, revision-unborn/dirty, and explicitly
-`REFERENCE_CONFORMANCE_NOT_PRODUCTION`; the configured Linux CI job has not run
-remotely, production identity remains unselected/unproven, and broader G2 exit
-criteria remain open. No external dispatcher process is enabled; Phase 9 owns
-that runtime and target handoff after this database boundary.
+non-production IdP integration criterion. PR #61 then supplied immutable Linux
+reference evidence: head `905395f`, PR Quality run `30872670122`, and Keycloak
+job `91878531998` passed; merge `ed2a395` has the identical tree `ed9138d`.
+The phase remains **in progress** because this is explicitly reference
+conformance, not a production vendor/session decision. Production identity and
+broader G2 exit criteria remain open. No external dispatcher process is enabled;
+Phase 9 owns that runtime and target handoff after this database boundary.
 
 ## Objective
 
@@ -178,7 +179,8 @@ Implement the standards-based OIDC resource-server boundary and a real local/ref
 - [x] Alternating-tenant pool/context suite, non-owner/`BYPASSRLS` checks and background-job matrix pass 100% before any new tenant table is accepted.
 - [x] One real local/reference non-production IdP integration passes; no custom refresh-token cryptography or unresolved reference claim mapping remains. This does not authorize a production vendor or close the broader identity/session gate.
 - [x] Outbox/inbox crash, duplicate, ordering and orphan-reconciliation tests pass with one logical local side effect per event.
-- [ ] Production enterprise IdP/session conformance and the configured remote Linux identity job pass with immutable revision-bound evidence.
+- [x] The configured remote Linux Keycloak reference job passes with immutable revision-bound evidence: PR #61 head `905395f`, run `30872670122`, job `91878531998`; merge `ed2a395` has identical tree `ed9138d`.
+- [ ] Production enterprise IdP/session conformance passes with accountable vendor, federation/claim mapping, browser/session ownership, break-glass, and revocation evidence.
 
 ## Risks and Mitigations
 

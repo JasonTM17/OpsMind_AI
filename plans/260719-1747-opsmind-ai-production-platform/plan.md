@@ -67,13 +67,11 @@ Accepted scope remains full A-to-Z, but delivery is gate-driven: the approved G0
 | 15 | [Security Reliability and Observability Hardening](./phase-15-security-reliability-and-observability-hardening.md) | Pending |
 | 16 | [Delivery Disaster Recovery and Final Verification](./phase-16-delivery-disaster-recovery-and-final-verification.md) | Pending |
 
-Phase 3 remains in progress. A 2026-07-21 local Windows run against
-digest-pinned Keycloak 26.7 passes schema-v2, including independent refresh
-families for rotation/reuse and revocation controls. The profile/JAR verifier
-also passes, but the ignored transcript is marked
-`REFERENCE_CONFORMANCE_NOT_PRODUCTION` and records an unborn/dirty worktree.
-The configured Linux CI identity job has not run remotely, and no production
-IdP decision or broader G2 completion is inferred.
+Phase 3 remains in progress. Local Windows schema-v2 reference conformance
+passes, and PR #61 supplies revision-bound Linux proof: head `905395f`, PR
+Quality run `30872670122`, Keycloak job `91878531998`, and merge `ed2a395` share
+tree `ed9138d`. These runs remain `REFERENCE_CONFORMANCE_NOT_PRODUCTION`; no
+production IdP/session decision or broader G2 completion is inferred.
 
 Phase 4 remains in progress. Checkpoint 4A provides an organization/project-scoped
 incident write ledger proving create/read/transition, tenant authorization,
