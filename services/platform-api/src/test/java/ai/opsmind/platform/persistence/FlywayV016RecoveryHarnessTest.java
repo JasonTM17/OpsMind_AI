@@ -138,6 +138,8 @@ class FlywayV016RecoveryHarnessTest {
         }
         execute(connection, "GRANT opsmind_context_resolver, opsmind_dispatch_resolver TO "
             + quotedRole + " WITH INHERIT TRUE, SET TRUE");
+        execute(connection, "GRANT USAGE, CREATE ON SCHEMA public TO "
+            + "opsmind_context_resolver, opsmind_dispatch_resolver");
     }
 
     private static void transferV016Ownership(
