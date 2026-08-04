@@ -1,7 +1,7 @@
 ---
 phase: 3
 title: "Authorized read tombstone and reconciliation shell"
-status: in-progress
+status: completed
 effort: "5h"
 ---
 
@@ -100,14 +100,27 @@ from Phase 2 except through their public interfaces.
 
 ## Success Criteria
 
-- [ ] Artifact read requires tenant/project/incident/run authorization plus auth
+- [x] Artifact read requires tenant/project/incident/run authorization plus auth
   epoch and lifecycle checks.
-- [ ] Tombstone, restore, deletion-request, purge receipt, and reconciliation
+- [x] Tombstone, restore, deletion-request, purge receipt, and reconciliation
   have explicit metadata transitions and tests.
-- [ ] Missing or foreign artifacts return non-enumerating failures.
-- [ ] Audit/event/prompt payloads remain metadata-only; no raw object bytes leak.
-- [ ] Tool Gateway and prompt assembly still reject provider-visible artifact
+- [x] Missing or foreign artifacts return non-enumerating failures.
+- [x] Audit/event/prompt payloads remain metadata-only; no raw object bytes leak.
+- [x] Tool Gateway and prompt assembly still reject provider-visible artifact
   references until a later cross-service contract lands.
+
+## Evidence and limits
+
+- Revision-bound implementation is present in V018/V019, `artifact/access/**`,
+  and `artifact/lifecycle/**`.
+- `node scripts/validation/validate-phase-04c-evidence-artifacts.mjs` passes
+  with `Errors=0` and reports metadata lifecycle/read/reconciliation implemented.
+- Pure lifecycle/access/reconciliation tests, a run-bound authorized probe entry
+  point, and the least-privilege runtime capability are present. Exact-revision
+  focused Java, full-module, and disposable PostgreSQL contracts pass; CI now
+  runs the lifecycle contract.
+- Object stream opening, production storage/KMS, scanning, retention/deletion,
+  restore, and provider-visible artifact analysis remain outside this phase.
 
 ## Risk Assessment
 

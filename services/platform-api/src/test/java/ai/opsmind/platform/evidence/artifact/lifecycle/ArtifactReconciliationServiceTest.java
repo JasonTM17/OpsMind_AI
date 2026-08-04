@@ -17,17 +17,18 @@ class ArtifactReconciliationServiceTest {
         new EvidenceArtifactDigest("sha256:cccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc");
 
     @Test
-    void rebindsMatchingUploadAndMarksMissingPendingUploadOrphaned() {
+    void defersMatchingUploadSettlementAndMarksMissingStoredObjectOrphaned() {
         var service = new ArtifactReconciliationService();
         var command = new ArtifactLifecycleCommand(ACTOR, 7, DIGEST,
             EvidenceArtifactLifecycleState.STORED, "reconcile", Instant.now());
         var rebound = service.reconcile(metadata(EvidenceArtifactLifecycleState.PENDING_UPLOAD), command,
             ArtifactReconciliationObservation.OBJECT_MATCH);
-        assertEquals(ArtifactReconciliationOutcome.REBOUND_STORED, rebound.outcome());
+        assertEquals(ArtifactReconciliationOutcome.UPLOAD_SETTLEMENT_REQUIRED, rebound.outcome());
 
+        var stored = metadata(EvidenceArtifactLifecycleState.STORED);
         var orphanCommand = new ArtifactLifecycleCommand(ACTOR, 7, DIGEST,
             EvidenceArtifactLifecycleState.ORPHANED, "reconcile", Instant.now());
-        var orphan = service.reconcile(metadata(EvidenceArtifactLifecycleState.PENDING_UPLOAD), orphanCommand,
+        var orphan = service.reconcile(stored, orphanCommand,
             ArtifactReconciliationObservation.OBJECT_ABSENT);
         assertEquals(ArtifactReconciliationOutcome.MARKED_ORPHANED, orphan.outcome());
     }

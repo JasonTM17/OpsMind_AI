@@ -1,7 +1,7 @@
 ---
 phase: 4
 title: "Validation docs and release gates"
-status: pending
+status: completed
 effort: "3h"
 ---
 
@@ -79,11 +79,11 @@ symbol reference.
 
 ## Success Criteria
 
-- [ ] A dedicated artifact-slice validator exists and passes.
-- [ ] The 4B validator still protects V007 without blocking additive V014 work.
-- [ ] Disposable PostgreSQL artifact-lifecycle tests pass.
-- [ ] Docs state exactly what the slice proves and what remains blocked.
-- [ ] No documentation or validator text implies B-012/B-011 closure.
+- [x] A dedicated artifact-slice validator exists and passes.
+- [x] The 4B validator still protects V007 without blocking additive V014 work.
+- [x] Disposable PostgreSQL artifact-lifecycle tests pass.
+- [x] Docs state exactly what the slice proves and what remains blocked.
+- [x] No documentation or validator text implies B-012/B-011 closure.
 
 ## Risk Assessment
 

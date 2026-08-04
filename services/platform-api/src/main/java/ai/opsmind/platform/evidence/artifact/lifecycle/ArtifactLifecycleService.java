@@ -3,7 +3,10 @@ package ai.opsmind.platform.evidence.artifact.lifecycle;
 import ai.opsmind.platform.evidence.artifact.EvidenceArtifactMetadata;
 import ai.opsmind.platform.evidence.artifact.access.ArtifactAccessDeniedException;
 
+import org.springframework.stereotype.Component;
+
 /** Pure lifecycle policy; persistence and object deletion remain explicit external operations. */
+@Component
 public final class ArtifactLifecycleService {
     public ArtifactLifecycleTransition transition(
         EvidenceArtifactMetadata metadata, ArtifactLifecycleCommand command

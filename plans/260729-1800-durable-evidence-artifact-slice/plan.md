@@ -1,10 +1,10 @@
 ---
 title: "Durable Evidence Artifact Slice"
 description: "Add a Phase 4 child execution plan for durable evidence metadata, lifecycle shell, and authorization without claiming production object-store readiness."
-status: in-progress
+status: completed
 priority: P1
 effort: 16h
-branch: "main"
+branch: "feature/artifact-lifecycle-runtime"
 tags: [feature, backend, database, security, artifact-lifecycle]
 blockedBy: []
 blocks: []
@@ -77,8 +77,8 @@ exist.
 |-------|------|--------|
 | 1 | [Metadata authority and migration](./phase-01-metadata-authority-and-migration.md) | Completed |
 | 2 | [Upload finalize adapter shell](./phase-02-upload-finalize-adapter-shell.md) | Completed |
-| 3 | [Authorized read tombstone and reconciliation shell](./phase-03-authorized-read-tombstone-and-reconciliation-shell.md) | In progress |
-| 4 | [Validation docs and release gates](./phase-04-validation-docs-and-release-gates.md) | Pending |
+| 3 | [Authorized read tombstone and reconciliation shell](./phase-03-authorized-read-tombstone-and-reconciliation-shell.md) | Completed |
+| 4 | [Validation docs and release gates](./phase-04-validation-docs-and-release-gates.md) | Completed |
 
 ## Verified history
 
@@ -86,7 +86,12 @@ exist.
   (`1da9787`) with the additive, forced-RLS contract.
 - Phase 2 upload/finalize fencing is present in V015 and was merged in PR #46
   (`1f87187`); revision-bound CI also covers the integrated V014/V015 path.
-- Phase 3 lifecycle controls and Phase 4 release reconciliation remain open.
+- Phase 3 lifecycle controls are implemented with V018 metadata transitions,
+  the V019 least-privilege runtime capability, run-bound authorized probe
+  entry point, explicit reconciliation commands, and persistence wiring on
+  `feature/artifact-lifecycle-runtime`. Focused Java, full module, and
+  disposable PostgreSQL evidence passes. Phase 4 release reconciliation and
+  production backend/KMS evidence remain open.
 
 ## Dependencies
 

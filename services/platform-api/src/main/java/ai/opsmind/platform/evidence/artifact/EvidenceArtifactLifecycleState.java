@@ -23,10 +23,10 @@ public enum EvidenceArtifactLifecycleState {
         return switch (this) {
             case PENDING_UPLOAD -> Set.of(STORED, FAILED, ORPHANED).contains(target);
             case STORED -> Set.of(SCANNING, FAILED, ORPHANED).contains(target);
-            case SCANNING -> Set.of(AVAILABLE, QUARANTINED, FAILED).contains(target);
-            case AVAILABLE -> Set.of(HELD, TOMBSTONED, DELETION_REQUESTED, EXPIRED).contains(target);
-            case QUARANTINED -> Set.of(TOMBSTONED, DELETION_REQUESTED, PURGED).contains(target);
-            case HELD -> Set.of(AVAILABLE, TOMBSTONED, DELETION_REQUESTED).contains(target);
+            case SCANNING -> Set.of(AVAILABLE, QUARANTINED, FAILED, ORPHANED).contains(target);
+            case AVAILABLE -> Set.of(HELD, TOMBSTONED, DELETION_REQUESTED, EXPIRED, ORPHANED).contains(target);
+            case QUARANTINED -> Set.of(TOMBSTONED, DELETION_REQUESTED, PURGED, ORPHANED).contains(target);
+            case HELD -> Set.of(AVAILABLE, TOMBSTONED, DELETION_REQUESTED, ORPHANED).contains(target);
             case TOMBSTONED -> Set.of(AVAILABLE, HELD, PURGED).contains(target);
             case DELETION_REQUESTED, EXPIRED -> Set.of(TOMBSTONED, PURGED, HELD).contains(target);
             case PURGED -> target == RECEIPT_RECORDED;
