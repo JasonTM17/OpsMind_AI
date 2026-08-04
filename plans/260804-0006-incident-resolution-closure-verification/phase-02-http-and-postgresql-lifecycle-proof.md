@@ -39,11 +39,11 @@ Exercise the existing public transition boundary through a complete authenticate
 
 ## Success Criteria
 
-- [ ] Public HTTP lifecycle reaches CLOSED with monotonic ETags.
-- [ ] Closure replay is byte/ETag/operation-ID identical.
-- [ ] CLOSED is terminal at the public persistence boundary.
-- [ ] Negative operations append zero durable effects.
-- [ ] No production route/state-machine/migration change unless tests expose a defect.
+- [x] Public HTTP lifecycle reaches CLOSED with monotonic ETags.
+- [x] Closure replay is byte/ETag/operation-ID identical.
+- [x] CLOSED is terminal at the public persistence boundary.
+- [x] Negative operations append zero durable effects.
+- [x] No production route/state-machine/migration change unless tests expose a defect.
 
 ## Risks
 
