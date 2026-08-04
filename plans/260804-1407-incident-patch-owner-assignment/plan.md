@@ -3,7 +3,7 @@ title: Incident patch and owner assignment
 description: >-
   Add a replay-safe optimistic-concurrency PATCH contract for mutable incident
   fields and authoritative active-member owner assignment.
-status: in-progress
+status: completed
 priority: P1
 branch: feature/incident-patch-owner-assignment
 tags:
@@ -55,7 +55,7 @@ model, and never bypasses tenant, membership, ETag, or append-only guarantees.
 |---|---|---|
 | 1 | [Contract and threat boundary](./phase-01-contract-and-threat-boundary.md) | Completed |
 | 2 | [Transactional command and persistence](./phase-02-transactional-command-and-persistence.md) | Completed |
-| 3 | [PostgreSQL proof and gate reconciliation](./phase-03-postgresql-proof-and-gate-reconciliation.md) | In progress |
+| 3 | [PostgreSQL proof and gate reconciliation](./phase-03-postgresql-proof-and-gate-reconciliation.md) | Completed |
 
 ## Dependencies
 
