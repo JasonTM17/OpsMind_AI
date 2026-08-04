@@ -253,7 +253,7 @@ BEGIN
        AND attempt.upload_attempt_id = NEW.upload_attempt_id
      WHERE artifact.organization_id = NEW.organization_id
        AND artifact.artifact_id = NEW.artifact_id
-     FOR KEY SHARE;
+     FOR KEY SHARE OF artifact;
     IF NOT FOUND
        OR NEW.project_id IS DISTINCT FROM artifact_row.project_id
        OR NEW.incident_id IS DISTINCT FROM artifact_row.incident_id
@@ -320,6 +320,115 @@ DROP TRIGGER evidence_artifact_events_validate_append ON evidence_artifact_event
 CREATE TRIGGER evidence_artifact_events_validate_append
     BEFORE INSERT ON evidence_artifact_events
     FOR EACH ROW EXECUTE FUNCTION opsmind_validate_evidence_artifact_event_append();
+
+ALTER FUNCTION public.opsmind_evidence_artifact_audit_matches(public.audit_events)
+    RENAME TO opsmind_evidence_artifact_audit_matches_v015;
+
+CREATE OR REPLACE FUNCTION opsmind_evidence_artifact_audit_matches(
+    p_audit public.audit_events
+) RETURNS boolean
+LANGUAGE plpgsql
+SECURITY DEFINER
+STABLE
+SET search_path = pg_catalog, public, pg_temp AS $$
+DECLARE
+    artifact_row record;
+    base_payload_keys text[] := ARRAY[
+        'eventId', 'organizationId', 'projectId', 'incidentId', 'runId',
+        'artifactId', 'actorId', 'lifecycleVersion', 'lifecycleState',
+        'fromState', 'toState', 'occurredAt'
+    ];
+BEGIN
+    IF p_audit.action IN ('ARTIFACT_PENDING_UPLOAD', 'ARTIFACT_STORED') THEN
+        RETURN public.opsmind_evidence_artifact_audit_matches_v015(p_audit);
+    END IF;
+    IF p_audit.action IS DISTINCT FROM 'ARTIFACT_LIFECYCLE_CHANGED' THEN
+        RETURN false;
+    END IF;
+
+    SELECT event_row.event_id, event_row.organization_id, event_row.project_id,
+           event_row.incident_id, event_row.run_id, event_row.artifact_id,
+           event_row.actor_id, event_row.lifecycle_version,
+           event_row.lifecycle_from_state, event_row.lifecycle_to_state,
+           event_row.occurred_at, event_row.audit_event_id,
+           event_row.upload_attempt_id,
+           artifact.lifecycle_state AS authoritative_state,
+           artifact.lifecycle_version AS authoritative_version
+      INTO artifact_row
+      FROM public.evidence_artifact_events event_row
+      JOIN public.evidence_artifacts artifact
+        ON artifact.organization_id = event_row.organization_id
+       AND artifact.artifact_id = event_row.artifact_id
+     WHERE event_row.event_id = p_audit.event_id
+       AND event_row.organization_id = p_audit.organization_id;
+
+    IF NOT FOUND
+       OR p_audit.actor_id IS DISTINCT FROM artifact_row.actor_id
+       OR p_audit.resource_type IS DISTINCT FROM 'evidence_artifact'
+       OR p_audit.resource_id IS DISTINCT FROM artifact_row.artifact_id::text
+       OR p_audit.correlation_id IS DISTINCT FROM artifact_row.artifact_id
+       OR p_audit.occurred_at IS DISTINCT FROM artifact_row.occurred_at
+       OR artifact_row.audit_event_id IS DISTINCT FROM p_audit.event_id
+       OR artifact_row.lifecycle_version < 3
+       OR artifact_row.lifecycle_from_state IS NULL
+       OR artifact_row.lifecycle_from_state = artifact_row.lifecycle_to_state
+       OR artifact_row.upload_attempt_id IS NOT NULL
+       OR artifact_row.event_id IS DISTINCT FROM
+            public.opsmind_evidence_artifact_control_event_id(
+                artifact_row.organization_id,
+                artifact_row.artifact_id,
+                artifact_row.lifecycle_version
+            )
+       OR artifact_row.authoritative_state IS DISTINCT FROM artifact_row.lifecycle_to_state
+       OR artifact_row.authoritative_version IS DISTINCT FROM artifact_row.lifecycle_version
+       OR jsonb_typeof(p_audit.payload -> 'eventId') IS DISTINCT FROM 'string'
+       OR jsonb_typeof(p_audit.payload -> 'organizationId') IS DISTINCT FROM 'string'
+       OR jsonb_typeof(p_audit.payload -> 'projectId') IS DISTINCT FROM 'string'
+       OR jsonb_typeof(p_audit.payload -> 'incidentId') IS DISTINCT FROM 'string'
+       OR jsonb_typeof(p_audit.payload -> 'runId') IS DISTINCT FROM 'string'
+       OR jsonb_typeof(p_audit.payload -> 'artifactId') IS DISTINCT FROM 'string'
+       OR jsonb_typeof(p_audit.payload -> 'actorId') IS DISTINCT FROM 'string'
+       OR jsonb_typeof(p_audit.payload -> 'lifecycleVersion') IS DISTINCT FROM 'number'
+       OR jsonb_typeof(p_audit.payload -> 'lifecycleState') IS DISTINCT FROM 'string'
+       OR jsonb_typeof(p_audit.payload -> 'fromState') IS DISTINCT FROM 'string'
+       OR jsonb_typeof(p_audit.payload -> 'toState') IS DISTINCT FROM 'string'
+       OR jsonb_typeof(p_audit.payload -> 'occurredAt') IS DISTINCT FROM 'string'
+       OR p_audit.payload ->> 'eventId' IS DISTINCT FROM artifact_row.event_id::text
+       OR p_audit.payload ->> 'organizationId'
+            IS DISTINCT FROM artifact_row.organization_id::text
+       OR p_audit.payload ->> 'projectId' IS DISTINCT FROM artifact_row.project_id::text
+       OR p_audit.payload ->> 'incidentId' IS DISTINCT FROM artifact_row.incident_id::text
+       OR p_audit.payload ->> 'runId' IS DISTINCT FROM artifact_row.run_id::text
+       OR p_audit.payload ->> 'artifactId' IS DISTINCT FROM artifact_row.artifact_id::text
+       OR p_audit.payload ->> 'actorId' IS DISTINCT FROM artifact_row.actor_id::text
+       OR p_audit.payload ->> 'lifecycleVersion'
+            IS DISTINCT FROM artifact_row.lifecycle_version::text
+       OR p_audit.payload ->> 'lifecycleState'
+            IS DISTINCT FROM artifact_row.lifecycle_to_state
+       OR p_audit.payload ->> 'fromState'
+            IS DISTINCT FROM artifact_row.lifecycle_from_state
+       OR p_audit.payload ->> 'toState' IS DISTINCT FROM artifact_row.lifecycle_to_state
+       OR (p_audit.payload ->> 'occurredAt')::timestamptz
+            IS DISTINCT FROM artifact_row.occurred_at
+       OR (
+            p_audit.payload ? 'reason'
+            AND (
+                jsonb_typeof(p_audit.payload -> 'reason') IS DISTINCT FROM 'string'
+                OR p_audit.payload ->> 'reason' !~ '^[a-z0-9][a-z0-9._-]{0,127}$'
+            )
+       ) THEN
+        RETURN false;
+    END IF;
+
+    RETURN public.opsmind_json_object_has_exact_keys(
+        p_audit.payload,
+        CASE WHEN p_audit.payload ? 'reason'
+            THEN array_append(base_payload_keys, 'reason')
+            ELSE base_payload_keys
+        END
+    );
+END
+$$;
 
 CREATE OR REPLACE FUNCTION opsmind_require_evidence_artifact_control_event() RETURNS trigger
 LANGUAGE plpgsql
@@ -431,6 +540,12 @@ REVOKE ALL ON FUNCTION public.opsmind_validate_evidence_artifact_update_v015() F
 REVOKE ALL ON FUNCTION public.opsmind_validate_evidence_artifact_update() FROM PUBLIC;
 REVOKE ALL ON FUNCTION public.opsmind_validate_evidence_artifact_event_append_v015() FROM PUBLIC;
 REVOKE ALL ON FUNCTION public.opsmind_validate_evidence_artifact_event_append() FROM PUBLIC;
+REVOKE ALL ON FUNCTION public.opsmind_evidence_artifact_audit_matches_v015(
+    public.audit_events
+) FROM PUBLIC;
+REVOKE ALL ON FUNCTION public.opsmind_evidence_artifact_audit_matches(
+    public.audit_events
+) FROM PUBLIC;
 REVOKE ALL ON FUNCTION public.opsmind_require_evidence_artifact_control_event() FROM PUBLIC;
 GRANT EXECUTE ON FUNCTION public.opsmind_evidence_artifact_control_event_id(
     uuid, uuid, bigint
