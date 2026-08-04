@@ -39,6 +39,7 @@ class FlywayV016RecoveryHarnessTest {
             connection.setAutoCommit(true);
             assertThat(successfulVersion(connection)).isEqualTo("15");
             assertRestrictedMigrationRole(connection, settings.migrationUsername());
+            grantMigrationResolverRoles(connection, settings.migrationUsername());
             transferV016Ownership(connection, settings.migrationUsername());
             seedDuplicateOrganizationRows(connection);
             createInvalidStatusIndex(connection);
@@ -121,6 +122,21 @@ class FlywayV016RecoveryHarnessTest {
                 assertThat(result.getBoolean(1)).isTrue();
             }
         }
+    }
+
+    private static void grantMigrationResolverRoles(
+        Connection connection,
+        String migrationUsername
+    ) throws SQLException {
+        String quotedRole;
+        try (PreparedStatement statement = connection.prepareStatement("SELECT quote_ident(?)")) {
+            statement.setString(1, migrationUsername);
+            try (ResultSet result = statement.executeQuery()) {
+                assertThat(result.next()).isTrue();
+                quotedRole = result.getString(1);
+            }
+        }
+        execute(connection, "GRANT opsmind_context_resolver, opsmind_dispatch_resolver TO " + quotedRole);
     }
 
     private static void transferV016Ownership(
