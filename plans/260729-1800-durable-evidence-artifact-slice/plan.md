@@ -77,7 +77,7 @@ exist.
 |-------|------|--------|
 | 1 | [Metadata authority and migration](./phase-01-metadata-authority-and-migration.md) | Completed |
 | 2 | [Upload finalize adapter shell](./phase-02-upload-finalize-adapter-shell.md) | Completed |
-| 3 | [Authorized read tombstone and reconciliation shell](./phase-03-authorized-read-tombstone-and-reconciliation-shell.md) | Pending |
+| 3 | [Authorized read tombstone and reconciliation shell](./phase-03-authorized-read-tombstone-and-reconciliation-shell.md) | In progress |
 | 4 | [Validation docs and release gates](./phase-04-validation-docs-and-release-gates.md) | Pending |
 
 ## Verified history

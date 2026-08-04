@@ -1,7 +1,7 @@
 ---
 phase: 3
 title: "Authorized read tombstone and reconciliation shell"
-status: pending
+status: in-progress
 effort: "5h"
 ---
 
