@@ -49,10 +49,10 @@ response after validation. Do not add nonce logic to refresh/revocation paths.
 
 ## Success Criteria
 
-- [ ] State tamper never invokes `token_request`.
-- [ ] Every invalid ID-token/nonce shape fails closed with bounded errors; exact
+- [x] State tamper never invokes `token_request`.
+- [x] Every invalid ID-token/nonce shape fails closed with bounded errors; exact
   match succeeds and returns the original dictionary object.
-- [ ] Existing flow signatures and callers are coherently updated.
+- [x] Existing flow signatures and callers are coherently updated.
 
 ## Risk Assessment
 

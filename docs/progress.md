@@ -8,6 +8,25 @@
 - Record blockers explicitly and leave downstream phases pending.
 - Do not include secrets, raw credentials, or sensitive evidence.
 
+## 2026-08-04 — Child checkpoints reconciled to current CI
+
+- The Phase 3 OIDC state/nonce child plan is complete. PR #64 head
+  `f29638e81b483c3c95cfe995ce5ba729681793e8` passed PR Quality run
+  `30881416141`, including Keycloak job `91904344586`, and merged as
+  `57ac8498529ef9c093f65ee77fbc579a515359ca`. Production IdP selection,
+  BFF/session conformance, federation, break-glass, and parent Phase 3/G2 remain
+  open.
+- Phase 4C V014/V015 default-off bounded upload-port Phase 2 is complete. PR
+  #46 head `95c0b6ba203aba5c280aa9223ee6b4a369de6d7d`, merge
+  `1f87187aff1ce56d577ad8df944ccf74dbfc3fdf`, and run `30777514150` pass;
+  current run `30881416141`, PostgreSQL job `91904344606`, keeps the integrated
+  contract green. Controlled ingress, scanning, `AVAILABLE`, hold/delete/purge,
+  restore, supported backend/KMS conformance, Phase 3 of the artifact plan, and
+  B-006/B-008/B-012 remain open.
+- Phase 8B is revision-bound complete, and current cross-service run
+  `30881416173` passes. Parent Phase 8 remains `BLOCK` on B-013 held-out cases,
+  qualified human records/adjudication, calibration, and human comparison.
+
 ## 2026-08-03 — Phase 9 repository-owned runtime conformance complete
 
 PR #45 head `96edefc16a5a92442888725ca31c6db2e4b2a0c6`, merge
@@ -585,10 +604,12 @@ Verified locally on Windows:
   above remains local reference evidence rather than being retroactively
   promoted.
 
-This resolves B-003 only for the local/reference non-production IdP scope. It
-does not authorize a production IdP or prove federation, break-glass,
-state/nonce assurance, browser/BFF session ownership, general bearer replay
-prevention, delegated capabilities, or immediate access-token revocation.
+The schema-v2 checkpoint resolved B-003 only for the local/reference
+non-production IdP scope. At that time it did not prove state/nonce assurance
+or authorize a production IdP, federation, break-glass, browser/BFF session
+ownership, general bearer replay prevention, delegated capabilities, or
+immediate access-token revocation. The later schema-v3 state/nonce child proof
+is recorded above; production BFF/session conformance remains open.
 
 Still open:
 
@@ -844,18 +865,17 @@ retryable transport failures: the former settle `ORPHANED` and cannot later be
 HEAD-adopted, while a definitive `FAILED` attempt preserves its lease tuple and
 can be reclaimed immediately. The disposable database runner now proves both
 paths. The Phase 4C static validator passes with V014's normalized hash
-unchanged. PR
-Quality is wired for the V014-to-V015 real-role PostgreSQL contract, but the
-integrated revision has not yet produced revision-bound remote CI evidence.
+unchanged. This historical CI gap is now closed by PR #46/run `30777514150`
+and current run `30881416141`, whose PostgreSQL job `91904344606` passes the
+V014-to-V015 real-role contract.
 `STORED` remains unreadable; Phase 03 ingress, scanning, availability,
 retention/deletion receipts, restore, and B-006/B-008/B-012 are still open.
 
 ## Next Allowed Work
 
-1. Prove the integrated Phase 4C upload slice in revision-bound CI, then add
-   controlled ingress, scanning, `AVAILABLE`, reconciliation, retention,
-   deletion receipts, and production IdP federation/session/break-glass/
-   revocation conformance.
+1. Add controlled ingress, scanning, `AVAILABLE`, reconciliation, retention,
+   deletion receipts, restore, supported backend/KMS conformance, and production
+   IdP federation/session/break-glass/revocation conformance.
 2. Authorize and prove the named live non-production connector plus provider/
    legal egress; fixture-backed Phase 7 evidence is not a substitute.
 3. Register governed held-out cases and qualified human adjudication for B-013.

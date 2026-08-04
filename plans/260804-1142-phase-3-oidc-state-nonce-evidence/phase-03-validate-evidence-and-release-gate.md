@@ -1,7 +1,7 @@
 ---
 phase: 3
 title: Validate evidence and release gate
-status: in-progress
+status: completed
 priority: P1
 effort: 60m
 dependencies:
@@ -42,9 +42,15 @@ the full review/CI landing gates.
 
 ## Success Criteria
 
-- [ ] Closed evidence v3 validates and v2 cannot satisfy the verifier.
-- [ ] Tests/static checks and independent review have zero blocking findings.
-- [ ] Exact-head CI passes before merge.
+- [x] Closed evidence v3 validates and v2 cannot satisfy the verifier.
+- [x] Tests/static checks and independent review have zero blocking findings.
+- [x] Exact-head CI passes before merge.
+
+Delivery evidence: PR #64 exact head
+`f29638e81b483c3c95cfe995ce5ba729681793e8`, PR Quality run
+`30881416141`, live Keycloak job `91904344586`, and merge
+`57ac8498529ef9c093f65ee77fbc579a515359ca` all succeeded with identical
+tested/merged trees.
 
 ## Risk Assessment
 

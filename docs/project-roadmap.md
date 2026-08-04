@@ -63,9 +63,13 @@ gates.
 
 Phase 3 and G2 remain in progress. Local Windows and revision-bound Linux CI
 Keycloak 26.7 runs satisfy the reference non-production IdP integration
-criterion; the local artifact remains marked
-`REFERENCE_CONFORMANCE_NOT_PRODUCTION`. Production IdP selection/conformance
-and the broader G2 exit conditions remain open.
+criterion. The OIDC state/nonce child plan is complete: PR #64 head
+`f29638e81b483c3c95cfe995ce5ba729681793e8` passed PR Quality run
+`30881416141`, including Keycloak job `91904344586`, and merged as
+`57ac8498529ef9c093f65ee77fbc579a515359ca`. The evidence remains reference
+conformance, not production assurance. Production IdP selection/conformance,
+BFF/session proof, federation, break-glass, and the broader Phase 3/G2 exit
+conditions remain open.
 
 Phase 4 is in progress. Checkpoint 4A now has local, source/JAR-bound proof for
 the nested incident create/detail/transition/timeline contract, forced RLS,
@@ -85,10 +89,13 @@ Phase 4C now includes V014 metadata authority and the integrated V015
 default-off upload slice. V015 adds durable lease-fenced attempts, a bounded
 single-PUT S3-compatible adapter, probe-before-retry semantics, separate
 canonical KMS response verification, and atomic `PENDING_UPLOAD -> STORED`
-event/audit finalization. The merged-head PR Quality run `30777514150` passes
-the Phase 4C checkpoint after the validator was made CRLF-safe; it still does
-not expose public body ingress, read/citation, scanning, `AVAILABLE`,
-hold/purge/restore, or production backend conformance. B-006, B-008, and
+event/audit finalization. Phase 2 of the artifact plan is complete: PR #46 head
+`95c0b6ba203aba5c280aa9223ee6b4a369de6d7d`, merge
+`1f87187aff1ce56d577ad8df944ccf74dbfc3fdf`, and PR Quality run
+`30777514150` pass. Current run `30881416141`, PostgreSQL job `91904344606`,
+also passes the integrated V014/V015 contract. Phase 3 remains pending; no
+controlled ingress, scanning, `AVAILABLE`, hold/delete/purge, restore, or
+supported production backend/KMS conformance is claimed. B-006, B-008, and
 B-012 remain active.
 
 Phase 5 is in progress. The provider-neutral runtime, delegated capability and
@@ -210,13 +217,15 @@ PR-quality run `30257587569` and cross-service run `30257587543` are terminal
 green for revision `a975f922`; fresh A/B/C score `PASS` on all eight metrics
 with samples `100/1/1` and `GitTree=0`. Artifact `8649696519` attests the run
 and preserves the Phase 7 regression. Two blocking process-supervision reviews
-pass.
+pass. Current exact-head cross-service run `30881416173` also passes, keeping
+the revision-bound Phase 8B checkpoint complete.
 The earlier run `30200584275` on `134d63c` remains historical first-green
 evidence. Held-out governance, preregistered Wilson reporting, and the human
 protocol are implemented, but held-out payloads and qualified human records/
 adjudication are unavailable. This is deterministic smoke evidence on authored
-scenarios, so parent Phase 8 and its A-Z G4 exit remain `BLOCK` on held-out
-quality, calibration, and human comparison.
+scenarios, so parent Phase 8 and its A-Z G4 exit remain `BLOCK` on B-013
+held-out cases, qualified human records/adjudication, calibration, and human
+comparison.
 
 Phase 9 is in progress. Platform V010-V013 provide a default-off handoff that
 atomically creates the initial run, immutable Temporal target/request binding,

@@ -1,7 +1,7 @@
 ---
 phase: 2
 title: Bounded S3-Compatible Streaming Port
-status: in-progress
+status: completed
 priority: P1
 dependsOn: [phase-01]
 ---
@@ -117,16 +117,24 @@ defined before branch creation and changed only by the integration lead.
 
 ## Acceptance Criteria
 
-- [ ] A production-shaped S3-compatible adapter is real code, default-off, and
+- [x] A production-shaped S3-compatible adapter is real code, default-off, and
   accepts credentials only through an approved external provider chain.
-- [ ] Object I/O never runs inside the metadata transaction and never buffers
+- [x] Object I/O never runs inside the metadata transaction and never buffers
   the whole artifact in memory.
-- [ ] A Docker-free loopback wire component proves request shape,
+- [x] A Docker-free loopback wire component proves request shape,
   streaming/digest/failure behavior without claiming it is an S3 backend or
   production KMS conformance.
-- [ ] Disposable PostgreSQL fresh and V014-to-V015 paths prove claim,
+- [x] Disposable PostgreSQL fresh and V014-to-V015 paths prove claim,
   takeover, stale-finalize denial, exact settlement, RLS, and least privilege.
-- [ ] Existing inline/gateway behavior remains fail-closed and unchanged.
+- [x] Existing inline/gateway behavior remains fail-closed and unchanged.
+
+Revision-bound evidence: PR #46 exact head
+`95c0b6ba203aba5c280aa9223ee6b4a369de6d7d`, merge
+`1f87187aff1ce56d577ad8df944ccf74dbfc3fdf`, and PR Quality run
+`30777514150` pass. Current exact-head PR Quality run `30881416141` and
+PostgreSQL job `91904344606` independently keep the integrated V014/V015
+contracts green. This completes Phase 02 only; it does not satisfy the
+external evidence boundary below.
 
 ## External Evidence Boundary
 

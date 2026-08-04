@@ -64,6 +64,9 @@ before token I/O and binds the authorization request nonce to the returned ID
 token; focused negative tests cover missing, malformed, non-string, and
 mismatched values. This remains pinned-TLS reference assurance, not production
 browser-session conformance or independent ID-token signature verification.
+PR #64 exact head `f29638e81b483c3c95cfe995ce5ba729681793e8`
+passed PR Quality run `30881416141` and live Keycloak job `91904344586`, then
+merged as `57ac8498529ef9c093f65ee77fbc579a515359ca` with the tested tree.
 The phase remains **in progress** because this is explicitly reference
 conformance, not a production vendor/session decision. Production identity and
 broader G2 exit criteria remain open. No external dispatcher process is enabled;
