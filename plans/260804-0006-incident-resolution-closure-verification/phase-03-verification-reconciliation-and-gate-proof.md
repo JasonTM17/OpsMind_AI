@@ -1,7 +1,7 @@
 ---
 phase: 3
 title: Verification reconciliation and gate proof
-status: in-progress
+status: completed
 priority: P1
 dependencies:
   - 2
@@ -43,10 +43,13 @@ Review the delta, run available lightweight gates, then use exact-head CI for ca
 
 ## Success Criteria
 
-- [ ] Review has no unresolved P0-P2 finding.
-- [ ] Exact-head required CI is green and PostgreSQL lifecycle test executed, not skipped.
-- [ ] Parent Phase 4 states resolution/closure proof accurately; PATCH/owner/alert remain open.
-- [ ] PR merged and temporary branch/worktree removed.
+- [x] Independent review has no unresolved P0-P2 finding after fix-only re-review.
+- [x] Exact-head required CI is green and PostgreSQL lifecycle test executed, not skipped.
+- [x] Parent Phase 4 states backend closure proof accurately; generic PATCH,
+  owner/alert assignment, resolve/close frontend UX, postmortems, and artifact
+  lifecycle remain open.
+- [x] PR #59 merged as `3bad910`; its remote feature branch was deleted and the
+  local worktree was formally repurposed for the reconciliation follow-up.
 
 ## Unresolved Questions
 

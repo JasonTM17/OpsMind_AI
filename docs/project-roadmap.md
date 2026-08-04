@@ -27,7 +27,7 @@ The detailed executable plan is [plans/260719-1747-opsmind-ai-production-platfor
 | 1 | Operating envelope and architecture governance | G0.5/G1 | Completed; strict contract gate passed |
 | 2 | Monorepo and developer platform foundation | G1 | Completed; clean Ubuntu/Windows bootstrap and Compose evidence passed |
 | 3 | Contracts, data, identity, and tenant foundation | G2 | In progress |
-| 4 | Incident control plane, evidence lifecycle, and audit | G2/G3 | In progress; 4A/4B checkpoints complete and 4C metadata/upload checkpoint PASS with revision-bound CI; full lifecycle remains open |
+| 4 | Incident control plane, evidence lifecycle, and audit | G2/G3 | In progress; 4A/4B, incident list, backend closure proof, and 4C metadata/upload checkpoints pass with revision-bound CI; full lifecycle remains open |
 | 5 | DeepSeek AI runtime and provider gateway | G3 | In progress; static checkpoint passed, exit gate blocked |
 | 6 | Safe Tool Gateway and read-only connectors | G3 | In progress; B-016 tenant isolation and tenant-scoped connector bulkhead checkpoints pass, broader Phase 6 exit remains BLOCK |
 | 7 | Evidence-backed incident vertical slice | G3 | In progress; metadata activity route and V009 CI fixture gates pass; external G3 blockers remain |
@@ -74,6 +74,12 @@ rollback, immutable timeline, database-computed audit chaining, and fresh plus
 upgrade migrations. Remote PostgreSQL/Java gates exercise the revision-bound
 contracts, but the evidence-object lifecycle, remaining incident breadth, and
 production gates remain open, so Phase 4 and G2 are not complete.
+
+PR #59 (`3bad910`, tested head `13a0224`) additionally proves the existing
+backend `OPEN -> INVESTIGATING -> RESOLVED -> CLOSED` path, retained resolution
+fields, replay identity, terminal CLOSED behavior, and zero-effect rejection in
+exact-head PostgreSQL CI. Generic PATCH, owner/alert assignment, resolve/close
+frontend UX, postmortems, and the governed artifact lifecycle remain open.
 
 Phase 4C now includes V014 metadata authority and the integrated V015
 default-off upload slice. V015 adds durable lease-fenced attempts, a bounded

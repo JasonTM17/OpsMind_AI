@@ -181,7 +181,9 @@ The canonical public contract is
   correlation URN rather than reflecting scoped identifiers.
 - `IncidentStateMachine` implements `OPEN`, `INVESTIGATING`,
   `AWAITING_APPROVAL`, `MITIGATING`, `RESOLVED`, and `CLOSED`. Resolution fields
-  are required only for `RESOLVED`; reopening clears the current resolution.
+  are supplied when entering `RESOLVED`; reopening clears them. Entering
+  `CLOSED` rejects client-supplied resolution fields, preserves the stored root
+  cause and resolution summary, and makes the aggregate terminal.
 
 ### Transaction and persistence
 
@@ -472,10 +474,11 @@ See [Security Model](./security-model.md) for the complete threat model and
 
 | Evidence | Verified result | Scope limitation |
 |---|---|---|
-| `artifacts/verification/phase-04/incident-contracts.txt` | PASS; 18 schemas and 21 fixtures parsed, 12 incident fixture cases evaluated, 171 local references resolved, eight OpenAPI operations checked | Deterministic static gate; no packaged JAR or live database |
+| `artifacts/verification/phase-04/incident-contracts.txt` | PASS; 24 schemas and 32 fixtures parsed, 19 incident fixture cases evaluated, 237 local references resolved, 11 OpenAPI operations checked | Deterministic static gate; no packaged JAR or live database |
 | `artifacts/verification/phase-04/incident-domain.txt` | PASS; seven selected classes, 25 tests, zero failures/errors/skips | Focused JVM test gate |
 | `artifacts/verification/phase-04/incident-crud.txt` | PASS; package, fresh/upgrade migration, guarded tests, SQL contract, cleanup, RLS/CRUD/privacy/transition checks | Disposable local PostgreSQL reference |
 | `artifacts/verification/phase-04/audit-and-concurrency.txt` | PASS; digest recomputation, caller-forgery override, linear/concurrent chain, mutation denial | Disposable local PostgreSQL reference |
+| `artifacts/verification/phase-04/incident-resolution-closure.txt` | PR Quality `30868733961` on head `13a0224`: three PostgreSQL HTTP lifecycle tests, zero failures/errors/skips | Exact-head non-production CI proof; no frontend or production SLO claim |
 | `artifacts/verification/phase-03/identity-delegation.txt` | PASS; refreshed Keycloak 26.7 schema-v2 local reference | Not production identity or release proof |
 
 Current hash recomputation matches all recorded Phase 4 source manifests, the
