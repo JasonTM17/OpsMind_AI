@@ -59,6 +59,11 @@ The 2026-07-21 local Windows Keycloak 26.7 reference run passes the real
 non-production IdP integration criterion. PR #61 then supplied immutable Linux
 reference evidence: head `905395f`, PR Quality run `30872670122`, and Keycloak
 job `91878531998` passed; merge `ed2a395` has the identical tree `ed9138d`.
+The schema-v3 reference contract additionally rejects callback-state tampering
+before token I/O and binds the authorization request nonce to the returned ID
+token; focused negative tests cover missing, malformed, non-string, and
+mismatched values. This remains pinned-TLS reference assurance, not production
+browser-session conformance or independent ID-token signature verification.
 The phase remains **in progress** because this is explicitly reference
 conformance, not a production vendor/session decision. Production identity and
 broader G2 exit criteria remain open. No external dispatcher process is enabled;
@@ -163,7 +168,7 @@ Implement the standards-based OIDC resource-server boundary and a real local/ref
 | Critical | Cross-tenant, pool-reuse and background-job context attempts deny fail-closed | `scripts/validation/run-phase-03-local-postgres-contract.ps1` locally; focused Maven test in CI | `artifacts/verification/phase-03/authz-rls-pool-matrix.txt` |
 | Critical | Real local/reference OIDC enforces PKCE/MFA and resource-server issuer/audience/signature/lifetime policy; refresh-token rotation/reuse/revocation and login invalidation paths deny as specified | `pwsh -NoProfile -File .\scripts\validation\run-phase-03-keycloak-conformance.ps1` | `artifacts/verification/phase-03/identity-delegation.txt` |
 | High | OIDC outbound discovery/JWKS uses RS256, bounded HTTP timeouts, and one request per exact target URI/instance/interval while keeping discovery and JWKS targets independent | source review, focused `PlatformSecurityPropertiesTest` and `OidcOutboundRequestRateLimiterTest`, and static trust-foundation validation | unit/source validation output |
-| High | Schema-v2 identity evidence binds current profile/source and packaged JAR digests, uses independent refresh families, and publishes only after verified cleanup | `pwsh -NoProfile -File .\scripts\validation\verify-phase-03-keycloak-evidence.ps1` after a live run | local `identity-delegation.txt`; bounded sanitized `identity-delegation-failure.txt` on BLOCK only |
+| Critical | Schema-v3 identity evidence binds current profile/source and packaged JAR digests, rejects callback-state tampering before token I/O, binds the ID-token nonce, uses independent refresh families, and publishes only after verified cleanup | focused `test_oidc_browser_flow.py`; `pwsh -NoProfile -File .\scripts\validation\verify-phase-03-keycloak-evidence.ps1` after a live run | local `identity-delegation.txt`; bounded sanitized `identity-delegation-failure.txt` on BLOCK only |
 | Critical | Delegated-capability audience/scope/expiry/budget/nonce contracts remain bounded | focused Java validator tests; no live delegation claim from the Keycloak artifact | test output only until a dedicated integration artifact exists |
 | Critical | Outbox/inbox survives duplicate, reorder and crash windows | guarded `TransactionalOutboxIntegrationTest` and `TransactionalInboxIntegrationTest` | `artifacts/verification/phase-03/outbox-inbox.txt` |
 | Critical | Web append authority is separate from tenant-bound dispatcher lease/ack authority | guarded `OutboxDispatcherWorkloadIntegrationTest` plus SQL role matrix | `artifacts/verification/phase-03/outbox-inbox.txt` |
@@ -180,6 +185,7 @@ Implement the standards-based OIDC resource-server boundary and a real local/ref
 - [x] One real local/reference non-production IdP integration passes; no custom refresh-token cryptography or unresolved reference claim mapping remains. This does not authorize a production vendor or close the broader identity/session gate.
 - [x] Outbox/inbox crash, duplicate, ordering and orphan-reconciliation tests pass with one logical local side effect per event.
 - [x] The configured remote Linux Keycloak reference job passes with immutable revision-bound evidence: PR #61 head `905395f`, run `30872670122`, job `91878531998`; merge `ed2a395` has identical tree `ed9138d`.
+- [x] The reference browser flow rejects tampered callback state before token exchange and requires an exact ID-token nonce, with closed schema-v3 evidence and focused negative tests. This does not prove production browser/BFF session ownership.
 - [ ] Production enterprise IdP/session conformance passes with accountable vendor, federation/claim mapping, browser/session ownership, break-glass, and revocation evidence.
 
 ## Risks and Mitigations

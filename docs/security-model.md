@@ -58,11 +58,20 @@ OpsMind assists privileged operators without becoming an uncontrolled privileged
   RP-initiated logout, refresh-after-logout denial, JWKS rotation refresh,
   old refresh-token reuse denial after rotation, an independent refresh family
   for the revocation positive control, refresh-token revocation, and
-  disabled-user new-login denial. It does not
-  prove state/nonce assurance, production browser/BFF session ownership,
-  federation, break-glass, or general bearer-token replay prevention.
-- The live schema-v2 conformance contract proves a successful refresh from an
-  independent session immediately before refresh-token revocation
+  disabled-user new-login denial. The current schema-v3 reference additionally
+  mutates the local callback `state` and proves denial before token-endpoint
+  I/O, then binds the returned ID-token payload nonce to the authorization
+  request nonce over the harness's CA-pinned TLS connection. The Python payload
+  decoder does not verify the ID-token signature; this is separate from Spring
+  resource-server signature validation.
+- The current schema-v3 evidence contract requires
+  `AuthorizationCallbackStateTamperDenied=PASS` and
+  `IdTokenNonceBound=PASS`, permits only its declared metadata/result fields,
+  and rejects missing, duplicate, or unknown fields. It does not prove
+  production browser/BFF session ownership, federation, break-glass, or general
+  bearer-token replay prevention.
+- The historical live schema-v2 conformance run proves a successful refresh
+  from an independent session immediately before refresh-token revocation
   (`RefreshTokenIndependentSessions=PASS` and
   `RefreshTokenPreRevocationControl=PASS`). The independent family avoids
   confusing replay-driven family invalidation with revocation behavior.

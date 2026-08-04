@@ -276,6 +276,18 @@ profile/source inputs and the exact packaged JAR digest, publishes atomically
 only after verified cleanup, and rejects stale evidence. The live schema-v2
 artifact and its separate profile/JAR verifier passed on 2026-07-21.
 
+The current schema-v3/scenario-v3 contract adds two bounded reference checks.
+A locally tampered callback `state` must be denied before token-endpoint I/O,
+and the returned ID-token payload nonce must match the authorization-request
+nonce over the harness's CA-pinned TLS connection. Focused Python tests cover
+the pre-token-I/O ordering, exact nonce acceptance, malformed/missing/mismatched
+nonce denial, and redacted transient authorization representations. The Python
+JWT helper decodes payload data but does not verify signatures. The evidence
+verifier requires `AuthorizationCallbackStateTamperDenied=PASS` and
+`IdTokenNonceBound=PASS`, accepts only the declared schema-v3 field set, and
+rejects missing, duplicate, or unknown fields. The dated schema-v2 results above
+remain historical evidence.
+
 A forced packaging failure separately proves the failure path: no success
 artifact is emitted, cleanup completes, and a bounded
 `identity-delegation-failure.txt` contains only sanitized diagnostics. CI
@@ -287,8 +299,8 @@ The transcript is ignored local evidence with
 and `WorkspaceDirty=YES`; it is not production or immutable release evidence.
 The Linux `identity-conformance` job passes in revision-bound PR-quality
 CI. This remains non-production reference conformance; the suite
-does not prove federation, break-glass, state/nonce assurance, browser/BFF
-session ownership, general bearer replay prevention, delegated capabilities,
+does not prove federation, break-glass, production browser/BFF session-level
+state/nonce ownership, general bearer replay prevention, delegated capabilities,
 or immediate access-token revocation.
 
 ## Phase 4 Incident Checkpoint 4A
