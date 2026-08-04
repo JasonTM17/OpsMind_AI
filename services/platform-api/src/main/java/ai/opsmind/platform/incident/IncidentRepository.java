@@ -24,4 +24,14 @@ interface IncidentRepository {
         Instant occurredAt
     );
 
+    IncidentSnapshot patch(
+        UUID organizationId,
+        UUID projectId,
+        UUID incidentId,
+        long expectedVersion,
+        PatchIncidentRequest request,
+        UUID actorId,
+        Instant occurredAt
+    );
+
 }

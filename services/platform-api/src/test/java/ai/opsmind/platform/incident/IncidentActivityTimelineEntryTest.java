@@ -41,8 +41,19 @@ class IncidentActivityTimelineEntryTest {
             RUN_ID,
             2L
         );
+        IncidentActivityTimelineEntry metadataPatch = new IncidentActivityTimelineEntry(
+            EVENT_ID,
+            IncidentActivityTimelineEntry.INCIDENT,
+            IncidentTimelineEvent.METADATA_PATCHED,
+            OCCURRED_AT,
+            ACTOR_ID,
+            1L,
+            null,
+            null
+        );
 
         assertThat(incident.incidentVersion()).isZero();
+        assertThat(metadataPatch.incidentVersion()).isOne();
         assertThat(investigation.investigationRunId()).isEqualTo(RUN_ID);
         assertThat(investigation.investigationSequence()).isEqualTo(2L);
     }

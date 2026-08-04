@@ -8,6 +8,7 @@ import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.patch;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.content;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.header;
@@ -56,6 +57,7 @@ class IncidentControllerHttpTest {
     private static final String COLLECTION_PATH = "/api/v1/organizations/" + ORGANIZATION_ID
         + "/projects/" + PROJECT_ID + "/incidents";
     private static final String TRANSITION_PATH = COLLECTION_PATH + "/" + INCIDENT_ID + "/transitions";
+    private static final String INCIDENT_PATH = COLLECTION_PATH + "/" + INCIDENT_ID;
     private static final String TIMELINE_PATH = COLLECTION_PATH + "/" + INCIDENT_ID + "/timeline";
     private static final String ACTIVITY_MEDIA_TYPE =
         "application/vnd.opsmind.incident-activity-timeline.v1+json";
@@ -290,6 +292,64 @@ class IncidentControllerHttpTest {
             .andExpect(header().string(IncidentController.OPERATION_ID_HEADER, OPERATION_ID.toString()))
             .andExpect(jsonPath("$.status").value("INVESTIGATING"))
             .andExpect(jsonPath("$.version").value(1));
+    }
+
+    @Test
+    void patchBindsMergePatchConditionalRequestAndReturnsCanonicalJson() throws Exception {
+        when(mutations.patch(
+            any(), eq(ORGANIZATION_ID), eq(PROJECT_ID), eq(INCIDENT_ID), any(), eq(0L), any(), any()
+        )).thenReturn(new IncidentOperationResult(
+            200,
+            "{\"id\":\"" + INCIDENT_ID + "\",\"ownerId\":\"" + OPERATION_ID
+                + "\",\"version\":1}",
+            null,
+            "\"1\"",
+            OPERATION_ID
+        ));
+
+        mvc.perform(patch(INCIDENT_PATH)
+                .principal(authentication(Set.of("incident:write")))
+                .header("Idempotency-Key", "patch-incident-001")
+                .header(HttpHeaders.IF_MATCH, "\"0\"")
+                .contentType(MediaType.parseMediaType("application/merge-patch+json"))
+                .content("{\"ownerId\":\"" + OPERATION_ID
+                    + "\",\"reason\":\"Primary on-call accepted\"}"))
+            .andExpect(status().isOk())
+            .andExpect(content().contentType(MediaType.APPLICATION_JSON))
+            .andExpect(header().string(HttpHeaders.ETAG, "\"1\""))
+            .andExpect(header().string(
+                IncidentController.OPERATION_ID_HEADER, OPERATION_ID.toString()
+            ))
+            .andExpect(jsonPath("$.ownerId").value(OPERATION_ID.toString()));
+
+        verify(mutations).patch(
+            any(), eq(ORGANIZATION_ID), eq(PROJECT_ID), eq(INCIDENT_ID), any(), eq(0L), any(), any()
+        );
+    }
+
+    @Test
+    void patchRejectsWrongMediaTypeAndDuplicateFieldsBeforeMutation() throws Exception {
+        String validBody = "{\"title\":\"Updated\",\"reason\":\"Correction\"}";
+        mvc.perform(patch(INCIDENT_PATH)
+                .principal(authentication(Set.of("incident:write")))
+                .header("Idempotency-Key", "patch-wrong-media")
+                .header(HttpHeaders.IF_MATCH, "\"0\"")
+                .contentType(MediaType.APPLICATION_JSON)
+                .content(validBody))
+            .andExpect(status().isUnsupportedMediaType());
+
+        mvc.perform(patch(INCIDENT_PATH)
+                .principal(authentication(Set.of("incident:write")))
+                .header("Idempotency-Key", "patch-duplicate")
+                .header(HttpHeaders.IF_MATCH, "\"0\"")
+                .contentType(MediaType.parseMediaType("application/merge-patch+json"))
+                .content("{\"ownerId\":null,\"ownerId\":\"" + OPERATION_ID
+                    + "\",\"reason\":\"Duplicate\"}"))
+            .andExpect(status().isBadRequest())
+            .andExpect(jsonPath("$.code").value("request.body-invalid"));
+
+        verify(mutations, never()).patch(any(), any(), any(), any(), any(),
+            org.mockito.ArgumentMatchers.anyLong(), any(), any());
     }
 
     @Test

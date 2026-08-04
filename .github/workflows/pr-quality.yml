@@ -749,6 +749,10 @@ jobs:
             -Dtest=FlywayV016RecoveryHarnessTest \
             -f services/platform-api/pom.xml test \
             2>&1 | tee artifacts/verification/phase-04/incident-list-v016-recovery.txt
+          grep -F 'V016FlywayRecovery=PASS' \
+            artifacts/verification/phase-04/incident-list-v016-recovery.txt
+          grep -F 'V017LegacyIncidentUpgrade=PASS' \
+            artifacts/verification/phase-04/incident-list-v016-recovery.txt
       - name: Build and apply Tool Gateway migration
         shell: bash
         run: |

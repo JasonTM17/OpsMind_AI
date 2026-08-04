@@ -67,6 +67,27 @@ final class JdbcIncidentAccessRepository implements IncidentAccessRepository {
         }
     }
 
+    @Override
+    public void requireEligibleOwner(UUID organizationId, UUID ownerId) {
+        try {
+            Boolean eligible = jdbcTemplate.queryForObject(
+                "SELECT public.opsmind_lock_eligible_incident_owner(?, ?)",
+                Boolean.class,
+                organizationId,
+                ownerId
+            );
+            if (!Boolean.TRUE.equals(eligible)) {
+                throw ineligibleOwner();
+            }
+        }
+        catch (PlatformProblemException exception) {
+            throw exception;
+        }
+        catch (DataAccessException exception) {
+            throw databaseUnavailable(exception);
+        }
+    }
+
     private UserIdentity resolveUser(OpsMindPrincipal principal) {
         try {
             return jdbcTemplate.queryForObject(
@@ -146,6 +167,14 @@ final class JdbcIncidentAccessRepository implements IncidentAccessRepository {
             "dependency.database-unavailable",
             "Incident authorization is temporarily unavailable.",
             cause
+        );
+    }
+
+    private PlatformProblemException ineligibleOwner() {
+        return new PlatformProblemException(
+            HttpStatus.UNPROCESSABLE_CONTENT,
+            "incident.owner-ineligible",
+            "The requested incident owner is not eligible for assignment."
         );
     }
 
