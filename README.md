@@ -4,17 +4,26 @@ OpsMind AI is an evidence-first AI SRE/DevSecOps platform. It is designed to hel
 
 ## Operator Experience
 
-![OpsMind evidence-backed investigation workspace](./docs/media/operator-investigation-workspace.png)
+OpsMind is presented as a reading path for an operator under pressure: orient on
+the incident, follow the authorized evidence spine, inspect the cited finding,
+and see an explicit safe-stop state when a dependency is unavailable. It is not
+a chat screen and the browser never receives raw prompts, provider reasoning,
+credentials, executable query text, or unreviewed model prose.
 
-The operator workspace exposes cited durable evidence while raw prompts,
-provider reasoning, credentials, and unreviewed model prose stay server-side.
+![Desktop OpsMind investigation workspace showing incident context, evidence spine, and cited conclusion](./docs/media/operator-investigation-workspace.png)
 
 ![OpsMind operator investigation walkthrough](./docs/media/operator-investigation-workspace-walkthrough.gif)
 
-Both repository media files are review-gated by
+The media capture, provenance, regeneration command, and limitations are
+documented in [`docs/media/README.md`](./docs/media/README.md). All repository
+media files are review-gated by
 [`docs/media/media-manifest.json`](./docs/media/media-manifest.json). The
 secret scanner verifies their exact path, SHA-256 digest, byte size, media
 signature, and dimensions; every other binary continues to fail closed.
+
+The checked-out `main` branch is at merged commit `0788ee3` (`feat: harden
+artifact lifecycle runtime capability`). Local showcase/media evidence may be
+uncommitted; it is not release proof. The repository is not production-deployed.
 
 Phases 1-2 and gate G1 are complete; Phases 3-9 are advancing through evidence
 gates. The repository contains a pinned polyglot workspace, cross-platform CI,
@@ -34,18 +43,14 @@ named live connector, provider/legal conformance, BFF/session proof, and
 release-scale evidence.
 
 Phase 9 adds a default-off Temporal start handoff. One transaction creates the
-run, immutable V010 binding, and canonical outbox event; `temporal` returns
-`202 + Location`, while default `inline` remains `200`. The claim commits before
-the RPC, then reconciliation updates binding, inbox, and outbox.
+run, immutable binding, and canonical outbox event; `temporal` returns
+`202 + Location`, while default `inline` remains `200`. Reconciliation is
+read-only with respect to Temporal and cannot Start, signal, update, or cancel.
 
-V012 revokes direct workflow binding/inbox authority, hides canonical start rows
-behind a dedicated `SECURITY DEFINER` claim, and preserves generic outbox order
-through a resolver-owned predecessor check. V013 adds a fixed, read-only
-reconciler identity with exactly three database capabilities, exact-workflow
-Describe plus first-history verification, fenced settlement, bounded aggregate
-metrics, and seven alert rules. Disposable fresh V001-V013 and V012-to-V013
-real-role contracts pass, including direct/PUBLIC/membership denial, tenant
-isolation, lease takeover, the outcome matrix, and four rollback failpoints.
+V012/V013 enforce capability-only dispatch and a fixed read-only reconciler
+identity with exact-workflow verification, fenced settlement, bounded metrics,
+and alert rules. Disposable fresh and upgrade real-role contracts pass;
+production namespace authorization and paging remain open under B-017.
 
 Ambiguous post-RPC exhaustion parks the handoff `PENDING` with
 `workflow.reconciliation-required`, not remote rejection. The reconciler can
@@ -60,20 +65,12 @@ authorization, and external page delivery. Phase 9/G4 remain in progress;
 B-013 and B-017 remain active. This is not production admission or a functional
 investigation executor.
 
-Phase 8B now implements three deterministic, training-ineligible evaluation
-contracts: A detects a deployment-correlated latency regression, B terminates
-`ABSTAINED` without tools when evidence is insufficient, and C performs two
-opposing read-only evidence collections with counter-evidence and cautious
-confidence. Tool executions are reconstructed from immutable intent, receipt,
-audit, and evidence records. Platform V008 is a rolling expand migration: only
-strict response-aware writes are evaluation-eligible. At revision `a975f922`,
-PR-quality run `30257587569` and cross-service run `30257587543` are terminal
-green; artifact `8649696519` records A/B/C `PASS`, samples `100/1/1`, and
-`GitTree=0`. Phase 8 stays blocked: held-out cases, qualified human records/
-adjudication, calibration, and human comparison are unavailable.
+Phase 8B has deterministic, training-ineligible A/B/C evaluation contracts and
+green authored smoke evidence (`8649696519`); held-out cases, qualified human
+adjudication, calibration, and comparison remain unavailable.
 
 DeepSeek egress and all production credentials remain disabled by default.
-Production identity/provider/legal conformance, evidence-object lifecycle,
+Production identity/provider/legal conformance, object lifecycle,
 RAG, remediation, DR, and release gates remain later work.
 
 ## Product Goal
@@ -209,6 +206,9 @@ requirements, cache locations, and failure behavior.
 
 ## Repository Navigation
 
+The full documentation map is [docs/index.md](./docs/index.md). Start with it
+when you need the evidence/status rules or are new to the repository.
+
 | Document | Purpose |
 |---|---|
 | [Project PDR](./docs/project-overview-pdr.md) | Product outcomes, scope, actors, requirements, and acceptance model |
@@ -266,6 +266,7 @@ artifacts are authoritative for the checked commit. The main gates are:
 node .\scripts\validation\validate-phase-07-investigation-slice.mjs
 node .\scripts\validation\validate-phase-08-evaluation-foundation.mjs
 node .\scripts\validation\validate-phase-09-workflow-handoff.mjs
+node .\scripts\validation\validate-phase-04c-evidence-artifacts.mjs
 ```
 
 | Checkpoint | Current evidence | Scope limit |
@@ -277,7 +278,7 @@ node .\scripts\validation\validate-phase-09-workflow-handoff.mjs
 | AI Runtime | 159 offline tests plus five PostgreSQL-gated skips in current CI; the PostgreSQL state gate passes separately; DeepSeek defaults to `deepseek-v4-flash` | No live provider call or legal/residency approval |
 | Tool Gateway | Static contract, durable PostgreSQL receipt/audit state, synthetic Prometheus connector, workload OAuth boundary, dual-credential Platform execution client, and local V003 tenant-scope unit/static gates pass | V003 PostgreSQL/upgrade evidence, named live non-production connector, and production conformance pending |
 | Investigation | Bounded-record checkpoint 4B, ANALYZE-only activity view, V009 evidence, capability-backed AI rounds, CK/Stitch/browser proof, and Phase 7 regression PASS in artifact `8649696519` | G3 still requires a named live connector, provider/legal approval, and BFF/session proof |
-| Artifact plane | V014 metadata authority plus V015 lease-fenced, bounded, default-off S3-compatible upload path pass the current static contract; fresh/upgrade database gates are wired | Integrated revision still needs remote CI; public ingress/read, scanning, retention/deletion receipts, restore, and production backend/KMS conformance remain blocked |
+| Artifact plane | V014/V015 metadata/upload authority plus V018/V019 lifecycle transitions, least-privilege runtime capability, and run-bound authorized probe pass static/focused checks; disposable PostgreSQL contract is wired | Public body ingress/read, scanning, retention/deletion receipts, restore, and production backend/KMS conformance remain blocked |
 | Evaluation | Fresh disposable A/B/C score `PASS` on all eight metrics with samples `100/1/1`; exact CI command passes 61/61 | Held-out payloads, human adjudication, calibration, and comparison unavailable; Phase 8 exit is BLOCK |
 | Workflow handoff | V010-V013 implement default-off atomic admission, capability-only dispatch, direct-row containment, ordering preservation, durable ambiguous-outcome hold, and a no-`Start` exact-workflow reconciliation/alert lane; PR #45/#56 prove merged-head database/runtime, local restart/replay, compatible polling, bounded live scrape, CI-local routing, and pinned rule checks | B-017 still blocks production Temporal admission/G4 pending production database query-plan/latency and DR, live namespace read-only/retention conformance, and external page delivery |
 | Compose | All application images build, start, and pass health smoke in CI | Not staging/production deployment evidence |
@@ -296,12 +297,10 @@ Provider credentials are runtime secrets. DeepSeek configuration will enter thro
 The public About panel is synchronized from
 [`.github/repository-metadata.yml`](./.github/repository-metadata.yml). See
 [CONTRIBUTING.md](./CONTRIBUTING.md), [SECURITY.md](./SECURITY.md), and
-[SUPPORT.md](./SUPPORT.md). The checked-in
-[OCI publication workflow](./.github/workflows/container-publish.yml) verifies
-exact-SHA multi-architecture candidates before protected promotion. Release
-still requires Docker Hub/GHCR digest parity, signatures, SBOM/provenance,
-scans, linked packages, and an immutable GitHub Release. Docker Hub credentials
-must exist only in the protected environment.
+[SUPPORT.md](./SUPPORT.md). The [OCI publication workflow](./.github/workflows/container-publish.yml)
+verifies exact-SHA multi-architecture candidates; release still requires
+Docker Hub/GHCR digest parity, signatures, SBOM/provenance, scans, linked
+packages, and an immutable GitHub Release.
 
 ## Unresolved Questions
 
