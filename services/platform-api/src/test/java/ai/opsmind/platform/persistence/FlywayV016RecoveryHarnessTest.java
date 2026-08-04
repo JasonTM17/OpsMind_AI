@@ -231,7 +231,7 @@ class FlywayV016RecoveryHarnessTest {
             + "'17000000-0000-4000-8000-000000000004',"
             + "'17000000-0000-4000-8000-000000000006', '2030-01-01T00:00:00Z', CAST('"
             + payload + "' AS jsonb), 'incident-audit-v1')");
-        return new LegacyIncidentSnapshot(payload, legacyDigest(connection));
+        return new LegacyIncidentSnapshot(legacyPayload(connection), legacyDigest(connection));
     }
 
     private static void appendLegacyTransitionAfterV017(Connection connection) throws SQLException {
