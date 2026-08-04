@@ -293,6 +293,41 @@ class IncidentControllerHttpTest {
     }
 
     @Test
+    void transitionBindsClosureWithoutClientSuppliedResolutionFields() throws Exception {
+        when(mutations.transition(
+            any(), eq(ORGANIZATION_ID), eq(PROJECT_ID), eq(INCIDENT_ID), any(), eq(2L), any(), any()
+        )).thenReturn(new IncidentOperationResult(
+            200,
+            "{\"id\":\"" + INCIDENT_ID + "\",\"status\":\"CLOSED\",\"version\":3}",
+            null,
+            "\"3\"",
+            OPERATION_ID
+        ));
+
+        mvc.perform(post(TRANSITION_PATH)
+                .principal(authentication(Set.of("incident:write")))
+                .header("Idempotency-Key", "close-incident-001")
+                .header(HttpHeaders.IF_MATCH, "\"2\"")
+                .contentType(MediaType.APPLICATION_JSON)
+                .content("""
+                    {
+                      "targetStatus":"CLOSED",
+                      "reason":"Post-recovery checks passed"
+                    }
+                    """))
+            .andExpect(status().isOk())
+            .andExpect(header().string(HttpHeaders.ETAG, "\"3\""))
+            .andExpect(jsonPath("$.status").value("CLOSED"));
+
+        verify(mutations).transition(
+            any(), eq(ORGANIZATION_ID), eq(PROJECT_ID), eq(INCIDENT_ID), any(), eq(2L),
+            eq(new TransitionIncidentRequest(
+                IncidentStatus.CLOSED, "Post-recovery checks passed", null, null
+            )), any()
+        );
+    }
+
+    @Test
     void transitionConditionalSchemaRejectsSuppliedOrMissingResolutionFields() throws Exception {
         assertInvalidTransitionBody("""
             {"targetStatus":"INVESTIGATING","reason":"triage","rootCause":null}
@@ -303,6 +338,9 @@ class IncidentControllerHttpTest {
         assertInvalidTransitionBody("""
             {"targetStatus":"RESOLVED","reason":"fixed","rootCause":"dependency saturation"}
             """, "transition-missing-summary-001");
+        assertInvalidTransitionBody("""
+            {"targetStatus":"CLOSED","reason":"verified","rootCause":"dependency saturation"}
+            """, "transition-close-resolution-001");
 
         verify(mutations, never()).transition(any(), any(), any(), any(), any(),
             org.mockito.ArgumentMatchers.anyLong(), any(), any());

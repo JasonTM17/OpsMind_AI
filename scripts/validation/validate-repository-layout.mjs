@@ -185,8 +185,9 @@ const pnpmWorkspacePath = path.join(repositoryRoot, "pnpm-workspace.yaml");
 if (fs.existsSync(pnpmWorkspacePath)) {
   const workspace = fs.readFileSync(pnpmWorkspacePath, "utf8");
   for (const policy of [
-    "postcss: 8.5.18",
-    "'brace-expansion@5.0.7': 5.0.8",
+    "postcss: 8.5.23",
+    "'brace-expansion@1.1.17': 1.1.18",
+    "'brace-expansion@5.0.7': 5.0.9",
     "'sharp@0.35.3': true",
     "'unrs-resolver@1.12.2': true",
     "strictDepBuilds: true",
