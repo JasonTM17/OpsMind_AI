@@ -136,7 +136,8 @@ class FlywayV016RecoveryHarnessTest {
                 quotedRole = result.getString(1);
             }
         }
-        execute(connection, "GRANT opsmind_context_resolver, opsmind_dispatch_resolver TO " + quotedRole);
+        execute(connection, "GRANT opsmind_context_resolver, opsmind_dispatch_resolver TO "
+            + quotedRole + " WITH INHERIT TRUE, SET TRUE");
     }
 
     private static void transferV016Ownership(
