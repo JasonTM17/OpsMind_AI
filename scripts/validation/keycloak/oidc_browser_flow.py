@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import base64
+import binascii
 import hashlib
 import hmac
 import json
@@ -12,7 +13,7 @@ import secrets
 import ssl
 import struct
 import time
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 from html.parser import HTMLParser
 from http.cookiejar import CookieJar
 from pathlib import Path
@@ -114,10 +115,11 @@ class KeycloakFormParser(HTMLParser):
 
 @dataclass(frozen=True)
 class AuthorizationResult:
-    callback_url: str
-    verifier: str
-    state: str
-    opener: Any
+    callback_url: str = field(repr=False)
+    verifier: str = field(repr=False)
+    state: str = field(repr=False)
+    nonce: str = field(repr=False)
+    opener: Any = field(repr=False)
 
 
 def parse_forms(document: str) -> list[dict[str, Any]]:
@@ -133,15 +135,33 @@ def find_form(document: str, form_id: str) -> dict[str, Any]:
     raise RuntimeError(f"Expected Keycloak form was not rendered: {form_id}")
 
 
+def decode_base64url_segment(value: str, label: str) -> bytes:
+    if not value or re.fullmatch(r"[A-Za-z0-9_-]+", value) is None:
+        raise RuntimeError(f"Keycloak returned a malformed JWT {label}.")
+    padded = value + "=" * (-len(value) % 4)
+    try:
+        return base64.b64decode(padded, altchars=b"-_", validate=True)
+    except (binascii.Error, ValueError) as error:
+        raise RuntimeError(f"Keycloak returned a malformed JWT {label}.") from error
+
+
 def decode_jwt_payload(token: str) -> dict[str, Any]:
     parts = token.split(".")
     if len(parts) != 3:
         raise RuntimeError("Keycloak returned a malformed JWT.")
-    payload = parts[1] + "=" * (-len(parts[1]) % 4)
-    decoded = json.loads(base64.urlsafe_b64decode(payload))
-    if not isinstance(decoded, dict):
+    try:
+        header = json.loads(decode_base64url_segment(parts[0], "header"))
+        payload = json.loads(decode_base64url_segment(parts[1], "payload"))
+    except (UnicodeDecodeError, json.JSONDecodeError) as error:
+        raise RuntimeError("Keycloak returned a malformed JWT JSON object.") from error
+    signature = decode_base64url_segment(parts[2], "signature")
+    if not isinstance(header, dict):
+        raise RuntimeError("Keycloak JWT header is not an object.")
+    if not signature:
+        raise RuntimeError("Keycloak returned an empty JWT signature.")
+    if not isinstance(payload, dict):
         raise RuntimeError("Keycloak JWT payload is not an object.")
-    return decoded
+    return payload
 
 
 def jwt_key_id(token: str) -> str:
@@ -166,6 +186,11 @@ class OidcBrowserFlow:
         self.redirect_uri = redirect_uri
         self.logout_uri = redirect_uri.rsplit("/", 1)[0] + "/logout"
         self.ssl_context = ssl.create_default_context(cafile=str(ca_cert))
+        self._token_request_count = 0
+
+    @property
+    def token_request_count(self) -> int:
+        return self._token_request_count
 
     def new_opener(self):
         return build_opener(
@@ -174,10 +199,15 @@ class OidcBrowserFlow:
             RedirectCapture(self.issuer, (self.redirect_uri, self.logout_uri)),
         )
 
-    def start(self, username: str, password: str) -> tuple[Any, str | None, str, str, str]:
+    def start(
+        self,
+        username: str,
+        password: str,
+    ) -> tuple[Any, str | None, str | None, str, str, str]:
         verifier = self._url_token(48)
         challenge = self._b64(hashlib.sha256(verifier.encode()).digest())
         state = self._url_token(18)
+        nonce = self._url_token(18)
         parameters = {
             "client_id": self.client_id,
             "redirect_uri": self.redirect_uri,
@@ -186,7 +216,7 @@ class OidcBrowserFlow:
             "code_challenge": challenge,
             "code_challenge_method": "S256",
             "state": state,
-            "nonce": self._url_token(18),
+            "nonce": nonce,
             "prompt": "login",
         }
         opener = self.new_opener()
@@ -199,10 +229,10 @@ class OidcBrowserFlow:
         fields = dict(form["inputs"])
         fields.update(username=username, password=password, credentialId="")
         next_document, callback, _ = self.post_form(opener, form["action"], fields)
-        return opener, next_document, callback, verifier, state
+        return opener, next_document, callback, verifier, state, nonce
 
     def enroll_totp(self, username: str, password: str, algorithm: str):
-        opener, document, callback, verifier, state = self.start(username, password)
+        opener, document, callback, verifier, state, nonce = self.start(username, password)
         if callback is not None or document is None:
             raise RuntimeError("TOTP enrollment was not required for the conformance user.")
         form = find_form(document, "kc-totp-settings-form")
@@ -214,7 +244,7 @@ class OidcBrowserFlow:
         _, callback, _ = self.post_form(opener, form["action"], fields)
         if callback is None:
             raise RuntimeError("TOTP enrollment did not complete the authorization flow.")
-        return self.exchange(callback, verifier, state, opener), totp_seed, opener
+        return self.exchange(callback, verifier, state, nonce, opener), totp_seed, opener
 
     def login_with_totp(
         self,
@@ -224,7 +254,7 @@ class OidcBrowserFlow:
         algorithm: str,
         otp: str | None = None,
     ):
-        opener, document, callback, verifier, state = self.start(username, password)
+        opener, document, callback, verifier, state, nonce = self.start(username, password)
         if callback is not None or document is None:
             raise RuntimeError("Keycloak did not require the configured second factor.")
         form = find_form(document, "kc-otp-login-form")
@@ -233,7 +263,7 @@ class OidcBrowserFlow:
         _, callback, _ = self.post_form(opener, form["action"], fields)
         if callback is None:
             raise RuntimeError("The OTP challenge did not complete the authorization flow.")
-        return self.exchange(callback, verifier, state, opener), opener
+        return self.exchange(callback, verifier, state, nonce, opener), opener
 
     def assert_totp_replay_denied(
         self,
@@ -244,7 +274,7 @@ class OidcBrowserFlow:
     ) -> str:
         if self.totp_time_step() != used_time_step:
             raise RuntimeError("TOTP replay check crossed its original timestep before replay.")
-        opener, document, callback, _, _ = self.start(username, password)
+        opener, document, callback, _, _, _ = self.start(username, password)
         if callback is not None or document is None:
             raise RuntimeError("TOTP replay check did not reach the second-factor challenge.")
         form = find_form(document, "kc-otp-login-form")
@@ -279,24 +309,70 @@ class OidcBrowserFlow:
         return "invalid_otp_same_timestep"
 
     def password_authorization(self, username: str, password: str) -> AuthorizationResult:
-        opener, document, callback, verifier, state = self.start(username, password)
+        opener, document, callback, verifier, state, nonce = self.start(username, password)
         if callback is None or document is not None:
             raise RuntimeError("Password-only authorization did not reach its callback.")
-        return AuthorizationResult(callback, verifier, state, opener)
+        return AuthorizationResult(callback, verifier, state, nonce, opener)
 
-    def exchange(self, callback: str, verifier: str, state: str, opener):
+    def assert_state_tamper_denied(self, authorization: AuthorizationResult) -> str:
+        parsed = urlparse(authorization.callback_url)
+        tampered_query = parse_qs(parsed.query)
+        tampered_query["state"] = [authorization.state + ".tampered"]
+        tampered_callback = parsed._replace(query=urlencode(tampered_query, doseq=True)).geturl()
+        requests_before = self.token_request_count
+        try:
+            self.exchange(
+                tampered_callback,
+                authorization.verifier,
+                authorization.state,
+                authorization.nonce,
+                authorization.opener,
+            )
+        except RuntimeError as error:
+            if str(error) != "Authorization callback state is invalid.":
+                raise
+            if self.token_request_count != requests_before:
+                raise RuntimeError("State tamper denial reached the token endpoint.") from error
+            return "callback_state_mismatch"
+        raise RuntimeError("Tampered authorization callback state was accepted.")
+
+    @staticmethod
+    def _authorization_code(callback: str, state: str) -> str:
         query = parse_qs(urlparse(callback).query)
-        if query.get("state") != [state] or len(query.get("code", [])) != 1:
-            raise RuntimeError("Authorization callback state or code is invalid.")
-        return self.token_request({
+        if query.get("state") != [state]:
+            raise RuntimeError("Authorization callback state is invalid.")
+        if len(query.get("code", [])) != 1:
+            raise RuntimeError("Authorization callback code is invalid.")
+        return query["code"][0]
+
+    def exchange(self, callback: str, verifier: str, state: str, nonce: str, opener):
+        code = self._authorization_code(callback, state)
+        tokens = self.token_request({
             "grant_type": "authorization_code",
             "client_id": self.client_id,
             "redirect_uri": self.redirect_uri,
-            "code": query["code"][0],
+            "code": code,
             "code_verifier": verifier,
         }, opener)
+        self._assert_id_token_nonce(tokens, nonce)
+        return tokens
+
+    @staticmethod
+    def _assert_id_token_nonce(tokens: dict[str, Any], expected_nonce: str) -> None:
+        compact_jws = tokens.get("id_token")
+        if not isinstance(compact_jws, str) or not compact_jws:
+            raise RuntimeError("Authorization-code response ID token is missing or invalid.")
+        if not isinstance(expected_nonce, str) or not expected_nonce:
+            raise RuntimeError("Authorization request nonce is missing or invalid.")
+        payload = decode_jwt_payload(compact_jws)
+        token_nonce = payload.get("nonce")
+        if not isinstance(token_nonce, str) or not token_nonce:
+            raise RuntimeError("Authorization-code response nonce is missing or invalid.")
+        if not secrets.compare_digest(token_nonce, expected_nonce):
+            raise RuntimeError("Authorization-code response nonce does not match the request.")
 
     def token_request(self, fields: dict[str, str], opener=None) -> dict[str, Any]:
+        self._token_request_count += 1
         active_opener = opener or self.new_opener()
         request = Request(
             self.issuer + "/protocol/openid-connect/token",
