@@ -24,14 +24,21 @@ class AuthorizedArtifactReadServiceTest {
     @Test
     void authorizesOnlyMatchingReadableMetadataAndObject() {
         var service = new AuthorizedArtifactReadService();
-        assertDoesNotThrow(() -> service.authorize(metadata(EvidenceArtifactLifecycleState.AVAILABLE), request(), true));
+        assertDoesNotThrow(() -> service.authorize(metadata(EvidenceArtifactLifecycleState.AVAILABLE), request(),
+            new ArtifactObjectProbeFacts(true, DIGEST, 3)));
         assertThrows(ArtifactAccessDeniedException.class,
-            () -> service.authorize(metadata(EvidenceArtifactLifecycleState.TOMBSTONED), request(), true));
+            () -> service.authorize(metadata(EvidenceArtifactLifecycleState.TOMBSTONED), request(),
+                new ArtifactObjectProbeFacts(true, DIGEST, 3)));
         assertThrows(ArtifactAccessDeniedException.class,
-            () -> service.authorize(metadata(EvidenceArtifactLifecycleState.AVAILABLE), request(), false));
+            () -> service.authorize(metadata(EvidenceArtifactLifecycleState.AVAILABLE), request(),
+                new ArtifactObjectProbeFacts(false, null, 0)));
         var foreign = new AuthorizedArtifactReadRequest(UUID.randomUUID(), PROJECT, INCIDENT, RUN, ACTOR, 7, DIGEST);
         assertThrows(ArtifactAccessDeniedException.class,
-            () -> service.authorize(metadata(EvidenceArtifactLifecycleState.AVAILABLE), foreign, true));
+            () -> service.authorize(metadata(EvidenceArtifactLifecycleState.AVAILABLE), foreign,
+                new ArtifactObjectProbeFacts(true, DIGEST, 3)));
+        assertThrows(ArtifactAccessDeniedException.class,
+            () -> service.authorize(metadata(EvidenceArtifactLifecycleState.AVAILABLE), request(),
+                new ArtifactObjectProbeFacts(true, DIGEST, 4)));
     }
 
     private static AuthorizedArtifactReadRequest request() {

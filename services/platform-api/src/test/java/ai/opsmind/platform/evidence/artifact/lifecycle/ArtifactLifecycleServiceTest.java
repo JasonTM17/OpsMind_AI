@@ -46,6 +46,8 @@ class ArtifactLifecycleServiceTest {
         assertThrows(IllegalArgumentException.class,
             () -> new ArtifactLifecycleCommand(ACTOR, 7, DIGEST,
                 EvidenceArtifactLifecycleState.TOMBSTONED, "", Instant.now()));
+        new ArtifactLifecycleCommand(ACTOR, 7, DIGEST,
+            EvidenceArtifactLifecycleState.TOMBSTONED, "1.operator.request", Instant.now());
     }
 
     @Test

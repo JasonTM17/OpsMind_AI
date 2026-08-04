@@ -12,7 +12,7 @@ public record ArtifactLifecycleCommand(
     UUID actorId, long authorizationEpoch, EvidenceArtifactDigest expectedDigest,
     EvidenceArtifactLifecycleState targetState, String reason, Instant occurredAt
 ) {
-    private static final Pattern REASON = Pattern.compile("[a-z][a-z0-9._-]{0,127}");
+    private static final Pattern REASON = Pattern.compile("[a-z0-9][a-z0-9._-]{0,127}");
 
     public ArtifactLifecycleCommand {
         if (actorId == null || authorizationEpoch < 0 || expectedDigest == null
