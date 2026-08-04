@@ -668,6 +668,24 @@ jobs:
           SPRING_DATASOURCE_URL: jdbc:postgresql://127.0.0.1:5432/opsmind
         run: |
           set -euo pipefail
+          closure_db="opsmind_incident_closure_${GITHUB_RUN_ID}"
+          cleanup() {
+            PGPASSWORD="$POSTGRES_PASSWORD" dropdb --if-exists --force --no-password \
+              --host "$PGHOST" --port "$PGPORT" --username "$POSTGRES_USER" \
+              "$closure_db"
+          }
+          trap cleanup EXIT
+          PGPASSWORD="$POSTGRES_PASSWORD" createdb --no-password \
+            --host "$PGHOST" --port "$PGPORT" --username "$POSTGRES_USER" \
+            "$closure_db"
+          export SPRING_DATASOURCE_URL="jdbc:postgresql://${PGHOST}:${PGPORT}/${closure_db}"
+          SPRING_PROFILES_ACTIVE=persistence \
+          SPRING_DATASOURCE_USERNAME="$POSTGRES_USER" \
+          SPRING_DATASOURCE_PASSWORD="$POSTGRES_PASSWORD" \
+          OPSMIND_FLYWAY_ENABLED=true \
+            java -jar services/platform-api/target/platform-api.jar \
+              --spring.main.web-application-type=none \
+              --opsmind.persistence.enabled=false
           mkdir -p artifacts/verification/phase-04
           mvn --batch-mode --no-transfer-progress \
             -Dmaven.repo.local="$OPS_CACHE_ROOT/maven" \
