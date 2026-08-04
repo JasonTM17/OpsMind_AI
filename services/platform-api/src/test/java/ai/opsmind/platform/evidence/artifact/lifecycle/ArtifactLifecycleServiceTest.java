@@ -9,6 +9,7 @@ import java.util.UUID;
 import ai.opsmind.platform.evidence.artifact.EvidenceArtifactDigest;
 import ai.opsmind.platform.evidence.artifact.EvidenceArtifactLifecycleState;
 import ai.opsmind.platform.evidence.artifact.EvidenceArtifactMetadata;
+import ai.opsmind.platform.evidence.artifact.access.ArtifactAccessDeniedException;
 
 import org.junit.jupiter.api.Test;
 
@@ -37,8 +38,27 @@ class ArtifactLifecycleServiceTest {
                 command(EvidenceArtifactLifecycleState.PURGED)));
     }
 
+    @Test
+    void rejectsReasonsOutsideAuditContract() {
+        assertThrows(IllegalArgumentException.class,
+            () -> new ArtifactLifecycleCommand(ACTOR, 7, DIGEST,
+                EvidenceArtifactLifecycleState.TOMBSTONED, "Operator request", Instant.now()));
+        assertThrows(IllegalArgumentException.class,
+            () -> new ArtifactLifecycleCommand(ACTOR, 7, DIGEST,
+                EvidenceArtifactLifecycleState.TOMBSTONED, "", Instant.now()));
+    }
+
+    @Test
+    void hidesLifecycleAuthorizationMismatch() {
+        var metadata = metadata(EvidenceArtifactLifecycleState.AVAILABLE);
+        var wrongActor = new ArtifactLifecycleCommand(UUID.randomUUID(), 7, DIGEST,
+            EvidenceArtifactLifecycleState.TOMBSTONED, "operator.request", Instant.now());
+        assertThrows(ArtifactAccessDeniedException.class,
+            () -> new ArtifactLifecycleService().transition(metadata, wrongActor));
+    }
+
     private static ArtifactLifecycleCommand command(EvidenceArtifactLifecycleState target) {
-        return new ArtifactLifecycleCommand(ACTOR, 7, DIGEST, target, "operator request", Instant.now());
+        return new ArtifactLifecycleCommand(ACTOR, 7, DIGEST, target, "operator.request", Instant.now());
     }
 
     private static EvidenceArtifactMetadata metadata(EvidenceArtifactLifecycleState state) {
