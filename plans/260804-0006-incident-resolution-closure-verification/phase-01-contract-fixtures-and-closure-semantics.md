@@ -43,10 +43,10 @@ Close the contract evidence gap without changing the public route or state model
 
 ## Success Criteria
 
-- [ ] Closure fixtures validate and no incident fixture is unassigned.
-- [ ] CLOSED event cannot validate with null/blank resolution fields.
-- [ ] Existing OPEN/INVESTIGATING fixtures remain valid.
-- [ ] Static validator passes with zero errors.
+- [x] Closure fixtures validate and no incident fixture is unassigned.
+- [x] CLOSED event cannot validate with null/blank resolution fields.
+- [x] Existing OPEN/INVESTIGATING fixtures remain valid.
+- [x] Static validator passes with zero errors.
 
 ## Risks
 

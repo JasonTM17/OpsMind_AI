@@ -653,9 +653,9 @@ Evidence:
 - `artifacts/verification/phase-03/identity-delegation.txt`
 
 Checkpoint state: **4A locally complete**. Phase 4 remains **in progress**.
-List/patch/assignment, resolution/closure UX, postmortems, and the governed
-evidence-object upload/read/tombstone/restore/purge/reconciliation lifecycle are
-not implemented. Local evidence records `CodeRevision=UNBORN` and
+Generic patch/assignment, frontend resolution/closure UX, postmortems, and the
+governed evidence-object upload/read/tombstone/restore/purge/reconciliation
+lifecycle are not implemented. Local evidence records `CodeRevision=UNBORN` and
 `WorkspaceDirty=YES`; later revision-bound CI verifies the repository contracts
 without converting that historical local transcript into production evidence.
 
@@ -991,9 +991,30 @@ both clean bootstraps, Compose health, and the relevant build gates; final merge
 admission remains revision-bound in PR #58.
 
 This closes only the incident-list child checkpoint. Phase 4 and G2 remain in
-progress; free-text search, patch/assignment, closure/postmortem breadth, and
-B-006/B-008/B-012 remain open. CI fixtures are not production SLO evidence,
+progress; free-text search, patch/assignment, frontend closure UX/postmortem
+breadth, and B-006/B-008/B-012 remain open. CI fixtures are not production SLO evidence,
 and no frontend incident-list experience is claimed.
+
+## 2026-08-04 — Incident resolution-to-closure verification
+
+PR #59 merged as `3bad910` after exact-head revision `13a0224` passed PR
+Quality run `30868733961`, CodeQL run `30868731708`, and cross-service run
+`30868733964`. The PostgreSQL trust job executed
+`IncidentHttpPersistenceIntegrationTest` with three tests and zero failures,
+errors, or skips on a dedicated disposable database.
+
+The existing public transition route is now contract- and PostgreSQL-proven for
+`OPEN -> INVESTIGATING -> RESOLVED -> CLOSED`. A CLOSED request omits resolution
+fields while response, detail, and timeline retain the authoritative root cause
+and resolution summary. Exact replay preserves body, ETag, operation ID, and
+durable counts; stale ETags and every outgoing CLOSED transition fail without
+timeline, audit, outbox, or idempotency growth. Timeline, audit, and outbox event
+IDs remain linked with aggregate sequence `1..4`.
+
+This is non-production verification of an existing backend path, not a new
+route, migration, frontend flow, or full Phase 4 exit. Generic PATCH,
+owner/alert assignment, resolve/close frontend UX, postmortems, governed
+artifact lifecycle, B-006/B-008/B-012, Phase 4, and G2 remain open.
 
 ## Unresolved Questions
 

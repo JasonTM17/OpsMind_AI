@@ -3,7 +3,7 @@ title: Incident resolution to closure verification
 description: >-
   Prove the existing incident RESOLVED to CLOSED lifecycle across contracts,
   HTTP, persistence, idempotency, and immutable event effects.
-status: in-progress
+status: completed
 priority: P1
 branch: feature/incident-closure-verification
 tags:
@@ -32,7 +32,8 @@ does not create partial timeline, audit, outbox, or idempotency effects.
 ## Scope
 
 - In: closure fixtures/schema invariant, controller binding, real PostgreSQL HTTP lifecycle proof, exact-head CI evidence.
-- Out: generic patch, owner/alert assignment, postmortems, artifact lifecycle.
+- Out: generic PATCH, owner/alert assignment, resolve/close frontend UX,
+  postmortems, and artifact lifecycle.
 
 ## Phases
 
@@ -40,7 +41,7 @@ does not create partial timeline, audit, outbox, or idempotency effects.
 |-------|------|--------|
 | 1 | [Contract fixtures and closure semantics](./phase-01-contract-fixtures-and-closure-semantics.md) | Completed |
 | 2 | [HTTP and PostgreSQL lifecycle proof](./phase-02-http-and-postgresql-lifecycle-proof.md) | Completed |
-| 3 | [Verification reconciliation and gate proof](./phase-03-verification-reconciliation-and-gate-proof.md) | In Progress |
+| 3 | [Verification reconciliation and gate proof](./phase-03-verification-reconciliation-and-gate-proof.md) | Completed |
 
 ## Dependencies
 
@@ -54,3 +55,11 @@ does not create partial timeline, audit, outbox, or idempotency effects.
 - Exact replay returns identical body, ETag, and operation ID with no new effects.
 - Stale ETag and every post-close transition fail without timeline/audit/outbox growth.
 - Static contracts, focused tests, PostgreSQL trust contracts, PR quality, cross-service evaluation, and CodeQL pass on one revision.
+
+## Evidence
+
+- PR #59 merged as `3bad910` from tested head `13a0224`; both revisions have
+  the same Git tree.
+- PR Quality `30868733961`, CodeQL `30868731708`, and cross-service
+  `30868733964` passed. PostgreSQL executed three closure lifecycle tests with
+  zero failures, errors, or skips.
