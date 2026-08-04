@@ -34,10 +34,10 @@ timeline, audit, outbox, and idempotency result in one PostgreSQL transaction.
 This proves the highest-risk local invariants without fabricating an artifact
 backend while B-006, B-008, and B-012 remain active.
 
-Phase 3 hands shared-contract ownership to this sequential local slice. Phase 3
-remote CI and production IdP gates remain open, so Phase 4 cannot close G2.
-Adding Platform API sources also invalidates the current source/JAR-bound local
-identity transcript; rerun that reference verifier after checkpoint 4A lands.
+Phase 3 hands shared-contract ownership to this sequential local slice. Its
+revision-bound Linux Keycloak reference CI now passes, but the production IdP
+and session gate remains open, so Phase 4 cannot close G2. Platform API source
+changes continue to require fresh exact-revision identity evidence.
 
 ## Objective
 
