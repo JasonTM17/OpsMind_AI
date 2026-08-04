@@ -31,6 +31,26 @@ public final class EvidenceArtifactIdentity {
         return deriveLifecycleEvent(organizationId, artifactId, lifecycleVersion, uploadAttemptId);
     }
 
+    /** Identity for a Phase 4C control transition (no upload attempt involved). */
+    public static UUID controlEventId(UUID organizationId, UUID artifactId, long lifecycleVersion) {
+        if (organizationId == null || artifactId == null || lifecycleVersion < 3) {
+            throw new IllegalArgumentException("Artifact control event identity is invalid.");
+        }
+        try {
+            byte[] hash = MessageDigest.getInstance("SHA-256").digest(
+                ("opsmind:artifact-control-event:v1:" + organizationId + ":" + artifactId + ":"
+                    + lifecycleVersion).getBytes(StandardCharsets.UTF_8)
+            );
+            hash[6] = (byte) ((hash[6] & 0x0f) | 0x80);
+            hash[8] = (byte) ((hash[8] & 0x3f) | 0x80);
+            ByteBuffer bytes = ByteBuffer.wrap(hash);
+            return new UUID(bytes.getLong(), bytes.getLong());
+        }
+        catch (NoSuchAlgorithmException exception) {
+            throw new IllegalStateException("SHA-256 is unavailable.", exception);
+        }
+    }
+
     private static UUID derive(String type, UUID organizationId, UUID primaryId, UUID secondaryId) {
         if (organizationId == null || primaryId == null || secondaryId == null) {
             throw new IllegalArgumentException("Artifact identity scope is required.");
