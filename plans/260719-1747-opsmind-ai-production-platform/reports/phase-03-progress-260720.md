@@ -139,10 +139,11 @@ Status: **in progress**
   environment/runtime identity, configuration digest, command, start/end time,
   `RuntimeSecretsPersisted=NO`, and `Result=PASS`. It is also marked
   `REFERENCE_CONFORMANCE_NOT_PRODUCTION`, `CodeRevision=UNBORN`, and
-  `WorkspaceDirty=YES`. Because the artifact is ignored and the configured
-  Linux `identity-conformance` CI job has not run remotely, this is not
-  immutable release evidence. Local schema-v2 PASS is claimed; remote CI and
-  Compose identity PASS are not.
+  `WorkspaceDirty=YES`, so this local artifact is not immutable release
+  evidence. PR #61 later supplied revision-bound Linux reference evidence:
+  head `905395f`, PR Quality run `30872670122`, Keycloak job `91878531998`, and
+  merge `ed2a395` have identical tree `ed9138d`. This proves the checked-in
+  Keycloak reference profile only, not production identity/session conformance.
 
 ## Security correction made during implementation
 
@@ -186,8 +187,8 @@ payloads across tenants.
 1. Select and authorize the production enterprise IdP, then prove its
    federation, session, claim, break-glass, and revocation behavior in the
    appropriate non-production environment.
-2. Execute the configured Linux identity-conformance job remotely and collect
-   remote CI/Compose smoke evidence without treating configuration as a PASS.
+2. Add explicit state-tamper and ID-token nonce-binding evidence to the
+   reference profile without treating it as production session conformance.
 
 No production secret, DeepSeek key, token, or private evidence is stored in
 this report or the repository.
