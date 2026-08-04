@@ -69,7 +69,11 @@ final class JdbcIncidentTimelineRepository implements IncidentTimelineRepository
                     + "event_kind, actor_id, operation_id, occurred_at, reason, "
                     + "payload ->> 'fromStatus' AS from_status, payload ->> 'toStatus' AS to_status, "
                     + "payload ->> 'rootCause' AS root_cause, "
-                    + "payload ->> 'resolutionSummary' AS resolution_summary "
+                    + "payload ->> 'resolutionSummary' AS resolution_summary, "
+                    + "payload #>> '{metadata,title}' AS metadata_title, "
+                    + "payload #>> '{metadata,summary}' AS metadata_summary, "
+                    + "payload #>> '{metadata,severity}' AS metadata_severity, "
+                    + "payload #>> '{metadata,ownerId}' AS metadata_owner_id "
                     + "FROM incident_timeline_events WHERE organization_id = ? AND project_id = ? "
                     + "AND incident_id = ?" + cursorClause
                     + " ORDER BY incident_version ASC LIMIT ?",
@@ -125,13 +129,23 @@ final class JdbcIncidentTimelineRepository implements IncidentTimelineRepository
     }
 
     private IncidentTimelineEvent mapEvent(ResultSet resultSet, int rowNumber) throws SQLException {
+        String eventType = resultSet.getString("event_kind");
+        IncidentMetadataValues metadata = null;
+        if (IncidentTimelineEvent.METADATA_PATCHED.equals(eventType)) {
+            metadata = new IncidentMetadataValues(
+                resultSet.getString("metadata_title"),
+                resultSet.getString("metadata_summary"),
+                IncidentSeverity.valueOf(resultSet.getString("metadata_severity")),
+                nullableUuid(resultSet.getString("metadata_owner_id"))
+            );
+        }
         return new IncidentTimelineEvent(
             resultSet.getObject("event_id", UUID.class),
             resultSet.getObject("organization_id", UUID.class),
             resultSet.getObject("project_id", UUID.class),
             resultSet.getObject("incident_id", UUID.class),
             resultSet.getLong("incident_version"),
-            resultSet.getString("event_kind"),
+            eventType,
             resultSet.getObject("actor_id", UUID.class),
             resultSet.getObject("operation_id", UUID.class),
             resultSet.getTimestamp("occurred_at").toInstant(),
@@ -139,8 +153,13 @@ final class JdbcIncidentTimelineRepository implements IncidentTimelineRepository
             status(resultSet.getString("from_status")),
             status(resultSet.getString("to_status")),
             resultSet.getString("root_cause"),
-            resultSet.getString("resolution_summary")
+            resultSet.getString("resolution_summary"),
+            metadata
         );
+    }
+
+    private UUID nullableUuid(String value) {
+        return value == null ? null : UUID.fromString(value);
     }
 
     private IncidentStatus status(String value) {

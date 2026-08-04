@@ -12,4 +12,6 @@ interface IncidentAccessRepository {
         UUID projectId,
         IncidentAccessMode mode
     );
+
+    void requireEligibleOwner(UUID organizationId, UUID ownerId);
 }

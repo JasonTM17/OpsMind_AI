@@ -22,8 +22,8 @@ import org.springframework.stereotype.Repository;
 final class JdbcIncidentRepository implements IncidentRepository {
 
     private static final String INCIDENT_COLUMNS = "id, organization_id, project_id, title, "
-        + "description, severity, status, root_cause, resolution_summary, created_by, updated_by, "
-        + "created_at, updated_at, version";
+        + "description, severity, status, owner_id, root_cause, resolution_summary, created_by, "
+        + "updated_by, created_at, updated_at, version";
 
     private final JdbcTemplate jdbcTemplate;
 
@@ -36,8 +36,8 @@ final class JdbcIncidentRepository implements IncidentRepository {
         try {
             jdbcTemplate.update(
                 "INSERT INTO incidents (id, organization_id, project_id, title, description, severity, "
-                    + "status, root_cause, resolution_summary, created_by, updated_by, created_at, "
-                    + "updated_at, version) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)",
+                    + "status, owner_id, root_cause, resolution_summary, created_by, updated_by, "
+                    + "created_at, updated_at, version) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)",
                 incident.id(),
                 incident.organizationId(),
                 incident.projectId(),
@@ -45,6 +45,7 @@ final class JdbcIncidentRepository implements IncidentRepository {
                 incident.summary(),
                 incident.severity().name(),
                 incident.status().name(),
+                incident.ownerId(),
                 incident.rootCause(),
                 incident.resolutionSummary(),
                 incident.createdBy(),
@@ -135,6 +136,45 @@ final class JdbcIncidentRepository implements IncidentRepository {
         }
     }
 
+    @Override
+    public IncidentSnapshot patch(
+        UUID organizationId,
+        UUID projectId,
+        UUID incidentId,
+        long expectedVersion,
+        PatchIncidentRequest request,
+        UUID actorId,
+        java.time.Instant occurredAt
+    ) {
+        try {
+            List<IncidentSnapshot> updated = jdbcTemplate.query(
+                "UPDATE incidents SET "
+                    + "title = CASE WHEN ? THEN ? ELSE title END, "
+                    + "description = CASE WHEN ? THEN ? ELSE description END, "
+                    + "severity = CASE WHEN ? THEN ? ELSE severity END, "
+                    + "owner_id = CASE WHEN ? THEN ? ELSE owner_id END, "
+                    + "updated_by = ?, updated_at = ?, version = version + 1 "
+                    + "WHERE organization_id = ? AND project_id = ? AND id = ? AND version = ? "
+                    + "RETURNING " + INCIDENT_COLUMNS,
+                this::mapIncident,
+                request.hasTitle(), request.title(),
+                request.hasSummary(), request.summary(),
+                request.hasSeverity(), request.severity() == null ? null : request.severity().name(),
+                request.hasOwnerId(), request.ownerId(),
+                actorId, Timestamp.from(occurredAt),
+                organizationId, projectId, incidentId, expectedVersion
+            );
+            OptimisticConcurrency.requireExactlyOneUpdated(updated.size());
+            return updated.getFirst();
+        }
+        catch (PlatformProblemException exception) {
+            throw exception;
+        }
+        catch (DataAccessException exception) {
+            throw persistenceProblem(exception);
+        }
+    }
+
     private IncidentSnapshot mapIncident(ResultSet resultSet, int rowNumber) throws SQLException {
         return new IncidentSnapshot(
             resultSet.getObject("id", UUID.class),
@@ -144,6 +184,7 @@ final class JdbcIncidentRepository implements IncidentRepository {
             resultSet.getString("description"),
             IncidentSeverity.valueOf(resultSet.getString("severity")),
             IncidentStatus.valueOf(resultSet.getString("status")),
+            resultSet.getObject("owner_id", UUID.class),
             resultSet.getString("root_cause"),
             resultSet.getString("resolution_summary"),
             resultSet.getObject("created_by", UUID.class),

@@ -239,6 +239,57 @@ paths:
         '503':
           $ref: '#/components/responses/ServiceUnavailable'
   /organizations/{organizationId}/projects/{projectId}/incidents/{incidentId}:
+    patch:
+      operationId: patchIncident
+      tags: [incidents]
+      security:
+        - oidcBearer: [incident:write]
+      parameters:
+        - $ref: '#/components/parameters/OrganizationId'
+        - $ref: '#/components/parameters/ProjectId'
+        - $ref: '#/components/parameters/IncidentId'
+        - $ref: '#/components/parameters/IdempotencyKey'
+        - $ref: '#/components/parameters/IfMatch'
+      requestBody:
+        required: true
+        content:
+          application/merge-patch+json:
+            schema:
+              $ref: '#/components/schemas/PatchIncidentRequest'
+      responses:
+        '200':
+          description: Incident metadata patched with all durable effects committed
+          headers:
+            ETag:
+              $ref: '#/components/headers/ETag'
+            X-Operation-Id:
+              $ref: '#/components/headers/XOperationId'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Incident'
+        '400':
+          $ref: '#/components/responses/InvalidRequest'
+        '401':
+          $ref: '#/components/responses/Unauthenticated'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '409':
+          $ref: '#/components/responses/Conflict'
+        '412':
+          $ref: '#/components/responses/PreconditionFailed'
+        '413':
+          $ref: '#/components/responses/PayloadTooLarge'
+        '415':
+          $ref: '#/components/responses/UnsupportedMediaType'
+        '422':
+          $ref: '#/components/responses/UnprocessableContent'
+        '428':
+          $ref: '#/components/responses/PreconditionRequired'
+        '503':
+          $ref: '#/components/responses/ServiceUnavailable'
     get:
       operationId: getIncident
       tags: [incidents]
@@ -686,6 +737,8 @@ components:
       $ref: '../json-schema/auth/tenant-scope.schema.json'
     CreateIncidentRequest:
       $ref: '../json-schema/incidents/create-incident-request.schema.json'
+    PatchIncidentRequest:
+      $ref: '../json-schema/incidents/patch-incident-request.schema.json'
     TransitionIncidentRequest:
       $ref: '../json-schema/incidents/transition-incident-request.schema.json'
     Incident:

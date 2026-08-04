@@ -30,6 +30,7 @@ import org.springframework.security.oauth2.server.resource.authentication.JwtAut
 import org.springframework.validation.annotation.Validated;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
+import org.springframework.web.bind.annotation.PatchMapping;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestHeader;
@@ -108,6 +109,33 @@ public class IncidentController {
             .varyBy(HttpHeaders.ACCEPT)
             .header(HttpHeaders.ETAG, result.etag())
             .body(result.incident());
+    }
+
+    @PatchMapping(
+        value = "/{incidentId}",
+        consumes = "application/merge-patch+json"
+    )
+    ResponseEntity<byte[]> patch(
+        Authentication authentication,
+        @PathVariable UUID organizationId,
+        @PathVariable UUID projectId,
+        @PathVariable UUID incidentId,
+        @RequestHeader(name = "Idempotency-Key", required = false) String rawIdempotencyKey,
+        @RequestHeader(name = HttpHeaders.IF_MATCH, required = false) String ifMatch,
+        @RequestBody PatchIncidentRequest request,
+        HttpServletRequest servletRequest
+    ) {
+        IncidentOperationResult result = mutationService.patch(
+            principal(authentication),
+            organizationId,
+            projectId,
+            incidentId,
+            IdempotencyKey.parse(rawIdempotencyKey),
+            OptimisticConcurrency.requireIfMatch(ifMatch),
+            request,
+            traceId(servletRequest)
+        );
+        return mutationResponse(result);
     }
 
     @PostMapping("/{incidentId}/transitions")

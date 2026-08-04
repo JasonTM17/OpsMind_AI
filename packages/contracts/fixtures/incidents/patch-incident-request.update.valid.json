@@ -1,0 +1,6 @@
+{
+  "title": "Checkout API elevated errors",
+  "summary": "The checkout API exceeded the synthetic error threshold.",
+  "severity": "SEV1",
+  "reason": "Incident commander confirmed customer-visible impact."
+}
