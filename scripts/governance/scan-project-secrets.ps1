@@ -218,13 +218,94 @@ function Test-ReviewedMediaBytes {
         if ($valid) {
             $width = [int]$Bytes[6] + (256 * [int]$Bytes[7])
             $height = [int]$Bytes[8] + (256 * [int]$Bytes[9])
-            $valid = $width -eq [int]$entry.width -and $height -eq [int]$entry.height
+            $frameCount = Get-GifFrameCount -Bytes $Bytes
+            $valid = $width -eq [int]$entry.width -and $height -eq [int]$entry.height -and
+                $frameCount -eq [int]$entry.frames
         }
     }
     else {
         $valid = $false
     }
     return [pscustomobject]@{ Declared = $true; Valid = $valid }
+}
+
+function Read-GifSubBlocks {
+    param(
+        [Parameter(Mandatory = $true)][byte[]]$Bytes,
+        [Parameter(Mandatory = $true)][int]$Offset
+    )
+
+    while ($Offset -lt $Bytes.Length) {
+        $size = [int]$Bytes[$Offset]
+        $Offset++
+        if ($size -eq 0) { return $Offset }
+        if ($Offset + $size -gt $Bytes.Length) { return -1 }
+        $Offset += $size
+    }
+    return -1
+}
+
+function Get-GifFrameCount {
+    param([Parameter(Mandatory = $true)][byte[]]$Bytes)
+
+    if ($Bytes.Length -lt 13) { return -1 }
+    $offset = 13
+    $logicalScreenPacked = [int]$Bytes[10]
+    if (($logicalScreenPacked -band 0x80) -ne 0) {
+        $globalColorTableEntries = 1 -shl (($logicalScreenPacked -band 0x07) + 1)
+        $offset += 3 * $globalColorTableEntries
+    }
+    $frames = 0
+    $hasTrailer = $false
+
+    while ($offset -lt $Bytes.Length) {
+        $block = [int]$Bytes[$offset]
+        $offset++
+        if ($block -eq 0x3B) {
+            $hasTrailer = $true
+            break
+        }
+        if ($block -eq 0x2C) {
+            if ($offset + 9 -gt $Bytes.Length) { return -1 }
+            $imagePacked = [int]$Bytes[$offset + 8]
+            $offset += 9
+            if (($imagePacked -band 0x80) -ne 0) {
+                $localColorTableEntries = 1 -shl (($imagePacked -band 0x07) + 1)
+                $offset += 3 * $localColorTableEntries
+            }
+            if ($offset -ge $Bytes.Length) { return -1 }
+            $offset++
+            $offset = Read-GifSubBlocks -Bytes $Bytes -Offset $offset
+            if ($offset -lt 0) { return -1 }
+            $frames++
+            continue
+        }
+        if ($block -eq 0x21) {
+            if ($offset -ge $Bytes.Length) { return -1 }
+            $label = [int]$Bytes[$offset]
+            $offset++
+            if ($label -in @(0x01, 0xF9, 0xFF)) {
+                if ($offset -ge $Bytes.Length) { return -1 }
+                $fixedBlockSize = [int]$Bytes[$offset]
+                $offset++
+                $expectedBlockSize = switch ($label) {
+                    0x01 { 12 }
+                    0xF9 { 4 }
+                    0xFF { 11 }
+                }
+                if ($fixedBlockSize -ne $expectedBlockSize) { return -1 }
+                if ($offset + $fixedBlockSize -gt $Bytes.Length) { return -1 }
+                $offset += $fixedBlockSize
+            }
+            $offset = Read-GifSubBlocks -Bytes $Bytes -Offset $offset
+            if ($offset -lt 0) { return -1 }
+            continue
+        }
+        return -1
+    }
+
+    if (-not $hasTrailer -or $offset -ne $Bytes.Length) { return -1 }
+    return $frames
 }
 
 function Get-TreeCandidateFiles {
