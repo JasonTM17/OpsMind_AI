@@ -1,6 +1,7 @@
 package ai.opsmind.platform.evidence.artifact.lifecycle;
 
 import ai.opsmind.platform.evidence.artifact.EvidenceArtifactMetadata;
+import ai.opsmind.platform.evidence.artifact.access.ArtifactAccessDeniedException;
 
 /** Pure lifecycle policy; persistence and object deletion remain explicit external operations. */
 public final class ArtifactLifecycleService {
@@ -10,7 +11,7 @@ public final class ArtifactLifecycleService {
         if (metadata == null || command == null || !metadata.actorId().equals(command.actorId())
             || metadata.authorizationEpoch() != command.authorizationEpoch()
             || !metadata.expectedDigest().equals(command.expectedDigest())) {
-            throw new IllegalArgumentException("Artifact lifecycle authorization failed.");
+            throw new ArtifactAccessDeniedException();
         }
         var current = metadata.lifecycleState();
         var target = command.targetState();
