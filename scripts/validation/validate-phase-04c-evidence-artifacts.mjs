@@ -226,7 +226,7 @@ if (!v015.includes("p_storage_version_reference IS NULL")
   errors.push("V015 stored settlement must reject a literal-null version reference");
 }
 
-requireMarkers(
+const v018 = requireMarkers(
   "services/platform-api/src/main/resources/db/migration/"
     + "V018__evidence_artifact_lifecycle_controls.sql",
   [
@@ -236,10 +236,21 @@ requireMarkers(
     "opsmind_evidence_artifact_control_event_id",
     "CREATE CONSTRAINT TRIGGER evidence_artifacts_require_control_event",
     "ARTIFACT_LIFECYCLE_CHANGED",
+    "FOR KEY SHARE OF artifact",
+    "opsmind_evidence_artifact_audit_matches_v015",
+    "public.opsmind_json_object_has_exact_keys",
     "artifact lifecycle metadata requires its control event and audit row",
     "REVOKE ALL ON FUNCTION public.opsmind_validate_evidence_artifact_update()",
   ],
 );
+const v018EventAppendFunction = v018.match(
+  /CREATE\s+OR\s+REPLACE\s+FUNCTION\s+opsmind_validate_evidence_artifact_event_append\s*\(\s*\)\s+RETURNS\s+trigger[\s\S]*?(?=\n\s*DROP\s+TRIGGER\s+evidence_artifact_events_validate_append\b)/iu,
+);
+if (!v018EventAppendFunction) {
+  errors.push("V018 artifact event append validation function is missing");
+} else if (!/\bFOR\s+KEY\s+SHARE\s+OF\s+artifact\b/iu.test(v018EventAppendFunction[0])) {
+  errors.push("V018 artifact event append must lock only the authoritative artifact row");
+}
 requireMarkers(
   "services/platform-api/src/main/java/ai/opsmind/platform/evidence/artifact/"
     + "EvidenceArtifactLifecycleState.java",
