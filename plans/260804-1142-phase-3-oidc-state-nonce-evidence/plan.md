@@ -3,10 +3,10 @@ title: Phase 3 OIDC State and Nonce Evidence
 description: >-
   Prove callback-state tamper denial and ID-token nonce binding in the
   revision-bound Keycloak reference harness.
-status: in-progress
+status: completed
 priority: P1
 effort: 3h
-branch: feature/oidc-state-nonce-evidence
+branch: fix/oidc-state-nonce-evidence
 tags:
   - auth
   - security
@@ -34,7 +34,7 @@ evidence backed by deterministic unit tests plus live Keycloak CI.
 |-------|------|--------|
 | 1 | [Lock state and nonce contracts](./phase-01-lock-state-and-nonce-contracts.md) | Completed |
 | 2 | [Implement browser-flow safeguards and tests](./phase-02-implement-browser-flow-safeguards-and-tests.md) | Completed |
-| 3 | [Validate evidence and release gate](./phase-03-validate-evidence-and-release-gate.md) | In Progress |
+| 3 | [Validate evidence and release gate](./phase-03-validate-evidence-and-release-gate.md) | Completed |
 
 ## Dependencies
 
@@ -62,3 +62,12 @@ The two PASS fields are derived only after the Python result summary equals
 `stateTamperDenied=callback_state_mismatch`, reports unchanged token-request
 count, and reports `idTokenNonceBound=true`; PowerShell asserts these values
 before evidence publication.
+
+## Delivery Evidence
+
+PR #64 exact head `f29638e81b483c3c95cfe995ce5ba729681793e8`
+passed PR Quality run `30881416141`, including live Keycloak job
+`91904344586`, and merged as
+`57ac8498529ef9c093f65ee77fbc579a515359ca`. All 18 rollup checks succeeded;
+the merge tree equals the tested head tree. This closes only the reference
+harness child plan, not production IdP or browser/BFF session conformance.
