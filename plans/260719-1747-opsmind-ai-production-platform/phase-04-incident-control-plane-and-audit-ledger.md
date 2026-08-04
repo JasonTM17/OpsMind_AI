@@ -15,6 +15,7 @@ dependencies: [2, 3]
 - [Phase 4 scout report](./reports/scout-260721-phase-04-incident-control-plane.md)
 - [Checkpoint 4B evidence-record plan](./phase-04b-bounded-evidence-record-ingress.md)
 - [Incident list pagination child plan](../260803-1840-incident-list-pagination/plan.md)
+- [Incident resolution-to-closure child plan](../260804-0006-incident-resolution-closure-verification/plan.md)
 - [Requirements traceability](./research/master-prompt-requirements-traceability.md)
 - [Architecture and security research](./research/researcher-01-architecture-security.md)
 - [Active blockers](../../docs/blockers.md)
@@ -215,6 +216,16 @@ path performs no incident, timeline, audit, outbox, or idempotency write.
 Free-text search, patch, assignment, closure UX, postmortems, and the governed
 evidence lifecycle remain open, so Phase 4 and G2 remain in progress.
 
+The incident resolution-to-closure child checkpoint is complete as exact-head
+non-production backend proof. PR #59 merged as `3bad910` after tested head
+`13a0224` passed PR Quality `30868733961`, CodeQL `30868731708`, and cross-
+service `30868733964`. The public lifecycle preserves authoritative resolution
+fields through CLOSED, returns replay-identical body/ETag/operation ID, rejects
+stale and terminal writes without durable growth, and keeps timeline, audit,
+and outbox event linkage/sequence exact. Generic PATCH, owner/alert assignment,
+resolve/close frontend UX, postmortems, evidence-reference breadth, and the
+governed artifact lifecycle remain open; Phase 4 and G2 remain in progress.
+
 Checkpoint 4B is implemented locally as the minimum prerequisite for real Phase
 7 clients. It persists only bounded, normalized, redacted Tool Gateway evidence
 records and atomically links them to the investigation ledger. Static gates and
@@ -238,8 +249,8 @@ production IdP, and supported evidence backend evidence remain separate gates.
 ## Full Phase Exit Gate
 
 - [ ] Checkpoint 4A acceptance criteria pass with independently verified evidence.
-- [ ] Incident list/patch/owner/alert, resolution/closure, evidence reference, and
-  postmortem contracts are implemented and exercised.
+- [ ] Generic incident PATCH, owner/alert assignment, resolve/close frontend UX,
+  evidence-reference, and postmortem contracts are implemented and exercised.
 - [ ] Evidence upload/finalize/read/tombstone/pre-purge restore/purge receipt and
   orphan reconciliation pass against a supported backend decision.
 - [ ] A citation resolves immutable bytes by digest only after current tenant,
