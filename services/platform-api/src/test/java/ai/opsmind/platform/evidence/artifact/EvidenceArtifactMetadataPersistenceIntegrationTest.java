@@ -120,7 +120,8 @@ class EvidenceArtifactMetadataPersistenceIntegrationTest {
             principal("phase3-operator-a"), TENANT_A, PROJECT_A, incidentId, command(runId, "v1")
         );
         assertThatThrownBy(() -> artifactService.requireReadableMetadata(
-            principal("phase3-operator-a"), TENANT_A, PROJECT_A, incidentId, artifact.artifactId()
+            principal("phase3-operator-a"), TENANT_A, PROJECT_A, incidentId, runId,
+            artifact.artifactId()
         )).isInstanceOfSatisfying(PlatformProblemException.class, exception ->
             assertThat(exception.code()).isEqualTo("evidence-artifact.not-found"));
         assertThatThrownBy(() -> artifactService.create(

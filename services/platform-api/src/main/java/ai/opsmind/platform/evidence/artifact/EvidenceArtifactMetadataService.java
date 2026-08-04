@@ -55,15 +55,18 @@ public final class EvidenceArtifactMetadataService {
         UUID organizationId,
         UUID projectId,
         UUID incidentId,
+        UUID runId,
         UUID artifactId
     ) {
-        if (artifactId == null) throw new IllegalArgumentException("Artifact identifier is required.");
+        if (runId == null || artifactId == null) {
+            throw new IllegalArgumentException("Artifact run and identifier are required.");
+        }
         return authorizer.withAnalyzeAccess(
             principal,
             organizationId,
             projectId,
             incidentId,
-            scope -> repository.requireReadableMetadata(scope, artifactId)
+            scope -> repository.requireReadableMetadata(scope, runId, artifactId)
         );
     }
 
@@ -73,15 +76,16 @@ public final class EvidenceArtifactMetadataService {
         UUID organizationId,
         UUID projectId,
         UUID incidentId,
+        UUID runId,
         UUID artifactId,
         ArtifactLifecycleCommand command
     ) {
-        if (artifactId == null || command == null) {
+        if (runId == null || artifactId == null || command == null) {
             throw new IllegalArgumentException("Artifact lifecycle identity and command are required.");
         }
         return authorizer.withAnalyzeAccess(
             principal, organizationId, projectId, incidentId,
-            scope -> lifecycleRepository.transition(scope, artifactId, command)
+            scope -> lifecycleRepository.transition(scope, runId, artifactId, command)
         );
     }
 }

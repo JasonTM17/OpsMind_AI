@@ -156,7 +156,7 @@ effective write requires target idempotency or discovery/reconciliation.
 | Unverified tool security decisions | Tool Gateway global audit lane | Insert-only and append-only; never accepts tenant/project fields from the request |
 | Bounded redacted evidence records | Platform PostgreSQL schema | Immutable canonical JSON, 64 KiB maximum, run/event linkage, forced RLS |
 | Investigation workflow binding/start event | Platform PostgreSQL schema | V010 immutable target/request binding plus canonical outbox bytes; V012 contains dispatcher mutation; V013 adds function-only exact-workflow reconciliation. Default off pending remaining B-017 environment and merged-head proof. |
-| Durable evidence artifact authority | Platform PostgreSQL schema | V014 owns metadata; V015 owns default-off upload attempts and STORED settlement; no public body ingress/read is exposed |
+| Durable evidence artifact authority | Platform PostgreSQL schema | V014 owns metadata; V015 owns default-off upload attempts and STORED settlement; V018/V019 add lifecycle controls and a least-privilege runtime transition capability; no public body ingress/read is exposed |
 | Large evidence bodies | Planned evidence object port | Streaming, finalization, scanning, holds, purge/restore, and reconciliation are not implemented |
 | Embeddings and retrieval metadata | Planned PostgreSQL/pgvector boundary | RAG is not implemented |
 | Workflow histories | External Temporal boundary | Client/reconciliation code exists; no cluster, namespace, worker, or history is deployed |
@@ -816,12 +816,25 @@ authorization or exposing a bucket, credential, object URL, or body.
   Applied `PENDING_UPLOAD -> STORED` settlement, its deterministic lifecycle
   event, and redacted `ARTIFACT_STORED` audit append commit atomically.
 
-`STORED` is still unreadable and uncitable. Public ingress, malware scanning,
-`AVAILABLE`, hold, retention, purge receipts, restore, and reconciliation are
-Phase 03 work. The current static gate passes and PR Quality is wired for both
-V013-to-V014 and V014-to-V015 disposable PostgreSQL proofs, but no
-revision-bound remote result exists for this integrated revision. B-006, B-008,
-and B-012 therefore remain active. See
+V018 adds explicit lifecycle transitions for tombstone, restore, deletion
+request, purge receipt, and orphan reconciliation. V019 exposes only the
+`opsmind_transition_evidence_artifact(...)` `SECURITY DEFINER` capability to
+the fixed `opsmind_app` login; direct table mutation remains denied. The
+`EvidenceArtifactReadService.authorizeReadableObject(...)` entry point binds
+the current incident/run authorization transaction first, then performs an
+object probe, and maps absent/mismatched objects to the same hidden
+`evidence-artifact.not-found` response. It does not open a body stream.
+
+`STORED` is still unreadable and uncitable until scanning and `AVAILABLE`.
+Public ingress, malware scanning, hold, retention, purge receipts, restore,
+and reconciliation remain gated work even though the V018/V019 metadata shell
+exists. The disposable contract
+`scripts/validation/run-phase-04c-artifact-lifecycle-postgres-contract.sh`
+requires `OPSMIND_EPHEMERAL_DB=true`, a packaged Platform API JAR, a fresh
+throwaway database, V018/V019 migration, exact capability grants, atomic
+metadata/event/audit settlement, direct-update denial, and cleanup. It is
+non-production evidence only. B-006, B-008, and B-012 therefore remain active.
+See
 [ADR-0003](./adr/ADR-0003-evidence-artifact-storage.md).
 
 ## Reliability and Degraded Modes

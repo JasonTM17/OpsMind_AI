@@ -1,6 +1,8 @@
 package ai.opsmind.platform.evidence.artifact.lifecycle;
 
 import java.sql.Timestamp;
+import java.time.Instant;
+import java.time.temporal.ChronoUnit;
 import java.util.UUID;
 
 import ai.opsmind.platform.common.api.PlatformProblemException;
@@ -8,6 +10,7 @@ import ai.opsmind.platform.evidence.artifact.EvidenceArtifactAuditPayloadCodec;
 import ai.opsmind.platform.evidence.artifact.EvidenceArtifactIdentity;
 import ai.opsmind.platform.evidence.artifact.EvidenceArtifactMetadata;
 import ai.opsmind.platform.evidence.artifact.EvidenceArtifactMetadataReader;
+import ai.opsmind.platform.evidence.artifact.access.ArtifactAccessDeniedException;
 import ai.opsmind.platform.incident.AuthorizedIncidentAnalysisScope;
 
 import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
@@ -20,7 +23,7 @@ import org.springframework.transaction.support.TransactionSynchronizationManager
 /** Tenant-bound metadata lifecycle persistence. Object I/O is deliberately out of scope. */
 @Repository
 @ConditionalOnProperty(prefix = "opsmind.persistence", name = "enabled", havingValue = "true")
-public final class ArtifactLifecycleRepository {
+public class ArtifactLifecycleRepository {
 
     private final JdbcTemplate jdbcTemplate;
     private final EvidenceArtifactMetadataReader metadataReader;
@@ -43,27 +46,39 @@ public final class ArtifactLifecycleRepository {
     }
 
     public ArtifactLifecycleTransition transition(
-        AuthorizedIncidentAnalysisScope scope, UUID artifactId, ArtifactLifecycleCommand command
+        AuthorizedIncidentAnalysisScope scope, UUID runId, UUID artifactId,
+        ArtifactLifecycleCommand command
     ) {
         requireTransaction();
-        if (scope == null || artifactId == null || command == null) throw hidden();
+        if (scope == null || runId == null || artifactId == null || command == null) throw hidden();
         try {
-            EvidenceArtifactMetadata metadata = metadataReader.findVisibleForUpdate(scope, artifactId)
+            EvidenceArtifactMetadata metadata = metadataReader.findVisibleForUpdate(
+                scope, runId, artifactId
+            )
                 .orElseThrow(this::hidden);
-            ArtifactLifecycleTransition transition = lifecycleService.transition(metadata, command);
+            Timestamp databaseTime = jdbcTemplate.queryForObject(
+                "SELECT clock_timestamp()", Timestamp.class
+            );
+            if (databaseTime == null) throw new IllegalStateException("Database time is unavailable.");
+            Instant occurredAt = databaseTime.toInstant().truncatedTo(ChronoUnit.MICROS);
+            ArtifactLifecycleCommand effectiveCommand = new ArtifactLifecycleCommand(
+                command.actorId(), command.authorizationEpoch(), command.expectedDigest(),
+                command.targetState(), command.reason(), occurredAt
+            );
+            ArtifactLifecycleTransition transition = lifecycleService.transition(
+                metadata, effectiveCommand
+            );
             if (transition.idempotent()) return transition;
-            int updated = jdbcTemplate.update("""
-                UPDATE evidence_artifacts
-                   SET lifecycle_state = ?, lifecycle_version = ?, lifecycle_updated_at = ?
-                 WHERE organization_id = ? AND project_id = ? AND incident_id = ?
-                   AND artifact_id = ? AND actor_id = ? AND authorization_epoch = ?
-                   AND expected_content_digest = ? AND lifecycle_state = ? AND lifecycle_version = ?
-                """, transition.toState().name(), transition.lifecycleVersion(),
-                Timestamp.from(transition.occurredAt()), scope.organizationId(), scope.projectId(),
-                scope.incidentId(), artifactId, command.actorId(), command.authorizationEpoch(),
+            Boolean updated = jdbcTemplate.queryForObject("""
+                SELECT public.opsmind_transition_evidence_artifact(
+                    ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?
+                )
+                """, Boolean.class, scope.organizationId(), scope.projectId(), scope.incidentId(),
+                artifactId, command.actorId(), command.authorizationEpoch(),
                 command.expectedDigest().bytes(), transition.fromState().name(),
-                transition.lifecycleVersion() - 1);
-            if (updated != 1) throw hidden();
+                transition.lifecycleVersion() - 1, transition.toState().name(),
+                Timestamp.from(transition.occurredAt()));
+            if (!Boolean.TRUE.equals(updated)) throw hidden();
 
             UUID eventId = EvidenceArtifactIdentity.controlEventId(
                 metadata.organizationId(), metadata.artifactId(), transition.lifecycleVersion()
@@ -85,6 +100,9 @@ public final class ArtifactLifecycleRepository {
         }
         catch (PlatformProblemException exception) {
             throw exception;
+        }
+        catch (ArtifactAccessDeniedException | IllegalStateException exception) {
+            throw hidden();
         }
         catch (DataAccessException exception) {
             throw new PlatformProblemException(HttpStatus.SERVICE_UNAVAILABLE,

@@ -15,13 +15,24 @@ public final class ArtifactReconciliationService {
             throw new IllegalArgumentException("Artifact reconciliation inputs are required.");
         }
         EvidenceArtifactLifecycleState target = switch (observation) {
-            case OBJECT_MATCH -> metadata.lifecycleState() == EvidenceArtifactLifecycleState.PENDING_UPLOAD
-                ? EvidenceArtifactLifecycleState.STORED : metadata.lifecycleState();
-            case OBJECT_ABSENT, OBJECT_MISMATCH -> metadata.lifecycleState() == EvidenceArtifactLifecycleState.PENDING_UPLOAD
-                ? EvidenceArtifactLifecycleState.ORPHANED : metadata.lifecycleState();
+            case OBJECT_MATCH -> metadata.lifecycleState();
+            case OBJECT_ABSENT, OBJECT_MISMATCH -> switch (metadata.lifecycleState()) {
+                case STORED, SCANNING, AVAILABLE, QUARANTINED, HELD
+                    -> EvidenceArtifactLifecycleState.ORPHANED;
+                default -> metadata.lifecycleState();
+            };
             case PURGE_CONFIRMED -> metadata.lifecycleState() == EvidenceArtifactLifecycleState.PURGED
                 ? EvidenceArtifactLifecycleState.RECEIPT_RECORDED : metadata.lifecycleState();
         };
+        if (observation == ArtifactReconciliationObservation.OBJECT_MATCH
+            && metadata.lifecycleState() == EvidenceArtifactLifecycleState.PENDING_UPLOAD) {
+            if (command.targetState() != EvidenceArtifactLifecycleState.STORED) {
+                throw new IllegalArgumentException("Matching upload requires a STORED settlement command.");
+            }
+            return new ArtifactReconciliationResult(
+                ArtifactReconciliationOutcome.UPLOAD_SETTLEMENT_REQUIRED, null
+            );
+        }
         if (command.targetState() != target) {
             throw new IllegalArgumentException("Reconciliation command target does not match observation.");
         }
