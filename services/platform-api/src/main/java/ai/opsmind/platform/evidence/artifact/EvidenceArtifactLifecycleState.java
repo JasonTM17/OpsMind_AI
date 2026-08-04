@@ -10,6 +10,7 @@ public enum EvidenceArtifactLifecycleState {
     AVAILABLE,
     QUARANTINED,
     HELD,
+    TOMBSTONED,
     DELETION_REQUESTED,
     EXPIRED,
     PURGED,
@@ -23,12 +24,13 @@ public enum EvidenceArtifactLifecycleState {
             case PENDING_UPLOAD -> Set.of(STORED, FAILED, ORPHANED).contains(target);
             case STORED -> Set.of(SCANNING, FAILED, ORPHANED).contains(target);
             case SCANNING -> Set.of(AVAILABLE, QUARANTINED, FAILED).contains(target);
-            case AVAILABLE -> Set.of(HELD, DELETION_REQUESTED, EXPIRED).contains(target);
-            case QUARANTINED -> Set.of(DELETION_REQUESTED, PURGED).contains(target);
-            case HELD -> Set.of(AVAILABLE, DELETION_REQUESTED).contains(target);
-            case DELETION_REQUESTED, EXPIRED -> Set.of(PURGED, HELD).contains(target);
+            case AVAILABLE -> Set.of(HELD, TOMBSTONED, DELETION_REQUESTED, EXPIRED).contains(target);
+            case QUARANTINED -> Set.of(TOMBSTONED, DELETION_REQUESTED, PURGED).contains(target);
+            case HELD -> Set.of(AVAILABLE, TOMBSTONED, DELETION_REQUESTED).contains(target);
+            case TOMBSTONED -> Set.of(AVAILABLE, HELD, PURGED).contains(target);
+            case DELETION_REQUESTED, EXPIRED -> Set.of(TOMBSTONED, PURGED, HELD).contains(target);
             case PURGED -> target == RECEIPT_RECORDED;
-            case ORPHANED, FAILED -> Set.of(PENDING_UPLOAD, DELETION_REQUESTED, PURGED).contains(target);
+            case ORPHANED, FAILED -> Set.of(TOMBSTONED, DELETION_REQUESTED, PURGED).contains(target);
             case RECEIPT_RECORDED -> false;
         };
     }

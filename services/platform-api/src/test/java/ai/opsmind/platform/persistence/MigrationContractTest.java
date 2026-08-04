@@ -225,6 +225,25 @@ class MigrationContractTest {
     }
 
     @Test
+    void artifactLifecycleMigrationAddsTombstoneWithoutWeakeningUploadFences()
+        throws IOException {
+        String migration = readMigration("V018__evidence_artifact_lifecycle_controls.sql");
+
+        assertThat(migration)
+            .contains("TOMBSTONED")
+            .contains("evidence_artifacts_phase_3_lifecycle_fence")
+            .contains("evidence_artifact_events_phase_3_transition_fence")
+            .contains("opsmind_evidence_artifact_control_event_id")
+            .contains("ARTIFACT_LIFECYCLE_CHANGED")
+            .contains("CREATE CONSTRAINT TRIGGER evidence_artifacts_require_control_event")
+            .contains("artifact lifecycle metadata requires its control event and audit row")
+            .contains("artifact identity, policy, and content expectation are immutable")
+            .contains("artifact lifecycle transition is not admitted")
+            .contains("session_user <> 'opsmind_app'")
+            .doesNotContain("DROP TABLE evidence_artifacts", "DROP TABLE evidence_artifact_events");
+    }
+
+    @Test
     void acceptedAnalysisMigrationExpandsForRollingWritersWithoutRewritingHistory()
         throws IOException {
         String migration = readMigration("V008__accepted_analysis_event_binding.sql");
