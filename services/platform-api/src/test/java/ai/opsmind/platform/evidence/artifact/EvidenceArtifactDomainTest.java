@@ -27,6 +27,13 @@ class EvidenceArtifactDomainTest {
             EvidenceArtifactLifecycleState.AVAILABLE
         )).isFalse();
         assertThat(EvidenceArtifactLifecycleState.AVAILABLE.isReadable()).isTrue();
+        assertThat(EvidenceArtifactLifecycleState.TOMBSTONED.isReadable()).isFalse();
+        assertThat(EvidenceArtifactLifecycleState.AVAILABLE.canTransitionTo(
+            EvidenceArtifactLifecycleState.TOMBSTONED
+        )).isTrue();
+        assertThat(EvidenceArtifactLifecycleState.TOMBSTONED.canTransitionTo(
+            EvidenceArtifactLifecycleState.PURGED
+        )).isTrue();
         assertThat(EvidenceArtifactLifecycleState.RECEIPT_RECORDED.isTerminal()).isTrue();
     }
 
