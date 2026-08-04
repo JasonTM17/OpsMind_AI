@@ -96,14 +96,13 @@ verifier denial, MFA/TOTP behavior including same-timestep replay denial,
 RP-initiated logout with refresh-after-logout denial, Platform API negative
 token paths, JWKS rotation refresh, old refresh-token reuse denial after
 rotation, refresh-token revocation, and disabled-user new-login denial. The
-schema-v2 runner uses a separate refresh family for the immediately preceding
-successful refresh positive control, so replay invalidation in the rotation
-family cannot make the revocation proof provider-dependent. That live schema-v2
-run and its digest verifier pass locally. Its scope is local/reference
-non-production only. Production
-IdP selection, federation, break-glass, state/nonce assurance, browser/BFF
-session ownership, broader bearer-token replay controls, and production
-revocation behavior remain unproven.
+current schema-v3 runner tampers with the local callback `state`, proves rejection before token-endpoint I/O,
+and compares the authorization request nonce with the returned ID-token payload nonce over the harness's
+CA-pinned TLS connection. Its Python JWT payload decoder does not verify signatures; Spring's resource-server
+decoder owns access-token signature verification. The closed schema-v3 evidence contract requires both new
+PASS fields and rejects missing, duplicate, or unknown fields. The historical schema-v2 run uses a separate
+refresh family for its positive control. Its scope remains local/reference non-production only. Production IdP
+selection, federation, break-glass, production browser/BFF session-level state/nonce ownership, broader bearer-token replay controls, and production revocation behavior remain unproven.
 
 ## Principal Data Flows
 
@@ -886,15 +885,16 @@ The identity transcript is deliberately marked
 identity and timing, but also `CodeRevision=UNBORN` and `WorkspaceDirty=YES` in
 an ignored local artifact. A later revision-bound Linux CI job passes the same
 reference profile without promoting it to production IdP evidence. No
-delegated-capability, production session, federation, break-glass,
-state/nonce, or general bearer-replay proof is inferred from that result.
+delegated-capability, production browser/BFF session-level state/nonce
+ownership, federation, break-glass, or general bearer-replay proof is inferred
+from that result.
 
-The current evidence contract is schema v2: a source/profile manifest digest
-and packaged Platform API JAR digest bind the run to its inputs, cleanup must
-verify before atomic publication, and a separate verifier rejects stale fields
-or hashes. The live local artifact passes that verifier. A failed execution
-publishes a separate bounded, sanitized diagnostic artifact and never a success
-artifact.
+The current evidence contract is schema v3: source/profile and packaged Platform API
+JAR digests bind the inputs, cleanup must precede atomic publication, and a separate
+verifier rejects stale hashes plus missing, duplicate, or unknown fields. It requires
+explicit callback-state tamper denial and ID-token nonce-binding PASS fields. The
+historical live schema-v2 artifact passes its corresponding verifier. Failure emits
+only a separate bounded, sanitized diagnostic artifact.
 
 ## Remaining Architecture Gates
 
