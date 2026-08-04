@@ -6,7 +6,7 @@ import path from "node:path";
 
 const repositoryRoot = path.resolve(import.meta.dirname, "../..");
 const operatorWebRoot = path.join(repositoryRoot, "apps", "operator-web");
-const fixedLegacyVersion = "1.1.17";
+const fixedLegacyVersion = "1.1.18";
 const lockfile = readFileSync(path.join(repositoryRoot, "pnpm-lock.yaml"), "utf8")
   .replace(/\r\n/g, "\n");
 const workspace = readFileSync(
@@ -21,8 +21,8 @@ const lockedBraceVersions = [...packagesSection.matchAll(
   /^  brace-expansion@([0-9]+\.[0-9]+\.[0-9]+):$/gmu,
 )].map((match) => match[1]);
 
-assert.deepEqual(lockedBraceVersions, [fixedLegacyVersion, "5.0.8"]);
-assert.doesNotMatch(lockfile, /brace-expansion@1\.1\.16/u);
+assert.deepEqual(lockedBraceVersions, [fixedLegacyVersion, "5.0.9"]);
+assert.doesNotMatch(lockfile, /brace-expansion@1\.1\.(?:16|17)/u);
 assert.doesNotMatch(workspace, /patchedDependencies:|GHSA-mh99-v99m-4gvg/u);
 
 const requireFromHere = createRequire(import.meta.url);
