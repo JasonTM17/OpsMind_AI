@@ -33,7 +33,7 @@ const INCIDENT = "10000000-0000-4000-8000-000000000704";
 const VIEWPORT_WIDTH = 1440;
 const GIF_WIDTH = 720;
 const GIF_HEIGHT = 480;
-const GIF_FRAMES = 10;
+const GIF_FRAMES = 16;
 
 function fail(message) {
   console.error(`MediaCapture=BLOCK Reason=${message}`);
@@ -115,7 +115,13 @@ function buildWalkthrough() {
   const travel = Math.max(0, height - cropHeight);
   const arguments_ = ["-delay", "60", "-loop", "0"];
   for (let frame = 0; frame < GIF_FRAMES; frame += 1) {
-    const offset = Math.round((travel * frame) / Math.max(1, GIF_FRAMES - 1));
+    // Ease into the evidence spine and conclusion. The slower ends make the
+    // GIF readable instead of looking like a decorative camera move.
+    const progress = frame / Math.max(1, GIF_FRAMES - 1);
+    const eased = progress < 0.5
+      ? 2 * progress * progress
+      : 1 - ((-2 * progress + 2) ** 2) / 2;
+    const offset = Math.round(travel * eased);
     arguments_.push(
       "(", screenshotPath,
       "-crop", `${width}x${cropHeight}+0+${offset}`,
@@ -147,13 +153,22 @@ function writeManifest() {
     media: existing.media.map((entry) => {
       const absolute = path.join(repositoryRoot, entry.path);
       const shared = { sha256: digestOf(absolute), byteSize: fs.statSync(absolute).size };
-      if (entry.mediaType === "image/png") {
-        return { ...entry, ...shared, width: screenshot.width, height: screenshot.height };
+      if (entry.mediaType === "image/png" && entry.path.endsWith("operator-investigation-workspace.png")) {
+        return { ...entry, ...shared, width: screenshot.width, height: screenshot.height, frames: 1 };
       }
-      return { ...entry, ...shared, width: GIF_WIDTH, height: GIF_HEIGHT, frames: GIF_FRAMES };
+      if (entry.mediaType === "image/gif" && entry.path.endsWith("operator-investigation-workspace-walkthrough.gif")) {
+        return { ...entry, ...shared, width: GIF_WIDTH, height: GIF_HEIGHT, frames: GIF_FRAMES };
+      }
+      fail(`unsupported-manifest-entry-${entry.path}`);
     }),
   };
   fs.writeFileSync(manifestPath, `${JSON.stringify(manifest, null, 2)}\n`, "utf8");
 }
 
-await main();
+if (process.env.OPSMIND_MEDIA_SKIP_CAPTURE === "1") {
+  buildWalkthrough();
+  writeManifest();
+  console.log("MediaCapture=PASS mode=existing-reviewed-screenshot");
+} else {
+  await main();
+}

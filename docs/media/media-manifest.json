@@ -14,12 +14,12 @@
     },
     {
       "path": "docs/media/operator-investigation-workspace-walkthrough.gif",
-      "sha256": "b0fa4be23f8bc832c1b40803e752787bfc587c9a9dc176b5ccccf9fee41aeb3d",
-      "byteSize": 604957,
+      "sha256": "000c09952b03257f1289e72f46f162f48e88751af2f1442455bd35e13fd5817f",
+      "byteSize": 948208,
       "mediaType": "image/gif",
       "width": 720,
       "height": 480,
-      "frames": 10,
+      "frames": 16,
       "source": "Reviewed PNG rendered as a bounded vertical walkthrough",
       "review": "Derived only from the reviewed operator-safe projection screenshot; optimized to remain below the repository media budget."
     }
