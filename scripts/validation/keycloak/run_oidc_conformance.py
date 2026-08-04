@@ -93,11 +93,17 @@ def run_profile(args) -> dict:
     )
 
     authorization = flow.password_authorization(args.password_only_username, login_credential)
+    requests_before_state_tamper = flow.token_request_count
+    state_tamper_denial = flow.assert_state_tamper_denied(authorization)
+    state_tamper_request_count_unchanged = flow.token_request_count == requests_before_state_tamper
+    if not state_tamper_request_count_unchanged:
+        raise RuntimeError("State tamper probe unexpectedly reached the token endpoint.")
     wrong_verifier_error = flow.expect_oauth_error(
         lambda: flow.exchange(
             authorization.callback_url,
             secrets.token_urlsafe(64),
             authorization.state,
+            authorization.nonce,
             authorization.opener,
         ),
         {"invalid_grant"},
@@ -165,6 +171,9 @@ def run_profile(args) -> dict:
             "pkceMissingDenied": pkce_error,
             "directGrantDenied": direct_error,
             "wrongVerifierDenied": wrong_verifier_error,
+            "stateTamperDenied": state_tamper_denial,
+            "stateTamperTokenRequestCountUnchanged": state_tamper_request_count_unchanged,
+            "idTokenNonceBound": True,
             "logoutRefreshDenied": logout_refresh_error,
             "enrollmentAmr": enrollment_payload["amr"],
             "validAmr": valid_payload["amr"],
@@ -243,7 +252,7 @@ def revoke_profile(args) -> dict:
 def assert_disabled(args) -> dict:
     login_credential = require_environment("OPSMIND_KEYCLOAK_TEST_PASSWORD")
     flow = OidcBrowserFlow(args.issuer, args.client_id, args.redirect_uri, args.ca_cert)
-    _, document, callback, _, _ = flow.start(args.username, login_credential)
+    _, document, callback, _, _, _ = flow.start(args.username, login_credential)
     if callback is not None or document is None:
         raise RuntimeError("A disabled Keycloak user reached an authorization callback.")
     find_form(document, "kc-form-login")
