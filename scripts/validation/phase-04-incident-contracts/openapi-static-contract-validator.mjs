@@ -72,6 +72,20 @@ const routeContracts = [
   },
   {
     route: "/organizations/{organizationId}/projects/{projectId}/incidents/{incidentId}",
+    method: "patch",
+    markers: [
+      "operationId: patchIncident", "oidcBearer: [incident:write]",
+      "#/components/parameters/OrganizationId", "#/components/parameters/ProjectId",
+      "#/components/parameters/IncidentId", "#/components/parameters/IdempotencyKey",
+      "#/components/parameters/IfMatch", "application/merge-patch+json",
+      "#/components/schemas/PatchIncidentRequest", "'200':", "#/components/headers/ETag",
+      "#/components/headers/XOperationId", "'400':", "'401':", "'403':", "'404':",
+      "'409':", "'412':", "'413':", "'415':", "'422':", "'428':", "'503':",
+      "#/components/schemas/Incident",
+    ],
+  },
+  {
+    route: "/organizations/{organizationId}/projects/{projectId}/incidents/{incidentId}",
     method: "get",
     markers: [
       "operationId: getIncident", "oidcBearer: [incident:read]",
@@ -117,6 +131,7 @@ export function validateOpenApi({ openApi, openApiPath, errors, resolveLocalRefe
     "openapi: 3.1.1", "version: 0.4.0", "  - url: /api/v1", "type: openIdConnect",
     "incident:read", "incident:write", "X-Operation-Id:",
     "../json-schema/incidents/create-incident-request.schema.json",
+    "../json-schema/incidents/patch-incident-request.schema.json",
     "../json-schema/incidents/transition-incident-request.schema.json",
     "../json-schema/incidents/incident.schema.json",
     "../json-schema/incidents/incident-summary.schema.json",
@@ -156,8 +171,11 @@ export function validateOpenApi({ openApi, openApiPath, errors, resolveLocalRefe
   if ((timelineBlock.match(/IncidentActivityTimelinePage/gu) ?? []).length !== 1) {
     errors.push("incident activity timeline representation must have one exact schema binding");
   }
-  if (/^\s{4}(?:patch|delete):/gmu.test(openApi)) {
-    errors.push("OpenAPI exposes an out-of-scope patch or delete operation");
+  if (/^\s{4}delete:/gmu.test(openApi)) {
+    errors.push("OpenAPI exposes an out-of-scope delete operation");
+  }
+  if ((openApi.match(/^\s{4}patch:/gmu) ?? []).length !== 1) {
+    errors.push("OpenAPI must expose exactly one nested incident patch operation");
   }
   if (/^\s{2}\/incidents(?:\/|:)/gmu.test(openApi)) {
     errors.push("OpenAPI exposes an unsafe flat incident route");

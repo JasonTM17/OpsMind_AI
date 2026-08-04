@@ -1,7 +1,7 @@
 ---
 phase: 1
 title: Contract and threat boundary
-status: in-progress
+status: completed
 priority: P1
 dependencies: []
 ---
@@ -31,10 +31,10 @@ dependencies: []
 
 ## Success Criteria
 
-- [ ] Positive update, assign, and clear fixtures validate.
-- [ ] Empty/unknown/authority/invalid-owner fixtures fail.
-- [ ] Contract validator assigns every new fixture explicitly.
-- [ ] Focused deserialization proves absent-versus-null owner semantics.
+- [x] Positive update, assign, and clear fixtures validate.
+- [x] Empty/unknown/authority/invalid-owner fixtures fail.
+- [x] Contract validator assigns every new fixture explicitly.
+- [x] Focused deserialization proves absent-versus-null owner semantics.
 
 ## Risks
 

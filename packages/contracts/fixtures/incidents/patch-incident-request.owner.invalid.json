@@ -1,0 +1,4 @@
+{
+  "ownerId": "not-a-uuid",
+  "reason": "Malformed owner identity must be rejected."
+}

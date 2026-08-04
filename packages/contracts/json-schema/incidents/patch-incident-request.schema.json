@@ -1,0 +1,40 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://contracts.opsmind.invalid/incidents/patch-incident-request.schema.json",
+  "title": "Patch Incident Request",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["reason"],
+  "properties": {
+    "title": {
+      "type": "string",
+      "minLength": 1,
+      "maxLength": 160,
+      "pattern": "\\S"
+    },
+    "summary": {
+      "type": "string",
+      "minLength": 1,
+      "maxLength": 4000,
+      "pattern": "\\S"
+    },
+    "severity": {
+      "$ref": "./incident-types.schema.json#/$defs/severity"
+    },
+    "ownerId": {
+      "anyOf": [
+        { "$ref": "./incident-types.schema.json#/$defs/uuid" },
+        { "type": "null" }
+      ]
+    },
+    "reason": {
+      "$ref": "./incident-types.schema.json#/$defs/reason"
+    }
+  },
+  "anyOf": [
+    { "required": ["title"] },
+    { "required": ["summary"] },
+    { "required": ["severity"] },
+    { "required": ["ownerId"] }
+  ]
+}
