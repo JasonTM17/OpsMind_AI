@@ -302,12 +302,10 @@ powershell.exe -NoProfile -File .\scripts\validation\run-phase-04-domain-tests.p
 powershell.exe -NoProfile -File .\scripts\validation\run-phase-04-local-postgres-contract.ps1
 ```
 
-The static gate parses eleven schemas and fourteen fixtures, resolves 128 local
-references, checks six OpenAPI operations, and inspects V003/audit wiring. The
-focused domain gate runs seven controller/domain classes (25 tests) with zero
-failure, error, or skip. The full Maven suite currently discovers 86 tests;
-guarded database cases are also run separately rather than counted as a local
-skip-based success.
+The static gate parses 24 schemas and 32 fixtures, evaluates 19 fixture cases
+(10 positive and nine negative), resolves 237 local references, checks 11
+OpenAPI operations, and inspects V003/audit wiring. Guarded database cases run
+separately rather than counting local skips as success.
 
 The disposable PostgreSQL 18 gate packages the same JAR used by the refreshed
 Keycloak evidence, proves both V001/V002-to-V003 upgrade and fresh V001-V003,
@@ -321,11 +319,14 @@ incident, timeline, audit, or idempotency effect committed. Evidence is:
 - `artifacts/verification/phase-04/incident-domain.txt`
 - `artifacts/verification/phase-04/incident-crud.txt`
 - `artifacts/verification/phase-04/audit-and-concurrency.txt`
+- `artifacts/verification/phase-04/incident-resolution-closure.txt`
 
-All four artifacts are local/reference evidence. They record an unborn/dirty
-worktree and cannot satisfy immutable remote release proof. Checkpoint 4A does
-not cover evidence-object lifecycle, postmortems, provider/tool behavior, UI,
-load objectives, production IdP, or the full Phase 4/G2 exit gate.
+The first four artifacts are historical local/reference evidence. They record
+an unborn/dirty worktree and cannot satisfy immutable remote release proof. The
+closure artifact is exact-head CI evidence but remains non-production.
+Checkpoint 4A does not cover evidence-object lifecycle, postmortems,
+provider/tool behavior, UI, load objectives, production IdP, or the full Phase
+4/G2 exit gate.
 
 ### Incident list pagination checkpoint
 
@@ -337,6 +338,17 @@ zero-write snapshots. Disposable PostgreSQL coverage applies V001-V016 and
 V015-to-V016, proves the two concurrent indexes valid/ready, repairs a failed
 build using a non-superuser migration role, and checks bounded filtered and
 unfiltered plans. Static or unit output alone is not database proof.
+
+### Incident resolution-to-closure checkpoint
+
+Contract fixtures prove the CLOSED request/event shape, and controller tests
+reject client-supplied resolution fields on closure. Exact-head PostgreSQL CI
+executes `OPEN -> INVESTIGATING -> RESOLVED -> CLOSED`, retained resolution
+data, linked timeline/audit/outbox event IDs and sequence, byte-identical
+idempotent replay, stale-ETag `412`, and every outgoing CLOSED transition as
+`409`, with no durable effects from rejected operations. PR Quality run
+`30868733961` on head `13a0224` executed three lifecycle tests with zero
+failures, errors, or skips. This remains non-production backend proof.
 
 ## Release Gate
 
@@ -358,6 +370,10 @@ OperatorWorkspace/CrossService/Checkpoint/PhaseExit `PASS`. The Phase 8
 validator still returns `PhaseExit=BLOCK` because held-out and human-baseline
 inputs are unavailable; no quality, calibration, or human-benefit inference is
 permitted.
+
+The newer incident-closure merge is bound to PR Quality `30868733961`, CodeQL
+`30868731708`, and cross-service `30868733964`; all passed on tested head
+`13a0224`, whose tree was merged by PR #59 as `3bad910`.
 
 ## Verification Evidence
 
