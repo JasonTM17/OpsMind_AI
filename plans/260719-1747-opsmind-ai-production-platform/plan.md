@@ -53,12 +53,12 @@ Accepted scope remains full A-to-Z, but delivery is gate-driven: the approved G0
 | 1 | [Operating Envelope and Architecture Governance](./phase-01-operating-envelope-and-architecture-governance.md) | Completed |
 | 2 | [Monorepo and Developer Platform Foundation](./phase-02-monorepo-and-developer-platform-foundation.md) | Completed |
 | 3 | [Contracts Data Identity and Tenant Foundation](./phase-03-contracts-data-identity-and-tenant-foundation.md) | In Progress |
-| 4 | [Incident Control Plane and Audit Ledger](./phase-04-incident-control-plane-and-audit-ledger.md) ([4B evidence ingress](./phase-04b-bounded-evidence-record-ingress.md), [incident list](../260803-1840-incident-list-pagination/plan.md)) | In Progress — 4A, bounded-record 4B, and tenant-scoped incident list implemented; remaining breadth and artifact lifecycle still open |
+| 4 | [Incident Control Plane and Audit Ledger](./phase-04-incident-control-plane-and-audit-ledger.md) ([4B evidence ingress](./phase-04b-bounded-evidence-record-ingress.md), [incident list](../260803-1840-incident-list-pagination/plan.md)) | In Progress — 4A, bounded-record 4B, incident list, closure backend, and default-off V014/V015 upload port complete; controlled lifecycle and remaining breadth open |
 | 5 | [DeepSeek AI Runtime and Model Gateway](./phase-05-deepseek-ai-runtime-and-model-gateway.md) | In Progress — static checkpoint PASS; PhaseExitGate BLOCK |
 | 6 | [Safe Tool Gateway and Read-only Connectors](./phase-06-safe-tool-gateway-and-read-only-connectors.md) | In progress — checkpoint PASS; PhaseExitGate BLOCK |
 | 7 | [Thin Evidence-backed Incident Vertical Slice](./phase-07-thin-evidence-backed-incident-vertical-slice.md) | In progress — durable persistence checkpoint PASS; PhaseExitGate BLOCK |
-| 8 | [Simulator and Evaluation Baseline](./phase-08-simulator-and-evaluation-baseline.md) ([8B production-path evaluation](../260726-1004-phase-08b-production-path-evaluation/plan.md)) | In Progress — Phase 8B implementation/local contracts present; production-path CI pending; PhaseExit BLOCK |
-| 9 | [Durable Investigation Workflow](./phase-09-durable-investigation-workflow.md) | In Progress — V010-V013 handoff/reconciliation source and local exact-role/rollback proof pass; B-017 live and merged-head gates remain |
+| 8 | [Simulator and Evaluation Baseline](./phase-08-simulator-and-evaluation-baseline.md) ([8B production-path evaluation](../260726-1004-phase-08b-production-path-evaluation/plan.md)) | In Progress — Phase 8B revision-bound production-path checkpoint complete; B-013 held-out/human/calibration evidence keeps PhaseExit BLOCK |
+| 9 | [Durable Investigation Workflow](./phase-09-durable-investigation-workflow.md) | In Progress — repository-owned V010-V013 runtime conformance complete; B-017 production database/DR, live namespace authorization/retention, and external paging remain |
 | 10 | [Permission-aware RAG and Knowledge Lifecycle](./phase-10-permission-aware-rag-and-knowledge-lifecycle.md) | Pending |
 | 11 | [Exact-action Approval and Reversible Remediation](./phase-11-exact-action-approval-and-reversible-remediation.md) | Pending |
 | 12 | [Operator Web Experience Completion](./phase-12-operator-web-experience-completion.md) | Pending |
@@ -78,9 +78,12 @@ incident write ledger proving create/read/transition, tenant authorization,
 idempotency, concurrency, timeline, database-computed audit chaining, and
 outbox atomicity against real PostgreSQL. The incident-list child slice adds an
 exact-status, six-field, read-only live view with V016 keyset indexes and no
-persistent side effects. Patch/assignment/closure/postmortem breadth and the
-evidence-object lifecycle remain open; B-006/B-008/B-012 still block Phase 4
-and G2 completion.
+persistent side effects. The default-off V014/V015 upload port is also
+revision-bound: PR #46/run `30777514150` and current PostgreSQL job
+`91904344606` pass. Patch/assignment/frontend/postmortem breadth and controlled
+ingress, scanning, availability, hold/deletion/purge, restore, and production
+backend/KMS conformance remain open; B-006/B-008/B-012 still block Phase 4 and
+G2 completion.
 
 Phase 5 is in progress. Its static checkpoint passes; Python reports 159
 passed with five PostgreSQL-gated skips, Ruff/mypy are clean, and the full Maven
@@ -92,12 +95,12 @@ DeepSeek or production egress is claimed.
 Phase 8 is in progress. Phase 8B implements all three deterministic smoke
 contracts, V008 rolling expand/response binding, observed Tool Gateway
 provenance, least-privilege bounded export, typed digest projection, and
-reparse-safe sensitive-first cleanup. Local Node, targeted Python,
-semantic-order, path-safety, Phase 8, layout, actionlint, and secret gates pass.
-Fresh Docker/PostgreSQL A/B/C, executable
-attestation, exact-revision artifact upload, independent review, and
-terminal-green `.github/workflows/cross-service-evaluation.yml` remain pending.
-No Phase 8B PASS or Phase 8/G4 completion is claimed.
+reparse-safe sensitive-first cleanup. Its child plan records revision-bound
+Docker/PostgreSQL A/B/C, executable attestation, exact-revision artifact,
+independent review, and terminal-green cross-service evidence. Current
+exact-head cross-service run `30881416173` also passes. Phase 8B is complete;
+Phase 8 and its exit remain blocked because B-013 held-out cases, qualified
+human adjudication, calibration, and comparison evidence are unavailable.
 
 ## Dependencies
 
