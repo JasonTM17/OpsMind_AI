@@ -653,7 +653,7 @@ jobs:
 
       - name: Attest Platform API on GHCR
         id: attest_platform_api
-        uses: actions/attest@f7c74d28b9d84cb8768d0b8ca14a4bac6ef463e6 # v4.2.0
+        uses: actions/attest@508db95dd578ae2727ebd6217d5ba78e4fbda05d # v4.2.1
         with:
           subject-name: ghcr.io/jasontm17/opsmind-platform-api
           subject-digest: ${{ steps.release_set.outputs.platform_api_digest }}
@@ -662,7 +662,7 @@ jobs:
 
       - name: Attest AI Runtime on GHCR
         id: attest_ai_runtime
-        uses: actions/attest@f7c74d28b9d84cb8768d0b8ca14a4bac6ef463e6 # v4.2.0
+        uses: actions/attest@508db95dd578ae2727ebd6217d5ba78e4fbda05d # v4.2.1
         with:
           subject-name: ghcr.io/jasontm17/opsmind-ai-runtime
           subject-digest: ${{ steps.release_set.outputs.ai_runtime_digest }}
@@ -671,7 +671,7 @@ jobs:
 
       - name: Attest Tool Gateway on GHCR
         id: attest_tool_gateway
-        uses: actions/attest@f7c74d28b9d84cb8768d0b8ca14a4bac6ef463e6 # v4.2.0
+        uses: actions/attest@508db95dd578ae2727ebd6217d5ba78e4fbda05d # v4.2.1
         with:
           subject-name: ghcr.io/jasontm17/opsmind-tool-gateway
           subject-digest: ${{ steps.release_set.outputs.tool_gateway_digest }}
@@ -680,7 +680,7 @@ jobs:
 
       - name: Attest Operator Web on GHCR
         id: attest_operator_web
-        uses: actions/attest@f7c74d28b9d84cb8768d0b8ca14a4bac6ef463e6 # v4.2.0
+        uses: actions/attest@508db95dd578ae2727ebd6217d5ba78e4fbda05d # v4.2.1
         with:
           subject-name: ghcr.io/jasontm17/opsmind-operator-web
           subject-digest: ${{ steps.release_set.outputs.operator_web_digest }}
@@ -689,7 +689,7 @@ jobs:
 
       - name: Attest Platform API on Docker Hub
         if: steps.targets.outputs.dockerhub_enabled == 'true'
-        uses: actions/attest@f7c74d28b9d84cb8768d0b8ca14a4bac6ef463e6 # v4.2.0
+        uses: actions/attest@508db95dd578ae2727ebd6217d5ba78e4fbda05d # v4.2.1
         with:
           subject-name: docker.io/${{ steps.targets.outputs.dockerhub_namespace }}/opsmind-platform-api
           subject-digest: ${{ steps.release_set.outputs.platform_api_digest }}
@@ -698,7 +698,7 @@ jobs:
 
       - name: Attest AI Runtime on Docker Hub
         if: steps.targets.outputs.dockerhub_enabled == 'true'
-        uses: actions/attest@f7c74d28b9d84cb8768d0b8ca14a4bac6ef463e6 # v4.2.0
+        uses: actions/attest@508db95dd578ae2727ebd6217d5ba78e4fbda05d # v4.2.1
         with:
           subject-name: docker.io/${{ steps.targets.outputs.dockerhub_namespace }}/opsmind-ai-runtime
           subject-digest: ${{ steps.release_set.outputs.ai_runtime_digest }}
@@ -707,7 +707,7 @@ jobs:
 
       - name: Attest Tool Gateway on Docker Hub
         if: steps.targets.outputs.dockerhub_enabled == 'true'
-        uses: actions/attest@f7c74d28b9d84cb8768d0b8ca14a4bac6ef463e6 # v4.2.0
+        uses: actions/attest@508db95dd578ae2727ebd6217d5ba78e4fbda05d # v4.2.1
         with:
           subject-name: docker.io/${{ steps.targets.outputs.dockerhub_namespace }}/opsmind-tool-gateway
           subject-digest: ${{ steps.release_set.outputs.tool_gateway_digest }}
@@ -716,7 +716,7 @@ jobs:
 
       - name: Attest Operator Web on Docker Hub
         if: steps.targets.outputs.dockerhub_enabled == 'true'
-        uses: actions/attest@f7c74d28b9d84cb8768d0b8ca14a4bac6ef463e6 # v4.2.0
+        uses: actions/attest@508db95dd578ae2727ebd6217d5ba78e4fbda05d # v4.2.1
         with:
           subject-name: docker.io/${{ steps.targets.outputs.dockerhub_namespace }}/opsmind-operator-web
           subject-digest: ${{ steps.release_set.outputs.operator_web_digest }}
@@ -1031,7 +1031,7 @@ jobs:
 
       - name: Attest aggregate release evidence
         id: attest_release_evidence
-        uses: actions/attest@f7c74d28b9d84cb8768d0b8ca14a4bac6ef463e6 # v4.2.0
+        uses: actions/attest@508db95dd578ae2727ebd6217d5ba78e4fbda05d # v4.2.1
         with:
           subject-path: |
             artifacts/container-publication/release-receipt.json
