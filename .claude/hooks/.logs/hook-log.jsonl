@@ -1,121 +1,825 @@
-{"ts":"2026-06-22T12:49:39.671Z","hook":"privacy-block","event":"PreToolUse","tool":"Read","target":"","note":"","dur":5,"status":"ok","exit":0,"error":""}
-{"ts":"2026-06-22T12:49:39.681Z","hook":"scout-block","event":"PreToolUse","tool":"","target":"","note":"","dur":0,"status":"crash","exit":0,"error":"path should be a `path.relative()`d string, but got \"D:/Claude_Kit-main/Claude_Kit-main/README.md\""}
-{"ts":"2026-06-22T12:52:43.170Z","hook":"task-completed-handler","event":"TaskCompleted","tool":"","target":"","note":"missing-team-name","dur":0,"status":"skip","exit":0,"error":""}
-{"ts":"2026-06-22T12:55:43.519Z","hook":"task-completed-handler","event":"TaskCompleted","tool":"","target":"","note":"missing-team-name","dur":0,"status":"skip","exit":0,"error":""}
-{"ts":"2026-06-22T13:15:05.090Z","hook":"scout-block","event":"PreToolUse","tool":"Bash","target":"","note":"","dur":10,"status":"ok","exit":0,"error":""}
-{"ts":"2026-06-22T13:15:05.113Z","hook":"privacy-block","event":"PreToolUse","tool":"Bash","target":"","note":"","dur":10,"status":"ok","exit":0,"error":""}
-{"ts":"2026-06-22T13:15:05.122Z","hook":"privacy-block","event":"PreToolUse","tool":"Bash","target":"","note":"","dur":7,"status":"ok","exit":0,"error":""}
-{"ts":"2026-06-22T13:15:05.132Z","hook":"scout-block","event":"PreToolUse","tool":"Bash","target":"","note":"","dur":7,"status":"ok","exit":0,"error":""}
-{"ts":"2026-06-22T13:15:05.141Z","hook":"scout-block","event":"PreToolUse","tool":"Bash","target":"","note":"","dur":7,"status":"ok","exit":0,"error":""}
-{"ts":"2026-06-22T13:15:05.165Z","hook":"privacy-block","event":"PreToolUse","tool":"Bash","target":"","note":"","dur":7,"status":"ok","exit":0,"error":""}
-{"ts":"2026-06-22T13:15:38.427Z","hook":"privacy-block","event":"PreToolUse","tool":"Bash","target":"","note":"","dur":5,"status":"ok","exit":0,"error":""}
-{"ts":"2026-06-22T13:15:38.432Z","hook":"scout-block","event":"PreToolUse","tool":"Bash","target":"","note":"","dur":8,"status":"ok","exit":0,"error":""}
-{"ts":"2026-06-22T13:16:21.888Z","hook":"privacy-block","event":"PreToolUse","tool":"Bash","target":"","note":"","dur":6,"status":"ok","exit":0,"error":""}
-{"ts":"2026-06-22T13:16:21.894Z","hook":"scout-block","event":"PreToolUse","tool":"Bash","target":"","note":"","dur":6,"status":"ok","exit":0,"error":""}
-{"ts":"2026-06-22T13:16:24.178Z","hook":"privacy-block","event":"PreToolUse","tool":"Bash","target":"","note":"","dur":4,"status":"ok","exit":0,"error":""}
-{"ts":"2026-06-22T13:16:24.187Z","hook":"scout-block","event":"PreToolUse","tool":"Bash","target":"","note":"","dur":4,"status":"ok","exit":0,"error":""}
-{"ts":"2026-06-22T13:16:25.172Z","hook":"scout-block","event":"PreToolUse","tool":"Bash","target":"","note":"","dur":8,"status":"ok","exit":0,"error":""}
-{"ts":"2026-06-22T13:16:25.173Z","hook":"privacy-block","event":"PreToolUse","tool":"Bash","target":"","note":"","dur":5,"status":"ok","exit":0,"error":""}
-{"ts":"2026-06-22T13:17:05.820Z","hook":"privacy-block","event":"PreToolUse","tool":"Bash","target":"","note":"","dur":5,"status":"ok","exit":0,"error":""}
-{"ts":"2026-06-22T13:17:05.822Z","hook":"scout-block","event":"PreToolUse","tool":"Bash","target":"","note":"","dur":5,"status":"ok","exit":0,"error":""}
-{"ts":"2026-06-22T13:17:06.954Z","hook":"privacy-block","event":"PreToolUse","tool":"Bash","target":"","note":"","dur":5,"status":"ok","exit":0,"error":""}
-{"ts":"2026-06-22T13:17:06.966Z","hook":"scout-block","event":"PreToolUse","tool":"Bash","target":"","note":"","dur":8,"status":"ok","exit":0,"error":""}
-{"ts":"2026-06-22T13:17:08.295Z","hook":"scout-block","event":"PreToolUse","tool":"Bash","target":"","note":"","dur":7,"status":"ok","exit":0,"error":""}
-{"ts":"2026-06-22T13:17:08.297Z","hook":"privacy-block","event":"PreToolUse","tool":"Bash","target":".key$)',","note":"bash-sensitive-file","dur":5,"status":"warn","exit":0,"error":""}
-{"ts":"2026-06-22T13:18:58.365Z","hook":"privacy-block","event":"PreToolUse","tool":"Bash","target":"","note":"","dur":4,"status":"ok","exit":0,"error":""}
-{"ts":"2026-06-22T13:18:58.368Z","hook":"scout-block","event":"PreToolUse","tool":"Bash","target":"","note":"","dur":6,"status":"ok","exit":0,"error":""}
-{"ts":"2026-06-22T13:19:26.751Z","hook":"privacy-block","event":"PreToolUse","tool":"Bash","target":"","note":"","dur":6,"status":"ok","exit":0,"error":""}
-{"ts":"2026-06-22T13:19:26.761Z","hook":"scout-block","event":"PreToolUse","tool":"Bash","target":"","note":"","dur":5,"status":"ok","exit":0,"error":""}
-{"ts":"2026-06-22T13:19:26.779Z","hook":"scout-block","event":"PreToolUse","tool":"Bash","target":"","note":"","dur":6,"status":"ok","exit":0,"error":""}
-{"ts":"2026-06-22T13:19:26.781Z","hook":"privacy-block","event":"PreToolUse","tool":"Bash","target":"","note":"","dur":6,"status":"ok","exit":0,"error":""}
-{"ts":"2026-06-22T13:20:48.632Z","hook":"privacy-block","event":"PreToolUse","tool":"Bash","target":"","note":"","dur":11,"status":"ok","exit":0,"error":""}
-{"ts":"2026-06-22T13:20:48.636Z","hook":"scout-block","event":"PreToolUse","tool":"Bash","target":"","note":"","dur":6,"status":"ok","exit":0,"error":""}
-{"ts":"2026-06-22T13:20:48.657Z","hook":"scout-block","event":"PreToolUse","tool":"Bash","target":"","note":"","dur":9,"status":"ok","exit":0,"error":""}
-{"ts":"2026-06-22T13:20:48.726Z","hook":"privacy-block","event":"PreToolUse","tool":"Bash","target":"","note":"","dur":7,"status":"ok","exit":0,"error":""}
-{"ts":"2026-06-22T13:20:48.732Z","hook":"scout-block","event":"PreToolUse","tool":"Bash","target":"","note":"","dur":8,"status":"ok","exit":0,"error":""}
-{"ts":"2026-06-22T13:20:48.746Z","hook":"privacy-block","event":"PreToolUse","tool":"Bash","target":"","note":"","dur":25,"status":"ok","exit":0,"error":""}
-{"ts":"2026-06-22T13:20:58.081Z","hook":"scout-block","event":"PreToolUse","tool":"Bash","target":"","note":"","dur":4,"status":"ok","exit":0,"error":""}
-{"ts":"2026-06-22T13:20:58.084Z","hook":"privacy-block","event":"PreToolUse","tool":"Bash","target":"","note":"","dur":6,"status":"ok","exit":0,"error":""}
-{"ts":"2026-06-22T13:21:13.893Z","hook":"privacy-block","event":"PreToolUse","tool":"Bash","target":"","note":"","dur":3,"status":"ok","exit":0,"error":""}
-{"ts":"2026-06-22T13:21:13.900Z","hook":"scout-block","event":"PreToolUse","tool":"Bash","target":"","note":"","dur":5,"status":"ok","exit":0,"error":""}
-{"ts":"2026-06-22T13:24:41.596Z","hook":"privacy-block","event":"PreToolUse","tool":"Grep","target":"","note":"","dur":4,"status":"ok","exit":0,"error":""}
-{"ts":"2026-06-22T13:24:41.603Z","hook":"scout-block","event":"PreToolUse","tool":"","target":"","note":"","dur":0,"status":"crash","exit":0,"error":"path should be a `path.relative()`d string, but got \"D:/Claude_Kit-main/Claude_Kit-main\""}
-{"ts":"2026-06-22T13:32:23.195Z","hook":"privacy-block","event":"PreToolUse","tool":"Bash","target":"","note":"","dur":4,"status":"ok","exit":0,"error":""}
-{"ts":"2026-06-22T13:32:23.202Z","hook":"scout-block","event":"PreToolUse","tool":"Bash","target":"","note":"","dur":4,"status":"ok","exit":0,"error":""}
-{"ts":"2026-06-22T13:33:04.857Z","hook":"privacy-block","event":"PreToolUse","tool":"Bash","target":"","note":"","dur":4,"status":"ok","exit":0,"error":""}
-{"ts":"2026-06-22T13:33:04.858Z","hook":"scout-block","event":"PreToolUse","tool":"Bash","target":"","note":"","dur":6,"status":"ok","exit":0,"error":""}
-{"ts":"2026-06-22T13:33:05.782Z","hook":"privacy-block","event":"PreToolUse","tool":"Bash","target":"","note":"","dur":5,"status":"ok","exit":0,"error":""}
-{"ts":"2026-06-22T13:33:05.791Z","hook":"scout-block","event":"PreToolUse","tool":"Bash","target":"","note":"","dur":5,"status":"ok","exit":0,"error":""}
-{"ts":"2026-06-22T13:39:21.435Z","hook":"privacy-block","event":"PreToolUse","tool":"Read","target":"","note":"","dur":9,"status":"ok","exit":0,"error":""}
-{"ts":"2026-06-22T13:39:21.454Z","hook":"scout-block","event":"PreToolUse","tool":"","target":"","note":"","dur":0,"status":"crash","exit":0,"error":"path should be a `path.relative()`d string, but got \"C:/Users/Admin/.claude/projects/D--Claude-Kit-main-Claude-Kit-main/memory/MEMORY.md\""}
-{"ts":"2026-06-22T13:39:21.458Z","hook":"privacy-block","event":"PreToolUse","tool":"Read","target":"","note":"","dur":6,"status":"ok","exit":0,"error":""}
-{"ts":"2026-06-22T13:39:21.454Z","hook":"scout-block","event":"PreToolUse","tool":"","target":"","note":"","dur":0,"status":"crash","exit":0,"error":"path should be a `path.relative()`d string, but got \"D:/Claude_Kit-main/Claude_Kit-main/README.md\""}
-{"ts":"2026-06-22T13:39:41.373Z","hook":"privacy-block","event":"PreToolUse","tool":"Edit","target":"","note":"","dur":5,"status":"ok","exit":0,"error":""}
-{"ts":"2026-06-22T13:39:41.382Z","hook":"scout-block","event":"PreToolUse","tool":"","target":"","note":"","dur":0,"status":"crash","exit":0,"error":"path should be a `path.relative()`d string, but got \"D:/Claude_Kit-main/Claude_Kit-main/README.md\""}
-{"ts":"2026-06-22T13:39:51.968Z","hook":"privacy-block","event":"PreToolUse","tool":"Edit","target":"","note":"","dur":4,"status":"ok","exit":0,"error":""}
-{"ts":"2026-06-22T13:39:51.973Z","hook":"scout-block","event":"PreToolUse","tool":"","target":"","note":"","dur":0,"status":"crash","exit":0,"error":"path should be a `path.relative()`d string, but got \"D:/Claude_Kit-main/Claude_Kit-main/README.md\""}
-{"ts":"2026-06-22T13:41:19.223Z","hook":"scout-block","event":"PreToolUse","tool":"","target":"","note":"","dur":0,"status":"crash","exit":0,"error":"path should be a `path.relative()`d string, but got \"D:/Claude_Kit-main/Claude_Kit-main/README.md\""}
-{"ts":"2026-06-22T13:41:19.231Z","hook":"privacy-block","event":"PreToolUse","tool":"Grep","target":"","note":"","dur":4,"status":"ok","exit":0,"error":""}
-{"ts":"2026-06-22T13:42:26.648Z","hook":"descriptive-name","event":"PreToolUse","tool":"Write","target":"","note":"","dur":1,"status":"ok","exit":0,"error":""}
-{"ts":"2026-06-22T13:42:26.672Z","hook":"privacy-block","event":"PreToolUse","tool":"Write","target":"","note":"","dur":4,"status":"ok","exit":0,"error":""}
-{"ts":"2026-06-22T13:42:26.680Z","hook":"scout-block","event":"PreToolUse","tool":"","target":"","note":"","dur":0,"status":"crash","exit":0,"error":"path should be a `path.relative()`d string, but got \"C:/Users/Admin/.claude/projects/D--Claude-Kit-main-Claude-Kit-main/memory/readme-canonical-repo-link.md\""}
-{"ts":"2026-06-22T13:42:39.082Z","hook":"descriptive-name","event":"PreToolUse","tool":"Write","target":"","note":"","dur":2,"status":"ok","exit":0,"error":""}
-{"ts":"2026-06-22T13:42:39.093Z","hook":"privacy-block","event":"PreToolUse","tool":"Write","target":"","note":"","dur":5,"status":"ok","exit":0,"error":""}
-{"ts":"2026-06-22T13:42:39.094Z","hook":"scout-block","event":"PreToolUse","tool":"","target":"","note":"","dur":0,"status":"crash","exit":0,"error":"path should be a `path.relative()`d string, but got \"C:/Users/Admin/.claude/projects/D--Claude-Kit-main-Claude-Kit-main/memory/MEMORY.md\""}
-{"ts":"2026-06-22T13:42:49.985Z","hook":"privacy-block","event":"PreToolUse","tool":"Bash","target":"","note":"","dur":7,"status":"ok","exit":0,"error":""}
-{"ts":"2026-06-22T13:42:49.990Z","hook":"privacy-block","event":"PreToolUse","tool":"Bash","target":"","note":"","dur":7,"status":"ok","exit":0,"error":""}
-{"ts":"2026-06-22T13:42:49.996Z","hook":"scout-block","event":"PreToolUse","tool":"Bash","target":"","note":"","dur":8,"status":"ok","exit":0,"error":""}
-{"ts":"2026-06-22T13:42:50.001Z","hook":"scout-block","event":"PreToolUse","tool":"Bash","target":"","note":"","dur":6,"status":"ok","exit":0,"error":""}
-{"ts":"2026-06-22T13:46:26.785Z","hook":"privacy-block","event":"PreToolUse","tool":"Read","target":"","note":"","dur":4,"status":"ok","exit":0,"error":""}
-{"ts":"2026-06-22T13:46:26.795Z","hook":"scout-block","event":"PreToolUse","tool":"","target":"","note":"","dur":0,"status":"crash","exit":0,"error":"path should be a `path.relative()`d string, but got \"C:/Users/Admin/.claude/projects/D--Claude-Kit-main-Claude-Kit-main/memory/MEMORY.md\""}
-{"ts":"2026-06-22T13:47:01.016Z","hook":"descriptive-name","event":"PreToolUse","tool":"Write","target":"","note":"","dur":2,"status":"ok","exit":0,"error":""}
-{"ts":"2026-06-22T13:47:01.039Z","hook":"privacy-block","event":"PreToolUse","tool":"Write","target":"","note":"","dur":4,"status":"ok","exit":0,"error":""}
-{"ts":"2026-06-22T13:47:01.047Z","hook":"scout-block","event":"PreToolUse","tool":"","target":"","note":"","dur":0,"status":"crash","exit":0,"error":"path should be a `path.relative()`d string, but got \"C:/Users/Admin/.claude/projects/D--Claude-Kit-main-Claude-Kit-main/memory/feedback-do-not-use-omc.md\""}
-{"ts":"2026-06-22T13:47:19.472Z","hook":"privacy-block","event":"PreToolUse","tool":"Edit","target":"","note":"","dur":3,"status":"ok","exit":0,"error":""}
-{"ts":"2026-06-22T13:47:19.480Z","hook":"scout-block","event":"PreToolUse","tool":"","target":"","note":"","dur":0,"status":"crash","exit":0,"error":"path should be a `path.relative()`d string, but got \"C:/Users/Admin/.claude/projects/D--Claude-Kit-main-Claude-Kit-main/memory/MEMORY.md\""}
-{"ts":"2026-06-22T13:47:30.016Z","hook":"privacy-block","event":"PreToolUse","tool":"Bash","target":"","note":"","dur":3,"status":"ok","exit":0,"error":""}
-{"ts":"2026-06-22T13:47:30.018Z","hook":"scout-block","event":"PreToolUse","tool":"Bash","target":"","note":"","dur":3,"status":"ok","exit":0,"error":""}
-{"ts":"2026-06-22T13:48:40.744Z","hook":"privacy-block","event":"PreToolUse","tool":"Bash","target":"","note":"","dur":11,"status":"ok","exit":0,"error":""}
-{"ts":"2026-06-22T13:48:40.748Z","hook":"scout-block","event":"PreToolUse","tool":"Bash","target":"","note":"","dur":6,"status":"ok","exit":0,"error":""}
-{"ts":"2026-06-22T13:48:40.763Z","hook":"privacy-block","event":"PreToolUse","tool":"Bash","target":"","note":"","dur":10,"status":"ok","exit":0,"error":""}
-{"ts":"2026-06-22T13:48:40.773Z","hook":"scout-block","event":"PreToolUse","tool":"Bash","target":"","note":"","dur":9,"status":"ok","exit":0,"error":""}
-{"ts":"2026-06-22T13:48:40.785Z","hook":"scout-block","event":"PreToolUse","tool":"Bash","target":"","note":"","dur":5,"status":"ok","exit":0,"error":""}
-{"ts":"2026-06-22T13:48:40.797Z","hook":"privacy-block","event":"PreToolUse","tool":"Bash","target":"","note":"","dur":7,"status":"ok","exit":0,"error":""}
-{"ts":"2026-06-22T13:48:41.951Z","hook":"privacy-block","event":"PreToolUse","tool":"Bash","target":"","note":"","dur":4,"status":"ok","exit":0,"error":""}
-{"ts":"2026-06-22T13:48:41.957Z","hook":"scout-block","event":"PreToolUse","tool":"Bash","target":"","note":"","dur":6,"status":"ok","exit":0,"error":""}
-{"ts":"2026-06-22T13:48:55.739Z","hook":"scout-block","event":"PreToolUse","tool":"Bash","target":"","note":"","dur":6,"status":"ok","exit":0,"error":""}
-{"ts":"2026-06-22T13:48:55.743Z","hook":"privacy-block","event":"PreToolUse","tool":"Bash","target":"","note":"","dur":3,"status":"ok","exit":0,"error":""}
-{"ts":"2026-06-22T13:49:10.360Z","hook":"privacy-block","event":"PreToolUse","tool":"Bash","target":"","note":"","dur":3,"status":"ok","exit":0,"error":""}
-{"ts":"2026-06-22T13:49:10.362Z","hook":"scout-block","event":"PreToolUse","tool":"Bash","target":"","note":"","dur":5,"status":"ok","exit":0,"error":""}
-{"ts":"2026-06-22T13:49:20.587Z","hook":"scout-block","event":"PreToolUse","tool":"Bash","target":"","note":"","dur":3,"status":"ok","exit":0,"error":""}
-{"ts":"2026-06-22T13:49:20.588Z","hook":"privacy-block","event":"PreToolUse","tool":"Bash","target":"","note":"","dur":4,"status":"ok","exit":0,"error":""}
-{"ts":"2026-06-22T14:00:54.441Z","hook":"privacy-block","event":"PreToolUse","tool":"Bash","target":"","note":"","dur":8,"status":"ok","exit":0,"error":""}
-{"ts":"2026-06-22T14:00:54.463Z","hook":"scout-block","event":"PreToolUse","tool":"Bash","target":"","note":"","dur":7,"status":"ok","exit":0,"error":""}
-{"ts":"2026-06-22T14:00:54.468Z","hook":"scout-block","event":"PreToolUse","tool":"Bash","target":"","note":"","dur":9,"status":"ok","exit":0,"error":""}
-{"ts":"2026-06-22T14:00:54.474Z","hook":"privacy-block","event":"PreToolUse","tool":"Bash","target":"","note":"","dur":7,"status":"ok","exit":0,"error":""}
-{"ts":"2026-06-22T14:00:54.477Z","hook":"privacy-block","event":"PreToolUse","tool":"Bash","target":"","note":"","dur":6,"status":"ok","exit":0,"error":""}
-{"ts":"2026-06-22T14:00:54.493Z","hook":"scout-block","event":"PreToolUse","tool":"Bash","target":"","note":"","dur":6,"status":"ok","exit":0,"error":""}
-{"ts":"2026-06-22T14:15:20.309Z","hook":"privacy-block","event":"PreToolUse","tool":"Bash","target":"","note":"","dur":4,"status":"ok","exit":0,"error":""}
-{"ts":"2026-06-22T14:15:20.324Z","hook":"scout-block","event":"PreToolUse","tool":"Bash","target":"","note":"","dur":7,"status":"ok","exit":0,"error":""}
-{"ts":"2026-06-22T14:15:22.337Z","hook":"scout-block","event":"PreToolUse","tool":"Bash","target":"","note":"","dur":3,"status":"ok","exit":0,"error":""}
-{"ts":"2026-06-22T14:15:22.343Z","hook":"privacy-block","event":"PreToolUse","tool":"Bash","target":"","note":"","dur":4,"status":"ok","exit":0,"error":""}
-{"ts":"2026-06-22T14:15:23.459Z","hook":"privacy-block","event":"PreToolUse","tool":"Bash","target":"","note":"","dur":4,"status":"ok","exit":0,"error":""}
-{"ts":"2026-06-22T14:15:23.461Z","hook":"scout-block","event":"PreToolUse","tool":"Bash","target":"","note":"","dur":7,"status":"ok","exit":0,"error":""}
-{"ts":"2026-06-22T14:15:24.636Z","hook":"privacy-block","event":"PreToolUse","tool":"Bash","target":"","note":"","dur":5,"status":"ok","exit":0,"error":""}
-{"ts":"2026-06-22T14:15:24.643Z","hook":"scout-block","event":"PreToolUse","tool":"Bash","target":"","note":"","dur":6,"status":"ok","exit":0,"error":""}
-{"ts":"2026-06-22T14:16:03.153Z","hook":"privacy-block","event":"PreToolUse","tool":"Bash","target":"","note":"","dur":5,"status":"ok","exit":0,"error":""}
-{"ts":"2026-06-22T14:16:03.159Z","hook":"scout-block","event":"PreToolUse","tool":"Bash","target":"","note":"","dur":7,"status":"ok","exit":0,"error":""}
-{"ts":"2026-06-22T14:16:04.312Z","hook":"privacy-block","event":"PreToolUse","tool":"Bash","target":"","note":"","dur":3,"status":"ok","exit":0,"error":""}
-{"ts":"2026-06-22T14:16:04.323Z","hook":"scout-block","event":"PreToolUse","tool":"Bash","target":"","note":"allowed-command","dur":0,"status":"ok","exit":0,"error":""}
-{"ts":"2026-06-22T14:16:05.353Z","hook":"privacy-block","event":"PreToolUse","tool":"Bash","target":"","note":"","dur":4,"status":"ok","exit":0,"error":""}
-{"ts":"2026-06-22T14:16:05.354Z","hook":"scout-block","event":"PreToolUse","tool":"Bash","target":"","note":"allowed-command","dur":0,"status":"ok","exit":0,"error":""}
-{"ts":"2026-06-22T14:16:35.095Z","hook":"privacy-block","event":"PreToolUse","tool":"Bash","target":"","note":"","dur":4,"status":"ok","exit":0,"error":""}
-{"ts":"2026-06-22T14:16:35.117Z","hook":"scout-block","event":"PreToolUse","tool":"Bash","target":"/node_modules","note":"node_modules","dur":8,"status":"block","exit":2,"error":""}
-{"ts":"2026-06-22T14:17:22.800Z","hook":"privacy-block","event":"PreToolUse","tool":"Read","target":"","note":"","dur":6,"status":"ok","exit":0,"error":""}
-{"ts":"2026-06-22T14:17:22.815Z","hook":"privacy-block","event":"PreToolUse","tool":"Read","target":"","note":"","dur":17,"status":"ok","exit":0,"error":""}
-{"ts":"2026-06-22T14:17:22.818Z","hook":"scout-block","event":"PreToolUse","tool":"","target":"","note":"","dur":0,"status":"crash","exit":0,"error":"path should be a `path.relative()`d string, but got \"D:/Claude_Kit-main/Claude_Kit-main/.claude/.ck.json\""}
-{"ts":"2026-06-22T14:17:22.828Z","hook":"scout-block","event":"PreToolUse","tool":"","target":"","note":"","dur":0,"status":"crash","exit":0,"error":"path should be a `path.relative()`d string, but got \"D:/Claude_Kit-main/Claude_Kit-main/.claude/rules/primary-workflow.md\""}
-{"ts":"2026-06-22T14:17:22.834Z","hook":"scout-block","event":"PreToolUse","tool":"","target":"","note":"","dur":0,"status":"crash","exit":0,"error":"path should be a `path.relative()`d string, but got \"D:/Claude_Kit-main/Claude_Kit-main/.claude/rules/development-rules.md\""}
-{"ts":"2026-06-22T14:17:22.858Z","hook":"privacy-block","event":"PreToolUse","tool":"Read","target":"","note":"","dur":11,"status":"ok","exit":0,"error":""}
-{"ts":"2026-06-22T14:17:22.872Z","hook":"scout-block","event":"PreToolUse","tool":"","target":"","note":"","dur":0,"status":"crash","exit":0,"error":"path should be a `path.relative()`d string, but got \"D:/Claude_Kit-main/Claude_Kit-main/.claude/hooks/docs/README.md\""}
-{"ts":"2026-06-22T14:17:22.889Z","hook":"privacy-block","event":"PreToolUse","tool":"Read","target":"","note":"","dur":11,"status":"ok","exit":0,"error":""}
+{"ts":"2026-07-26T12:17:28.424Z","hook":"privacy-block","event":"PreToolUse","tool":"Bash","target":"","note":"","dur":11,"status":"ok","exit":0,"error":""}
+{"ts":"2026-07-26T12:17:28.451Z","hook":"scout-block","event":"PreToolUse","tool":"Bash","target":"","note":"","dur":18,"status":"ok","exit":0,"error":""}
+{"ts":"2026-07-26T12:19:44.558Z","hook":"privacy-block","event":"PreToolUse","tool":"Bash","target":"","note":"","dur":11,"status":"ok","exit":0,"error":""}
+{"ts":"2026-07-26T12:19:44.579Z","hook":"scout-block","event":"PreToolUse","tool":"Bash","target":"","note":"","dur":17,"status":"ok","exit":0,"error":""}
+{"ts":"2026-07-26T12:19:52.243Z","hook":"privacy-block","event":"PreToolUse","tool":"Bash","target":"","note":"","dur":12,"status":"ok","exit":0,"error":""}
+{"ts":"2026-07-26T12:19:52.269Z","hook":"scout-block","event":"PreToolUse","tool":"Bash","target":"","note":"","dur":18,"status":"ok","exit":0,"error":""}
+{"ts":"2026-07-26T12:20:03.198Z","hook":"privacy-block","event":"PreToolUse","tool":"Bash","target":"","note":"","dur":8,"status":"ok","exit":0,"error":""}
+{"ts":"2026-07-26T12:20:03.210Z","hook":"scout-block","event":"PreToolUse","tool":"Bash","target":"","note":"","dur":8,"status":"ok","exit":0,"error":""}
+{"ts":"2026-07-26T12:20:14.014Z","hook":"privacy-block","event":"PreToolUse","tool":"Bash","target":"","note":"","dur":23,"status":"ok","exit":0,"error":""}
+{"ts":"2026-07-26T12:20:14.019Z","hook":"scout-block","event":"PreToolUse","tool":"Bash","target":"","note":"","dur":25,"status":"ok","exit":0,"error":""}
+{"ts":"2026-07-26T12:28:04.937Z","hook":"scout-block","event":"PreToolUse","tool":"","target":"","note":"","dur":0,"status":"crash","exit":0,"error":"path should be a `path.relative()`d string, but got \"D:/OpsMind_AI/plans/260726-1200-phase-08-evaluation-baseline-completion\""}
+{"ts":"2026-07-26T12:28:04.947Z","hook":"privacy-block","event":"PreToolUse","tool":"Bash","target":"","note":"","dur":23,"status":"ok","exit":0,"error":""}
+{"ts":"2026-07-26T12:28:21.120Z","hook":"scout-block","event":"PreToolUse","tool":"Bash","target":"","note":"","dur":18,"status":"ok","exit":0,"error":""}
+{"ts":"2026-07-26T12:28:21.288Z","hook":"privacy-block","event":"PreToolUse","tool":"Bash","target":"","note":"","dur":15,"status":"ok","exit":0,"error":""}
+{"ts":"2026-07-26T12:28:36.655Z","hook":"privacy-block","event":"PreToolUse","tool":"Bash","target":"","note":"","dur":8,"status":"ok","exit":0,"error":""}
+{"ts":"2026-07-26T12:28:36.680Z","hook":"scout-block","event":"PreToolUse","tool":"Bash","target":"","note":"","dur":15,"status":"ok","exit":0,"error":""}
+{"ts":"2026-07-26T12:28:44.983Z","hook":"privacy-block","event":"PreToolUse","tool":"Bash","target":"","note":"","dur":9,"status":"ok","exit":0,"error":""}
+{"ts":"2026-07-26T12:28:45.186Z","hook":"scout-block","event":"PreToolUse","tool":"Bash","target":"","note":"","dur":31,"status":"ok","exit":0,"error":""}
+{"ts":"2026-07-26T12:28:56.879Z","hook":"privacy-block","event":"PreToolUse","tool":"Edit","target":"","note":"","dur":12,"status":"ok","exit":0,"error":""}
+{"ts":"2026-07-26T12:28:56.882Z","hook":"scout-block","event":"PreToolUse","tool":"","target":"","note":"","dur":0,"status":"crash","exit":0,"error":"path should be a `path.relative()`d string, but got \"D:/OpsMind_AI/plans/260719-1747-opsmind-ai-production-platform/phase-08-simulator-and-evaluation-baseline.md\""}
+{"ts":"2026-07-26T12:29:07.867Z","hook":"scout-block","event":"PreToolUse","tool":"Bash","target":"","note":"allowed-command","dur":2,"status":"ok","exit":0,"error":""}
+{"ts":"2026-07-26T12:29:07.889Z","hook":"privacy-block","event":"PreToolUse","tool":"Bash","target":"","note":"","dur":12,"status":"ok","exit":0,"error":""}
+{"ts":"2026-07-26T12:29:24.382Z","hook":"descriptive-name","event":"PreToolUse","tool":"Write","target":"","note":"","dur":5,"status":"ok","exit":0,"error":""}
+{"ts":"2026-07-26T12:29:24.432Z","hook":"scout-block","event":"PreToolUse","tool":"","target":"","note":"","dur":0,"status":"crash","exit":0,"error":"path should be a `path.relative()`d string, but got \"D:/OpsMind_AI/evaluation/runner/sampling-intervals.mjs\""}
+{"ts":"2026-07-26T12:29:24.437Z","hook":"privacy-block","event":"PreToolUse","tool":"Write","target":"","note":"","dur":20,"status":"ok","exit":0,"error":""}
+{"ts":"2026-07-26T12:29:35.349Z","hook":"privacy-block","event":"PreToolUse","tool":"Bash","target":"","note":"","dur":10,"status":"ok","exit":0,"error":""}
+{"ts":"2026-07-26T12:29:35.355Z","hook":"scout-block","event":"PreToolUse","tool":"Bash","target":"","note":"","dur":16,"status":"ok","exit":0,"error":""}
+{"ts":"2026-07-26T12:29:55.945Z","hook":"descriptive-name","event":"PreToolUse","tool":"Write","target":"","note":"","dur":7,"status":"ok","exit":0,"error":""}
+{"ts":"2026-07-26T12:29:55.988Z","hook":"scout-block","event":"PreToolUse","tool":"","target":"","note":"","dur":0,"status":"crash","exit":0,"error":"path should be a `path.relative()`d string, but got \"D:/OpsMind_AI/evaluation/runner/sampling-intervals.test.mjs\""}
+{"ts":"2026-07-26T12:29:56.000Z","hook":"privacy-block","event":"PreToolUse","tool":"Write","target":"","note":"","dur":19,"status":"ok","exit":0,"error":""}
+{"ts":"2026-07-26T12:30:04.163Z","hook":"scout-block","event":"PreToolUse","tool":"Bash","target":"","note":"","dur":15,"status":"ok","exit":0,"error":""}
+{"ts":"2026-07-26T12:30:04.226Z","hook":"privacy-block","event":"PreToolUse","tool":"Bash","target":"","note":"","dur":11,"status":"ok","exit":0,"error":""}
+{"ts":"2026-07-26T12:30:12.674Z","hook":"privacy-block","event":"PreToolUse","tool":"Bash","target":"","note":"","dur":9,"status":"ok","exit":0,"error":""}
+{"ts":"2026-07-26T12:30:12.689Z","hook":"scout-block","event":"PreToolUse","tool":"Bash","target":"","note":"","dur":16,"status":"ok","exit":0,"error":""}
+{"ts":"2026-07-26T12:30:22.448Z","hook":"privacy-block","event":"PreToolUse","tool":"Edit","target":"","note":"","dur":13,"status":"ok","exit":0,"error":""}
+{"ts":"2026-07-26T12:30:22.474Z","hook":"scout-block","event":"PreToolUse","tool":"","target":"","note":"","dur":0,"status":"crash","exit":0,"error":"path should be a `path.relative()`d string, but got \"D:/OpsMind_AI/evaluation/runner/score-phase-07-trace-core.mjs\""}
+{"ts":"2026-07-26T12:30:32.025Z","hook":"privacy-block","event":"PreToolUse","tool":"Bash","target":"","note":"","dur":17,"status":"ok","exit":0,"error":""}
+{"ts":"2026-07-26T12:30:32.042Z","hook":"scout-block","event":"PreToolUse","tool":"Bash","target":"","note":"","dur":24,"status":"ok","exit":0,"error":""}
+{"ts":"2026-07-26T12:30:39.928Z","hook":"privacy-block","event":"PreToolUse","tool":"Edit","target":"","note":"","dur":15,"status":"ok","exit":0,"error":""}
+{"ts":"2026-07-26T12:30:39.938Z","hook":"scout-block","event":"PreToolUse","tool":"","target":"","note":"","dur":0,"status":"crash","exit":0,"error":"path should be a `path.relative()`d string, but got \"D:/OpsMind_AI/evaluation/runner/score-phase-07-trace-core.mjs\""}
+{"ts":"2026-07-26T12:30:51.501Z","hook":"scout-block","event":"PreToolUse","tool":"","target":"","note":"","dur":0,"status":"crash","exit":0,"error":"path should be a `path.relative()`d string, but got \"D:/OpsMind_AI/evaluation/runner/score-phase-07-trace-core.mjs\""}
+{"ts":"2026-07-26T12:30:51.511Z","hook":"privacy-block","event":"PreToolUse","tool":"Edit","target":"","note":"","dur":18,"status":"ok","exit":0,"error":""}
+{"ts":"2026-07-26T12:31:09.036Z","hook":"privacy-block","event":"PreToolUse","tool":"Bash","target":"","note":"","dur":16,"status":"ok","exit":0,"error":""}
+{"ts":"2026-07-26T12:31:09.069Z","hook":"scout-block","event":"PreToolUse","tool":"Bash","target":"","note":"","dur":26,"status":"ok","exit":0,"error":""}
+{"ts":"2026-07-26T12:31:16.008Z","hook":"scout-block","event":"PreToolUse","tool":"","target":"","note":"","dur":0,"status":"crash","exit":0,"error":"path should be a `path.relative()`d string, but got \"D:/OpsMind_AI/evaluation/schemas/benchmark-result.schema.json\""}
+{"ts":"2026-07-26T12:31:16.015Z","hook":"privacy-block","event":"PreToolUse","tool":"Read","target":"","note":"","dur":24,"status":"ok","exit":0,"error":""}
+{"ts":"2026-07-26T12:31:27.545Z","hook":"privacy-block","event":"PreToolUse","tool":"Edit","target":"","note":"","dur":14,"status":"ok","exit":0,"error":""}
+{"ts":"2026-07-26T12:31:27.591Z","hook":"scout-block","event":"PreToolUse","tool":"","target":"","note":"","dur":0,"status":"crash","exit":0,"error":"path should be a `path.relative()`d string, but got \"D:/OpsMind_AI/evaluation/schemas/benchmark-result.schema.json\""}
+{"ts":"2026-07-26T12:31:44.602Z","hook":"privacy-block","event":"PreToolUse","tool":"Edit","target":"","note":"","dur":23,"status":"ok","exit":0,"error":""}
+{"ts":"2026-07-26T12:31:44.666Z","hook":"scout-block","event":"PreToolUse","tool":"","target":"","note":"","dur":0,"status":"crash","exit":0,"error":"path should be a `path.relative()`d string, but got \"D:/OpsMind_AI/evaluation/schemas/benchmark-result.schema.json\""}
+{"ts":"2026-07-26T12:31:53.337Z","hook":"privacy-block","event":"PreToolUse","tool":"Edit","target":"","note":"","dur":13,"status":"ok","exit":0,"error":""}
+{"ts":"2026-07-26T12:31:53.357Z","hook":"scout-block","event":"PreToolUse","tool":"","target":"","note":"","dur":0,"status":"crash","exit":0,"error":"path should be a `path.relative()`d string, but got \"D:/OpsMind_AI/evaluation/schemas/benchmark-result.schema.json\""}
+{"ts":"2026-07-26T12:32:03.292Z","hook":"privacy-block","event":"PreToolUse","tool":"Edit","target":"","note":"","dur":16,"status":"ok","exit":0,"error":""}
+{"ts":"2026-07-26T12:32:03.300Z","hook":"scout-block","event":"PreToolUse","tool":"","target":"","note":"","dur":0,"status":"crash","exit":0,"error":"path should be a `path.relative()`d string, but got \"D:/OpsMind_AI/evaluation/schemas/benchmark-result.schema.json\""}
+{"ts":"2026-07-26T12:32:12.592Z","hook":"privacy-block","event":"PreToolUse","tool":"Bash","target":"","note":"","dur":18,"status":"ok","exit":0,"error":""}
+{"ts":"2026-07-26T12:32:12.620Z","hook":"scout-block","event":"PreToolUse","tool":"Bash","target":"","note":"","dur":23,"status":"ok","exit":0,"error":""}
+{"ts":"2026-07-26T12:32:23.079Z","hook":"privacy-block","event":"PreToolUse","tool":"Bash","target":"","note":"","dur":11,"status":"ok","exit":0,"error":""}
+{"ts":"2026-07-26T12:32:23.105Z","hook":"scout-block","event":"PreToolUse","tool":"Bash","target":"","note":"","dur":19,"status":"ok","exit":0,"error":""}
+{"ts":"2026-07-26T12:32:33.238Z","hook":"privacy-block","event":"PreToolUse","tool":"Bash","target":"","note":"","dur":18,"status":"ok","exit":0,"error":""}
+{"ts":"2026-07-26T12:32:33.248Z","hook":"scout-block","event":"PreToolUse","tool":"Bash","target":"","note":"","dur":19,"status":"ok","exit":0,"error":""}
+{"ts":"2026-07-26T12:33:05.039Z","hook":"descriptive-name","event":"PreToolUse","tool":"Write","target":"","note":"","dur":5,"status":"ok","exit":0,"error":""}
+{"ts":"2026-07-26T12:33:05.100Z","hook":"privacy-block","event":"PreToolUse","tool":"Write","target":"","note":"","dur":21,"status":"ok","exit":0,"error":""}
+{"ts":"2026-07-26T12:33:05.102Z","hook":"scout-block","event":"PreToolUse","tool":"","target":"","note":"","dur":0,"status":"crash","exit":0,"error":"path should be a `path.relative()`d string, but got \"D:/OpsMind_AI/evaluation/statistical-analysis-plan.md\""}
+{"ts":"2026-07-26T12:33:16.380Z","hook":"privacy-block","event":"PreToolUse","tool":"Bash","target":"","note":"","dur":14,"status":"ok","exit":0,"error":""}
+{"ts":"2026-07-26T12:33:16.386Z","hook":"scout-block","event":"PreToolUse","tool":"Bash","target":"","note":"allowed-command","dur":2,"status":"ok","exit":0,"error":""}
+{"ts":"2026-07-26T12:33:29.376Z","hook":"privacy-block","event":"PreToolUse","tool":"Edit","target":"","note":"","dur":35,"status":"ok","exit":0,"error":""}
+{"ts":"2026-07-26T12:33:29.389Z","hook":"scout-block","event":"PreToolUse","tool":"","target":"","note":"","dur":0,"status":"crash","exit":0,"error":"path should be a `path.relative()`d string, but got \"D:/OpsMind_AI/evaluation/schemas/benchmark-manifest.schema.json\""}
+{"ts":"2026-07-26T12:33:46.449Z","hook":"scout-block","event":"PreToolUse","tool":"","target":"","note":"","dur":0,"status":"crash","exit":0,"error":"path should be a `path.relative()`d string, but got \"D:/OpsMind_AI/evaluation/schemas/benchmark-manifest.schema.json\""}
+{"ts":"2026-07-26T12:33:46.490Z","hook":"privacy-block","event":"PreToolUse","tool":"Edit","target":"","note":"","dur":21,"status":"ok","exit":0,"error":""}
+{"ts":"2026-07-26T12:34:04.337Z","hook":"privacy-block","event":"PreToolUse","tool":"Edit","target":"","note":"","dur":20,"status":"ok","exit":0,"error":""}
+{"ts":"2026-07-26T12:34:04.352Z","hook":"scout-block","event":"PreToolUse","tool":"","target":"","note":"","dur":0,"status":"crash","exit":0,"error":"path should be a `path.relative()`d string, but got \"D:/OpsMind_AI/scripts/validation/validate-phase-08-evaluation-foundation.mjs\""}
+{"ts":"2026-07-26T12:34:18.980Z","hook":"privacy-block","event":"PreToolUse","tool":"Bash","target":"","note":"","dur":21,"status":"ok","exit":0,"error":""}
+{"ts":"2026-07-26T12:34:19.047Z","hook":"scout-block","event":"PreToolUse","tool":"Bash","target":"","note":"","dur":31,"status":"ok","exit":0,"error":""}
+{"ts":"2026-07-26T12:34:33.717Z","hook":"privacy-block","event":"PreToolUse","tool":"Edit","target":"","note":"","dur":16,"status":"ok","exit":0,"error":""}
+{"ts":"2026-07-26T12:34:33.746Z","hook":"scout-block","event":"PreToolUse","tool":"","target":"","note":"","dur":0,"status":"crash","exit":0,"error":"path should be a `path.relative()`d string, but got \"D:/OpsMind_AI/docs/evaluation-strategy.md\""}
+{"ts":"2026-07-26T12:34:46.374Z","hook":"privacy-block","event":"PreToolUse","tool":"Bash","target":"","note":"","dur":13,"status":"ok","exit":0,"error":""}
+{"ts":"2026-07-26T12:34:46.417Z","hook":"scout-block","event":"PreToolUse","tool":"Bash","target":"","note":"","dur":29,"status":"ok","exit":0,"error":""}
+{"ts":"2026-07-26T12:36:56.728Z","hook":"scout-block","event":"PreToolUse","tool":"Bash","target":"","note":"","dur":19,"status":"ok","exit":0,"error":""}
+{"ts":"2026-07-26T12:36:56.740Z","hook":"privacy-block","event":"PreToolUse","tool":"Bash","target":"","note":"","dur":12,"status":"ok","exit":0,"error":""}
+{"ts":"2026-07-26T12:37:11.182Z","hook":"privacy-block","event":"PreToolUse","tool":"Bash","target":"","note":"","dur":13,"status":"ok","exit":0,"error":""}
+{"ts":"2026-07-26T12:37:11.200Z","hook":"scout-block","event":"PreToolUse","tool":"Bash","target":"","note":"","dur":11,"status":"ok","exit":0,"error":""}
+{"ts":"2026-07-26T12:37:24.240Z","hook":"privacy-block","event":"PreToolUse","tool":"Bash","target":"","note":"","dur":9,"status":"ok","exit":0,"error":""}
+{"ts":"2026-07-26T12:37:24.250Z","hook":"scout-block","event":"PreToolUse","tool":"Bash","target":"","note":"","dur":11,"status":"ok","exit":0,"error":""}
+{"ts":"2026-07-26T12:45:16.384Z","hook":"privacy-block","event":"PreToolUse","tool":"Bash","target":"","note":"","dur":18,"status":"ok","exit":0,"error":""}
+{"ts":"2026-07-26T12:45:16.429Z","hook":"scout-block","event":"PreToolUse","tool":"","target":"","note":"","dur":0,"status":"crash","exit":0,"error":"path should be a `path.relative()`d string, but got \"C:/Users/Admin/AppData/Local/Temp/claude/D--OpsMind-AI/73c00feb-b5d8-4cc2-bf1a-0509fcc76faf/scratchpad\""}
+{"ts":"2026-07-26T12:45:44.006Z","hook":"privacy-block","event":"PreToolUse","tool":"Bash","target":"","note":"","dur":19,"status":"ok","exit":0,"error":""}
+{"ts":"2026-07-26T12:45:44.036Z","hook":"scout-block","event":"PreToolUse","tool":"","target":"","note":"","dur":0,"status":"crash","exit":0,"error":"path should be a `path.relative()`d string, but got \"D:/OpsMind_AI/plans/260726-1200-phase-08-evaluation-baseline-completion\""}
+{"ts":"2026-07-26T12:46:17.500Z","hook":"privacy-block","event":"PreToolUse","tool":"Write","target":"","note":"","dur":19,"status":"ok","exit":0,"error":""}
+{"ts":"2026-07-26T12:46:17.644Z","hook":"descriptive-name","event":"PreToolUse","tool":"Write","target":"","note":"","dur":8,"status":"ok","exit":0,"error":""}
+{"ts":"2026-07-26T12:46:17.872Z","hook":"scout-block","event":"PreToolUse","tool":"","target":"","note":"","dur":0,"status":"crash","exit":0,"error":"path should be a `path.relative()`d string, but got \"D:/OpsMind_AI/evaluation/human-baseline-protocol.md\""}
+{"ts":"2026-07-26T12:46:35.240Z","hook":"descriptive-name","event":"PreToolUse","tool":"Write","target":"","note":"","dur":11,"status":"ok","exit":0,"error":""}
+{"ts":"2026-07-26T12:46:35.420Z","hook":"privacy-block","event":"PreToolUse","tool":"Write","target":"","note":"","dur":32,"status":"ok","exit":0,"error":""}
+{"ts":"2026-07-26T12:46:35.465Z","hook":"scout-block","event":"PreToolUse","tool":"","target":"","note":"","dur":0,"status":"crash","exit":0,"error":"path should be a `path.relative()`d string, but got \"D:/OpsMind_AI/evaluation/schemas/human-baseline-record.schema.json\""}
+{"ts":"2026-07-26T12:47:04.417Z","hook":"descriptive-name","event":"PreToolUse","tool":"Write","target":"","note":"","dur":7,"status":"ok","exit":0,"error":""}
+{"ts":"2026-07-26T12:47:04.463Z","hook":"privacy-block","event":"PreToolUse","tool":"Write","target":"","note":"","dur":19,"status":"ok","exit":0,"error":""}
+{"ts":"2026-07-26T12:47:04.466Z","hook":"scout-block","event":"PreToolUse","tool":"","target":"","note":"","dur":0,"status":"crash","exit":0,"error":"path should be a `path.relative()`d string, but got \"D:/OpsMind_AI/evaluation/runner/human-baseline.mjs\""}
+{"ts":"2026-07-26T12:47:28.004Z","hook":"descriptive-name","event":"PreToolUse","tool":"Write","target":"","note":"","dur":5,"status":"ok","exit":0,"error":""}
+{"ts":"2026-07-26T12:47:28.036Z","hook":"privacy-block","event":"PreToolUse","tool":"Write","target":"","note":"","dur":22,"status":"ok","exit":0,"error":""}
+{"ts":"2026-07-26T12:47:28.070Z","hook":"scout-block","event":"PreToolUse","tool":"","target":"","note":"","dur":0,"status":"crash","exit":0,"error":"path should be a `path.relative()`d string, but got \"D:/OpsMind_AI/evaluation/runner/human-baseline.test.mjs\""}
+{"ts":"2026-07-26T12:47:37.327Z","hook":"privacy-block","event":"PreToolUse","tool":"Bash","target":"","note":"","dur":27,"status":"ok","exit":0,"error":""}
+{"ts":"2026-07-26T12:47:37.356Z","hook":"scout-block","event":"PreToolUse","tool":"Bash","target":"","note":"","dur":25,"status":"ok","exit":0,"error":""}
+{"ts":"2026-07-26T12:47:46.874Z","hook":"privacy-block","event":"PreToolUse","tool":"Bash","target":"","note":"","dur":45,"status":"ok","exit":0,"error":""}
+{"ts":"2026-07-26T12:47:46.967Z","hook":"scout-block","event":"PreToolUse","tool":"Bash","target":"","note":"","dur":45,"status":"ok","exit":0,"error":""}
+{"ts":"2026-07-26T12:48:02.673Z","hook":"scout-block","event":"PreToolUse","tool":"","target":"","note":"","dur":0,"status":"crash","exit":0,"error":"path should be a `path.relative()`d string, but got \"D:/OpsMind_AI/scripts/validation/validate-phase-08-evaluation-foundation.mjs\""}
+{"ts":"2026-07-26T12:48:02.682Z","hook":"privacy-block","event":"PreToolUse","tool":"Edit","target":"","note":"","dur":40,"status":"ok","exit":0,"error":""}
+{"ts":"2026-07-26T12:48:20.206Z","hook":"privacy-block","event":"PreToolUse","tool":"Bash","target":"","note":"","dur":16,"status":"ok","exit":0,"error":""}
+{"ts":"2026-07-26T12:48:20.241Z","hook":"scout-block","event":"PreToolUse","tool":"Bash","target":"","note":"","dur":38,"status":"ok","exit":0,"error":""}
+{"ts":"2026-07-26T12:48:38.790Z","hook":"privacy-block","event":"PreToolUse","tool":"Bash","target":"","note":"","dur":40,"status":"ok","exit":0,"error":""}
+{"ts":"2026-07-26T12:48:38.844Z","hook":"scout-block","event":"PreToolUse","tool":"Bash","target":"","note":"","dur":51,"status":"ok","exit":0,"error":""}
+{"ts":"2026-07-26T12:52:34.894Z","hook":"scout-block","event":"PreToolUse","tool":"Bash","target":"","note":"allowed-command","dur":5,"status":"ok","exit":0,"error":""}
+{"ts":"2026-07-26T12:52:34.936Z","hook":"privacy-block","event":"PreToolUse","tool":"Bash","target":"","note":"","dur":44,"status":"ok","exit":0,"error":""}
+{"ts":"2026-07-26T12:52:48.281Z","hook":"privacy-block","event":"PreToolUse","tool":"Bash","target":"","note":"","dur":30,"status":"ok","exit":0,"error":""}
+{"ts":"2026-07-26T12:52:48.364Z","hook":"scout-block","event":"PreToolUse","tool":"Bash","target":"","note":"","dur":30,"status":"ok","exit":0,"error":""}
+{"ts":"2026-07-26T12:53:07.516Z","hook":"privacy-block","event":"PreToolUse","tool":"Bash","target":"","note":"","dur":22,"status":"ok","exit":0,"error":""}
+{"ts":"2026-07-26T12:53:07.526Z","hook":"scout-block","event":"PreToolUse","tool":"Bash","target":"","note":"","dur":21,"status":"ok","exit":0,"error":""}
+{"ts":"2026-07-26T12:53:25.620Z","hook":"privacy-block","event":"PreToolUse","tool":"Bash","target":"","note":"","dur":20,"status":"ok","exit":0,"error":""}
+{"ts":"2026-07-26T12:53:25.630Z","hook":"scout-block","event":"PreToolUse","tool":"Bash","target":"","note":"","dur":27,"status":"ok","exit":0,"error":""}
+{"ts":"2026-07-26T12:53:43.900Z","hook":"privacy-block","event":"PreToolUse","tool":"Bash","target":"","note":"","dur":21,"status":"ok","exit":0,"error":""}
+{"ts":"2026-07-26T12:53:43.941Z","hook":"scout-block","event":"PreToolUse","tool":"","target":"","note":"","dur":0,"status":"crash","exit":0,"error":"path should be a `path.relative()`d string, but got \"D:/OpsMind_AI/plans/260726-1200-phase-08-evaluation-baseline-completion\""}
+{"ts":"2026-07-26T13:01:24.366Z","hook":"privacy-block","event":"PreToolUse","tool":"Bash","target":"","note":"","dur":26,"status":"ok","exit":0,"error":""}
+{"ts":"2026-07-26T13:01:24.387Z","hook":"scout-block","event":"PreToolUse","tool":"","target":"","note":"","dur":0,"status":"crash","exit":0,"error":"path should be a `path.relative()`d string, but got \"D:/OpsMind_AI/plans/260726-1200-phase-08-evaluation-baseline-completion/plan.md\""}
+{"ts":"2026-07-26T13:01:43.514Z","hook":"privacy-block","event":"PreToolUse","tool":"Bash","target":"","note":"","dur":37,"status":"ok","exit":0,"error":""}
+{"ts":"2026-07-26T13:01:43.580Z","hook":"scout-block","event":"PreToolUse","tool":"Bash","target":"","note":"","dur":75,"status":"ok","exit":0,"error":""}
+{"ts":"2026-07-26T13:02:11.318Z","hook":"scout-block","event":"PreToolUse","tool":"Bash","target":"","note":"","dur":57,"status":"ok","exit":0,"error":""}
+{"ts":"2026-07-26T13:02:11.422Z","hook":"privacy-block","event":"PreToolUse","tool":"Bash","target":"","note":"","dur":36,"status":"ok","exit":0,"error":""}
+{"ts":"2026-07-26T14:53:09.279Z","hook":"scout-block","event":"PreToolUse","tool":"Bash","target":"","note":"","dur":10,"status":"ok","exit":0,"error":""}
+{"ts":"2026-07-26T14:53:09.284Z","hook":"privacy-block","event":"PreToolUse","tool":"Bash","target":"","note":"","dur":11,"status":"ok","exit":0,"error":""}
+{"ts":"2026-07-26T14:53:46.335Z","hook":"privacy-block","event":"PreToolUse","tool":"Bash","target":"","note":"","dur":4,"status":"ok","exit":0,"error":""}
+{"ts":"2026-07-26T14:53:46.345Z","hook":"scout-block","event":"PreToolUse","tool":"Bash","target":"","note":"","dur":6,"status":"ok","exit":0,"error":""}
+{"ts":"2026-07-26T14:54:17.844Z","hook":"privacy-block","event":"PreToolUse","tool":"Bash","target":"","note":"","dur":5,"status":"ok","exit":0,"error":""}
+{"ts":"2026-07-26T14:54:17.852Z","hook":"scout-block","event":"PreToolUse","tool":"Bash","target":"node_modules","note":"node_modules","dur":9,"status":"block","exit":2,"error":""}
+{"ts":"2026-07-26T14:54:36.167Z","hook":"privacy-block","event":"PreToolUse","tool":"Bash","target":"","note":"","dur":3,"status":"ok","exit":0,"error":""}
+{"ts":"2026-07-26T14:54:36.177Z","hook":"scout-block","event":"PreToolUse","tool":"Bash","target":"","note":"","dur":8,"status":"ok","exit":0,"error":""}
+{"ts":"2026-07-26T14:58:35.580Z","hook":"privacy-block","event":"PreToolUse","tool":"Bash","target":"","note":"","dur":6,"status":"ok","exit":0,"error":""}
+{"ts":"2026-07-26T14:58:35.593Z","hook":"scout-block","event":"PreToolUse","tool":"Bash","target":"services/platform-api/target","note":"target","dur":16,"status":"block","exit":2,"error":""}
+{"ts":"2026-07-26T14:59:18.068Z","hook":"privacy-block","event":"PreToolUse","tool":"Bash","target":"","note":"","dur":11,"status":"ok","exit":0,"error":""}
+{"ts":"2026-07-26T14:59:18.101Z","hook":"scout-block","event":"PreToolUse","tool":"Bash","target":"","note":"","dur":19,"status":"ok","exit":0,"error":""}
+{"ts":"2026-07-26T14:59:25.541Z","hook":"scout-block","event":"PreToolUse","tool":"Bash","target":"","note":"","dur":7,"status":"ok","exit":0,"error":""}
+{"ts":"2026-07-26T14:59:25.545Z","hook":"privacy-block","event":"PreToolUse","tool":"Bash","target":"","note":"","dur":6,"status":"ok","exit":0,"error":""}
+{"ts":"2026-07-26T15:03:02.261Z","hook":"privacy-block","event":"PreToolUse","tool":"Bash","target":"","note":"","dur":7,"status":"ok","exit":0,"error":""}
+{"ts":"2026-07-26T15:03:02.273Z","hook":"scout-block","event":"PreToolUse","tool":"Bash","target":"","note":"","dur":9,"status":"ok","exit":0,"error":""}
+{"ts":"2026-07-26T15:03:23.845Z","hook":"privacy-block","event":"PreToolUse","tool":"Bash","target":"","note":"","dur":15,"status":"ok","exit":0,"error":""}
+{"ts":"2026-07-26T15:03:23.862Z","hook":"scout-block","event":"PreToolUse","tool":"Bash","target":"","note":"","dur":11,"status":"ok","exit":0,"error":""}
+{"ts":"2026-07-26T15:03:39.232Z","hook":"privacy-block","event":"PreToolUse","tool":"Bash","target":"","note":"","dur":12,"status":"ok","exit":0,"error":""}
+{"ts":"2026-07-26T15:03:39.270Z","hook":"scout-block","event":"PreToolUse","tool":"Bash","target":"","note":"","dur":13,"status":"ok","exit":0,"error":""}
+{"ts":"2026-07-26T15:03:46.648Z","hook":"privacy-block","event":"PreToolUse","tool":"Read","target":"","note":"","dur":7,"status":"ok","exit":0,"error":""}
+{"ts":"2026-07-26T15:03:46.652Z","hook":"scout-block","event":"PreToolUse","tool":"","target":"","note":"","dur":0,"status":"crash","exit":0,"error":"path should be a `path.relative()`d string, but got \"D:/OpsMind_AI/evaluation/runner/evaluation-contract-validation.mjs\""}
+{"ts":"2026-07-26T15:04:00.027Z","hook":"privacy-block","event":"PreToolUse","tool":"Edit","target":"","note":"","dur":17,"status":"ok","exit":0,"error":""}
+{"ts":"2026-07-26T15:04:00.031Z","hook":"scout-block","event":"PreToolUse","tool":"","target":"","note":"","dur":0,"status":"crash","exit":0,"error":"path should be a `path.relative()`d string, but got \"D:/OpsMind_AI/evaluation/runner/human-baseline.mjs\""}
+{"ts":"2026-07-26T15:04:08.850Z","hook":"privacy-block","event":"PreToolUse","tool":"Edit","target":"","note":"","dur":9,"status":"ok","exit":0,"error":""}
+{"ts":"2026-07-26T15:04:08.856Z","hook":"scout-block","event":"PreToolUse","tool":"","target":"","note":"","dur":0,"status":"crash","exit":0,"error":"path should be a `path.relative()`d string, but got \"D:/OpsMind_AI/evaluation/runner/human-baseline.mjs\""}
+{"ts":"2026-07-26T15:04:22.728Z","hook":"privacy-block","event":"PreToolUse","tool":"Edit","target":"","note":"","dur":7,"status":"ok","exit":0,"error":""}
+{"ts":"2026-07-26T15:04:22.729Z","hook":"scout-block","event":"PreToolUse","tool":"","target":"","note":"","dur":0,"status":"crash","exit":0,"error":"path should be a `path.relative()`d string, but got \"D:/OpsMind_AI/evaluation/runner/human-baseline.mjs\""}
+{"ts":"2026-07-26T15:04:31.723Z","hook":"privacy-block","event":"PreToolUse","tool":"Bash","target":"","note":"","dur":4,"status":"ok","exit":0,"error":""}
+{"ts":"2026-07-26T15:04:31.735Z","hook":"scout-block","event":"PreToolUse","tool":"Bash","target":"","note":"","dur":7,"status":"ok","exit":0,"error":""}
+{"ts":"2026-07-26T15:04:41.118Z","hook":"privacy-block","event":"PreToolUse","tool":"Edit","target":"","note":"","dur":6,"status":"ok","exit":0,"error":""}
+{"ts":"2026-07-26T15:04:41.126Z","hook":"scout-block","event":"PreToolUse","tool":"","target":"","note":"","dur":0,"status":"crash","exit":0,"error":"path should be a `path.relative()`d string, but got \"D:/OpsMind_AI/evaluation/runner/human-baseline.mjs\""}
+{"ts":"2026-07-26T15:04:47.416Z","hook":"privacy-block","event":"PreToolUse","tool":"Bash","target":"","note":"","dur":7,"status":"ok","exit":0,"error":""}
+{"ts":"2026-07-26T15:04:47.438Z","hook":"scout-block","event":"PreToolUse","tool":"Bash","target":"","note":"","dur":17,"status":"ok","exit":0,"error":""}
+{"ts":"2026-07-26T15:04:57.609Z","hook":"privacy-block","event":"PreToolUse","tool":"Bash","target":"","note":"","dur":4,"status":"ok","exit":0,"error":""}
+{"ts":"2026-07-26T15:04:57.615Z","hook":"scout-block","event":"PreToolUse","tool":"Bash","target":"","note":"","dur":7,"status":"ok","exit":0,"error":""}
+{"ts":"2026-07-26T15:05:14.388Z","hook":"privacy-block","event":"PreToolUse","tool":"Edit","target":"","note":"","dur":8,"status":"ok","exit":0,"error":""}
+{"ts":"2026-07-26T15:05:14.391Z","hook":"scout-block","event":"PreToolUse","tool":"","target":"","note":"","dur":0,"status":"crash","exit":0,"error":"path should be a `path.relative()`d string, but got \"D:/OpsMind_AI/evaluation/runner/human-baseline.test.mjs\""}
+{"ts":"2026-07-26T15:05:21.951Z","hook":"privacy-block","event":"PreToolUse","tool":"Bash","target":"","note":"","dur":8,"status":"ok","exit":0,"error":""}
+{"ts":"2026-07-26T15:05:21.952Z","hook":"scout-block","event":"PreToolUse","tool":"Bash","target":"","note":"","dur":8,"status":"ok","exit":0,"error":""}
+{"ts":"2026-07-26T15:05:32.125Z","hook":"privacy-block","event":"PreToolUse","tool":"Bash","target":"","note":"","dur":7,"status":"ok","exit":0,"error":""}
+{"ts":"2026-07-26T15:05:32.140Z","hook":"scout-block","event":"PreToolUse","tool":"Bash","target":"","note":"","dur":11,"status":"ok","exit":0,"error":""}
+{"ts":"2026-07-26T15:05:39.369Z","hook":"privacy-block","event":"PreToolUse","tool":"Bash","target":"","note":"","dur":7,"status":"ok","exit":0,"error":""}
+{"ts":"2026-07-26T15:05:39.382Z","hook":"scout-block","event":"PreToolUse","tool":"Bash","target":"","note":"","dur":11,"status":"ok","exit":0,"error":""}
+{"ts":"2026-07-26T15:06:51.052Z","hook":"scout-block","event":"PreToolUse","tool":"Bash","target":"","note":"","dur":13,"status":"ok","exit":0,"error":""}
+{"ts":"2026-07-26T15:06:51.053Z","hook":"privacy-block","event":"PreToolUse","tool":"Bash","target":"","note":"","dur":13,"status":"ok","exit":0,"error":""}
+{"ts":"2026-07-26T15:07:09.182Z","hook":"privacy-block","event":"PreToolUse","tool":"Bash","target":"","note":"","dur":5,"status":"ok","exit":0,"error":""}
+{"ts":"2026-07-26T15:07:09.189Z","hook":"scout-block","event":"PreToolUse","tool":"Bash","target":"","note":"","dur":4,"status":"ok","exit":0,"error":""}
+{"ts":"2026-07-26T15:07:19.923Z","hook":"privacy-block","event":"PreToolUse","tool":"Bash","target":"","note":"","dur":15,"status":"ok","exit":0,"error":""}
+{"ts":"2026-07-26T15:07:19.940Z","hook":"scout-block","event":"PreToolUse","tool":"Bash","target":"","note":"","dur":11,"status":"ok","exit":0,"error":""}
+{"ts":"2026-07-26T15:15:08.805Z","hook":"privacy-block","event":"PreToolUse","tool":"Bash","target":"","note":"","dur":6,"status":"ok","exit":0,"error":""}
+{"ts":"2026-07-26T15:15:08.819Z","hook":"scout-block","event":"PreToolUse","tool":"Bash","target":"","note":"","dur":9,"status":"ok","exit":0,"error":""}
+{"ts":"2026-07-26T15:15:38.068Z","hook":"descriptive-name","event":"PreToolUse","tool":"Write","target":"","note":"","dur":2,"status":"ok","exit":0,"error":""}
+{"ts":"2026-07-26T15:15:38.087Z","hook":"privacy-block","event":"PreToolUse","tool":"Write","target":"","note":"","dur":8,"status":"ok","exit":0,"error":""}
+{"ts":"2026-07-26T15:15:38.096Z","hook":"scout-block","event":"PreToolUse","tool":"","target":"","note":"","dur":0,"status":"crash","exit":0,"error":"path should be a `path.relative()`d string, but got \"D:/OpsMind_AI/plans/reports/security-260726-evaluation-corpus-resolvers.md\""}
+{"ts":"2026-07-26T15:15:51.372Z","hook":"privacy-block","event":"PreToolUse","tool":"Edit","target":"","note":"","dur":7,"status":"ok","exit":0,"error":""}
+{"ts":"2026-07-26T15:15:51.374Z","hook":"scout-block","event":"PreToolUse","tool":"","target":"","note":"","dur":0,"status":"crash","exit":0,"error":"path should be a `path.relative()`d string, but got \"D:/OpsMind_AI/evaluation/runner/held-out-corpus.mjs\""}
+{"ts":"2026-07-26T15:16:00.567Z","hook":"privacy-block","event":"PreToolUse","tool":"Edit","target":"","note":"","dur":5,"status":"ok","exit":0,"error":""}
+{"ts":"2026-07-26T15:16:00.570Z","hook":"scout-block","event":"PreToolUse","tool":"","target":"","note":"","dur":0,"status":"crash","exit":0,"error":"path should be a `path.relative()`d string, but got \"D:/OpsMind_AI/evaluation/runner/held-out-corpus.mjs\""}
+{"ts":"2026-07-26T15:16:08.084Z","hook":"privacy-block","event":"PreToolUse","tool":"Bash","target":"","note":"","dur":6,"status":"ok","exit":0,"error":""}
+{"ts":"2026-07-26T15:16:08.093Z","hook":"scout-block","event":"PreToolUse","tool":"Bash","target":"","note":"","dur":8,"status":"ok","exit":0,"error":""}
+{"ts":"2026-07-26T15:16:28.874Z","hook":"privacy-block","event":"PreToolUse","tool":"Edit","target":"","note":"","dur":5,"status":"ok","exit":0,"error":""}
+{"ts":"2026-07-26T15:16:28.876Z","hook":"scout-block","event":"PreToolUse","tool":"","target":"","note":"","dur":0,"status":"crash","exit":0,"error":"path should be a `path.relative()`d string, but got \"D:/OpsMind_AI/evaluation/runner/held-out-corpus.test.mjs\""}
+{"ts":"2026-07-26T15:16:34.152Z","hook":"privacy-block","event":"PreToolUse","tool":"Bash","target":"","note":"","dur":4,"status":"ok","exit":0,"error":""}
+{"ts":"2026-07-26T15:16:34.156Z","hook":"scout-block","event":"PreToolUse","tool":"Bash","target":"","note":"","dur":10,"status":"ok","exit":0,"error":""}
+{"ts":"2026-07-26T15:16:46.114Z","hook":"privacy-block","event":"PreToolUse","tool":"Bash","target":"","note":"","dur":4,"status":"ok","exit":0,"error":""}
+{"ts":"2026-07-26T15:16:46.125Z","hook":"scout-block","event":"PreToolUse","tool":"Bash","target":"","note":"","dur":6,"status":"ok","exit":0,"error":""}
+{"ts":"2026-07-26T15:16:55.506Z","hook":"privacy-block","event":"PreToolUse","tool":"Bash","target":"","note":"","dur":4,"status":"ok","exit":0,"error":""}
+{"ts":"2026-07-26T15:16:55.509Z","hook":"scout-block","event":"PreToolUse","tool":"Bash","target":"","note":"","dur":6,"status":"ok","exit":0,"error":""}
+{"ts":"2026-07-26T15:25:08.267Z","hook":"privacy-block","event":"PreToolUse","tool":"Bash","target":"","note":"","dur":6,"status":"ok","exit":0,"error":""}
+{"ts":"2026-07-26T15:25:08.267Z","hook":"scout-block","event":"PreToolUse","tool":"Bash","target":"","note":"","dur":9,"status":"ok","exit":0,"error":""}
+{"ts":"2026-07-26T15:26:29.315Z","hook":"privacy-block","event":"PreToolUse","tool":"Bash","target":"","note":"","dur":12,"status":"ok","exit":0,"error":""}
+{"ts":"2026-07-26T15:26:29.330Z","hook":"scout-block","event":"PreToolUse","tool":"Bash","target":"","note":"","dur":11,"status":"ok","exit":0,"error":""}
+{"ts":"2026-07-26T15:33:50.422Z","hook":"privacy-block","event":"PreToolUse","tool":"Bash","target":"","note":"","dur":6,"status":"ok","exit":0,"error":""}
+{"ts":"2026-07-26T15:33:50.429Z","hook":"scout-block","event":"PreToolUse","tool":"Bash","target":"","note":"","dur":5,"status":"ok","exit":0,"error":""}
+{"ts":"2026-07-26T15:33:59.711Z","hook":"privacy-block","event":"PreToolUse","tool":"Bash","target":"","note":"","dur":5,"status":"ok","exit":0,"error":""}
+{"ts":"2026-07-26T15:33:59.717Z","hook":"scout-block","event":"PreToolUse","tool":"Bash","target":"","note":"","dur":8,"status":"ok","exit":0,"error":""}
+{"ts":"2026-07-26T15:35:19.349Z","hook":"privacy-block","event":"PreToolUse","tool":"Bash","target":"","note":"","dur":10,"status":"ok","exit":0,"error":""}
+{"ts":"2026-07-26T15:35:19.382Z","hook":"scout-block","event":"PreToolUse","tool":"Bash","target":"","note":"","dur":24,"status":"ok","exit":0,"error":""}
+{"ts":"2026-07-26T15:36:20.192Z","hook":"descriptive-name","event":"PreToolUse","tool":"Write","target":"","note":"","dur":4,"status":"ok","exit":0,"error":""}
+{"ts":"2026-07-26T15:36:20.236Z","hook":"scout-block","event":"PreToolUse","tool":"","target":"","note":"","dur":0,"status":"crash","exit":0,"error":"path should be a `path.relative()`d string, but got \"C:/Users/Admin/.claude/projects/D--OpsMind-AI/memory/docker-disk-does-not-shrink-after-prune.md\""}
+{"ts":"2026-07-26T15:36:20.248Z","hook":"privacy-block","event":"PreToolUse","tool":"Write","target":"","note":"","dur":17,"status":"ok","exit":0,"error":""}
+{"ts":"2026-07-26T15:36:29.543Z","hook":"scout-block","event":"PreToolUse","tool":"","target":"","note":"","dur":0,"status":"crash","exit":0,"error":"path should be a `path.relative()`d string, but got \"C:/Users/Admin/.claude/projects/D--OpsMind-AI/MEMORY.md\""}
+{"ts":"2026-07-26T15:36:29.630Z","hook":"privacy-block","event":"PreToolUse","tool":"Edit","target":"","note":"","dur":13,"status":"ok","exit":0,"error":""}
+{"ts":"2026-07-26T15:36:39.003Z","hook":"privacy-block","event":"PreToolUse","tool":"Bash","target":"","note":"","dur":16,"status":"ok","exit":0,"error":""}
+{"ts":"2026-07-26T15:36:39.010Z","hook":"scout-block","event":"PreToolUse","tool":"Bash","target":"","note":"","dur":12,"status":"ok","exit":0,"error":""}
+{"ts":"2026-07-26T15:37:10.850Z","hook":"privacy-block","event":"PreToolUse","tool":"Bash","target":"","note":"","dur":7,"status":"ok","exit":0,"error":""}
+{"ts":"2026-07-26T15:37:10.862Z","hook":"scout-block","event":"PreToolUse","tool":"Bash","target":"","note":"","dur":11,"status":"ok","exit":0,"error":""}
+{"ts":"2026-07-26T15:37:16.759Z","hook":"privacy-block","event":"PreToolUse","tool":"Read","target":"","note":"","dur":19,"status":"ok","exit":0,"error":""}
+{"ts":"2026-07-26T15:37:16.767Z","hook":"scout-block","event":"PreToolUse","tool":"","target":"","note":"","dur":0,"status":"crash","exit":0,"error":"path should be a `path.relative()`d string, but got \"D:/OpsMind_AI/scripts/validation/cross-service/cross-service-native-process-supervisor.ps1\""}
+{"ts":"2026-07-26T15:37:24.078Z","hook":"scout-block","event":"PreToolUse","tool":"Bash","target":"","note":"","dur":15,"status":"ok","exit":0,"error":""}
+{"ts":"2026-07-26T15:37:24.078Z","hook":"privacy-block","event":"PreToolUse","tool":"Bash","target":"","note":"","dur":14,"status":"ok","exit":0,"error":""}
+{"ts":"2026-07-26T15:37:41.590Z","hook":"privacy-block","event":"PreToolUse","tool":"Bash","target":"","note":"","dur":8,"status":"ok","exit":0,"error":""}
+{"ts":"2026-07-26T15:37:41.601Z","hook":"scout-block","event":"PreToolUse","tool":"Bash","target":"","note":"","dur":8,"status":"ok","exit":0,"error":""}
+{"ts":"2026-07-26T15:37:47.263Z","hook":"privacy-block","event":"PreToolUse","tool":"Bash","target":"","note":"","dur":21,"status":"ok","exit":0,"error":""}
+{"ts":"2026-07-26T15:37:47.280Z","hook":"scout-block","event":"PreToolUse","tool":"Bash","target":"","note":"","dur":17,"status":"ok","exit":0,"error":""}
+{"ts":"2026-07-26T15:37:52.422Z","hook":"scout-block","event":"PreToolUse","tool":"","target":"","note":"","dur":0,"status":"crash","exit":0,"error":"path should be a `path.relative()`d string, but got \"D:/OpsMind_AI/scripts/validation/cross-service/test-cross-service-path-safety.ps1\""}
+{"ts":"2026-07-26T15:37:52.418Z","hook":"privacy-block","event":"PreToolUse","tool":"Read","target":"","note":"","dur":17,"status":"ok","exit":0,"error":""}
+{"ts":"2026-07-26T15:38:04.661Z","hook":"privacy-block","event":"PreToolUse","tool":"Bash","target":"","note":"","dur":9,"status":"ok","exit":0,"error":""}
+{"ts":"2026-07-26T15:38:04.666Z","hook":"scout-block","event":"PreToolUse","tool":"Bash","target":"","note":"","dur":10,"status":"ok","exit":0,"error":""}
+{"ts":"2026-07-26T15:38:19.719Z","hook":"privacy-block","event":"PreToolUse","tool":"Bash","target":"","note":"","dur":4,"status":"ok","exit":0,"error":""}
+{"ts":"2026-07-26T15:38:19.729Z","hook":"scout-block","event":"PreToolUse","tool":"","target":"","note":"","dur":0,"status":"crash","exit":0,"error":"path should be a `path.relative()`d string, but got \"D:/OpsMind_AI/scripts/validation/cross-service/cross-service-harness-support.ps1\""}
+{"ts":"2026-07-26T15:38:37.227Z","hook":"scout-block","event":"PreToolUse","tool":"","target":"","note":"","dur":0,"status":"crash","exit":0,"error":"path should be a `path.relative()`d string, but got \"D:/OpsMind_AI/scripts/validation/cross-service/test-cross-service-path-safety.ps1\""}
+{"ts":"2026-07-26T15:38:37.233Z","hook":"privacy-block","event":"PreToolUse","tool":"Edit","target":"","note":"","dur":5,"status":"ok","exit":0,"error":""}
+{"ts":"2026-07-26T15:38:44.375Z","hook":"scout-block","event":"PreToolUse","tool":"","target":"","note":"","dur":0,"status":"crash","exit":0,"error":"path should be a `path.relative()`d string, but got \"D:/OpsMind_AI/scripts/validation/cross-service/test-cross-service-path-safety.ps1\""}
+{"ts":"2026-07-26T15:38:44.377Z","hook":"privacy-block","event":"PreToolUse","tool":"Edit","target":"","note":"","dur":12,"status":"ok","exit":0,"error":""}
+{"ts":"2026-07-26T15:38:51.627Z","hook":"privacy-block","event":"PreToolUse","tool":"Bash","target":"","note":"","dur":7,"status":"ok","exit":0,"error":""}
+{"ts":"2026-07-26T15:38:51.637Z","hook":"scout-block","event":"PreToolUse","tool":"Bash","target":"","note":"","dur":7,"status":"ok","exit":0,"error":""}
+{"ts":"2026-07-26T15:39:23.028Z","hook":"privacy-block","event":"PreToolUse","tool":"Bash","target":"","note":"","dur":5,"status":"ok","exit":0,"error":""}
+{"ts":"2026-07-26T15:39:23.031Z","hook":"scout-block","event":"PreToolUse","tool":"Bash","target":"","note":"","dur":8,"status":"ok","exit":0,"error":""}
+{"ts":"2026-07-26T15:39:33.718Z","hook":"privacy-block","event":"PreToolUse","tool":"Bash","target":"","note":"","dur":10,"status":"ok","exit":0,"error":""}
+{"ts":"2026-07-26T15:39:33.729Z","hook":"scout-block","event":"PreToolUse","tool":"Bash","target":"","note":"","dur":16,"status":"ok","exit":0,"error":""}
+{"ts":"2026-07-26T15:40:01.252Z","hook":"privacy-block","event":"PreToolUse","tool":"Bash","target":"","note":"","dur":6,"status":"ok","exit":0,"error":""}
+{"ts":"2026-07-26T15:40:01.253Z","hook":"scout-block","event":"PreToolUse","tool":"Bash","target":"","note":"","dur":7,"status":"ok","exit":0,"error":""}
+{"ts":"2026-07-26T15:40:09.274Z","hook":"privacy-block","event":"PreToolUse","tool":"Bash","target":"","note":"","dur":4,"status":"ok","exit":0,"error":""}
+{"ts":"2026-07-26T15:40:09.275Z","hook":"scout-block","event":"PreToolUse","tool":"Bash","target":"","note":"","dur":5,"status":"ok","exit":0,"error":""}
+{"ts":"2026-07-26T15:48:14.039Z","hook":"scout-block","event":"PreToolUse","tool":"Bash","target":"coverage/|jacoco/|--cov/|c8/|nyc","note":"coverage","dur":24,"status":"block","exit":2,"error":""}
+{"ts":"2026-07-26T15:48:14.092Z","hook":"privacy-block","event":"PreToolUse","tool":"Bash","target":"","note":"","dur":10,"status":"ok","exit":0,"error":""}
+{"ts":"2026-07-26T15:48:20.826Z","hook":"scout-block","event":"PreToolUse","tool":"","target":"","note":"","dur":0,"status":"crash","exit":0,"error":"path should be a `path.relative()`d string, but got \"D:/OpsMind_AI\""}
+{"ts":"2026-07-26T15:48:21.038Z","hook":"privacy-block","event":"PreToolUse","tool":"Grep","target":"","note":"","dur":50,"status":"ok","exit":0,"error":""}
+{"ts":"2026-07-26T15:48:33.288Z","hook":"privacy-block","event":"PreToolUse","tool":"Bash","target":"","note":"","dur":10,"status":"ok","exit":0,"error":""}
+{"ts":"2026-07-26T15:48:33.309Z","hook":"scout-block","event":"PreToolUse","tool":"Bash","target":"coverage/|Coverage","note":"coverage","dur":17,"status":"block","exit":2,"error":""}
+{"ts":"2026-07-26T15:48:39.794Z","hook":"privacy-block","event":"PreToolUse","tool":"Grep","target":"","note":"","dur":11,"status":"ok","exit":0,"error":""}
+{"ts":"2026-07-26T15:48:39.797Z","hook":"scout-block","event":"PreToolUse","tool":"","target":"","note":"","dur":0,"status":"crash","exit":0,"error":"path should be a `path.relative()`d string, but got \"D:/OpsMind_AI/docs/testing-strategy.md\""}
+{"ts":"2026-07-26T15:48:40.898Z","hook":"scout-block","event":"PreToolUse","tool":"Bash","target":"","note":"","dur":19,"status":"ok","exit":0,"error":""}
+{"ts":"2026-07-26T15:48:40.904Z","hook":"privacy-block","event":"PreToolUse","tool":"Bash","target":"","note":"","dur":19,"status":"ok","exit":0,"error":""}
+{"ts":"2026-07-26T15:48:48.089Z","hook":"scout-block","event":"PreToolUse","tool":"","target":"","note":"","dur":0,"status":"crash","exit":0,"error":"path should be a `path.relative()`d string, but got \"D:/OpsMind_AI/docs/testing-strategy.md\""}
+{"ts":"2026-07-26T15:48:48.100Z","hook":"privacy-block","event":"PreToolUse","tool":"Read","target":"","note":"","dur":16,"status":"ok","exit":0,"error":""}
+{"ts":"2026-07-26T15:49:02.075Z","hook":"privacy-block","event":"PreToolUse","tool":"Grep","target":"","note":"","dur":14,"status":"ok","exit":0,"error":""}
+{"ts":"2026-07-26T15:49:02.083Z","hook":"scout-block","event":"PreToolUse","tool":"","target":"","note":"","dur":0,"status":"crash","exit":0,"error":"path should be a `path.relative()`d string, but got \"D:/OpsMind_AI/plans/260719-1747-opsmind-ai-production-platform\""}
+{"ts":"2026-07-26T15:49:33.513Z","hook":"privacy-block","event":"PreToolUse","tool":"Grep","target":"","note":"","dur":59,"status":"ok","exit":0,"error":""}
+{"ts":"2026-07-26T15:49:33.592Z","hook":"scout-block","event":"PreToolUse","tool":"","target":"","note":"","dur":0,"status":"crash","exit":0,"error":"path should be a `path.relative()`d string, but got \"D:/OpsMind_AI\""}
+{"ts":"2026-07-26T15:49:45.362Z","hook":"scout-block","event":"PreToolUse","tool":"Bash","target":"","note":"","dur":15,"status":"ok","exit":0,"error":""}
+{"ts":"2026-07-26T15:49:45.368Z","hook":"privacy-block","event":"PreToolUse","tool":"Bash","target":"","note":"","dur":12,"status":"ok","exit":0,"error":""}
+{"ts":"2026-07-26T15:49:55.573Z","hook":"privacy-block","event":"PreToolUse","tool":"Grep","target":"","note":"","dur":31,"status":"ok","exit":0,"error":""}
+{"ts":"2026-07-26T15:49:55.634Z","hook":"scout-block","event":"PreToolUse","tool":"","target":"","note":"","dur":0,"status":"crash","exit":0,"error":"path should be a `path.relative()`d string, but got \"D:/OpsMind_AI/services/tool-gateway/src/main/java\""}
+{"ts":"2026-07-26T15:50:00.802Z","hook":"scout-block","event":"PreToolUse","tool":"","target":"","note":"","dur":0,"status":"crash","exit":0,"error":"path should be a `path.relative()`d string, but got \"D:/OpsMind_AI/services/tool-gateway/src/main/java/ai/opsmind/toolgateway/application/ToolManifest.java\""}
+{"ts":"2026-07-26T15:50:00.803Z","hook":"privacy-block","event":"PreToolUse","tool":"Read","target":"","note":"","dur":29,"status":"ok","exit":0,"error":""}
+{"ts":"2026-07-26T15:50:20.287Z","hook":"scout-block","event":"PreToolUse","tool":"","target":"","note":"","dur":0,"status":"crash","exit":0,"error":"path should be a `path.relative()`d string, but got \"D:/OpsMind_AI/services/platform-api/src/main/java\""}
+{"ts":"2026-07-26T15:50:20.317Z","hook":"privacy-block","event":"PreToolUse","tool":"Grep","target":"","note":"","dur":36,"status":"ok","exit":0,"error":""}
+{"ts":"2026-07-26T15:50:27.291Z","hook":"privacy-block","event":"PreToolUse","tool":"Bash","target":"","note":"","dur":25,"status":"ok","exit":0,"error":""}
+{"ts":"2026-07-26T15:50:27.294Z","hook":"scout-block","event":"PreToolUse","tool":"Bash","target":"","note":"","dur":16,"status":"ok","exit":0,"error":""}
+{"ts":"2026-07-26T15:50:56.354Z","hook":"descriptive-name","event":"PreToolUse","tool":"Write","target":"","note":"","dur":5,"status":"ok","exit":0,"error":""}
+{"ts":"2026-07-26T15:50:56.356Z","hook":"scout-block","event":"PreToolUse","tool":"","target":"","note":"","dur":0,"status":"crash","exit":0,"error":"path should be a `path.relative()`d string, but got \"D:/OpsMind_AI/plans/reports/security-260726-readme-invariant-enforcement.md\""}
+{"ts":"2026-07-26T15:50:56.618Z","hook":"privacy-block","event":"PreToolUse","tool":"Write","target":"","note":"","dur":99,"status":"ok","exit":0,"error":""}
+{"ts":"2026-07-26T15:51:12.684Z","hook":"privacy-block","event":"PreToolUse","tool":"Bash","target":"","note":"","dur":12,"status":"ok","exit":0,"error":""}
+{"ts":"2026-07-26T15:51:12.710Z","hook":"scout-block","event":"PreToolUse","tool":"Bash","target":"","note":"","dur":17,"status":"ok","exit":0,"error":""}
+{"ts":"2026-07-26T15:54:30.317Z","hook":"privacy-block","event":"PreToolUse","tool":"Bash","target":"","note":"","dur":9,"status":"ok","exit":0,"error":""}
+{"ts":"2026-07-26T15:54:30.328Z","hook":"scout-block","event":"PreToolUse","tool":"Bash","target":"","note":"","dur":13,"status":"ok","exit":0,"error":""}
+{"ts":"2026-07-26T16:02:27.789Z","hook":"scout-block","event":"PreToolUse","tool":"Bash","target":"","note":"","dur":12,"status":"ok","exit":0,"error":""}
+{"ts":"2026-07-26T16:02:27.864Z","hook":"privacy-block","event":"PreToolUse","tool":"Bash","target":"","note":"","dur":17,"status":"ok","exit":0,"error":""}
+{"ts":"2026-07-26T16:12:57.199Z","hook":"scout-block","event":"PreToolUse","tool":"","target":"","note":"","dur":0,"status":"crash","exit":0,"error":"path should be a `path.relative()`d string, but got \"C:/Users/Admin/AppData/Local/Temp/claude/D--OpsMind-AI/8f968713-631c-4439-87b0-52f3c958e3e5/tasks/brsp3ob5g.output\""}
+{"ts":"2026-07-26T16:12:57.204Z","hook":"privacy-block","event":"PreToolUse","tool":"Read","target":"","note":"","dur":11,"status":"ok","exit":0,"error":""}
+{"ts":"2026-07-26T16:13:05.073Z","hook":"scout-block","event":"PreToolUse","tool":"","target":"","note":"","dur":0,"status":"crash","exit":0,"error":"path should be a `path.relative()`d string, but got \"C:/Users/Admin/AppData/Local/Temp/claude/D--OpsMind-AI/8f968713-631c-4439-87b0-52f3c958e3e5/tasks/brsp3ob5g.output\""}
+{"ts":"2026-07-26T16:13:05.162Z","hook":"privacy-block","event":"PreToolUse","tool":"Bash","target":"","note":"","dur":12,"status":"ok","exit":0,"error":""}
+{"ts":"2026-07-26T16:15:31.881Z","hook":"privacy-block","event":"PreToolUse","tool":"Bash","target":"","note":"","dur":10,"status":"ok","exit":0,"error":""}
+{"ts":"2026-07-26T16:15:31.946Z","hook":"scout-block","event":"PreToolUse","tool":"Bash","target":"","note":"","dur":15,"status":"ok","exit":0,"error":""}
+{"ts":"2026-07-26T16:22:39.779Z","hook":"privacy-block","event":"PreToolUse","tool":"Bash","target":"","note":"","dur":11,"status":"ok","exit":0,"error":""}
+{"ts":"2026-07-26T16:22:39.827Z","hook":"scout-block","event":"PreToolUse","tool":"Bash","target":"","note":"","dur":32,"status":"ok","exit":0,"error":""}
+{"ts":"2026-07-26T16:24:03.872Z","hook":"privacy-block","event":"PreToolUse","tool":"Write","target":"","note":"","dur":11,"status":"ok","exit":0,"error":""}
+{"ts":"2026-07-26T16:24:03.874Z","hook":"descriptive-name","event":"PreToolUse","tool":"Write","target":"","note":"","dur":3,"status":"ok","exit":0,"error":""}
+{"ts":"2026-07-26T16:24:03.949Z","hook":"scout-block","event":"PreToolUse","tool":"","target":"","note":"","dur":0,"status":"crash","exit":0,"error":"path should be a `path.relative()`d string, but got \"C:/Users/Admin/.claude/projects/D--OpsMind-AI/memory/c-drive-swings-with-system-managed-pagefile.md\""}
+{"ts":"2026-07-26T16:24:17.200Z","hook":"scout-block","event":"PreToolUse","tool":"","target":"","note":"","dur":0,"status":"crash","exit":0,"error":"path should be a `path.relative()`d string, but got \"C:/Users/Admin/.claude/projects/D--OpsMind-AI/MEMORY.md\""}
+{"ts":"2026-07-26T16:24:17.220Z","hook":"privacy-block","event":"PreToolUse","tool":"Edit","target":"","note":"","dur":14,"status":"ok","exit":0,"error":""}
+{"ts":"2026-07-26T16:24:23.709Z","hook":"scout-block","event":"PreToolUse","tool":"Bash","target":"","note":"","dur":7,"status":"ok","exit":0,"error":""}
+{"ts":"2026-07-26T16:24:23.710Z","hook":"privacy-block","event":"PreToolUse","tool":"Bash","target":"","note":"","dur":9,"status":"ok","exit":0,"error":""}
+{"ts":"2026-07-26T16:26:29.530Z","hook":"scout-block","event":"PreToolUse","tool":"","target":"","note":"","dur":0,"status":"crash","exit":0,"error":"path should be a `path.relative()`d string, but got \"D:/OpsMind_AI/evaluation/runner\""}
+{"ts":"2026-07-26T16:26:29.547Z","hook":"privacy-block","event":"PreToolUse","tool":"Grep","target":"","note":"","dur":14,"status":"ok","exit":0,"error":""}
+{"ts":"2026-07-26T16:26:42.686Z","hook":"scout-block","event":"PreToolUse","tool":"","target":"","note":"","dur":0,"status":"crash","exit":0,"error":"path should be a `path.relative()`d string, but got \"D:/OpsMind_AI/evaluation/runner/evaluation-value-safety.mjs\""}
+{"ts":"2026-07-26T16:26:42.718Z","hook":"privacy-block","event":"PreToolUse","tool":"Read","target":"","note":"","dur":20,"status":"ok","exit":0,"error":""}
+{"ts":"2026-07-26T16:26:58.979Z","hook":"privacy-block","event":"PreToolUse","tool":"Bash","target":"","note":"","dur":13,"status":"ok","exit":0,"error":""}
+{"ts":"2026-07-26T16:26:59.067Z","hook":"scout-block","event":"PreToolUse","tool":"Bash","target":"","note":"","dur":18,"status":"ok","exit":0,"error":""}
+{"ts":"2026-07-26T16:27:31.208Z","hook":"scout-block","event":"PreToolUse","tool":"","target":"","note":"","dur":0,"status":"crash","exit":0,"error":"path should be a `path.relative()`d string, but got \"D:/OpsMind_AI/evaluation/runner/evaluation-value-safety.mjs\""}
+{"ts":"2026-07-26T16:27:31.211Z","hook":"privacy-block","event":"PreToolUse","tool":"Edit","target":"","note":"","dur":8,"status":"ok","exit":0,"error":""}
+{"ts":"2026-07-26T16:27:40.679Z","hook":"privacy-block","event":"PreToolUse","tool":"Edit","target":"","note":"","dur":11,"status":"ok","exit":0,"error":""}
+{"ts":"2026-07-26T16:27:40.689Z","hook":"scout-block","event":"PreToolUse","tool":"","target":"","note":"","dur":0,"status":"crash","exit":0,"error":"path should be a `path.relative()`d string, but got \"D:/OpsMind_AI/evaluation/runner/evaluation-value-safety.mjs\""}
+{"ts":"2026-07-26T16:27:57.382Z","hook":"privacy-block","event":"PreToolUse","tool":"Bash","target":"","note":"","dur":6,"status":"ok","exit":0,"error":""}
+{"ts":"2026-07-26T16:27:57.383Z","hook":"scout-block","event":"PreToolUse","tool":"Bash","target":"","note":"","dur":10,"status":"ok","exit":0,"error":""}
+{"ts":"2026-07-26T16:28:04.941Z","hook":"privacy-block","event":"PreToolUse","tool":"Bash","target":"","note":"","dur":12,"status":"ok","exit":0,"error":""}
+{"ts":"2026-07-26T16:28:04.948Z","hook":"scout-block","event":"PreToolUse","tool":"Bash","target":"","note":"","dur":16,"status":"ok","exit":0,"error":""}
+{"ts":"2026-07-26T16:28:12.459Z","hook":"privacy-block","event":"PreToolUse","tool":"Read","target":"","note":"","dur":7,"status":"ok","exit":0,"error":""}
+{"ts":"2026-07-26T16:28:12.480Z","hook":"scout-block","event":"PreToolUse","tool":"","target":"","note":"","dur":0,"status":"crash","exit":0,"error":"path should be a `path.relative()`d string, but got \"D:/OpsMind_AI/evaluation/runner/cross-service-evaluation-projection.test.mjs\""}
+{"ts":"2026-07-26T16:28:23.005Z","hook":"scout-block","event":"PreToolUse","tool":"","target":"","note":"","dur":0,"status":"crash","exit":0,"error":"path should be a `path.relative()`d string, but got \"D:/OpsMind_AI/evaluation/runner/cross-service-evaluation-projection.test.mjs\""}
+{"ts":"2026-07-26T16:28:23.017Z","hook":"privacy-block","event":"PreToolUse","tool":"Edit","target":"","note":"","dur":8,"status":"ok","exit":0,"error":""}
+{"ts":"2026-07-26T16:28:31.290Z","hook":"privacy-block","event":"PreToolUse","tool":"Bash","target":"","note":"","dur":9,"status":"ok","exit":0,"error":""}
+{"ts":"2026-07-26T16:28:31.294Z","hook":"scout-block","event":"PreToolUse","tool":"Bash","target":"","note":"","dur":16,"status":"ok","exit":0,"error":""}
+{"ts":"2026-07-26T16:28:41.189Z","hook":"privacy-block","event":"PreToolUse","tool":"Bash","target":"","note":"","dur":13,"status":"ok","exit":0,"error":""}
+{"ts":"2026-07-26T16:28:41.203Z","hook":"scout-block","event":"PreToolUse","tool":"Bash","target":"","note":"","dur":21,"status":"ok","exit":0,"error":""}
+{"ts":"2026-07-26T16:28:51.277Z","hook":"scout-block","event":"PreToolUse","tool":"Bash","target":"","note":"","dur":20,"status":"ok","exit":0,"error":""}
+{"ts":"2026-07-26T16:28:51.304Z","hook":"privacy-block","event":"PreToolUse","tool":"Bash","target":"","note":"","dur":10,"status":"ok","exit":0,"error":""}
+{"ts":"2026-07-26T16:31:04.721Z","hook":"privacy-block","event":"PreToolUse","tool":"Bash","target":"","note":"","dur":7,"status":"ok","exit":0,"error":""}
+{"ts":"2026-07-26T16:31:04.730Z","hook":"scout-block","event":"PreToolUse","tool":"Bash","target":"","note":"","dur":10,"status":"ok","exit":0,"error":""}
+{"ts":"2026-07-26T16:32:08.748Z","hook":"privacy-block","event":"PreToolUse","tool":"Bash","target":"","note":"","dur":47,"status":"ok","exit":0,"error":""}
+{"ts":"2026-07-26T16:32:08.757Z","hook":"scout-block","event":"PreToolUse","tool":"Bash","target":"","note":"","dur":18,"status":"ok","exit":0,"error":""}
+{"ts":"2026-07-26T16:32:28.553Z","hook":"privacy-block","event":"PreToolUse","tool":"Edit","target":"","note":"","dur":12,"status":"ok","exit":0,"error":""}
+{"ts":"2026-07-26T16:32:28.569Z","hook":"scout-block","event":"PreToolUse","tool":"","target":"","note":"","dur":0,"status":"crash","exit":0,"error":"path should be a `path.relative()`d string, but got \"D:/OpsMind_AI/evaluation/runner/held-out-corpus.mjs\""}
+{"ts":"2026-07-26T16:32:43.894Z","hook":"scout-block","event":"PreToolUse","tool":"","target":"","note":"","dur":0,"status":"crash","exit":0,"error":"path should be a `path.relative()`d string, but got \"D:/OpsMind_AI/evaluation/runner/held-out-corpus.test.mjs\""}
+{"ts":"2026-07-26T16:32:44.036Z","hook":"privacy-block","event":"PreToolUse","tool":"Edit","target":"","note":"","dur":86,"status":"ok","exit":0,"error":""}
+{"ts":"2026-07-26T16:32:55.111Z","hook":"privacy-block","event":"PreToolUse","tool":"Bash","target":"","note":"","dur":30,"status":"ok","exit":0,"error":""}
+{"ts":"2026-07-26T16:32:55.204Z","hook":"scout-block","event":"PreToolUse","tool":"Bash","target":"","note":"","dur":21,"status":"ok","exit":0,"error":""}
+{"ts":"2026-07-26T16:33:15.607Z","hook":"scout-block","event":"PreToolUse","tool":"Bash","target":"","note":"","dur":38,"status":"ok","exit":0,"error":""}
+{"ts":"2026-07-26T16:33:15.679Z","hook":"privacy-block","event":"PreToolUse","tool":"Bash","target":"","note":"","dur":104,"status":"ok","exit":0,"error":""}
+{"ts":"2026-07-26T16:33:26.632Z","hook":"privacy-block","event":"PreToolUse","tool":"Edit","target":"","note":"","dur":8,"status":"ok","exit":0,"error":""}
+{"ts":"2026-07-26T16:33:26.646Z","hook":"scout-block","event":"PreToolUse","tool":"","target":"","note":"","dur":0,"status":"crash","exit":0,"error":"path should be a `path.relative()`d string, but got \"D:/OpsMind_AI/evaluation/statistical-analysis-plan.md\""}
+{"ts":"2026-07-26T16:33:39.663Z","hook":"privacy-block","event":"PreToolUse","tool":"Bash","target":"","note":"","dur":10,"status":"ok","exit":0,"error":""}
+{"ts":"2026-07-26T16:33:39.677Z","hook":"scout-block","event":"PreToolUse","tool":"Bash","target":"","note":"","dur":18,"status":"ok","exit":0,"error":""}
+{"ts":"2026-07-26T16:33:51.845Z","hook":"privacy-block","event":"PreToolUse","tool":"Bash","target":"","note":"","dur":12,"status":"ok","exit":0,"error":""}
+{"ts":"2026-07-26T16:33:51.881Z","hook":"scout-block","event":"PreToolUse","tool":"Bash","target":"","note":"","dur":15,"status":"ok","exit":0,"error":""}
+{"ts":"2026-07-26T16:36:05.631Z","hook":"privacy-block","event":"PreToolUse","tool":"Bash","target":"","note":"","dur":81,"status":"ok","exit":0,"error":""}
+{"ts":"2026-07-26T16:36:05.812Z","hook":"scout-block","event":"PreToolUse","tool":"Bash","target":"","note":"","dur":72,"status":"ok","exit":0,"error":""}
+{"ts":"2026-07-26T16:44:13.846Z","hook":"privacy-block","event":"PreToolUse","tool":"Bash","target":"","note":"","dur":36,"status":"ok","exit":0,"error":""}
+{"ts":"2026-07-26T16:44:13.855Z","hook":"scout-block","event":"PreToolUse","tool":"Bash","target":"","note":"","dur":21,"status":"ok","exit":0,"error":""}
+{"ts":"2026-07-26T16:44:38.173Z","hook":"privacy-block","event":"PreToolUse","tool":"Bash","target":"","note":"","dur":20,"status":"ok","exit":0,"error":""}
+{"ts":"2026-07-26T16:44:38.219Z","hook":"scout-block","event":"PreToolUse","tool":"Bash","target":"","note":"","dur":32,"status":"ok","exit":0,"error":""}
+{"ts":"2026-07-26T16:45:08.478Z","hook":"privacy-block","event":"PreToolUse","tool":"Bash","target":"","note":"","dur":26,"status":"ok","exit":0,"error":""}
+{"ts":"2026-07-26T16:45:08.495Z","hook":"scout-block","event":"PreToolUse","tool":"Bash","target":"","note":"","dur":21,"status":"ok","exit":0,"error":""}
+{"ts":"2026-07-26T16:45:34.920Z","hook":"privacy-block","event":"PreToolUse","tool":"Bash","target":"","note":"","dur":14,"status":"ok","exit":0,"error":""}
+{"ts":"2026-07-26T16:45:34.950Z","hook":"scout-block","event":"PreToolUse","tool":"Bash","target":"","note":"","dur":21,"status":"ok","exit":0,"error":""}
+{"ts":"2026-07-26T16:45:49.240Z","hook":"privacy-block","event":"PreToolUse","tool":"Bash","target":"","note":"","dur":28,"status":"ok","exit":0,"error":""}
+{"ts":"2026-07-26T16:45:49.258Z","hook":"scout-block","event":"PreToolUse","tool":"Bash","target":"","note":"","dur":36,"status":"ok","exit":0,"error":""}
+{"ts":"2026-07-26T16:46:02.427Z","hook":"privacy-block","event":"PreToolUse","tool":"Edit","target":"","note":"","dur":16,"status":"ok","exit":0,"error":""}
+{"ts":"2026-07-26T16:46:02.457Z","hook":"scout-block","event":"PreToolUse","tool":"","target":"","note":"","dur":0,"status":"crash","exit":0,"error":"path should be a `path.relative()`d string, but got \"D:/OpsMind_AI/scripts/validation/validate-phase-08-evaluation-foundation.mjs\""}
+{"ts":"2026-07-26T16:46:16.127Z","hook":"privacy-block","event":"PreToolUse","tool":"Bash","target":"","note":"","dur":21,"status":"ok","exit":0,"error":""}
+{"ts":"2026-07-26T16:46:16.171Z","hook":"scout-block","event":"PreToolUse","tool":"","target":"","note":"","dur":0,"status":"crash","exit":0,"error":"path should be a `path.relative()`d string, but got \"D:////////acme-customer-incident////////a.json\""}
+{"ts":"2026-07-26T16:46:28.872Z","hook":"privacy-block","event":"PreToolUse","tool":"Bash","target":"","note":"","dur":14,"status":"ok","exit":0,"error":""}
+{"ts":"2026-07-26T16:46:28.895Z","hook":"scout-block","event":"PreToolUse","tool":"","target":"","note":"","dur":0,"status":"crash","exit":0,"error":"path should be a `path.relative()`d string, but got \"D:/OpsMind_AI/.opsmind/acme-customer-probe\""}
+{"ts":"2026-07-26T16:46:37.077Z","hook":"privacy-block","event":"PreToolUse","tool":"Bash","target":"","note":"","dur":14,"status":"ok","exit":0,"error":""}
+{"ts":"2026-07-26T16:46:37.101Z","hook":"scout-block","event":"PreToolUse","tool":"Bash","target":"","note":"","dur":22,"status":"ok","exit":0,"error":""}
+{"ts":"2026-07-26T16:50:20.929Z","hook":"privacy-block","event":"PreToolUse","tool":"Bash","target":"","note":"","dur":23,"status":"ok","exit":0,"error":""}
+{"ts":"2026-07-26T16:50:20.947Z","hook":"scout-block","event":"PreToolUse","tool":"Bash","target":"","note":"","dur":14,"status":"ok","exit":0,"error":""}
+{"ts":"2026-07-26T16:50:34.382Z","hook":"privacy-block","event":"PreToolUse","tool":"Bash","target":"","note":"","dur":20,"status":"ok","exit":0,"error":""}
+{"ts":"2026-07-26T16:50:34.422Z","hook":"scout-block","event":"PreToolUse","tool":"Bash","target":"","note":"","dur":30,"status":"ok","exit":0,"error":""}
+{"ts":"2026-07-26T16:59:22.801Z","hook":"descriptive-name","event":"PreToolUse","tool":"Write","target":"","note":"","dur":5,"status":"ok","exit":0,"error":""}
+{"ts":"2026-07-26T16:59:22.829Z","hook":"privacy-block","event":"PreToolUse","tool":"Write","target":"","note":"","dur":13,"status":"ok","exit":0,"error":""}
+{"ts":"2026-07-26T16:59:22.839Z","hook":"scout-block","event":"PreToolUse","tool":"","target":"","note":"","dur":0,"status":"crash","exit":0,"error":"path should be a `path.relative()`d string, but got \"D:/OpsMind_AI/plans/reports/scenario-260726-evaluation-corpus-and-statistics.md\""}
+{"ts":"2026-07-26T16:59:32.366Z","hook":"privacy-block","event":"PreToolUse","tool":"Bash","target":"","note":"","dur":18,"status":"ok","exit":0,"error":""}
+{"ts":"2026-07-26T16:59:32.389Z","hook":"scout-block","event":"PreToolUse","tool":"Bash","target":"","note":"","dur":20,"status":"ok","exit":0,"error":""}
+{"ts":"2026-07-26T17:00:07.275Z","hook":"privacy-block","event":"PreToolUse","tool":"Write","target":"","note":"","dur":41,"status":"ok","exit":0,"error":""}
+{"ts":"2026-07-26T17:00:07.324Z","hook":"descriptive-name","event":"PreToolUse","tool":"Write","target":"","note":"","dur":4,"status":"ok","exit":0,"error":""}
+{"ts":"2026-07-26T17:00:07.521Z","hook":"scout-block","event":"PreToolUse","tool":"","target":"","note":"","dur":0,"status":"crash","exit":0,"error":"path should be a `path.relative()`d string, but got \"C:/Users/Admin/AppData/Local/Temp/claude/D--OpsMind-AI/8f968713-631c-4439-87b0-52f3c958e3e5/scratchpad/linux-supervisor-phase-timing-probe.ps1\""}
+{"ts":"2026-07-26T17:00:21.379Z","hook":"privacy-block","event":"PreToolUse","tool":"Bash","target":"","note":"","dur":42,"status":"ok","exit":0,"error":""}
+{"ts":"2026-07-26T17:00:21.412Z","hook":"scout-block","event":"PreToolUse","tool":"","target":"","note":"","dur":0,"status":"crash","exit":0,"error":"path should be a `path.relative()`d string, but got \"C:/Users/Admin/AppData/Local/Temp/claude/D--OpsMind-AI/8f968713-631c-4439-87b0-52f3c958e3e5/scratchpad\""}
+{"ts":"2026-07-26T17:02:53.939Z","hook":"scout-block","event":"PreToolUse","tool":"Bash","target":"","note":"","dur":56,"status":"ok","exit":0,"error":""}
+{"ts":"2026-07-26T17:02:54.150Z","hook":"privacy-block","event":"PreToolUse","tool":"Bash","target":"","note":"","dur":124,"status":"ok","exit":0,"error":""}
+{"ts":"2026-07-26T17:04:01.510Z","hook":"descriptive-name","event":"PreToolUse","tool":"Write","target":"","note":"","dur":6,"status":"ok","exit":0,"error":""}
+{"ts":"2026-07-26T17:04:01.523Z","hook":"privacy-block","event":"PreToolUse","tool":"Write","target":"","note":"","dur":15,"status":"ok","exit":0,"error":""}
+{"ts":"2026-07-26T17:04:01.525Z","hook":"scout-block","event":"PreToolUse","tool":"","target":"","note":"","dur":0,"status":"crash","exit":0,"error":"path should be a `path.relative()`d string, but got \"C:/Users/Admin/.claude/projects/D--OpsMind-AI/memory/cross-service-supervisor-performance-regression.md\""}
+{"ts":"2026-07-26T17:04:12.714Z","hook":"privacy-block","event":"PreToolUse","tool":"Bash","target":"","note":"","dur":15,"status":"ok","exit":0,"error":""}
+{"ts":"2026-07-26T17:04:12.741Z","hook":"scout-block","event":"PreToolUse","tool":"Bash","target":"","note":"","dur":18,"status":"ok","exit":0,"error":""}
+{"ts":"2026-07-26T17:04:18.776Z","hook":"privacy-block","event":"PreToolUse","tool":"Read","target":"","note":"","dur":14,"status":"ok","exit":0,"error":""}
+{"ts":"2026-07-26T17:04:18.794Z","hook":"scout-block","event":"PreToolUse","tool":"","target":"","note":"","dur":0,"status":"crash","exit":0,"error":"path should be a `path.relative()`d string, but got \"D:/OpsMind_AI/scripts/validation/cross-service/cross-service-harness-support.ps1\""}
+{"ts":"2026-07-26T17:04:30.739Z","hook":"privacy-block","event":"PreToolUse","tool":"Edit","target":"","note":"","dur":15,"status":"ok","exit":0,"error":""}
+{"ts":"2026-07-26T17:04:30.752Z","hook":"scout-block","event":"PreToolUse","tool":"","target":"","note":"","dur":0,"status":"crash","exit":0,"error":"path should be a `path.relative()`d string, but got \"D:/OpsMind_AI/scripts/validation/cross-service/cross-service-harness-support.ps1\""}
+{"ts":"2026-07-26T17:04:46.706Z","hook":"privacy-block","event":"PreToolUse","tool":"Bash","target":"","note":"","dur":14,"status":"ok","exit":0,"error":""}
+{"ts":"2026-07-26T17:04:46.710Z","hook":"scout-block","event":"PreToolUse","tool":"Bash","target":"","note":"","dur":19,"status":"ok","exit":0,"error":""}
+{"ts":"2026-07-26T17:05:36.581Z","hook":"privacy-block","event":"PreToolUse","tool":"Bash","target":"","note":"","dur":12,"status":"ok","exit":0,"error":""}
+{"ts":"2026-07-26T17:05:36.609Z","hook":"scout-block","event":"PreToolUse","tool":"Bash","target":"","note":"","dur":22,"status":"ok","exit":0,"error":""}
+{"ts":"2026-07-26T17:06:52.706Z","hook":"privacy-block","event":"PreToolUse","tool":"Bash","target":"","note":"","dur":28,"status":"ok","exit":0,"error":""}
+{"ts":"2026-07-26T17:06:52.760Z","hook":"scout-block","event":"PreToolUse","tool":"Bash","target":"","note":"","dur":41,"status":"ok","exit":0,"error":""}
+{"ts":"2026-07-26T17:07:09.435Z","hook":"privacy-block","event":"PreToolUse","tool":"Bash","target":"","note":"","dur":14,"status":"ok","exit":0,"error":""}
+{"ts":"2026-07-26T17:07:09.467Z","hook":"scout-block","event":"PreToolUse","tool":"Bash","target":"","note":"","dur":19,"status":"ok","exit":0,"error":""}
+{"ts":"2026-07-26T17:07:21.560Z","hook":"privacy-block","event":"PreToolUse","tool":"Bash","target":"","note":"","dur":14,"status":"ok","exit":0,"error":""}
+{"ts":"2026-07-26T17:07:21.576Z","hook":"scout-block","event":"PreToolUse","tool":"Bash","target":"","note":"","dur":19,"status":"ok","exit":0,"error":""}
+{"ts":"2026-07-26T17:15:27.164Z","hook":"descriptive-name","event":"PreToolUse","tool":"Write","target":"","note":"","dur":17,"status":"ok","exit":0,"error":""}
+{"ts":"2026-07-26T17:15:27.176Z","hook":"privacy-block","event":"PreToolUse","tool":"Write","target":"","note":"","dur":38,"status":"ok","exit":0,"error":""}
+{"ts":"2026-07-26T17:15:27.185Z","hook":"scout-block","event":"PreToolUse","tool":"","target":"","note":"","dur":0,"status":"crash","exit":0,"error":"path should be a `path.relative()`d string, but got \"D:/OpsMind_AI/plans/reports/perf-260726-cross-service-invocation-cost.md\""}
+{"ts":"2026-07-26T17:15:38.132Z","hook":"privacy-block","event":"PreToolUse","tool":"Bash","target":"","note":"","dur":9,"status":"ok","exit":0,"error":""}
+{"ts":"2026-07-26T17:15:38.136Z","hook":"scout-block","event":"PreToolUse","tool":"Bash","target":"","note":"","dur":14,"status":"ok","exit":0,"error":""}
+{"ts":"2026-07-26T17:15:49.388Z","hook":"privacy-block","event":"PreToolUse","tool":"Bash","target":"","note":"","dur":13,"status":"ok","exit":0,"error":""}
+{"ts":"2026-07-26T17:15:49.400Z","hook":"scout-block","event":"PreToolUse","tool":"Bash","target":"","note":"","dur":14,"status":"ok","exit":0,"error":""}
+{"ts":"2026-07-26T17:24:33.839Z","hook":"privacy-block","event":"PreToolUse","tool":"Bash","target":"","note":"","dur":11,"status":"ok","exit":0,"error":""}
+{"ts":"2026-07-26T17:24:33.853Z","hook":"scout-block","event":"PreToolUse","tool":"Bash","target":"","note":"","dur":15,"status":"ok","exit":0,"error":""}
+{"ts":"2026-07-26T17:24:41.225Z","hook":"privacy-block","event":"PreToolUse","tool":"Read","target":"","note":"","dur":12,"status":"ok","exit":0,"error":""}
+{"ts":"2026-07-26T17:24:41.239Z","hook":"scout-block","event":"PreToolUse","tool":"","target":"","note":"","dur":0,"status":"crash","exit":0,"error":"path should be a `path.relative()`d string, but got \"D:/OpsMind_AI/evaluation/runner/score-phase-07-trace-core.mjs\""}
+{"ts":"2026-07-26T17:25:07.190Z","hook":"privacy-block","event":"PreToolUse","tool":"Bash","target":"","note":"","dur":12,"status":"ok","exit":0,"error":""}
+{"ts":"2026-07-26T17:25:07.213Z","hook":"scout-block","event":"PreToolUse","tool":"Bash","target":"","note":"","dur":19,"status":"ok","exit":0,"error":""}
+{"ts":"2026-07-26T17:25:33.140Z","hook":"privacy-block","event":"PreToolUse","tool":"Bash","target":"","note":"","dur":11,"status":"ok","exit":0,"error":""}
+{"ts":"2026-07-26T17:25:33.161Z","hook":"scout-block","event":"PreToolUse","tool":"Bash","target":"","note":"","dur":20,"status":"ok","exit":0,"error":""}
+{"ts":"2026-07-26T17:25:43.087Z","hook":"privacy-block","event":"PreToolUse","tool":"Read","target":"","note":"","dur":10,"status":"ok","exit":0,"error":""}
+{"ts":"2026-07-26T17:25:43.109Z","hook":"scout-block","event":"PreToolUse","tool":"","target":"","note":"","dur":0,"status":"crash","exit":0,"error":"path should be a `path.relative()`d string, but got \"D:/OpsMind_AI/evaluation/runner/score-phase-07-trace-core.mjs\""}
+{"ts":"2026-07-26T17:26:00.377Z","hook":"privacy-block","event":"PreToolUse","tool":"Bash","target":"","note":"","dur":14,"status":"ok","exit":0,"error":""}
+{"ts":"2026-07-26T17:26:00.393Z","hook":"scout-block","event":"PreToolUse","tool":"Bash","target":"","note":"","dur":20,"status":"ok","exit":0,"error":""}
+{"ts":"2026-07-26T17:26:24.942Z","hook":"privacy-block","event":"PreToolUse","tool":"Edit","target":"","note":"","dur":14,"status":"ok","exit":0,"error":""}
+{"ts":"2026-07-26T17:26:24.963Z","hook":"scout-block","event":"PreToolUse","tool":"","target":"","note":"","dur":0,"status":"crash","exit":0,"error":"path should be a `path.relative()`d string, but got \"D:/OpsMind_AI/evaluation/runner/score-phase-07-trace-core.mjs\""}
+{"ts":"2026-07-26T17:26:41.406Z","hook":"scout-block","event":"PreToolUse","tool":"Bash","target":"","note":"","dur":32,"status":"ok","exit":0,"error":""}
+{"ts":"2026-07-26T17:26:41.418Z","hook":"privacy-block","event":"PreToolUse","tool":"Bash","target":"","note":"","dur":13,"status":"ok","exit":0,"error":""}
+{"ts":"2026-07-26T17:26:56.517Z","hook":"privacy-block","event":"PreToolUse","tool":"Edit","target":"","note":"","dur":14,"status":"ok","exit":0,"error":""}
+{"ts":"2026-07-26T17:26:56.527Z","hook":"scout-block","event":"PreToolUse","tool":"","target":"","note":"","dur":0,"status":"crash","exit":0,"error":"path should be a `path.relative()`d string, but got \"D:/OpsMind_AI/evaluation/runner/score-phase-07-trace.test.mjs\""}
+{"ts":"2026-07-26T17:27:11.246Z","hook":"privacy-block","event":"PreToolUse","tool":"Bash","target":"","note":"","dur":25,"status":"ok","exit":0,"error":""}
+{"ts":"2026-07-26T17:27:11.286Z","hook":"scout-block","event":"PreToolUse","tool":"Bash","target":"","note":"","dur":41,"status":"ok","exit":0,"error":""}
+{"ts":"2026-07-26T17:27:23.980Z","hook":"scout-block","event":"PreToolUse","tool":"Bash","target":"","note":"","dur":36,"status":"ok","exit":0,"error":""}
+{"ts":"2026-07-26T17:27:23.979Z","hook":"privacy-block","event":"PreToolUse","tool":"Bash","target":"","note":"","dur":25,"status":"ok","exit":0,"error":""}
+{"ts":"2026-07-26T17:27:46.396Z","hook":"privacy-block","event":"PreToolUse","tool":"Bash","target":"","note":"","dur":22,"status":"ok","exit":0,"error":""}
+{"ts":"2026-07-26T17:27:46.425Z","hook":"scout-block","event":"PreToolUse","tool":"Bash","target":"","note":"","dur":35,"status":"ok","exit":0,"error":""}
+{"ts":"2026-07-26T17:28:00.506Z","hook":"privacy-block","event":"PreToolUse","tool":"Bash","target":"","note":"","dur":29,"status":"ok","exit":0,"error":""}
+{"ts":"2026-07-26T17:28:00.578Z","hook":"scout-block","event":"PreToolUse","tool":"Bash","target":"","note":"","dur":26,"status":"ok","exit":0,"error":""}
+{"ts":"2026-07-26T17:36:11.821Z","hook":"privacy-block","event":"PreToolUse","tool":"Bash","target":"","note":"","dur":22,"status":"ok","exit":0,"error":""}
+{"ts":"2026-07-26T17:36:11.894Z","hook":"scout-block","event":"PreToolUse","tool":"Bash","target":"","note":"","dur":29,"status":"ok","exit":0,"error":""}
+{"ts":"2026-07-26T17:36:42.404Z","hook":"privacy-block","event":"PreToolUse","tool":"Edit","target":"","note":"","dur":30,"status":"ok","exit":0,"error":""}
+{"ts":"2026-07-26T17:36:42.425Z","hook":"scout-block","event":"PreToolUse","tool":"","target":"","note":"","dur":0,"status":"crash","exit":0,"error":"path should be a `path.relative()`d string, but got \"D:/OpsMind_AI/evaluation/schemas/benchmark-result.schema.json\""}
+{"ts":"2026-07-26T17:36:58.636Z","hook":"privacy-block","event":"PreToolUse","tool":"Edit","target":"","note":"","dur":47,"status":"ok","exit":0,"error":""}
+{"ts":"2026-07-26T17:36:58.683Z","hook":"scout-block","event":"PreToolUse","tool":"","target":"","note":"","dur":0,"status":"crash","exit":0,"error":"path should be a `path.relative()`d string, but got \"D:/OpsMind_AI/evaluation/runner/score-phase-07-trace.test.mjs\""}
+{"ts":"2026-07-26T17:37:08.356Z","hook":"privacy-block","event":"PreToolUse","tool":"Bash","target":"","note":"","dur":21,"status":"ok","exit":0,"error":""}
+{"ts":"2026-07-26T17:37:08.379Z","hook":"scout-block","event":"PreToolUse","tool":"Bash","target":"","note":"","dur":31,"status":"ok","exit":0,"error":""}
+{"ts":"2026-07-26T17:37:15.732Z","hook":"privacy-block","event":"PreToolUse","tool":"Bash","target":"","note":"","dur":22,"status":"ok","exit":0,"error":""}
+{"ts":"2026-07-26T17:37:15.749Z","hook":"scout-block","event":"PreToolUse","tool":"Bash","target":"","note":"","dur":31,"status":"ok","exit":0,"error":""}
+{"ts":"2026-07-26T17:37:26.727Z","hook":"privacy-block","event":"PreToolUse","tool":"Bash","target":"","note":"","dur":22,"status":"ok","exit":0,"error":""}
+{"ts":"2026-07-26T17:37:26.761Z","hook":"scout-block","event":"PreToolUse","tool":"","target":"","note":"","dur":0,"status":"crash","exit":0,"error":"path should be a `path.relative()`d string, but got \"..\""}
+{"ts":"2026-07-26T17:37:41.610Z","hook":"privacy-block","event":"PreToolUse","tool":"Bash","target":"","note":"","dur":22,"status":"ok","exit":0,"error":""}
+{"ts":"2026-07-26T17:37:41.625Z","hook":"scout-block","event":"PreToolUse","tool":"Bash","target":"","note":"","dur":37,"status":"ok","exit":0,"error":""}
+{"ts":"2026-07-26T17:38:19.000Z","hook":"privacy-block","event":"PreToolUse","tool":"Bash","target":"","note":"","dur":20,"status":"ok","exit":0,"error":""}
+{"ts":"2026-07-26T17:38:19.044Z","hook":"scout-block","event":"PreToolUse","tool":"Bash","target":"","note":"","dur":31,"status":"ok","exit":0,"error":""}
+{"ts":"2026-07-26T17:38:34.065Z","hook":"privacy-block","event":"PreToolUse","tool":"Read","target":"","note":"","dur":24,"status":"ok","exit":0,"error":""}
+{"ts":"2026-07-26T17:38:34.065Z","hook":"scout-block","event":"PreToolUse","tool":"","target":"","note":"","dur":0,"status":"crash","exit":0,"error":"path should be a `path.relative()`d string, but got \"D:/OpsMind_AI/evaluation/runner/score-phase-07-trace-core.mjs\""}
+{"ts":"2026-07-26T17:38:45.062Z","hook":"privacy-block","event":"PreToolUse","tool":"Edit","target":"","note":"","dur":24,"status":"ok","exit":0,"error":""}
+{"ts":"2026-07-26T17:38:45.066Z","hook":"scout-block","event":"PreToolUse","tool":"","target":"","note":"","dur":0,"status":"crash","exit":0,"error":"path should be a `path.relative()`d string, but got \"D:/OpsMind_AI/evaluation/runner/score-phase-07-trace-core.mjs\""}
+{"ts":"2026-07-26T17:39:03.952Z","hook":"privacy-block","event":"PreToolUse","tool":"Edit","target":"","note":"","dur":18,"status":"ok","exit":0,"error":""}
+{"ts":"2026-07-26T17:39:03.989Z","hook":"scout-block","event":"PreToolUse","tool":"","target":"","note":"","dur":0,"status":"crash","exit":0,"error":"path should be a `path.relative()`d string, but got \"D:/OpsMind_AI/evaluation/runner/score-phase-07-trace.test.mjs\""}
+{"ts":"2026-07-26T17:39:14.894Z","hook":"privacy-block","event":"PreToolUse","tool":"Bash","target":"","note":"","dur":16,"status":"ok","exit":0,"error":""}
+{"ts":"2026-07-26T17:39:14.946Z","hook":"scout-block","event":"PreToolUse","tool":"Bash","target":"","note":"","dur":35,"status":"ok","exit":0,"error":""}
+{"ts":"2026-07-26T17:39:30.819Z","hook":"scout-block","event":"PreToolUse","tool":"Bash","target":"","note":"","dur":34,"status":"ok","exit":0,"error":""}
+{"ts":"2026-07-26T17:39:30.831Z","hook":"privacy-block","event":"PreToolUse","tool":"Bash","target":"","note":"","dur":18,"status":"ok","exit":0,"error":""}
+{"ts":"2026-07-26T17:39:47.908Z","hook":"privacy-block","event":"PreToolUse","tool":"Bash","target":"","note":"","dur":20,"status":"ok","exit":0,"error":""}
+{"ts":"2026-07-26T17:39:47.910Z","hook":"scout-block","event":"PreToolUse","tool":"Bash","target":"","note":"","dur":23,"status":"ok","exit":0,"error":""}
+{"ts":"2026-07-26T17:47:54.602Z","hook":"privacy-block","event":"PreToolUse","tool":"Bash","target":"","note":"","dur":19,"status":"ok","exit":0,"error":""}
+{"ts":"2026-07-26T17:47:54.659Z","hook":"scout-block","event":"PreToolUse","tool":"Bash","target":"","note":"","dur":33,"status":"ok","exit":0,"error":""}
+{"ts":"2026-07-26T17:48:24.959Z","hook":"privacy-block","event":"PreToolUse","tool":"Bash","target":"","note":"","dur":21,"status":"ok","exit":0,"error":""}
+{"ts":"2026-07-26T17:48:24.961Z","hook":"scout-block","event":"PreToolUse","tool":"Bash","target":"","note":"","dur":35,"status":"ok","exit":0,"error":""}
+{"ts":"2026-07-26T17:48:42.237Z","hook":"privacy-block","event":"PreToolUse","tool":"Bash","target":"","note":"","dur":20,"status":"ok","exit":0,"error":""}
+{"ts":"2026-07-26T17:48:42.270Z","hook":"scout-block","event":"PreToolUse","tool":"Bash","target":"","note":"","dur":33,"status":"ok","exit":0,"error":""}
+{"ts":"2026-07-26T17:49:11.239Z","hook":"descriptive-name","event":"PreToolUse","tool":"Write","target":"","note":"","dur":8,"status":"ok","exit":0,"error":""}
+{"ts":"2026-07-26T17:49:11.295Z","hook":"scout-block","event":"PreToolUse","tool":"","target":"","note":"","dur":0,"status":"crash","exit":0,"error":"path should be a `path.relative()`d string, but got \"D:/OpsMind_AI/plans/reports/scenario-260726-scorer-verdict-saturation.md\""}
+{"ts":"2026-07-26T17:49:11.317Z","hook":"privacy-block","event":"PreToolUse","tool":"Write","target":"","note":"","dur":26,"status":"ok","exit":0,"error":""}
+{"ts":"2026-07-26T17:49:22.995Z","hook":"privacy-block","event":"PreToolUse","tool":"Bash","target":"","note":"","dur":19,"status":"ok","exit":0,"error":""}
+{"ts":"2026-07-26T17:49:23.013Z","hook":"scout-block","event":"PreToolUse","tool":"Bash","target":"","note":"","dur":35,"status":"ok","exit":0,"error":""}
+{"ts":"2026-07-26T17:49:38.594Z","hook":"scout-block","event":"PreToolUse","tool":"Bash","target":"","note":"","dur":46,"status":"ok","exit":0,"error":""}
+{"ts":"2026-07-26T17:49:38.612Z","hook":"privacy-block","event":"PreToolUse","tool":"Bash","target":"","note":"","dur":82,"status":"ok","exit":0,"error":""}
+{"ts":"2026-07-26T22:28:51.100Z","hook":"scout-block","event":"PreToolUse","tool":"Bash","target":".next","note":".next","dur":23,"status":"block","exit":2,"error":""}
+{"ts":"2026-07-26T22:28:51.162Z","hook":"privacy-block","event":"PreToolUse","tool":"Bash","target":"","note":"","dur":52,"status":"ok","exit":0,"error":""}
+{"ts":"2026-07-26T22:28:57.939Z","hook":"scout-block","event":"PreToolUse","tool":"Glob","target":"","note":"","dur":28,"status":"ok","exit":0,"error":""}
+{"ts":"2026-07-26T22:28:58.061Z","hook":"privacy-block","event":"PreToolUse","tool":"Glob","target":"","note":"","dur":28,"status":"ok","exit":0,"error":""}
+{"ts":"2026-07-26T22:29:30.993Z","hook":"privacy-block","event":"PreToolUse","tool":"Bash","target":"","note":"","dur":55,"status":"ok","exit":0,"error":""}
+{"ts":"2026-07-26T22:29:31.252Z","hook":"scout-block","event":"PreToolUse","tool":"Bash","target":"","note":"","dur":19,"status":"ok","exit":0,"error":""}
+{"ts":"2026-07-26T22:29:51.566Z","hook":"scout-block","event":"PreToolUse","tool":"Bash","target":"","note":"","dur":52,"status":"ok","exit":0,"error":""}
+{"ts":"2026-07-26T22:29:52.348Z","hook":"privacy-block","event":"PreToolUse","tool":"Bash","target":"","note":"","dur":181,"status":"ok","exit":0,"error":""}
+{"ts":"2026-07-26T22:30:09.072Z","hook":"scout-block","event":"PreToolUse","tool":"","target":"","note":"","dur":0,"status":"crash","exit":0,"error":"path should be a `path.relative()`d string, but got \"D:/OpsMind_AI/apps/operator-web/app/organizations/[organizationId]/projects/[projectId]/incidents/[incidentId]/investigations/[runId]/page.tsx\""}
+{"ts":"2026-07-26T22:30:09.074Z","hook":"privacy-block","event":"PreToolUse","tool":"Read","target":"","note":"","dur":23,"status":"ok","exit":0,"error":""}
+{"ts":"2026-07-26T22:30:24.512Z","hook":"scout-block","event":"PreToolUse","tool":"Bash","target":"","note":"","dur":19,"status":"ok","exit":0,"error":""}
+{"ts":"2026-07-26T22:30:24.633Z","hook":"privacy-block","event":"PreToolUse","tool":"Bash","target":"","note":"","dur":29,"status":"ok","exit":0,"error":""}
+{"ts":"2026-07-26T22:30:34.484Z","hook":"scout-block","event":"PreToolUse","tool":"","target":"","note":"","dur":0,"status":"crash","exit":0,"error":"path should be a `path.relative()`d string, but got \"D:/OpsMind_AI/apps/operator-web/lib/platform-api/load-investigation-workspace.ts\""}
+{"ts":"2026-07-26T22:30:34.539Z","hook":"privacy-block","event":"PreToolUse","tool":"Read","target":"","note":"","dur":31,"status":"ok","exit":0,"error":""}
+{"ts":"2026-07-26T22:31:06.545Z","hook":"scout-block","event":"PreToolUse","tool":"Bash","target":"","note":"","dur":35,"status":"ok","exit":0,"error":""}
+{"ts":"2026-07-26T22:31:06.646Z","hook":"privacy-block","event":"PreToolUse","tool":"Bash","target":"","note":"","dur":31,"status":"ok","exit":0,"error":""}
+{"ts":"2026-07-26T22:31:23.573Z","hook":"privacy-block","event":"PreToolUse","tool":"Bash","target":"","note":"","dur":35,"status":"ok","exit":0,"error":""}
+{"ts":"2026-07-26T22:31:23.631Z","hook":"scout-block","event":"PreToolUse","tool":"Bash","target":"","note":"","dur":35,"status":"ok","exit":0,"error":""}
+{"ts":"2026-07-26T22:31:41.265Z","hook":"privacy-block","event":"PreToolUse","tool":"Bash","target":"","note":"","dur":78,"status":"ok","exit":0,"error":""}
+{"ts":"2026-07-26T22:31:41.350Z","hook":"scout-block","event":"PreToolUse","tool":"Bash","target":"","note":"","dur":16,"status":"ok","exit":0,"error":""}
+{"ts":"2026-07-26T22:31:52.868Z","hook":"privacy-block","event":"PreToolUse","tool":"Bash","target":"","note":"","dur":10,"status":"ok","exit":0,"error":""}
+{"ts":"2026-07-26T22:31:52.901Z","hook":"scout-block","event":"PreToolUse","tool":"Bash","target":"","note":"","dur":21,"status":"ok","exit":0,"error":""}
+{"ts":"2026-07-26T22:32:04.151Z","hook":"privacy-block","event":"PreToolUse","tool":"Bash","target":"","note":"","dur":27,"status":"ok","exit":0,"error":""}
+{"ts":"2026-07-26T22:32:04.290Z","hook":"scout-block","event":"PreToolUse","tool":"Bash","target":"","note":"","dur":15,"status":"ok","exit":0,"error":""}
+{"ts":"2026-07-26T22:32:19.544Z","hook":"privacy-block","event":"PreToolUse","tool":"Bash","target":"","note":"","dur":10,"status":"ok","exit":0,"error":""}
+{"ts":"2026-07-26T22:32:19.566Z","hook":"scout-block","event":"PreToolUse","tool":"Bash","target":"","note":"","dur":15,"status":"ok","exit":0,"error":""}
+{"ts":"2026-07-26T22:32:39.799Z","hook":"scout-block","event":"PreToolUse","tool":"Bash","target":"","note":"","dur":18,"status":"ok","exit":0,"error":""}
+{"ts":"2026-07-26T22:32:39.980Z","hook":"privacy-block","event":"PreToolUse","tool":"Bash","target":"","note":"","dur":10,"status":"ok","exit":0,"error":""}
+{"ts":"2026-07-26T22:32:48.032Z","hook":"privacy-block","event":"PreToolUse","tool":"Bash","target":"","note":"","dur":10,"status":"ok","exit":0,"error":""}
+{"ts":"2026-07-26T22:32:48.043Z","hook":"scout-block","event":"PreToolUse","tool":"Bash","target":"","note":"","dur":23,"status":"ok","exit":0,"error":""}
+{"ts":"2026-07-26T22:32:55.789Z","hook":"scout-block","event":"PreToolUse","tool":"Bash","target":"","note":"","dur":24,"status":"ok","exit":0,"error":""}
+{"ts":"2026-07-26T22:32:55.931Z","hook":"privacy-block","event":"PreToolUse","tool":"Bash","target":"","note":"","dur":41,"status":"ok","exit":0,"error":""}
+{"ts":"2026-07-26T22:33:07.712Z","hook":"privacy-block","event":"PreToolUse","tool":"Edit","target":"","note":"","dur":11,"status":"ok","exit":0,"error":""}
+{"ts":"2026-07-26T22:33:07.714Z","hook":"scout-block","event":"PreToolUse","tool":"","target":"","note":"","dur":0,"status":"crash","exit":0,"error":"path should be a `path.relative()`d string, but got \"D:/OpsMind_AI/apps/operator-web/tests/e2e/investigation-workspace.spec.ts\""}
+{"ts":"2026-07-26T22:33:17.210Z","hook":"privacy-block","event":"PreToolUse","tool":"Bash","target":"","note":"","dur":32,"status":"ok","exit":0,"error":""}
+{"ts":"2026-07-26T22:33:17.230Z","hook":"scout-block","event":"PreToolUse","tool":"","target":"","note":"","dur":0,"status":"crash","exit":0,"error":"path should be a `path.relative()`d string, but got \"D:/OpsMind_AI/.opsmind/cache/playwright\""}
+{"ts":"2026-07-26T22:34:14.567Z","hook":"scout-block","event":"PreToolUse","tool":"Bash","target":"","note":"","dur":15,"status":"ok","exit":0,"error":""}
+{"ts":"2026-07-26T22:34:14.694Z","hook":"privacy-block","event":"PreToolUse","tool":"Bash","target":"","note":"","dur":71,"status":"ok","exit":0,"error":""}
+{"ts":"2026-07-26T22:34:25.457Z","hook":"privacy-block","event":"PreToolUse","tool":"Bash","target":"","note":"","dur":24,"status":"ok","exit":0,"error":""}
+{"ts":"2026-07-26T22:34:25.476Z","hook":"scout-block","event":"PreToolUse","tool":"Bash","target":"","note":"","dur":17,"status":"ok","exit":0,"error":""}
+{"ts":"2026-07-26T22:34:46.064Z","hook":"scout-block","event":"PreToolUse","tool":"Bash","target":"","note":"","dur":28,"status":"ok","exit":0,"error":""}
+{"ts":"2026-07-26T22:34:46.122Z","hook":"privacy-block","event":"PreToolUse","tool":"Bash","target":"","note":"","dur":13,"status":"ok","exit":0,"error":""}
+{"ts":"2026-07-26T22:35:04.376Z","hook":"scout-block","event":"PreToolUse","tool":"Bash","target":"","note":"","dur":23,"status":"ok","exit":0,"error":""}
+{"ts":"2026-07-26T22:35:04.515Z","hook":"privacy-block","event":"PreToolUse","tool":"Bash","target":"","note":"","dur":48,"status":"ok","exit":0,"error":""}
+{"ts":"2026-07-26T22:35:22.325Z","hook":"privacy-block","event":"PreToolUse","tool":"Bash","target":"","note":"","dur":55,"status":"ok","exit":0,"error":""}
+{"ts":"2026-07-26T22:35:22.474Z","hook":"scout-block","event":"PreToolUse","tool":"Bash","target":"","note":"","dur":16,"status":"ok","exit":0,"error":""}
+{"ts":"2026-07-26T22:35:53.354Z","hook":"scout-block","event":"PreToolUse","tool":"Bash","target":"","note":"allowed-command","dur":2,"status":"ok","exit":0,"error":""}
+{"ts":"2026-07-26T22:35:53.409Z","hook":"privacy-block","event":"PreToolUse","tool":"Bash","target":"","note":"","dur":20,"status":"ok","exit":0,"error":""}
+{"ts":"2026-07-26T22:36:05.966Z","hook":"scout-block","event":"PreToolUse","tool":"Bash","target":"","note":"","dur":27,"status":"ok","exit":0,"error":""}
+{"ts":"2026-07-26T22:36:05.988Z","hook":"privacy-block","event":"PreToolUse","tool":"Bash","target":"","note":"","dur":25,"status":"ok","exit":0,"error":""}
+{"ts":"2026-07-26T22:36:31.306Z","hook":"scout-block","event":"PreToolUse","tool":"Bash","target":"","note":"allowed-command","dur":2,"status":"ok","exit":0,"error":""}
+{"ts":"2026-07-26T22:36:31.572Z","hook":"privacy-block","event":"PreToolUse","tool":"Bash","target":"","note":"","dur":80,"status":"ok","exit":0,"error":""}
+{"ts":"2026-07-26T22:36:58.603Z","hook":"privacy-block","event":"PreToolUse","tool":"Bash","target":"","note":"","dur":35,"status":"ok","exit":0,"error":""}
+{"ts":"2026-07-26T22:36:58.643Z","hook":"scout-block","event":"PreToolUse","tool":"Bash","target":"","note":"allowed-command","dur":3,"status":"ok","exit":0,"error":""}
+{"ts":"2026-07-26T22:37:31.535Z","hook":"privacy-block","event":"PreToolUse","tool":"Bash","target":"","note":"","dur":100,"status":"ok","exit":0,"error":""}
+{"ts":"2026-07-26T22:37:31.831Z","hook":"scout-block","event":"PreToolUse","tool":"Bash","target":"","note":"","dur":57,"status":"ok","exit":0,"error":""}
+{"ts":"2026-07-26T22:37:50.001Z","hook":"privacy-block","event":"PreToolUse","tool":"Bash","target":"","note":"","dur":39,"status":"ok","exit":0,"error":""}
+{"ts":"2026-07-26T22:37:50.110Z","hook":"scout-block","event":"PreToolUse","tool":"Bash","target":"","note":"","dur":61,"status":"ok","exit":0,"error":""}
+{"ts":"2026-07-26T22:37:59.402Z","hook":"privacy-block","event":"PreToolUse","tool":"Bash","target":"","note":"","dur":30,"status":"ok","exit":0,"error":""}
+{"ts":"2026-07-26T22:37:59.440Z","hook":"scout-block","event":"PreToolUse","tool":"Bash","target":"","note":"","dur":16,"status":"ok","exit":0,"error":""}
+{"ts":"2026-07-26T22:38:20.565Z","hook":"scout-block","event":"PreToolUse","tool":"Bash","target":"","note":"","dur":17,"status":"ok","exit":0,"error":""}
+{"ts":"2026-07-26T22:38:20.583Z","hook":"privacy-block","event":"PreToolUse","tool":"Bash","target":"","note":"","dur":13,"status":"ok","exit":0,"error":""}
+{"ts":"2026-07-26T22:38:38.100Z","hook":"privacy-block","event":"PreToolUse","tool":"Grep","target":"","note":"","dur":25,"status":"ok","exit":0,"error":""}
+{"ts":"2026-07-26T22:38:38.157Z","hook":"scout-block","event":"PreToolUse","tool":"","target":"","note":"","dur":0,"status":"crash","exit":0,"error":"path should be a `path.relative()`d string, but got \"D:/OpsMind_AI/docs\""}
+{"ts":"2026-07-26T22:38:43.996Z","hook":"privacy-block","event":"PreToolUse","tool":"Grep","target":"","note":"","dur":12,"status":"ok","exit":0,"error":""}
+{"ts":"2026-07-26T22:38:44.023Z","hook":"scout-block","event":"PreToolUse","tool":"","target":"","note":"","dur":0,"status":"crash","exit":0,"error":"path should be a `path.relative()`d string, but got \"D:/OpsMind_AI/docs/security-model.md\""}
+{"ts":"2026-07-26T22:38:48.807Z","hook":"privacy-block","event":"PreToolUse","tool":"Read","target":"","note":"","dur":9,"status":"ok","exit":0,"error":""}
+{"ts":"2026-07-26T22:38:48.833Z","hook":"scout-block","event":"PreToolUse","tool":"","target":"","note":"","dur":0,"status":"crash","exit":0,"error":"path should be a `path.relative()`d string, but got \"D:/OpsMind_AI/docs/security-model.md\""}
+{"ts":"2026-07-26T22:39:01.047Z","hook":"privacy-block","event":"PreToolUse","tool":"Bash","target":"","note":"","dur":19,"status":"ok","exit":0,"error":""}
+{"ts":"2026-07-26T22:39:01.083Z","hook":"scout-block","event":"PreToolUse","tool":"Bash","target":"","note":"","dur":15,"status":"ok","exit":0,"error":""}
+{"ts":"2026-07-26T22:39:10.204Z","hook":"scout-block","event":"PreToolUse","tool":"Bash","target":"","note":"","dur":19,"status":"ok","exit":0,"error":""}
+{"ts":"2026-07-26T22:39:10.210Z","hook":"privacy-block","event":"PreToolUse","tool":"Bash","target":"","note":"","dur":13,"status":"ok","exit":0,"error":""}
+{"ts":"2026-07-26T22:39:29.227Z","hook":"privacy-block","event":"PreToolUse","tool":"Bash","target":"","note":"","dur":17,"status":"ok","exit":0,"error":""}
+{"ts":"2026-07-26T22:39:29.237Z","hook":"scout-block","event":"PreToolUse","tool":"Bash","target":"","note":"","dur":15,"status":"ok","exit":0,"error":""}
+{"ts":"2026-07-26T22:39:37.625Z","hook":"scout-block","event":"PreToolUse","tool":"","target":"","note":"","dur":0,"status":"crash","exit":0,"error":"path should be a `path.relative()`d string, but got \"D:/OpsMind_AI/docs/security-model.md\""}
+{"ts":"2026-07-26T22:39:37.672Z","hook":"privacy-block","event":"PreToolUse","tool":"Read","target":"","note":"","dur":35,"status":"ok","exit":0,"error":""}
+{"ts":"2026-07-26T22:40:03.697Z","hook":"privacy-block","event":"PreToolUse","tool":"Bash","target":"","note":"","dur":19,"status":"ok","exit":0,"error":""}
+{"ts":"2026-07-26T22:40:03.710Z","hook":"scout-block","event":"PreToolUse","tool":"Bash","target":"","note":"","dur":14,"status":"ok","exit":0,"error":""}
+{"ts":"2026-07-26T22:40:13.373Z","hook":"privacy-block","event":"PreToolUse","tool":"Bash","target":"","note":"","dur":40,"status":"ok","exit":0,"error":""}
+{"ts":"2026-07-26T22:40:13.377Z","hook":"scout-block","event":"PreToolUse","tool":"Bash","target":"","note":"","dur":18,"status":"ok","exit":0,"error":""}
+{"ts":"2026-07-26T22:40:22.139Z","hook":"scout-block","event":"PreToolUse","tool":"Bash","target":"","note":"","dur":13,"status":"ok","exit":0,"error":""}
+{"ts":"2026-07-26T22:40:22.188Z","hook":"privacy-block","event":"PreToolUse","tool":"Bash","target":"","note":"","dur":25,"status":"ok","exit":0,"error":""}
+{"ts":"2026-07-26T22:40:30.815Z","hook":"scout-block","event":"PreToolUse","tool":"Bash","target":"","note":"","dur":20,"status":"ok","exit":0,"error":""}
+{"ts":"2026-07-26T22:40:30.842Z","hook":"privacy-block","event":"PreToolUse","tool":"Bash","target":"","note":"","dur":27,"status":"ok","exit":0,"error":""}
+{"ts":"2026-07-26T22:40:48.343Z","hook":"privacy-block","event":"PreToolUse","tool":"Bash","target":"","note":"","dur":11,"status":"ok","exit":0,"error":""}
+{"ts":"2026-07-26T22:40:48.361Z","hook":"scout-block","event":"PreToolUse","tool":"Bash","target":"","note":"","dur":18,"status":"ok","exit":0,"error":""}
+{"ts":"2026-07-26T22:40:58.502Z","hook":"privacy-block","event":"PreToolUse","tool":"Edit","target":"","note":"","dur":10,"status":"ok","exit":0,"error":""}
+{"ts":"2026-07-26T22:40:58.522Z","hook":"scout-block","event":"PreToolUse","tool":"","target":"","note":"","dur":0,"status":"crash","exit":0,"error":"path should be a `path.relative()`d string, but got \"D:/OpsMind_AI/docs/blockers.md\""}
+{"ts":"2026-07-26T22:41:22.633Z","hook":"descriptive-name","event":"PreToolUse","tool":"Write","target":"","note":"","dur":6,"status":"ok","exit":0,"error":""}
+{"ts":"2026-07-26T22:41:22.649Z","hook":"scout-block","event":"PreToolUse","tool":"","target":"","note":"","dur":0,"status":"crash","exit":0,"error":"path should be a `path.relative()`d string, but got \"D:/OpsMind_AI/plans/reports/security-260727-tool-gateway-tenant-isolation.md\""}
+{"ts":"2026-07-26T22:41:22.692Z","hook":"privacy-block","event":"PreToolUse","tool":"Write","target":"","note":"","dur":9,"status":"ok","exit":0,"error":""}
+{"ts":"2026-07-26T22:41:34.299Z","hook":"privacy-block","event":"PreToolUse","tool":"Bash","target":"","note":"","dur":47,"status":"ok","exit":0,"error":""}
+{"ts":"2026-07-26T22:41:34.365Z","hook":"scout-block","event":"PreToolUse","tool":"Bash","target":"","note":"","dur":21,"status":"ok","exit":0,"error":""}
+{"ts":"2026-07-26T22:41:51.354Z","hook":"privacy-block","event":"PreToolUse","tool":"Bash","target":"","note":"","dur":13,"status":"ok","exit":0,"error":""}
+{"ts":"2026-07-26T22:41:51.361Z","hook":"scout-block","event":"PreToolUse","tool":"Bash","target":"","note":"","dur":19,"status":"ok","exit":0,"error":""}
+{"ts":"2026-07-26T22:44:03.202Z","hook":"scout-block","event":"PreToolUse","tool":"Bash","target":"","note":"","dur":12,"status":"ok","exit":0,"error":""}
+{"ts":"2026-07-26T22:44:03.211Z","hook":"privacy-block","event":"PreToolUse","tool":"Bash","target":"","note":"","dur":9,"status":"ok","exit":0,"error":""}
+{"ts":"2026-07-26T22:44:16.239Z","hook":"privacy-block","event":"PreToolUse","tool":"Bash","target":"","note":"","dur":10,"status":"ok","exit":0,"error":""}
+{"ts":"2026-07-26T22:44:16.239Z","hook":"scout-block","event":"PreToolUse","tool":"Bash","target":"","note":"","dur":16,"status":"ok","exit":0,"error":""}
+{"ts":"2026-07-26T22:44:33.513Z","hook":"privacy-block","event":"PreToolUse","tool":"Bash","target":"","note":"","dur":12,"status":"ok","exit":0,"error":""}
+{"ts":"2026-07-26T22:44:33.517Z","hook":"scout-block","event":"PreToolUse","tool":"Bash","target":"","note":"","dur":14,"status":"ok","exit":0,"error":""}
+{"ts":"2026-07-26T22:44:48.717Z","hook":"privacy-block","event":"PreToolUse","tool":"Bash","target":"","note":"","dur":6,"status":"ok","exit":0,"error":""}
+{"ts":"2026-07-26T22:44:48.730Z","hook":"scout-block","event":"PreToolUse","tool":"Bash","target":"","note":"","dur":13,"status":"ok","exit":0,"error":""}
+{"ts":"2026-07-26T22:45:05.362Z","hook":"privacy-block","event":"PreToolUse","tool":"Bash","target":"","note":"","dur":13,"status":"ok","exit":0,"error":""}
+{"ts":"2026-07-26T22:45:05.368Z","hook":"scout-block","event":"PreToolUse","tool":"Bash","target":"","note":"","dur":18,"status":"ok","exit":0,"error":""}
+{"ts":"2026-07-26T22:45:36.313Z","hook":"privacy-block","event":"PreToolUse","tool":"Bash","target":"","note":"","dur":9,"status":"ok","exit":0,"error":""}
+{"ts":"2026-07-26T22:45:36.328Z","hook":"scout-block","event":"PreToolUse","tool":"Bash","target":"","note":"","dur":14,"status":"ok","exit":0,"error":""}
+{"ts":"2026-07-26T22:45:49.134Z","hook":"privacy-block","event":"PreToolUse","tool":"Bash","target":"","note":"","dur":10,"status":"ok","exit":0,"error":""}
+{"ts":"2026-07-26T22:45:49.162Z","hook":"scout-block","event":"PreToolUse","tool":"Bash","target":"","note":"","dur":13,"status":"ok","exit":0,"error":""}
+{"ts":"2026-07-26T22:46:10.249Z","hook":"privacy-block","event":"PreToolUse","tool":"Bash","target":"","note":"","dur":8,"status":"ok","exit":0,"error":""}
+{"ts":"2026-07-26T22:46:10.256Z","hook":"scout-block","event":"PreToolUse","tool":"Bash","target":"","note":"","dur":11,"status":"ok","exit":0,"error":""}
+{"ts":"2026-07-26T22:46:35.085Z","hook":"privacy-block","event":"PreToolUse","tool":"Bash","target":"","note":"","dur":9,"status":"ok","exit":0,"error":""}
+{"ts":"2026-07-26T22:46:35.091Z","hook":"scout-block","event":"PreToolUse","tool":"Bash","target":"","note":"","dur":15,"status":"ok","exit":0,"error":""}
+{"ts":"2026-07-26T22:47:04.824Z","hook":"privacy-block","event":"PreToolUse","tool":"Edit","target":"","note":"","dur":33,"status":"ok","exit":0,"error":""}
+{"ts":"2026-07-26T22:47:04.852Z","hook":"scout-block","event":"PreToolUse","tool":"","target":"","note":"","dur":0,"status":"crash","exit":0,"error":"path should be a `path.relative()`d string, but got \"D:/OpsMind_AI/docs/blockers.md\""}
+{"ts":"2026-07-26T22:47:24.162Z","hook":"privacy-block","event":"PreToolUse","tool":"Bash","target":"","note":"","dur":24,"status":"ok","exit":0,"error":""}
+{"ts":"2026-07-26T22:47:24.207Z","hook":"scout-block","event":"PreToolUse","tool":"Bash","target":"","note":"","dur":16,"status":"ok","exit":0,"error":""}
+{"ts":"2026-07-26T22:47:41.496Z","hook":"scout-block","event":"PreToolUse","tool":"Bash","target":"","note":"","dur":10,"status":"ok","exit":0,"error":""}
+{"ts":"2026-07-26T22:47:41.536Z","hook":"privacy-block","event":"PreToolUse","tool":"Bash","target":"","note":"","dur":11,"status":"ok","exit":0,"error":""}
+{"ts":"2026-07-26T22:56:20.663Z","hook":"privacy-block","event":"PreToolUse","tool":"Bash","target":"","note":"","dur":8,"status":"ok","exit":0,"error":""}
+{"ts":"2026-07-26T22:56:20.680Z","hook":"scout-block","event":"PreToolUse","tool":"Bash","target":"","note":"","dur":13,"status":"ok","exit":0,"error":""}
+{"ts":"2026-07-26T22:56:44.948Z","hook":"privacy-block","event":"PreToolUse","tool":"Bash","target":"","note":"","dur":5,"status":"ok","exit":0,"error":""}
+{"ts":"2026-07-26T22:56:44.959Z","hook":"scout-block","event":"PreToolUse","tool":"Bash","target":"","note":"","dur":10,"status":"ok","exit":0,"error":""}
+{"ts":"2026-07-26T22:57:07.896Z","hook":"privacy-block","event":"PreToolUse","tool":"Bash","target":"","note":"","dur":5,"status":"ok","exit":0,"error":""}
+{"ts":"2026-07-26T22:57:07.911Z","hook":"scout-block","event":"PreToolUse","tool":"Bash","target":"","note":"","dur":11,"status":"ok","exit":0,"error":""}
+{"ts":"2026-07-26T22:57:15.259Z","hook":"privacy-block","event":"PreToolUse","tool":"Bash","target":"","note":"","dur":19,"status":"ok","exit":0,"error":""}
+{"ts":"2026-07-26T22:57:15.279Z","hook":"scout-block","event":"PreToolUse","tool":"Bash","target":"","note":"","dur":13,"status":"ok","exit":0,"error":""}
+{"ts":"2026-07-26T22:57:22.465Z","hook":"privacy-block","event":"PreToolUse","tool":"Bash","target":"","note":"","dur":6,"status":"ok","exit":0,"error":""}
+{"ts":"2026-07-26T22:57:22.480Z","hook":"scout-block","event":"PreToolUse","tool":"Bash","target":"","note":"","dur":12,"status":"ok","exit":0,"error":""}
+{"ts":"2026-07-26T22:57:29.708Z","hook":"privacy-block","event":"PreToolUse","tool":"Bash","target":"","note":"","dur":6,"status":"ok","exit":0,"error":""}
+{"ts":"2026-07-26T22:57:29.712Z","hook":"scout-block","event":"PreToolUse","tool":"Bash","target":"","note":"","dur":6,"status":"ok","exit":0,"error":""}
+{"ts":"2026-07-26T22:58:13.654Z","hook":"privacy-block","event":"PreToolUse","tool":"Bash","target":"","note":"","dur":7,"status":"ok","exit":0,"error":""}
+{"ts":"2026-07-26T22:58:13.660Z","hook":"scout-block","event":"PreToolUse","tool":"Bash","target":"","note":"","dur":10,"status":"ok","exit":0,"error":""}
+{"ts":"2026-07-26T22:58:34.423Z","hook":"privacy-block","event":"PreToolUse","tool":"Bash","target":"","note":"","dur":31,"status":"ok","exit":0,"error":""}
+{"ts":"2026-07-26T22:58:34.442Z","hook":"scout-block","event":"PreToolUse","tool":"Bash","target":"","note":"","dur":14,"status":"ok","exit":0,"error":""}
+{"ts":"2026-07-26T22:58:45.741Z","hook":"privacy-block","event":"PreToolUse","tool":"Bash","target":"","note":"","dur":9,"status":"ok","exit":0,"error":""}
+{"ts":"2026-07-26T22:58:45.786Z","hook":"scout-block","event":"PreToolUse","tool":"Bash","target":"","note":"","dur":27,"status":"ok","exit":0,"error":""}
+{"ts":"2026-07-26T22:59:11.587Z","hook":"scout-block","event":"PreToolUse","tool":"Bash","target":"","note":"","dur":11,"status":"ok","exit":0,"error":""}
+{"ts":"2026-07-26T22:59:11.593Z","hook":"privacy-block","event":"PreToolUse","tool":"Bash","target":"","note":"","dur":8,"status":"ok","exit":0,"error":""}
+{"ts":"2026-07-26T22:59:19.988Z","hook":"privacy-block","event":"PreToolUse","tool":"Bash","target":"","note":"","dur":11,"status":"ok","exit":0,"error":""}
+{"ts":"2026-07-26T22:59:19.988Z","hook":"scout-block","event":"PreToolUse","tool":"Bash","target":"","note":"","dur":12,"status":"ok","exit":0,"error":""}
+{"ts":"2026-07-26T22:59:26.851Z","hook":"scout-block","event":"PreToolUse","tool":"","target":"","note":"","dur":0,"status":"crash","exit":0,"error":"path should be a `path.relative()`d string, but got \"D:/OpsMind_AI/services/ai-runtime/src/opsmind_ai_runtime/application/egress_policy.py\""}
+{"ts":"2026-07-26T22:59:26.864Z","hook":"privacy-block","event":"PreToolUse","tool":"Read","target":"","note":"","dur":10,"status":"ok","exit":0,"error":""}
+{"ts":"2026-07-26T23:00:02.985Z","hook":"privacy-block","event":"PreToolUse","tool":"Edit","target":"","note":"","dur":9,"status":"ok","exit":0,"error":""}
+{"ts":"2026-07-26T23:00:02.987Z","hook":"scout-block","event":"PreToolUse","tool":"","target":"","note":"","dur":0,"status":"crash","exit":0,"error":"path should be a `path.relative()`d string, but got \"D:/OpsMind_AI/services/ai-runtime/src/opsmind_ai_runtime/application/egress_policy.py\""}
+{"ts":"2026-07-26T23:00:12.252Z","hook":"privacy-block","event":"PreToolUse","tool":"Bash","target":"","note":"","dur":6,"status":"ok","exit":0,"error":""}
+{"ts":"2026-07-26T23:00:12.256Z","hook":"scout-block","event":"PreToolUse","tool":"Bash","target":"","note":"","dur":8,"status":"ok","exit":0,"error":""}
+{"ts":"2026-07-26T23:00:20.887Z","hook":"privacy-block","event":"PreToolUse","tool":"Bash","target":"","note":"","dur":13,"status":"ok","exit":0,"error":""}
+{"ts":"2026-07-26T23:00:20.898Z","hook":"scout-block","event":"PreToolUse","tool":"Bash","target":"","note":"","dur":12,"status":"ok","exit":0,"error":""}
+{"ts":"2026-07-26T23:00:46.119Z","hook":"privacy-block","event":"PreToolUse","tool":"Bash","target":"","note":"","dur":14,"status":"ok","exit":0,"error":""}
+{"ts":"2026-07-26T23:00:46.124Z","hook":"scout-block","event":"PreToolUse","tool":"Bash","target":"","note":"","dur":12,"status":"ok","exit":0,"error":""}
+{"ts":"2026-07-26T23:01:01.804Z","hook":"privacy-block","event":"PreToolUse","tool":"Edit","target":"","note":"","dur":10,"status":"ok","exit":0,"error":""}
+{"ts":"2026-07-26T23:01:01.842Z","hook":"scout-block","event":"PreToolUse","tool":"","target":"","note":"","dur":0,"status":"crash","exit":0,"error":"path should be a `path.relative()`d string, but got \"D:/OpsMind_AI/services/ai-runtime/tests/unit/test_egress_policy.py\""}
+{"ts":"2026-07-26T23:01:46.536Z","hook":"privacy-block","event":"PreToolUse","tool":"Bash","target":"","note":"","dur":4,"status":"ok","exit":0,"error":""}
+{"ts":"2026-07-26T23:01:46.545Z","hook":"scout-block","event":"PreToolUse","tool":"Bash","target":"","note":"","dur":12,"status":"ok","exit":0,"error":""}
+{"ts":"2026-07-26T23:02:33.152Z","hook":"scout-block","event":"PreToolUse","tool":"Bash","target":"","note":"","dur":33,"status":"ok","exit":0,"error":""}
+{"ts":"2026-07-26T23:02:33.163Z","hook":"privacy-block","event":"PreToolUse","tool":"Bash","target":"","note":"","dur":31,"status":"ok","exit":0,"error":""}
+{"ts":"2026-07-26T23:03:08.246Z","hook":"scout-block","event":"PreToolUse","tool":"Bash","target":"","note":"","dur":13,"status":"ok","exit":0,"error":""}
+{"ts":"2026-07-26T23:03:08.264Z","hook":"privacy-block","event":"PreToolUse","tool":"Bash","target":"","note":"","dur":8,"status":"ok","exit":0,"error":""}
+{"ts":"2026-07-26T23:03:23.861Z","hook":"scout-block","event":"PreToolUse","tool":"Bash","target":"","note":"","dur":15,"status":"ok","exit":0,"error":""}
+{"ts":"2026-07-26T23:03:23.881Z","hook":"privacy-block","event":"PreToolUse","tool":"Bash","target":"","note":"","dur":21,"status":"ok","exit":0,"error":""}
+{"ts":"2026-07-26T23:10:05.892Z","hook":"scout-block","event":"PreToolUse","tool":"Bash","target":"","note":"","dur":14,"status":"ok","exit":0,"error":""}
+{"ts":"2026-07-26T23:10:05.904Z","hook":"privacy-block","event":"PreToolUse","tool":"Bash","target":"","note":"","dur":11,"status":"ok","exit":0,"error":""}
+{"ts":"2026-07-26T23:10:32.230Z","hook":"privacy-block","event":"PreToolUse","tool":"Edit","target":"","note":"","dur":8,"status":"ok","exit":0,"error":""}
+{"ts":"2026-07-26T23:10:32.243Z","hook":"scout-block","event":"PreToolUse","tool":"","target":"","note":"","dur":0,"status":"crash","exit":0,"error":"path should be a `path.relative()`d string, but got \"D:/OpsMind_AI/services/ai-runtime/tests/unit/test_egress_policy.py\""}
+{"ts":"2026-07-26T23:10:47.986Z","hook":"privacy-block","event":"PreToolUse","tool":"Bash","target":"","note":"","dur":29,"status":"ok","exit":0,"error":""}
+{"ts":"2026-07-26T23:10:48.034Z","hook":"scout-block","event":"PreToolUse","tool":"Bash","target":"","note":"","dur":12,"status":"ok","exit":0,"error":""}
+{"ts":"2026-07-26T23:12:38.197Z","hook":"privacy-block","event":"PreToolUse","tool":"Bash","target":"","note":"","dur":10,"status":"ok","exit":0,"error":""}
+{"ts":"2026-07-26T23:12:38.233Z","hook":"scout-block","event":"PreToolUse","tool":"Bash","target":"","note":"","dur":19,"status":"ok","exit":0,"error":""}
+{"ts":"2026-07-26T23:14:30.295Z","hook":"privacy-block","event":"PreToolUse","tool":"Bash","target":"","note":"","dur":18,"status":"ok","exit":0,"error":""}
+{"ts":"2026-07-26T23:14:30.302Z","hook":"scout-block","event":"PreToolUse","tool":"Bash","target":"","note":"","dur":12,"status":"ok","exit":0,"error":""}
+{"ts":"2026-07-26T23:14:56.981Z","hook":"privacy-block","event":"PreToolUse","tool":"Bash","target":"","note":"","dur":38,"status":"ok","exit":0,"error":""}
+{"ts":"2026-07-26T23:14:57.009Z","hook":"scout-block","event":"PreToolUse","tool":"Bash","target":"","note":"","dur":15,"status":"ok","exit":0,"error":""}
+{"ts":"2026-07-26T23:15:35.030Z","hook":"privacy-block","event":"PreToolUse","tool":"Bash","target":"","note":"","dur":9,"status":"ok","exit":0,"error":""}
+{"ts":"2026-07-26T23:15:35.064Z","hook":"scout-block","event":"PreToolUse","tool":"Bash","target":"","note":"","dur":15,"status":"ok","exit":0,"error":""}
+{"ts":"2026-07-26T23:15:47.411Z","hook":"privacy-block","event":"PreToolUse","tool":"Bash","target":"","note":"","dur":13,"status":"ok","exit":0,"error":""}
+{"ts":"2026-07-26T23:15:47.522Z","hook":"scout-block","event":"PreToolUse","tool":"Bash","target":"","note":"","dur":11,"status":"ok","exit":0,"error":""}
+{"ts":"2026-07-26T23:23:30.835Z","hook":"scout-block","event":"PreToolUse","tool":"Bash","target":"","note":"","dur":18,"status":"ok","exit":0,"error":""}
+{"ts":"2026-07-26T23:23:30.840Z","hook":"privacy-block","event":"PreToolUse","tool":"Bash","target":"","note":"","dur":7,"status":"ok","exit":0,"error":""}
+{"ts":"2026-07-26T23:24:36.937Z","hook":"privacy-block","event":"PreToolUse","tool":"Bash","target":"","note":"","dur":7,"status":"ok","exit":0,"error":""}
+{"ts":"2026-07-26T23:24:36.944Z","hook":"scout-block","event":"PreToolUse","tool":"Bash","target":"","note":"","dur":10,"status":"ok","exit":0,"error":""}
+{"ts":"2026-07-26T23:24:59.219Z","hook":"descriptive-name","event":"PreToolUse","tool":"Write","target":"","note":"","dur":3,"status":"ok","exit":0,"error":""}
+{"ts":"2026-07-26T23:24:59.237Z","hook":"scout-block","event":"PreToolUse","tool":"","target":"","note":"","dur":0,"status":"crash","exit":0,"error":"path should be a `path.relative()`d string, but got \"C:/Users/Admin/.claude/projects/D--OpsMind-AI/memory/credential-shaped-test-fixtures-trip-the-history-scanner.md\""}
+{"ts":"2026-07-26T23:24:59.237Z","hook":"privacy-block","event":"PreToolUse","tool":"Write","target":"","note":"","dur":6,"status":"ok","exit":0,"error":""}
+{"ts":"2026-07-26T23:25:08.435Z","hook":"scout-block","event":"PreToolUse","tool":"","target":"","note":"","dur":0,"status":"crash","exit":0,"error":"path should be a `path.relative()`d string, but got \"C:/Users/Admin/.claude/projects/D--OpsMind-AI/MEMORY.md\""}
+{"ts":"2026-07-26T23:25:08.449Z","hook":"privacy-block","event":"PreToolUse","tool":"Edit","target":"","note":"","dur":14,"status":"ok","exit":0,"error":""}
+{"ts":"2026-07-26T23:27:00.205Z","hook":"privacy-block","event":"PreToolUse","tool":"Bash","target":"","note":"","dur":7,"status":"ok","exit":0,"error":""}
+{"ts":"2026-07-26T23:27:00.208Z","hook":"scout-block","event":"PreToolUse","tool":"Bash","target":"","note":"","dur":11,"status":"ok","exit":0,"error":""}
+{"ts":"2026-07-26T23:27:13.445Z","hook":"privacy-block","event":"PreToolUse","tool":"Bash","target":"","note":"","dur":8,"status":"ok","exit":0,"error":""}
+{"ts":"2026-07-26T23:27:13.460Z","hook":"scout-block","event":"PreToolUse","tool":"Bash","target":"","note":"","dur":13,"status":"ok","exit":0,"error":""}
+{"ts":"2026-07-26T23:27:24.840Z","hook":"privacy-block","event":"PreToolUse","tool":"Bash","target":"","note":"","dur":8,"status":"ok","exit":0,"error":""}
+{"ts":"2026-07-26T23:27:24.844Z","hook":"scout-block","event":"PreToolUse","tool":"Bash","target":"","note":"","dur":10,"status":"ok","exit":0,"error":""}
+{"ts":"2026-07-26T23:27:30.392Z","hook":"privacy-block","event":"PreToolUse","tool":"Bash","target":"","note":"","dur":5,"status":"ok","exit":0,"error":""}
+{"ts":"2026-07-26T23:27:30.393Z","hook":"scout-block","event":"PreToolUse","tool":"Bash","target":"","note":"","dur":7,"status":"ok","exit":0,"error":""}
+{"ts":"2026-07-26T23:27:39.346Z","hook":"privacy-block","event":"PreToolUse","tool":"Bash","target":"","note":"","dur":10,"status":"ok","exit":0,"error":""}
+{"ts":"2026-07-26T23:27:39.349Z","hook":"scout-block","event":"PreToolUse","tool":"Bash","target":"","note":"","dur":10,"status":"ok","exit":0,"error":""}
+{"ts":"2026-07-26T23:27:46.979Z","hook":"scout-block","event":"PreToolUse","tool":"","target":"","note":"","dur":0,"status":"crash","exit":0,"error":"path should be a `path.relative()`d string, but got \"D:/OpsMind_AI/evaluation/runner/evaluation-value-safety.mjs\""}
+{"ts":"2026-07-26T23:27:46.981Z","hook":"privacy-block","event":"PreToolUse","tool":"Edit","target":"","note":"","dur":5,"status":"ok","exit":0,"error":""}
+{"ts":"2026-07-26T23:28:00.534Z","hook":"privacy-block","event":"PreToolUse","tool":"Bash","target":"","note":"","dur":5,"status":"ok","exit":0,"error":""}
+{"ts":"2026-07-26T23:28:00.545Z","hook":"scout-block","event":"PreToolUse","tool":"Bash","target":"","note":"","dur":6,"status":"ok","exit":0,"error":""}
+{"ts":"2026-07-26T23:28:11.517Z","hook":"scout-block","event":"PreToolUse","tool":"","target":"","note":"","dur":0,"status":"crash","exit":0,"error":"path should be a `path.relative()`d string, but got \"D:/OpsMind_AI/evaluation/runner/cross-service-evaluation-projection.test.mjs\""}
+{"ts":"2026-07-26T23:28:11.522Z","hook":"privacy-block","event":"PreToolUse","tool":"Edit","target":"","note":"","dur":5,"status":"ok","exit":0,"error":""}
+{"ts":"2026-07-26T23:28:20.300Z","hook":"privacy-block","event":"PreToolUse","tool":"Bash","target":"","note":"","dur":5,"status":"ok","exit":0,"error":""}
+{"ts":"2026-07-26T23:28:20.306Z","hook":"scout-block","event":"PreToolUse","tool":"Bash","target":"","note":"","dur":9,"status":"ok","exit":0,"error":""}
+{"ts":"2026-07-26T23:28:33.326Z","hook":"privacy-block","event":"PreToolUse","tool":"Bash","target":"","note":"","dur":4,"status":"ok","exit":0,"error":""}
+{"ts":"2026-07-26T23:28:33.328Z","hook":"scout-block","event":"PreToolUse","tool":"Bash","target":"","note":"","dur":6,"status":"ok","exit":0,"error":""}
+{"ts":"2026-07-26T23:28:50.876Z","hook":"privacy-block","event":"PreToolUse","tool":"Edit","target":"","note":"","dur":5,"status":"ok","exit":0,"error":""}
+{"ts":"2026-07-26T23:28:50.885Z","hook":"scout-block","event":"PreToolUse","tool":"","target":"","note":"","dur":0,"status":"crash","exit":0,"error":"path should be a `path.relative()`d string, but got \"D:/OpsMind_AI/evaluation/runner/cross-service-evaluation-projection.test.mjs\""}
+{"ts":"2026-07-26T23:28:59.788Z","hook":"privacy-block","event":"PreToolUse","tool":"Bash","target":"","note":"","dur":4,"status":"ok","exit":0,"error":""}
+{"ts":"2026-07-26T23:28:59.805Z","hook":"scout-block","event":"PreToolUse","tool":"Bash","target":"","note":"","dur":10,"status":"ok","exit":0,"error":""}
+{"ts":"2026-07-26T23:29:08.375Z","hook":"privacy-block","event":"PreToolUse","tool":"Bash","target":"","note":"","dur":4,"status":"ok","exit":0,"error":""}
+{"ts":"2026-07-26T23:29:08.384Z","hook":"scout-block","event":"PreToolUse","tool":"Bash","target":"","note":"","dur":9,"status":"ok","exit":0,"error":""}
+{"ts":"2026-07-26T23:30:03.887Z","hook":"scout-block","event":"PreToolUse","tool":"Bash","target":"","note":"","dur":6,"status":"ok","exit":0,"error":""}
+{"ts":"2026-07-26T23:30:03.892Z","hook":"privacy-block","event":"PreToolUse","tool":"Bash","target":"","note":"","dur":3,"status":"ok","exit":0,"error":""}
+{"ts":"2026-07-26T23:30:14.141Z","hook":"privacy-block","event":"PreToolUse","tool":"Bash","target":"","note":"","dur":4,"status":"ok","exit":0,"error":""}
+{"ts":"2026-07-26T23:30:14.152Z","hook":"scout-block","event":"PreToolUse","tool":"Bash","target":"","note":"","dur":7,"status":"ok","exit":0,"error":""}
+{"ts":"2026-07-26T23:38:32.761Z","hook":"privacy-block","event":"PreToolUse","tool":"Bash","target":"","note":"","dur":6,"status":"ok","exit":0,"error":""}
+{"ts":"2026-07-26T23:38:32.768Z","hook":"scout-block","event":"PreToolUse","tool":"Bash","target":"","note":"","dur":8,"status":"ok","exit":0,"error":""}
+{"ts":"2026-07-27T00:22:07.377Z","hook":"scout-block","event":"PreToolUse","tool":"Bash","target":"","note":"","dur":10,"status":"ok","exit":0,"error":""}
+{"ts":"2026-07-27T00:22:07.380Z","hook":"privacy-block","event":"PreToolUse","tool":"Bash","target":"","note":"","dur":4,"status":"ok","exit":0,"error":""}
+{"ts":"2026-07-27T00:22:13.417Z","hook":"privacy-block","event":"PreToolUse","tool":"Bash","target":"","note":"","dur":5,"status":"ok","exit":0,"error":""}
+{"ts":"2026-07-27T00:22:13.424Z","hook":"scout-block","event":"PreToolUse","tool":"Bash","target":"","note":"","dur":6,"status":"ok","exit":0,"error":""}
+{"ts":"2026-07-27T00:22:29.784Z","hook":"privacy-block","event":"PreToolUse","tool":"Bash","target":"","note":"","dur":8,"status":"ok","exit":0,"error":""}
+{"ts":"2026-07-27T00:22:29.801Z","hook":"scout-block","event":"PreToolUse","tool":"Bash","target":"","note":"","dur":10,"status":"ok","exit":0,"error":""}
+{"ts":"2026-07-27T00:22:47.822Z","hook":"scout-block","event":"PreToolUse","tool":"Bash","target":"","note":"","dur":11,"status":"ok","exit":0,"error":""}
+{"ts":"2026-07-27T00:22:47.838Z","hook":"privacy-block","event":"PreToolUse","tool":"Bash","target":"","note":"","dur":8,"status":"ok","exit":0,"error":""}
+{"ts":"2026-07-27T00:22:52.597Z","hook":"scout-block","event":"PreToolUse","tool":"","target":"","note":"","dur":0,"status":"crash","exit":0,"error":"path should be a `path.relative()`d string, but got \"D:/OpsMind_AI/services/tool-gateway/README.md\""}
+{"ts":"2026-07-27T00:22:52.601Z","hook":"privacy-block","event":"PreToolUse","tool":"Read","target":"","note":"","dur":4,"status":"ok","exit":0,"error":""}
+{"ts":"2026-07-27T00:23:09.199Z","hook":"privacy-block","event":"PreToolUse","tool":"Bash","target":"","note":"","dur":9,"status":"ok","exit":0,"error":""}
+{"ts":"2026-07-27T00:23:09.203Z","hook":"scout-block","event":"PreToolUse","tool":"Bash","target":"","note":"","dur":11,"status":"ok","exit":0,"error":""}
+{"ts":"2026-07-27T00:23:17.721Z","hook":"privacy-block","event":"PreToolUse","tool":"Bash","target":"","note":"","dur":4,"status":"ok","exit":0,"error":""}
+{"ts":"2026-07-27T00:23:17.732Z","hook":"scout-block","event":"PreToolUse","tool":"Bash","target":"","note":"","dur":8,"status":"ok","exit":0,"error":""}
+{"ts":"2026-07-27T00:23:35.814Z","hook":"descriptive-name","event":"PreToolUse","tool":"Write","target":"","note":"","dur":2,"status":"ok","exit":0,"error":""}
+{"ts":"2026-07-27T00:23:35.837Z","hook":"scout-block","event":"PreToolUse","tool":"","target":"","note":"","dur":0,"status":"crash","exit":0,"error":"path should be a `path.relative()`d string, but got \"D:/OpsMind_AI/services/platform-api/README.md\""}
+{"ts":"2026-07-27T00:23:35.855Z","hook":"privacy-block","event":"PreToolUse","tool":"Write","target":"","note":"","dur":5,"status":"ok","exit":0,"error":""}
+{"ts":"2026-07-27T00:23:47.248Z","hook":"privacy-block","event":"PreToolUse","tool":"Bash","target":"","note":"","dur":10,"status":"ok","exit":0,"error":""}
+{"ts":"2026-07-27T00:23:47.251Z","hook":"scout-block","event":"PreToolUse","tool":"Bash","target":"","note":"","dur":12,"status":"ok","exit":0,"error":""}
+{"ts":"2026-07-27T00:24:05.386Z","hook":"descriptive-name","event":"PreToolUse","tool":"Write","target":"","note":"","dur":9,"status":"ok","exit":0,"error":""}
+{"ts":"2026-07-27T00:24:05.390Z","hook":"scout-block","event":"PreToolUse","tool":"","target":"","note":"","dur":0,"status":"crash","exit":0,"error":"path should be a `path.relative()`d string, but got \"D:/OpsMind_AI/apps/operator-web/README.md\""}
+{"ts":"2026-07-27T00:24:05.391Z","hook":"privacy-block","event":"PreToolUse","tool":"Write","target":"","note":"","dur":7,"status":"ok","exit":0,"error":""}
+{"ts":"2026-07-27T00:24:14.338Z","hook":"descriptive-name","event":"PreToolUse","tool":"Write","target":"","note":"","dur":2,"status":"ok","exit":0,"error":""}
+{"ts":"2026-07-27T00:24:14.356Z","hook":"privacy-block","event":"PreToolUse","tool":"Write","target":"","note":"","dur":7,"status":"ok","exit":0,"error":""}
+{"ts":"2026-07-27T00:24:14.364Z","hook":"scout-block","event":"PreToolUse","tool":"","target":"","note":"","dur":0,"status":"crash","exit":0,"error":"path should be a `path.relative()`d string, but got \"D:/OpsMind_AI/LICENSE\""}
+{"ts":"2026-07-27T00:24:24.233Z","hook":"descriptive-name","event":"PreToolUse","tool":"Write","target":"","note":"","dur":2,"status":"ok","exit":0,"error":""}
+{"ts":"2026-07-27T00:24:24.255Z","hook":"privacy-block","event":"PreToolUse","tool":"Write","target":"","note":"","dur":7,"status":"ok","exit":0,"error":""}
+{"ts":"2026-07-27T00:24:24.269Z","hook":"scout-block","event":"PreToolUse","tool":"","target":"","note":"","dur":0,"status":"crash","exit":0,"error":"path should be a `path.relative()`d string, but got \"D:/OpsMind_AI/.github/CODEOWNERS\""}
+{"ts":"2026-07-27T00:24:33.627Z","hook":"scout-block","event":"PreToolUse","tool":"Bash","target":"","note":"","dur":9,"status":"ok","exit":0,"error":""}
+{"ts":"2026-07-27T00:24:33.631Z","hook":"privacy-block","event":"PreToolUse","tool":"Bash","target":"","note":"","dur":8,"status":"ok","exit":0,"error":""}
+{"ts":"2026-07-27T00:24:54.085Z","hook":"privacy-block","event":"PreToolUse","tool":"Write","target":"","note":"","dur":15,"status":"ok","exit":0,"error":""}
+{"ts":"2026-07-27T00:24:54.098Z","hook":"descriptive-name","event":"PreToolUse","tool":"Write","target":"","note":"","dur":3,"status":"ok","exit":0,"error":""}
+{"ts":"2026-07-27T00:24:54.127Z","hook":"scout-block","event":"PreToolUse","tool":"","target":"","note":"","dur":0,"status":"crash","exit":0,"error":"path should be a `path.relative()`d string, but got \"D:/OpsMind_AI/CHANGELOG.md\""}
+{"ts":"2026-07-27T00:25:10.676Z","hook":"descriptive-name","event":"PreToolUse","tool":"Write","target":"","note":"","dur":5,"status":"ok","exit":0,"error":""}
+{"ts":"2026-07-27T00:25:10.733Z","hook":"privacy-block","event":"PreToolUse","tool":"Write","target":"","note":"","dur":18,"status":"ok","exit":0,"error":""}
+{"ts":"2026-07-27T00:25:10.736Z","hook":"scout-block","event":"PreToolUse","tool":"","target":"","note":"","dur":0,"status":"crash","exit":0,"error":"path should be a `path.relative()`d string, but got \"D:/OpsMind_AI/CODE_OF_CONDUCT.md\""}
+{"ts":"2026-07-27T00:25:22.168Z","hook":"scout-block","event":"PreToolUse","tool":"Bash","target":"","note":"","dur":5,"status":"ok","exit":0,"error":""}
+{"ts":"2026-07-27T00:25:22.183Z","hook":"privacy-block","event":"PreToolUse","tool":"Bash","target":"","note":"","dur":6,"status":"ok","exit":0,"error":""}
+{"ts":"2026-07-27T00:25:34.868Z","hook":"scout-block","event":"PreToolUse","tool":"Bash","target":"","note":"","dur":7,"status":"ok","exit":0,"error":""}
+{"ts":"2026-07-27T00:25:34.916Z","hook":"privacy-block","event":"PreToolUse","tool":"Bash","target":"","note":"","dur":13,"status":"ok","exit":0,"error":""}
+{"ts":"2026-07-27T00:25:51.457Z","hook":"scout-block","event":"PreToolUse","tool":"Bash","target":"","note":"","dur":25,"status":"ok","exit":0,"error":""}
+{"ts":"2026-07-27T00:25:51.492Z","hook":"privacy-block","event":"PreToolUse","tool":"Bash","target":"","note":"","dur":25,"status":"ok","exit":0,"error":""}
+{"ts":"2026-07-27T00:26:01.804Z","hook":"privacy-block","event":"PreToolUse","tool":"Read","target":"","note":"","dur":8,"status":"ok","exit":0,"error":""}
+{"ts":"2026-07-27T00:26:01.820Z","hook":"scout-block","event":"PreToolUse","tool":"","target":"","note":"","dur":0,"status":"crash","exit":0,"error":"path should be a `path.relative()`d string, but got \"D:/OpsMind_AI/docs/media/operator-investigation-workspace.png\""}
+{"ts":"2026-07-27T00:26:28.802Z","hook":"privacy-block","event":"PreToolUse","tool":"Bash","target":"","note":"","dur":17,"status":"ok","exit":0,"error":""}
+{"ts":"2026-07-27T00:26:28.803Z","hook":"scout-block","event":"PreToolUse","tool":"Bash","target":".next","note":".next","dur":13,"status":"block","exit":2,"error":""}
+{"ts":"2026-07-27T00:26:35.351Z","hook":"privacy-block","event":"PreToolUse","tool":"Grep","target":"","note":"","dur":4,"status":"ok","exit":0,"error":""}
+{"ts":"2026-07-27T00:26:35.355Z","hook":"scout-block","event":"PreToolUse","tool":"","target":"","note":"","dur":0,"status":"crash","exit":0,"error":"path should be a `path.relative()`d string, but got \"D:/OpsMind_AI/apps/operator-web\""}
+{"ts":"2026-07-27T00:26:40.778Z","hook":"privacy-block","event":"PreToolUse","tool":"Grep","target":"","note":"","dur":17,"status":"ok","exit":0,"error":""}
+{"ts":"2026-07-27T00:26:40.797Z","hook":"scout-block","event":"PreToolUse","tool":"","target":"","note":"","dur":0,"status":"crash","exit":0,"error":"path should be a `path.relative()`d string, but got \"D:/OpsMind_AI/apps/operator-web/features\""}
+{"ts":"2026-07-27T00:26:45.533Z","hook":"privacy-block","event":"PreToolUse","tool":"Read","target":"","note":"","dur":15,"status":"ok","exit":0,"error":""}
+{"ts":"2026-07-27T00:26:45.539Z","hook":"scout-block","event":"PreToolUse","tool":"","target":"","note":"","dur":0,"status":"crash","exit":0,"error":"path should be a `path.relative()`d string, but got \"D:/OpsMind_AI/apps/operator-web/lib/operator-environment.ts\""}
+{"ts":"2026-07-27T00:26:59.430Z","hook":"privacy-block","event":"PreToolUse","tool":"Bash","target":"","note":"","dur":12,"status":"ok","exit":0,"error":""}
+{"ts":"2026-07-27T00:26:59.445Z","hook":"scout-block","event":"PreToolUse","tool":"Bash","target":"","note":"","dur":11,"status":"ok","exit":0,"error":""}
+{"ts":"2026-07-27T00:27:20.583Z","hook":"privacy-block","event":"PreToolUse","tool":"Bash","target":"","note":"","dur":13,"status":"ok","exit":0,"error":""}
+{"ts":"2026-07-27T00:27:20.696Z","hook":"scout-block","event":"PreToolUse","tool":"Bash","target":"","note":"","dur":9,"status":"ok","exit":0,"error":""}
+{"ts":"2026-07-27T00:27:42.636Z","hook":"privacy-block","event":"PreToolUse","tool":"Bash","target":"","note":"","dur":25,"status":"ok","exit":0,"error":""}
+{"ts":"2026-07-27T00:27:42.638Z","hook":"scout-block","event":"PreToolUse","tool":"Bash","target":"","note":"","dur":10,"status":"ok","exit":0,"error":""}
+{"ts":"2026-07-27T00:27:58.093Z","hook":"privacy-block","event":"PreToolUse","tool":"Bash","target":"","note":"","dur":19,"status":"ok","exit":0,"error":""}
+{"ts":"2026-07-27T00:27:58.118Z","hook":"scout-block","event":"PreToolUse","tool":"Bash","target":"","note":"","dur":11,"status":"ok","exit":0,"error":""}
+{"ts":"2026-07-27T00:28:12.980Z","hook":"privacy-block","event":"PreToolUse","tool":"Bash","target":"","note":"","dur":25,"status":"ok","exit":0,"error":""}
+{"ts":"2026-07-27T00:28:13.110Z","hook":"scout-block","event":"PreToolUse","tool":"Bash","target":"","note":"","dur":16,"status":"ok","exit":0,"error":""}
+{"ts":"2026-07-27T00:29:01.473Z","hook":"privacy-block","event":"PreToolUse","tool":"Write","target":"","note":"","dur":14,"status":"ok","exit":0,"error":""}
+{"ts":"2026-07-27T00:29:01.474Z","hook":"descriptive-name","event":"PreToolUse","tool":"Write","target":"","note":"","dur":4,"status":"ok","exit":0,"error":""}
+{"ts":"2026-07-27T00:29:01.504Z","hook":"scout-block","event":"PreToolUse","tool":"","target":"","note":"","dur":0,"status":"crash","exit":0,"error":"path should be a `path.relative()`d string, but got \"D:/OpsMind_AI/scripts/media/capture-operator-media.mjs\""}
+{"ts":"2026-07-27T00:29:12.892Z","hook":"privacy-block","event":"PreToolUse","tool":"Bash","target":"","note":"","dur":21,"status":"ok","exit":0,"error":""}
+{"ts":"2026-07-27T00:29:12.903Z","hook":"scout-block","event":"PreToolUse","tool":"","target":"","note":"","dur":0,"status":"crash","exit":0,"error":"path should be a `path.relative()`d string, but got \"D:/OpsMind_AI/.opsmind/cache/playwright\""}
+{"ts":"2026-07-27T00:29:49.055Z","hook":"privacy-block","event":"PreToolUse","tool":"Bash","target":"","note":"","dur":208,"status":"ok","exit":0,"error":""}
+{"ts":"2026-07-27T00:29:49.022Z","hook":"scout-block","event":"PreToolUse","tool":"Bash","target":"","note":"","dur":30,"status":"ok","exit":0,"error":""}
+{"ts":"2026-07-27T00:30:40.463Z","hook":"scout-block","event":"PreToolUse","tool":"","target":"","note":"","dur":0,"status":"crash","exit":0,"error":"path should be a `path.relative()`d string, but got \"D:/OpsMind_AI/scripts/media/capture-operator-media.mjs\""}
+{"ts":"2026-07-27T00:30:40.485Z","hook":"privacy-block","event":"PreToolUse","tool":"Edit","target":"","note":"","dur":13,"status":"ok","exit":0,"error":""}
+{"ts":"2026-07-27T00:31:03.801Z","hook":"privacy-block","event":"PreToolUse","tool":"Bash","target":"","note":"","dur":11,"status":"ok","exit":0,"error":""}
+{"ts":"2026-07-27T00:31:04.048Z","hook":"scout-block","event":"PreToolUse","tool":"Bash","target":"apps/operator-web/node_modules/@playwright/test/index.mjs","note":"node_modules","dur":244,"status":"block","exit":2,"error":""}
+{"ts":"2026-07-27T00:31:16.563Z","hook":"privacy-block","event":"PreToolUse","tool":"Bash","target":"","note":"","dur":35,"status":"ok","exit":0,"error":""}
+{"ts":"2026-07-27T00:31:16.608Z","hook":"scout-block","event":"PreToolUse","tool":"","target":"","note":"","dur":0,"status":"crash","exit":0,"error":"path should be a `path.relative()`d string, but got \"D:/OpsMind_AI/.opsmind/cache/playwright\""}
+{"ts":"2026-07-27T00:32:52.314Z","hook":"privacy-block","event":"PreToolUse","tool":"Read","target":"","note":"","dur":15,"status":"ok","exit":0,"error":""}
+{"ts":"2026-07-27T00:32:52.334Z","hook":"scout-block","event":"PreToolUse","tool":"","target":"","note":"","dur":0,"status":"crash","exit":0,"error":"path should be a `path.relative()`d string, but got \"D:/OpsMind_AI/docs/media/operator-investigation-workspace.png\""}
+{"ts":"2026-07-27T00:33:12.459Z","hook":"privacy-block","event":"PreToolUse","tool":"Bash","target":"","note":"","dur":13,"status":"ok","exit":0,"error":""}
+{"ts":"2026-07-27T00:33:12.468Z","hook":"scout-block","event":"PreToolUse","tool":"Bash","target":"","note":"","dur":13,"status":"ok","exit":0,"error":""}
+{"ts":"2026-07-27T00:35:30.025Z","hook":"privacy-block","event":"PreToolUse","tool":"Bash","target":"","note":"","dur":16,"status":"ok","exit":0,"error":""}
+{"ts":"2026-07-27T00:35:30.053Z","hook":"scout-block","event":"PreToolUse","tool":"Bash","target":"","note":"","dur":15,"status":"ok","exit":0,"error":""}
+{"ts":"2026-07-27T00:37:46.294Z","hook":"privacy-block","event":"PreToolUse","tool":"Bash","target":"","note":"","dur":10,"status":"ok","exit":0,"error":""}
+{"ts":"2026-07-27T00:37:46.322Z","hook":"scout-block","event":"PreToolUse","tool":"Bash","target":"","note":"","dur":53,"status":"ok","exit":0,"error":""}
+{"ts":"2026-07-27T00:38:03.365Z","hook":"scout-block","event":"PreToolUse","tool":"Bash","target":"","note":"","dur":11,"status":"ok","exit":0,"error":""}
+{"ts":"2026-07-27T00:38:03.380Z","hook":"privacy-block","event":"PreToolUse","tool":"Bash","target":"","note":"","dur":12,"status":"ok","exit":0,"error":""}
+{"ts":"2026-07-27T00:38:17.132Z","hook":"scout-block","event":"PreToolUse","tool":"Bash","target":"","note":"","dur":11,"status":"ok","exit":0,"error":""}
+{"ts":"2026-07-27T00:38:17.215Z","hook":"privacy-block","event":"PreToolUse","tool":"Bash","target":"","note":"","dur":13,"status":"ok","exit":0,"error":""}
+{"ts":"2026-07-27T00:38:31.727Z","hook":"scout-block","event":"PreToolUse","tool":"Bash","target":"","note":"","dur":9,"status":"ok","exit":0,"error":""}
+{"ts":"2026-07-27T00:38:31.744Z","hook":"privacy-block","event":"PreToolUse","tool":"Bash","target":"","note":"","dur":20,"status":"ok","exit":0,"error":""}
+{"ts":"2026-07-27T00:46:51.006Z","hook":"privacy-block","event":"PreToolUse","tool":"Bash","target":"","note":"","dur":10,"status":"ok","exit":0,"error":""}
+{"ts":"2026-07-27T00:46:51.075Z","hook":"scout-block","event":"PreToolUse","tool":"Bash","target":"","note":"","dur":16,"status":"ok","exit":0,"error":""}
+{"ts":"2026-07-27T00:47:01.228Z","hook":"scout-block","event":"PreToolUse","tool":"Bash","target":"","note":"","dur":11,"status":"ok","exit":0,"error":""}
+{"ts":"2026-07-27T00:47:01.279Z","hook":"privacy-block","event":"PreToolUse","tool":"Bash","target":"","note":"","dur":6,"status":"ok","exit":0,"error":""}
+{"ts":"2026-07-27T00:47:18.599Z","hook":"scout-block","event":"PreToolUse","tool":"Bash","target":"","note":"","dur":13,"status":"ok","exit":0,"error":""}
+{"ts":"2026-07-27T00:47:18.669Z","hook":"privacy-block","event":"PreToolUse","tool":"Bash","target":"","note":"","dur":10,"status":"ok","exit":0,"error":""}
+{"ts":"2026-07-27T00:47:37.652Z","hook":"privacy-block","event":"PreToolUse","tool":"Bash","target":"","note":"","dur":44,"status":"ok","exit":0,"error":""}
+{"ts":"2026-07-27T00:47:37.701Z","hook":"scout-block","event":"PreToolUse","tool":"Bash","target":"","note":"","dur":30,"status":"ok","exit":0,"error":""}
+{"ts":"2026-07-27T00:48:05.976Z","hook":"scout-block","event":"PreToolUse","tool":"Bash","target":"","note":"","dur":18,"status":"ok","exit":0,"error":""}
+{"ts":"2026-07-27T00:48:05.995Z","hook":"privacy-block","event":"PreToolUse","tool":"Bash","target":"","note":"","dur":38,"status":"ok","exit":0,"error":""}
+{"ts":"2026-07-27T00:48:28.462Z","hook":"scout-block","event":"PreToolUse","tool":"Bash","target":"","note":"","dur":39,"status":"ok","exit":0,"error":""}
+{"ts":"2026-07-27T00:48:28.513Z","hook":"privacy-block","event":"PreToolUse","tool":"Bash","target":"","note":"","dur":63,"status":"ok","exit":0,"error":""}
+{"ts":"2026-07-27T00:48:46.000Z","hook":"scout-block","event":"PreToolUse","tool":"Bash","target":"","note":"","dur":15,"status":"ok","exit":0,"error":""}
+{"ts":"2026-07-27T00:48:46.018Z","hook":"privacy-block","event":"PreToolUse","tool":"Bash","target":"","note":"","dur":49,"status":"ok","exit":0,"error":""}
+{"ts":"2026-07-27T00:49:09.297Z","hook":"privacy-block","event":"PreToolUse","tool":"Bash","target":"","note":"","dur":12,"status":"ok","exit":0,"error":""}
+{"ts":"2026-07-27T00:49:09.329Z","hook":"scout-block","event":"PreToolUse","tool":"Bash","target":"","note":"","dur":24,"status":"ok","exit":0,"error":""}
+{"ts":"2026-07-27T00:49:50.297Z","hook":"privacy-block","event":"PreToolUse","tool":"Bash","target":"","note":"","dur":45,"status":"ok","exit":0,"error":""}
+{"ts":"2026-07-27T00:49:50.430Z","hook":"scout-block","event":"PreToolUse","tool":"Bash","target":"","note":"","dur":30,"status":"ok","exit":0,"error":""}
+{"ts":"2026-07-27T00:50:02.280Z","hook":"privacy-block","event":"PreToolUse","tool":"Bash","target":"","note":"","dur":29,"status":"ok","exit":0,"error":""}
+{"ts":"2026-07-27T00:50:02.412Z","hook":"scout-block","event":"PreToolUse","tool":"Bash","target":"","note":"","dur":11,"status":"ok","exit":0,"error":""}
+{"ts":"2026-07-27T00:50:24.390Z","hook":"privacy-block","event":"PreToolUse","tool":"Bash","target":"","note":"","dur":23,"status":"ok","exit":0,"error":""}
+{"ts":"2026-07-27T00:50:24.405Z","hook":"scout-block","event":"PreToolUse","tool":"Bash","target":"","note":"","dur":20,"status":"ok","exit":0,"error":""}
+{"ts":"2026-07-27T00:50:46.950Z","hook":"scout-block","event":"PreToolUse","tool":"Bash","target":"","note":"","dur":38,"status":"ok","exit":0,"error":""}
+{"ts":"2026-07-27T00:50:46.967Z","hook":"privacy-block","event":"PreToolUse","tool":"Bash","target":"","note":"","dur":20,"status":"ok","exit":0,"error":""}
+{"ts":"2026-07-27T00:50:59.362Z","hook":"scout-block","event":"PreToolUse","tool":"","target":"","note":"","dur":0,"status":"crash","exit":0,"error":"path should be a `path.relative()`d string, but got \"D:/OpsMind_AI/CONTRIBUTING.md\""}
+{"ts":"2026-07-27T00:50:59.417Z","hook":"privacy-block","event":"PreToolUse","tool":"Read","target":"","note":"","dur":65,"status":"ok","exit":0,"error":""}
+{"ts":"2026-07-27T00:51:21.642Z","hook":"privacy-block","event":"PreToolUse","tool":"Edit","target":"","note":"","dur":109,"status":"ok","exit":0,"error":""}
+{"ts":"2026-07-27T00:51:21.713Z","hook":"scout-block","event":"PreToolUse","tool":"","target":"","note":"","dur":0,"status":"crash","exit":0,"error":"path should be a `path.relative()`d string, but got \"D:/OpsMind_AI/CONTRIBUTING.md\""}
+{"ts":"2026-07-27T00:51:45.680Z","hook":"scout-block","event":"PreToolUse","tool":"Bash","target":"","note":"","dur":55,"status":"ok","exit":0,"error":""}
+{"ts":"2026-07-27T00:51:45.697Z","hook":"privacy-block","event":"PreToolUse","tool":"Bash","target":"","note":"","dur":101,"status":"ok","exit":0,"error":""}
+{"ts":"2026-07-27T00:52:18.900Z","hook":"privacy-block","event":"PreToolUse","tool":"Bash","target":"","note":"","dur":47,"status":"ok","exit":0,"error":""}
+{"ts":"2026-07-27T00:52:18.945Z","hook":"scout-block","event":"PreToolUse","tool":"Bash","target":"","note":"","dur":16,"status":"ok","exit":0,"error":""}
+{"ts":"2026-07-27T00:58:04.893Z","hook":"privacy-block","event":"PreToolUse","tool":"Bash","target":"","note":"","dur":12,"status":"ok","exit":0,"error":""}
+{"ts":"2026-07-27T00:58:05.030Z","hook":"scout-block","event":"PreToolUse","tool":"Bash","target":"","note":"","dur":19,"status":"ok","exit":0,"error":""}
+{"ts":"2026-07-27T01:06:02.601Z","hook":"scout-block","event":"PreToolUse","tool":"Bash","target":"","note":"","dur":13,"status":"ok","exit":0,"error":""}
+{"ts":"2026-07-27T01:06:02.603Z","hook":"privacy-block","event":"PreToolUse","tool":"Bash","target":"","note":"","dur":9,"status":"ok","exit":0,"error":""}
+{"ts":"2026-07-27T01:08:20.014Z","hook":"scout-block","event":"PreToolUse","tool":"Bash","target":"","note":"","dur":14,"status":"ok","exit":0,"error":""}
+{"ts":"2026-07-27T01:08:20.039Z","hook":"privacy-block","event":"PreToolUse","tool":"Bash","target":"","note":"","dur":14,"status":"ok","exit":0,"error":""}
+{"ts":"2026-07-27T01:08:27.820Z","hook":"privacy-block","event":"PreToolUse","tool":"Bash","target":"","note":"","dur":10,"status":"ok","exit":0,"error":""}
+{"ts":"2026-07-27T01:08:27.839Z","hook":"scout-block","event":"PreToolUse","tool":"Bash","target":"","note":"","dur":14,"status":"ok","exit":0,"error":""}
+{"ts":"2026-07-27T01:08:49.751Z","hook":"privacy-block","event":"PreToolUse","tool":"Bash","target":"","note":"","dur":10,"status":"ok","exit":0,"error":""}
+{"ts":"2026-07-27T01:08:49.765Z","hook":"scout-block","event":"PreToolUse","tool":"Bash","target":"","note":"","dur":19,"status":"ok","exit":0,"error":""}
+{"ts":"2026-07-27T01:09:24.058Z","hook":"privacy-block","event":"PreToolUse","tool":"Bash","target":"","note":"","dur":12,"status":"ok","exit":0,"error":""}
+{"ts":"2026-07-27T01:09:24.072Z","hook":"scout-block","event":"PreToolUse","tool":"Bash","target":"","note":"","dur":17,"status":"ok","exit":0,"error":""}
+{"ts":"2026-07-27T01:09:46.077Z","hook":"scout-block","event":"PreToolUse","tool":"Bash","target":"","note":"","dur":18,"status":"ok","exit":0,"error":""}
+{"ts":"2026-07-27T01:09:46.080Z","hook":"privacy-block","event":"PreToolUse","tool":"Bash","target":"","note":"","dur":13,"status":"ok","exit":0,"error":""}
+{"ts":"2026-07-27T01:10:13.676Z","hook":"privacy-block","event":"PreToolUse","tool":"Bash","target":"","note":"","dur":7,"status":"ok","exit":0,"error":""}
+{"ts":"2026-07-27T01:10:13.691Z","hook":"scout-block","event":"PreToolUse","tool":"Bash","target":"","note":"","dur":11,"status":"ok","exit":0,"error":""}
+{"ts":"2026-07-27T01:10:27.306Z","hook":"privacy-block","event":"PreToolUse","tool":"Bash","target":"","note":"","dur":9,"status":"ok","exit":0,"error":""}
+{"ts":"2026-07-27T01:10:27.323Z","hook":"scout-block","event":"PreToolUse","tool":"Bash","target":"","note":"","dur":9,"status":"ok","exit":0,"error":""}
+{"ts":"2026-07-27T01:10:47.882Z","hook":"privacy-block","event":"PreToolUse","tool":"Bash","target":"","note":"","dur":7,"status":"ok","exit":0,"error":""}
+{"ts":"2026-07-27T01:10:47.895Z","hook":"scout-block","event":"PreToolUse","tool":"Bash","target":"","note":"","dur":13,"status":"ok","exit":0,"error":""}
+{"ts":"2026-07-27T01:11:01.895Z","hook":"privacy-block","event":"PreToolUse","tool":"Bash","target":"","note":"","dur":7,"status":"ok","exit":0,"error":""}
+{"ts":"2026-07-27T01:11:01.916Z","hook":"scout-block","event":"PreToolUse","tool":"Bash","target":"","note":"","dur":16,"status":"ok","exit":0,"error":""}
+{"ts":"2026-07-27T01:13:04.337Z","hook":"privacy-block","event":"PreToolUse","tool":"Bash","target":"","note":"","dur":8,"status":"ok","exit":0,"error":""}
+{"ts":"2026-07-27T01:13:04.346Z","hook":"scout-block","event":"PreToolUse","tool":"Bash","target":"","note":"","dur":9,"status":"ok","exit":0,"error":""}
