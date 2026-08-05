@@ -1,5 +1,5 @@
 # syntax=docker/dockerfile:1.7
-FROM node:24.12.0-bookworm-slim@sha256:7326fb2dbdce998edd72140946851be64ef4a643e8715e138ca467e8e9d92c99 AS dependencies
+FROM node:26.5.1-bookworm-slim@sha256:9e6f9357d371591e32ab6f2d8a26d63bdd0d17c29eee3f4f3e7e454d9634bf73 AS dependencies
 ENV PNPM_HOME=/pnpm
 ENV PATH=$PNPM_HOME:$PATH
 RUN corepack enable
@@ -14,7 +14,7 @@ FROM dependencies AS build
 COPY apps/operator-web apps/operator-web
 RUN pnpm --filter @opsmind/operator-web build
 
-FROM node:24.12.0-bookworm-slim@sha256:7326fb2dbdce998edd72140946851be64ef4a643e8715e138ca467e8e9d92c99 AS runtime
+FROM node:26.5.1-bookworm-slim@sha256:9e6f9357d371591e32ab6f2d8a26d63bdd0d17c29eee3f4f3e7e454d9634bf73 AS runtime
 ENV NODE_ENV=production
 ENV HOSTNAME=0.0.0.0
 WORKDIR /app
