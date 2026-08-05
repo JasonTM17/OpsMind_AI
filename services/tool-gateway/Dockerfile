@@ -6,7 +6,7 @@ RUN --mount=type=cache,target=/root/.m2 mvn -q dependency:go-offline
 COPY services/tool-gateway/src src
 RUN --mount=type=cache,target=/root/.m2 mvn -q -DskipTests package
 
-FROM eclipse-temurin:21-jre-noble@sha256:373787d1d45a87f084fda43e7de0e9acf5eedee049446efac738f13587ec4c64 AS runtime
+FROM eclipse-temurin:24-jre-noble@sha256:b416d02335e702b0403ff280de9475a3348e29382285969c9d4e17862ce632e7 AS runtime
 WORKDIR /app
 RUN apt-get update && \
     apt-get install --yes --no-install-recommends curl && \
