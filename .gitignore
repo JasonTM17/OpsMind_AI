@@ -46,3 +46,8 @@ Thumbs.db
 
 # Local ClaudeKit session state
 .claude/session-state/
+
+# Local AI agent tooling
+/.claude/
+/.codex/
+/.agents/
